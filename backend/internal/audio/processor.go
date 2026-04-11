@@ -69,6 +69,13 @@ func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode Co
 		return relPath, nil
 	}
 
+	// Validate mode — treat unknown values as disabled to avoid silent data
+	// loss (ffmpegArgs returns nil for unknown modes, so no output file would
+	// be created but the original would be deleted).
+	if mode != ConversionEnabled && mode != ConversionNorm && mode != ConversionLoudNorm {
+		return relPath, nil
+	}
+
 	// Build .m4a output path.
 	ext := filepath.Ext(safeName)
 	outName := strings.TrimSuffix(safeName, ext) + ".m4a"

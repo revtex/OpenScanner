@@ -106,6 +106,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		}
 	}
 	if !h.getLimiter(apiKeyID, rateLimit).allow() {
+		slog.Warn("call upload rate limit exceeded", "api_key_id", apiKeyID)
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": "rate limit exceeded"})
 		return
 	}
@@ -234,7 +235,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 
 	// Duplicate detection (system.ID and talkgroup.ID are the FK values in calls).
 	if h.getSettingValue(c, "disableDuplicateDetection") != "true" {
-		windowMs := int64(500)
+		windowMs := int64(2000)
 		if v := h.getSettingValue(c, "duplicateDetectionTimeFrame"); v != "" {
 			if wm, err := strconv.ParseInt(v, 10, 64); err == nil {
 				windowMs = wm

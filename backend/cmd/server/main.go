@@ -74,6 +74,7 @@ func main() {
 
 	// Set up Gin router with registered routes.
 	router := gin.New()
+	router.MaxMultipartMemory = 50 << 20 // 50 MiB limit for multipart uploads
 	router.Use(gin.Recovery())
 
 	// Create the shutdown context early so it can be passed to long-lived components
