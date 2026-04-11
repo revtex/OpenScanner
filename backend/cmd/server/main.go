@@ -17,6 +17,7 @@ import (
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/config"
 	"github.com/openscanner/openscanner/internal/db"
+	"github.com/openscanner/openscanner/internal/dirwatch"
 	"github.com/openscanner/openscanner/internal/seed"
 	"github.com/openscanner/openscanner/internal/ws"
 )
@@ -97,13 +98,18 @@ func main() {
 	hub := ws.NewHub(queries, config.Version)
 	go hub.Run(ctx)
 
+	// Start DirWatch service.
+	dwService := dirwatch.NewService(queries, processor, hub)
+	dwService.Start(ctx)
+
 	api.RegisterRoutes(router, api.Deps{
-		Queries:     queries,
-		RateLimiter: rateLimiter,
-		Processor:   processor,
-		Hub:         hub,
-		SQLDB:       sqlDB,
-		Version:     config.Version,
+		Queries:          queries,
+		RateLimiter:      rateLimiter,
+		Processor:        processor,
+		Hub:              hub,
+		SQLDB:            sqlDB,
+		DirwatchReloader: dwService,
+		Version:          config.Version,
 	})
 
 	// Create HTTP server.

@@ -2,6 +2,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
@@ -12,14 +13,20 @@ import (
 	"github.com/openscanner/openscanner/internal/ws"
 )
 
+// DirwatchReloader is implemented by dirwatch.Service to trigger a config reload.
+type DirwatchReloader interface {
+	Reload(ctx context.Context)
+}
+
 // Deps holds the dependencies required to register all API routes.
 type Deps struct {
-	Queries     *db.Queries
-	RateLimiter *auth.RateLimiter
-	Processor   *audio.Processor
-	Hub         *ws.Hub
-	SQLDB       *sql.DB
-	Version     string
+	Queries          *db.Queries
+	RateLimiter      *auth.RateLimiter
+	Processor        *audio.Processor
+	Hub              *ws.Hub
+	SQLDB            *sql.DB
+	DirwatchReloader DirwatchReloader
+	Version          string
 }
 
 // RegisterRoutes wires all API routes onto the Gin engine.
@@ -27,7 +34,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	setupHandler := NewSetupHandler(deps.Queries)
 	authHandler := NewAuthHandler(deps.Queries, deps.RateLimiter)
 	callHandler := NewCallHandler(deps.Queries, deps.Processor, deps.Hub)
-	adminHandler := NewAdminHandler(deps.Queries, deps.Hub, deps.SQLDB)
+	adminHandler := NewAdminHandler(deps.Queries, deps.Hub, deps.SQLDB, deps.DirwatchReloader)
 
 	// Global middleware applied to every request.
 	r.Use(middleware.RequestID())

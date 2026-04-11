@@ -1,6 +1,6 @@
 # OpenScanner — Architecture
 
-> **Implementation status:** Phases 1–6 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest, WebSocket Hub, Admin CRUD APIs) are complete. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
+> **Implementation status:** Phases 1–7 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest, WebSocket Hub, Admin CRUD APIs, DirWatch Service) are complete. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
 
 ## Overview
 
@@ -13,7 +13,7 @@ The diagram below shows the full planned architecture. Solid lines and green fil
 ```mermaid
 graph TD
     Recorder["Radio Recorder<br/>(Trunk Recorder / SDRTrunk)"] -->|POST /api/call-upload| MW
-    DirWatch["DirWatch Service<br/>(fsnotify)"] -.->|ingest files| Processor
+    DirWatch["DirWatch Service<br/>(fsnotify)"] -->|ingest files| Processor
 
     MW["Middleware<br/>(JWT, API Key, Rate Limit)"] -->|validated request| API["API Handlers<br/>(Gin)"]
     API -->|processor.Store| Processor["Audio Processor<br/>(FFmpeg Worker Pool)"]
@@ -46,7 +46,7 @@ graph TD
     style Hub fill:#b5e6b5,stroke:#333,color:#000
     style Listeners fill:#b5e6b5,stroke:#333,color:#000
     style Transcriber fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
-    style DirWatch fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
+    style DirWatch fill:#b5e6b5,stroke:#333,color:#000
     style Downstream fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
     style Webhooks fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
     style Push fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
@@ -74,10 +74,14 @@ graph TD
   - **Routes:** `GET /ws` (listener), `GET /api/admin/ws` (admin); registered via `gin.WrapF` in `api/routes.go`
   - **Compression:** permessage-deflate via `websocket.CompressionContextTakeover`
 
+- **backend/internal/dirwatch** — Directory watching service for automatic call ingest from local recorder output directories:
+  - **watcher.go** — `Service` struct managing one goroutine per active dirwatch config; `Start` loads configs from DB, `Reload` stops all watchers and restarts fresh (called by admin CRUD after config changes); `runWithFsnotify` uses kernel inotify/kqueue `Create` events; `runWithPolling` scans on a configurable ticker (≥500 ms floor, suitable for CIFS/NFS mounts); `handleFile` enforces path traversal checks and extension filtering before dispatching to the parser; `ingestCall` mirrors the HTTP upload pipeline: system/TG resolution (with `autoPopulate`), duplicate check, `Processor.StoreFile`, DB insert, WS `CAL` broadcast, optional source-file deletion (`delete_after=1`)
+  - **parsers.go** — `ParsedCall` struct + one `ParseFunc` per recorder type: `trunk-recorder` (JSON sidecar + audio file pair), `sdrtrunk` (`<sysID>_<tgID>_<ts>.<ext>` filename pattern), `rtlsdr-airband` (audio file, IDs from dirwatch config), `dsdplus` (audio file, IDs from dirwatch config), `proscan` (audio file, IDs from dirwatch config), `voxcall` (audio file, IDs from dirwatch config); unrecognised types fall back to `parseGeneric`
+  - **mask.go** — `MaskTokens` struct + `ExpandMask`/`TokensFromCall`: expands `#DATE`, `#TIME`, `#ZTIME`, `#GROUP`, `#SYSLBL`, `#TAG`, `#TGAFS`, `#UNIT`, `#TGLBL`, `#TGHZ`, `#TGKHZ`, `#TGMHZ`, `#TGID` tokens in directory mask strings
+
 ### Stubs (package declaration only — not yet implemented)
 
 - **backend/internal/audio/transcriber.go** — Whisper transcription worker pool
-- **backend/internal/dirwatch** — Directory watching (fsnotify) and file parsing
 - **backend/internal/downstream** — Call forwarding to remote instances
 - **backend/internal/notify** — Web Push notification delivery
 

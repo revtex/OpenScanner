@@ -26,14 +26,15 @@ var validRoles = map[string]bool{
 
 // AdminHandler handles admin CRUD endpoints.
 type AdminHandler struct {
-	queries *db.Queries
-	hub     *ws.Hub
-	sqlDB   *sql.DB
+	queries  *db.Queries
+	hub      *ws.Hub
+	sqlDB    *sql.DB
+	dwReload DirwatchReloader
 }
 
 // NewAdminHandler constructs an AdminHandler.
-func NewAdminHandler(queries *db.Queries, hub *ws.Hub, sqlDB *sql.DB) *AdminHandler {
-	return &AdminHandler{queries: queries, hub: hub, sqlDB: sqlDB}
+func NewAdminHandler(queries *db.Queries, hub *ws.Hub, sqlDB *sql.DB, dwReload DirwatchReloader) *AdminHandler {
+	return &AdminHandler{queries: queries, hub: hub, sqlDB: sqlDB, dwReload: dwReload}
 }
 
 // parseID extracts and parses the :id path parameter.
@@ -1022,6 +1023,10 @@ func (h *AdminHandler) CreateDirwatch(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created dirwatch"})
 		return
 	}
+	// Reload the dirwatch service so the new config takes effect immediately.
+	if h.dwReload != nil {
+		h.dwReload.Reload(c.Request.Context())
+	}
 	c.JSON(http.StatusCreated, dw)
 }
 
@@ -1056,6 +1061,10 @@ func (h *AdminHandler) UpdateDirwatch(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated dirwatch"})
 		return
 	}
+	// Reload the dirwatch service so the updated config takes effect immediately.
+	if h.dwReload != nil {
+		h.dwReload.Reload(c.Request.Context())
+	}
 	c.JSON(http.StatusOK, dw)
 }
 
@@ -1075,6 +1084,10 @@ func (h *AdminHandler) DeleteDirwatch(c *gin.Context) {
 		slog.Error("failed to delete dirwatch", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete dirwatch"})
 		return
+	}
+	// Reload the dirwatch service so the deleted watcher is stopped immediately.
+	if h.dwReload != nil {
+		h.dwReload.Reload(c.Request.Context())
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

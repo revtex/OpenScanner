@@ -540,6 +540,8 @@ Returns all units across all systems.
 
 ### Dirwatches
 
+> **Service reload:** Creating, updating, or deleting a dirwatch entry triggers an immediate `Service.Reload` â€” all watcher goroutines are stopped and restarted from the DB. No server restart is required for config changes to take effect.
+
 #### `GET /api/admin/dirwatches`
 
 #### `POST /api/admin/dirwatches`
@@ -694,4 +696,4 @@ Imports a full configuration JSON blob. Runs in a single database transaction â€
 
 ## Planned Endpoints (not yet implemented)
 
-_No additional planned endpoints at this time. Future phases focus on frontend UI, DirWatch, Downstream, Push Notifications, Webhooks delivery, and Transcription._
+_No additional planned endpoints at this time. Future phases focus on frontend UI, Downstream Pusher, Push Notifications, Webhooks delivery, and Transcription._

@@ -120,3 +120,96 @@ func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode Co
 	}
 	return relOut, nil
 }
+
+// StoreFile stores a local file (by path) identically to Store, but reads
+// directly from the filesystem rather than from a multipart upload.
+// SECURITY: the filename is sanitised via filepath.Base — strips directory
+// components and rejects names containing "..".
+func (p *Processor) StoreFile(ctx context.Context, srcPath string, mode ConversionMode) (string, error) {
+	// filepath.Base strips all directory components; the == ".." guard catches
+	// the only remaining traversal case.  No further Contains check is needed.
+	safeName := filepath.Base(srcPath)
+	if safeName == "" || safeName == "." || safeName == ".." {
+		return "", fmt.Errorf("invalid filename")
+	}
+
+	now := time.Now().UTC()
+	dayDir := filepath.Join(p.baseDir, now.Format("2006"), now.Format("01"), now.Format("02"))
+	if err := os.MkdirAll(dayDir, 0755); err != nil {
+		return "", fmt.Errorf("create audio dir: %w", err)
+	}
+
+	destPath := filepath.Join(dayDir, safeName)
+	if err := copyFile(srcPath, destPath); err != nil {
+		return "", fmt.Errorf("copy audio file: %w", err)
+	}
+
+	relPath, err := filepath.Rel(p.baseDir, destPath)
+	if err != nil {
+		return "", fmt.Errorf("compute relative path: %w", err)
+	}
+
+	if mode == ConversionDisabled {
+		return relPath, nil
+	}
+
+	if mode != ConversionEnabled && mode != ConversionNorm && mode != ConversionLoudNorm {
+		return relPath, nil
+	}
+
+	ext := filepath.Ext(safeName)
+	outName := strings.TrimSuffix(safeName, ext) + ".m4a"
+	outPath := filepath.Join(dayDir, outName)
+
+	done := make(chan error, 1)
+	if err := p.pool.Submit(ctx, ConversionJob{
+		InputPath:  destPath,
+		OutputPath: outPath,
+		Mode:       mode,
+		Done:       done,
+	}); err != nil {
+		os.Remove(destPath) //nolint:errcheck
+		return "", fmt.Errorf("submit conversion job: %w", err)
+	}
+
+	select {
+	case <-ctx.Done():
+		os.Remove(destPath) //nolint:errcheck
+		return "", ctx.Err()
+	case err := <-done:
+		if err != nil {
+			os.Remove(destPath) //nolint:errcheck
+			return "", fmt.Errorf("audio conversion: %w", err)
+		}
+	}
+
+	if err := os.Remove(destPath); err != nil && !os.IsNotExist(err) {
+		_ = err
+	}
+
+	relOut, err := filepath.Rel(p.baseDir, outPath)
+	if err != nil {
+		return "", fmt.Errorf("compute relative output path: %w", err)
+	}
+	return relOut, nil
+}
+
+// copyFile copies the file at src to dst, creating dst if it does not exist.
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		os.Remove(dst) //nolint:errcheck
+		return err
+	}
+	return out.Close()
+}

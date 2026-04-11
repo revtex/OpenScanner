@@ -1626,21 +1626,23 @@ All extended features are **configurable** — disabled by default (except keybo
 
 ---
 
-### Phase 7 — DirWatch Service
+### Phase 7 — DirWatch Service ✅
+
+**Status: COMPLETE**
 
 **Goal:** Audio files dropped into watched directories are automatically ingested.
 
-1. `internal/dirwatch/watcher.go` — `fsnotify` watcher per configured directory; polling fallback for CIFS/NFS mounts (controlled by `use_polling` column, configurable delay); restarts when dirwatch config changes via admin API
-2. `internal/dirwatch/parsers.go` — one parser function per recorder type:
+1. ✅ `internal/dirwatch/watcher.go` — `fsnotify` watcher per configured directory; polling fallback for CIFS/NFS mounts (controlled by `use_polling` column, configurable delay); restarts when dirwatch config changes via admin API
+2. ✅ `internal/dirwatch/parsers.go` — one parser function per recorder type:
    - `trunk-recorder` — JSON sidecar file
    - `sdrtrunk` — CSV-based naming
    - `rtlsdr-airband` — filename pattern
    - `dsdplus` — DSDPlus Fast Lane format
    - `proscan` — ProScan format
    - `voxcall` — voxcall format
-3. `internal/dirwatch/mask.go` — expand all meta-mask tokens: `#DATE`, `#TIME`, `#ZTIME`, `#GROUP`, `#SYSLBL`, `#TAG`, `#TGAFS`, `#UNIT`, `#TGLBL`, `#TGHZ`, `#TGKHZ`, `#TGMHZ`, `#TGID`
-4. Delete-after-import: remove source file on successful ingest if `delete_after=1`
-5. Unit tests: mask expansion for all tokens, each parser with fixture files
+3. ✅ `internal/dirwatch/mask.go` — expand all meta-mask tokens: `#DATE`, `#TIME`, `#ZTIME`, `#GROUP`, `#SYSLBL`, `#TAG`, `#TGAFS`, `#UNIT`, `#TGLBL`, `#TGHZ`, `#TGKHZ`, `#TGMHZ`, `#TGID`
+4. ✅ Delete-after-import: remove source file on successful ingest if `delete_after=1`
+5. ✅ Unit tests: mask expansion for all tokens, each parser with fixture files
 
 **Deliverables:** Drop a Trunk Recorder audio file + JSON into watched dir → call appears in scanner within configured delay.
 
