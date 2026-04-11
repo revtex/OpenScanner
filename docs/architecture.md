@@ -1,6 +1,6 @@
 # OpenScanner — Architecture
 
-> **Implementation status:** Phases 1–4 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest) are complete. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
+> **Implementation status:** Phases 1–5 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest, WebSocket Hub) are complete. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
 
 ## Overview
 
@@ -27,8 +27,8 @@ graph TD
 
     Seed["Seed<br/>(runs at startup)"] -->|default data| DB
 
-    API -.-> Hub["WebSocket Hub"]
-    Hub -.->|CAL / CFG / LSC / PIN| Listeners["Browser Clients"]
+    API --> Hub["WebSocket Hub"]
+    Hub -->|CAL / CFG / LSC / PIN| Listeners["Browser Clients"]
     API -.-> Downstream["Downstream Pusher"]
     Downstream -.->|POST /api/call-upload| RemoteInstance["Remote OpenScanner"]
     API -.-> Webhooks["Webhook Delivery"]
@@ -43,7 +43,8 @@ graph TD
     style DB fill:#b5e6b5,stroke:#333,color:#000
     style Seed fill:#b5e6b5,stroke:#333,color:#000
     style Pruner fill:#b5e6b5,stroke:#333,color:#000
-    style Hub fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
+    style Hub fill:#b5e6b5,stroke:#333,color:#000
+    style Listeners fill:#b5e6b5,stroke:#333,color:#000
     style Transcriber fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
     style DirWatch fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
     style Downstream fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
@@ -64,11 +65,17 @@ graph TD
 - **backend/internal/db** — SQLite WAL mode, embedded migrations (18 tables), `SetMaxOpenConns(1)`; sqlc-generated type-safe query layer
 
 - **backend/internal/audio** — FFmpeg audio conversion pipeline: `Processor.Store` writes uploaded multipart file to `{audioDir}/{YYYY}/{MM}/{DD}/`, submits a `ConversionJob` to the bounded `WorkerPool` (`runtime.NumCPU()` goroutines), waits for completion, then returns the relative `.m4a` path; `IsDuplicate` queries the last call per system+talkgroup within the configured time window; `PruneLoop` runs on a 1-hour ticker deleting old calls and audio files in 500-row batches
-- **backend/internal/api/calls.go** — `PostCallUpload` handler: validates API key (via `APIKeyAuth` middleware), applies per-API-key sliding-window rate limiter (default 60 req/min), parses multipart fields, resolves or auto-populates system+talkgroup, runs duplicate check, stores audio via `Processor.Store`, inserts call DB record, returns `{"id": <callID>}`; also registered as `POST /api/trunk-recorder-call-upload`
+- **backend/internal/api/calls.go** — `PostCallUpload` handler: validates API key (via `APIKeyAuth` middleware), applies per-API-key sliding-window rate limiter (default 60 req/min), parses multipart fields, resolves or auto-populates system+talkgroup, runs duplicate check, stores audio via `Processor.Store`, inserts call DB record, broadcasts `CAL` + binary audio to WS hub, returns `{"id": <callID>}`; also registered as `POST /api/trunk-recorder-call-upload`
+
+- **backend/internal/ws** — Real-time WebSocket hub for call streaming and client management:
+  - **hub.go** — `Hub` struct runs a single-goroutine event loop processing `register`, `unregister`, and `broadcast` channels; non-blocking sends (slow clients dropped); `BroadcastCAL()` sends text + binary frames atomically per client (mutex-protected); `debounceLSC()` limits listener-count broadcasts to max 1 per 3 seconds via `time.AfterFunc`; graceful shutdown via context cancellation + `closeAll()`
+  - **client.go** — `Client` struct with `readPump`/`writePump` goroutines; `HandleListenerWS` supports three auth flows: public access, `PIN` access code, or listener JWT; enforces `maxClients`, per-user `limit`, and per-access-code `limit`; `HandleAdminWS` validates admin JWT via `?token=` query param; `CanReceive(systemID, talkgroupID)` filters per-client grants
+  - **messages.go** — Command constants (`CAL`, `CFG`, `VER`, `LSC`, `XPR`, `MAX`, `PIN`, `LFM`, `LCL`, `TRN`) with typed builder functions; `ParseCommand` extracts command + payload from JSON array messages
+  - **Routes:** `GET /ws` (listener), `GET /api/admin/ws` (admin); registered via `gin.WrapF` in `api/routes.go`
+  - **Compression:** permessage-deflate via `websocket.CompressionContextTakeover`
 
 ### Stubs (package declaration only — not yet implemented)
 
-- **backend/internal/ws** — WebSocket hub, client management, message types
 - **backend/internal/audio/transcriber.go** — Whisper transcription worker pool
 - **backend/internal/dirwatch** — Directory watching (fsnotify) and file parsing
 - **backend/internal/downstream** — Call forwarding to remote instances

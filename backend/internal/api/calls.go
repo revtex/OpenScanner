@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/db"
+	"github.com/openscanner/openscanner/internal/ws"
 )
 
 const (
@@ -48,15 +50,17 @@ func (l *apiKeyLimiter) allow() bool {
 type CallHandler struct {
 	queries   *db.Queries
 	processor *audio.Processor
+	hub       *ws.Hub
 	mu        sync.Mutex
 	limiters  map[int64]*apiKeyLimiter
 }
 
 // NewCallHandler creates a CallHandler.
-func NewCallHandler(queries *db.Queries, processor *audio.Processor) *CallHandler {
+func NewCallHandler(queries *db.Queries, processor *audio.Processor, hub *ws.Hub) *CallHandler {
 	return &CallHandler{
 		queries:   queries,
 		processor: processor,
+		hub:       hub,
 		limiters:  make(map[int64]*apiKeyLimiter),
 	}
 }
@@ -330,5 +334,41 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	}
 
 	slog.Info("call ingested", "id", callID)
+
+	// Broadcast to WebSocket listeners.
+	if h.hub != nil {
+		calPayload := map[string]any{
+			"id":          callID,
+			"audioName":   filepath.Base(relPath),
+			"audioType":   audioType,
+			"dateTime":    dateTimeUnix,
+			"systemId":    system.SystemID,
+			"system":      system.ID,
+			"talkgroupId": talkgroup.TalkgroupID,
+			"talkgroup":   talkgroup.ID,
+		}
+		if frequency.Valid {
+			calPayload["frequency"] = frequency.Int64
+		}
+		if duration.Valid {
+			calPayload["duration"] = duration.Int64
+		}
+		if source.Valid {
+			calPayload["source"] = source.Int64
+		}
+		calMsg, err := ws.NewCALMessage(calPayload)
+		if err != nil {
+			slog.Error("failed to build CAL message", "error", err)
+		} else {
+			audioBytes, readErr := os.ReadFile(filepath.Join(h.processor.BaseDir(), relPath))
+			if readErr != nil {
+				slog.Warn("failed to read audio for WS broadcast", "path", relPath, "error", readErr)
+			}
+			h.hub.BroadcastCAL(calMsg, audioBytes, func(cl *ws.Client) bool {
+				return cl.CanReceive(system.ID, talkgroup.ID)
+			})
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"id": callID})
 }

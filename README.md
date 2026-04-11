@@ -38,7 +38,7 @@ make test   # Runs Go tests + Vitest frontend tests
 - [x] **Phase 2** — Database Schema & Seeding
 - [x] **Phase 3** — Backend Auth, RBAC & Setup
 - [x] **Phase 4** — Backend Call Ingest
-- [ ] **Phase 5** — WebSocket Hub
+- [x] **Phase 5** — WebSocket Hub
 - [ ] **Phase 6** — Admin CRUD APIs
 - [ ] **Phase 7** — DirWatch Service
 - [ ] **Phase 8** — Downstream Pusher

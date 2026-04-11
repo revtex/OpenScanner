@@ -1583,7 +1583,7 @@ All extended features are **configurable** — disabled by default (except keybo
 
 ---
 
-### Phase 5 — WebSocket Hub
+### Phase 5 — WebSocket Hub ✅ COMPLETE
 
 **Goal:** Real-time call broadcast to all connected listeners.
 

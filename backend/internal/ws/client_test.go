@@ -1,0 +1,455 @@
+package ws
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/coder/websocket"
+	"github.com/openscanner/openscanner/internal/auth"
+	"github.com/openscanner/openscanner/internal/db"
+	_ "modernc.org/sqlite"
+)
+
+// --- CanReceive tests ---
+
+func TestCanReceive_NoGrants(t *testing.T) {
+	c := &Client{grants: nil}
+	if !c.CanReceive(1, 100) {
+		t.Error("nil grants should allow all; CanReceive returned false")
+	}
+
+	c2 := &Client{grants: []systemGrant{}}
+	if !c2.CanReceive(1, 100) {
+		t.Error("empty grants should allow all; CanReceive returned false")
+	}
+}
+
+func TestCanReceive_MatchingGrant(t *testing.T) {
+	c := &Client{
+		grants: []systemGrant{
+			{ID: 10, Talkgroups: []int64{100, 200, 300}},
+		},
+	}
+	if !c.CanReceive(10, 200) {
+		t.Error("expected true for matching system+TG")
+	}
+}
+
+func TestCanReceive_NonMatchingGrant(t *testing.T) {
+	c := &Client{
+		grants: []systemGrant{
+			{ID: 10, Talkgroups: []int64{100}},
+		},
+	}
+	if c.CanReceive(99, 100) {
+		t.Error("expected false for non-matching system ID")
+	}
+}
+
+func TestCanReceive_SystemOnlyGrant(t *testing.T) {
+	c := &Client{
+		grants: []systemGrant{
+			{ID: 10, Talkgroups: nil},
+		},
+	}
+	// No TG filter → all TGs in system 10 are allowed.
+	if !c.CanReceive(10, 999) {
+		t.Error("system-only grant should allow any TG; CanReceive returned false")
+	}
+	// Different system should be denied.
+	if c.CanReceive(20, 999) {
+		t.Error("system-only grant should deny other systems; CanReceive returned true")
+	}
+}
+
+// --- WebSocket handler test helpers ---
+
+func newWSTestDB(t *testing.T) *db.Queries {
+	t.Helper()
+	sqlDB, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatalf("open test DB: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	return db.New(sqlDB)
+}
+
+// startWSTestServer starts an httptest server with the given handler and a running hub.
+// Returns the server URL (ws://...), hub, and a cleanup cancel func.
+func startWSTestServer(t *testing.T, queries *db.Queries, handler http.HandlerFunc) (string, *Hub, context.CancelFunc) {
+	t.Helper()
+	hub := NewHub(queries, "test-version")
+	ctx, cancel := context.WithCancel(context.Background())
+	go hub.Run(ctx)
+
+	srv := httptest.NewServer(handler)
+	t.Cleanup(func() {
+		cancel()
+		srv.Close()
+	})
+
+	// Convert http:// to ws://
+	wsURL := "ws" + srv.URL[len("http"):]
+	return wsURL, hub, cancel
+}
+
+// readTextMessage reads a text message from the WS connection with a timeout.
+func readTextMessage(t *testing.T, ctx context.Context, conn *websocket.Conn, timeout time.Duration) []byte {
+	t.Helper()
+	readCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	typ, data, err := conn.Read(readCtx)
+	if err != nil {
+		t.Fatalf("read WS message: %v", err)
+	}
+	if typ != websocket.MessageText {
+		t.Fatalf("expected text message, got %v", typ)
+	}
+	return data
+}
+
+// extractCommand extracts the command string from a WS JSON message.
+func extractCommand(t *testing.T, data []byte) string {
+	t.Helper()
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("unmarshal message: %v (data=%s)", err, data)
+	}
+	if len(arr) == 0 {
+		t.Fatal("empty message array")
+	}
+	var cmd string
+	if err := json.Unmarshal(arr[0], &cmd); err != nil {
+		t.Fatalf("unmarshal command: %v", err)
+	}
+	return cmd
+}
+
+// --- HandleListenerWS tests ---
+
+func TestHandleListenerWS_PublicAccess(t *testing.T) {
+	queries := newWSTestDB(t)
+
+	// Enable public access.
+	if err := queries.UpsertSetting(context.Background(), db.UpsertSettingParams{
+		Key: "publicAccess", Value: "true",
+	}); err != nil {
+		t.Fatalf("upsert publicAccess: %v", err)
+	}
+
+	wsURL, _, _ := startWSTestServer(t, queries, HandleListenerWS(nil, queries))
+	// Hub needs to be the one used by the handler — fix: pass to handler.
+	// Actually, HandleListenerWS needs a *Hub. Let's rebuild.
+	queries2 := newWSTestDB(t)
+	if err := queries2.UpsertSetting(context.Background(), db.UpsertSettingParams{
+		Key: "publicAccess", Value: "true",
+	}); err != nil {
+		t.Fatalf("upsert setting: %v", err)
+	}
+
+	hub := NewHub(queries2, "test-version")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go hub.Run(ctx)
+
+	handler := HandleListenerWS(hub, queries2)
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+	wsURL = "ws" + srv.URL[len("http"):]
+
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.CloseNow()
+
+	// Should receive VER message (welcome).
+	msg := readTextMessage(t, ctx, conn, 5*time.Second)
+	cmd := extractCommand(t, msg)
+	if cmd != "VER" {
+		t.Errorf("first message command = %q, want VER", cmd)
+	}
+}
+
+func TestHandleListenerWS_ValidPIN(t *testing.T) {
+	queries := newWSTestDB(t)
+
+	// Create an access code.
+	_, err := queries.CreateAccess(context.Background(), db.CreateAccessParams{
+		Code:  "test-code-123",
+		Ident: sql.NullString{String: "test", Valid: true},
+		Order: 1,
+	})
+	if err != nil {
+		t.Fatalf("create access: %v", err)
+	}
+
+	hub := NewHub(queries, "test-version")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go hub.Run(ctx)
+
+	handler := HandleListenerWS(hub, queries)
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+	wsURL := "ws" + srv.URL[len("http"):]
+
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.CloseNow()
+
+	// Send PIN command.
+	pinMsg, _ := json.Marshal([]any{"PIN", "test-code-123"})
+	if err := conn.Write(ctx, websocket.MessageText, pinMsg); err != nil {
+		t.Fatalf("write PIN: %v", err)
+	}
+
+	// Should receive VER (welcome).
+	msg := readTextMessage(t, ctx, conn, 5*time.Second)
+	cmd := extractCommand(t, msg)
+	if cmd != "VER" {
+		t.Errorf("expected VER after valid PIN, got %q", cmd)
+	}
+}
+
+func TestHandleListenerWS_InvalidPIN(t *testing.T) {
+	queries := newWSTestDB(t)
+
+	hub := NewHub(queries, "test-version")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go hub.Run(ctx)
+
+	handler := HandleListenerWS(hub, queries)
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+	wsURL := "ws" + srv.URL[len("http"):]
+
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.CloseNow()
+
+	// Send PIN with bad code.
+	pinMsg, _ := json.Marshal([]any{"PIN", "wrong-code"})
+	if err := conn.Write(ctx, websocket.MessageText, pinMsg); err != nil {
+		t.Fatalf("write PIN: %v", err)
+	}
+
+	// Should receive XPR (expired/rejected).
+	msg := readTextMessage(t, ctx, conn, 5*time.Second)
+	cmd := extractCommand(t, msg)
+	if cmd != "XPR" {
+		t.Errorf("expected XPR after invalid PIN, got %q", cmd)
+	}
+}
+
+func TestHandleListenerWS_ValidJWT(t *testing.T) {
+	queries := newWSTestDB(t)
+
+	// Create a listener user.
+	now := time.Now().Unix()
+	userID, err := queries.CreateUser(context.Background(), db.CreateUserParams{
+		Username:     "listener1",
+		PasswordHash: "unused",
+		Role:         auth.RoleListener,
+		Disabled:     0,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	token, _, err := auth.GenerateToken(userID, "listener1", auth.RoleListener)
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+
+	hub := NewHub(queries, "test-version")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go hub.Run(ctx)
+
+	handler := HandleListenerWS(hub, queries)
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+	wsURL := "ws" + srv.URL[len("http"):]
+
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.CloseNow()
+
+	// Send the JWT token as the first message: the handler tries to parse
+	// non-PIN commands as JWT tokens.
+	tokenMsg, _ := json.Marshal([]any{token})
+	if err := conn.Write(ctx, websocket.MessageText, tokenMsg); err != nil {
+		t.Fatalf("write token: %v", err)
+	}
+
+	// Should receive VER.
+	msg := readTextMessage(t, ctx, conn, 5*time.Second)
+	cmd := extractCommand(t, msg)
+	if cmd != "VER" {
+		t.Errorf("expected VER after valid JWT, got %q", cmd)
+	}
+}
+
+func TestHandleListenerWS_AdminJWTRejected(t *testing.T) {
+	queries := newWSTestDB(t)
+
+	// Create an admin user.
+	now := time.Now().Unix()
+	userID, err := queries.CreateUser(context.Background(), db.CreateUserParams{
+		Username:     "admin1",
+		PasswordHash: "unused",
+		Role:         auth.RoleAdmin,
+		Disabled:     0,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	token, _, err := auth.GenerateToken(userID, "admin1", auth.RoleAdmin)
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+
+	hub := NewHub(queries, "test-version")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go hub.Run(ctx)
+
+	handler := HandleListenerWS(hub, queries)
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+	wsURL := "ws" + srv.URL[len("http"):]
+
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.CloseNow()
+
+	// Send admin JWT — should be rejected on listener endpoint.
+	tokenMsg, _ := json.Marshal([]any{token})
+	if err := conn.Write(ctx, websocket.MessageText, tokenMsg); err != nil {
+		t.Fatalf("write token: %v", err)
+	}
+
+	// Should receive XPR.
+	msg := readTextMessage(t, ctx, conn, 5*time.Second)
+	cmd := extractCommand(t, msg)
+	if cmd != "XPR" {
+		t.Errorf("expected XPR for admin JWT on listener endpoint, got %q", cmd)
+	}
+}
+
+// --- HandleAdminWS tests ---
+
+func TestHandleAdminWS_ValidToken(t *testing.T) {
+	queries := newWSTestDB(t)
+
+	now := time.Now().Unix()
+	userID, err := queries.CreateUser(context.Background(), db.CreateUserParams{
+		Username:     "admin1",
+		PasswordHash: "unused",
+		Role:         auth.RoleAdmin,
+		Disabled:     0,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	token, _, err := auth.GenerateToken(userID, "admin1", auth.RoleAdmin)
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+
+	hub := NewHub(queries, "test-version")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go hub.Run(ctx)
+
+	handler := HandleAdminWS(hub, queries)
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	// Admin WS uses token query param.
+	wsURL := "ws" + srv.URL[len("http"):] + "?token=" + token
+
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.CloseNow()
+
+	// Admin WS doesn't send VER but should be connected. Verify by checking
+	// hub has 0 listener clients (admin doesn't count) — just verify no error.
+	// The connection stays open, which means auth succeeded.
+	// Give the hub time to register.
+	time.Sleep(100 * time.Millisecond)
+
+	// Admin counts as 0 listener clients.
+	if got := hub.ClientCount(); got != 0 {
+		t.Errorf("ClientCount = %d, want 0 (admin doesn't count as listener)", got)
+	}
+}
+
+func TestHandleAdminWS_ListenerJWTRejected(t *testing.T) {
+	queries := newWSTestDB(t)
+
+	now := time.Now().Unix()
+	userID, err := queries.CreateUser(context.Background(), db.CreateUserParams{
+		Username:     "listener1",
+		PasswordHash: "unused",
+		Role:         auth.RoleListener,
+		Disabled:     0,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	token, _, err := auth.GenerateToken(userID, "listener1", auth.RoleListener)
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+
+	hub := NewHub(queries, "test-version")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go hub.Run(ctx)
+
+	handler := HandleAdminWS(hub, queries)
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	// Send listener JWT to admin endpoint.
+	wsURL := "ws" + srv.URL[len("http"):] + "?token=" + token
+
+	// The admin handler should reject with HTTP 403 before upgrade.
+	conn, resp, err := websocket.Dial(ctx, wsURL, nil)
+	if err == nil {
+		conn.CloseNow()
+		t.Fatal("expected error dialing with listener JWT, got nil")
+	}
+	if resp != nil && resp.StatusCode != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusForbidden)
+	}
+}

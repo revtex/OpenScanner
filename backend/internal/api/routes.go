@@ -7,6 +7,7 @@ import (
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/middleware"
+	"github.com/openscanner/openscanner/internal/ws"
 )
 
 // Deps holds the dependencies required to register all API routes.
@@ -14,6 +15,7 @@ type Deps struct {
 	Queries     *db.Queries
 	RateLimiter *auth.RateLimiter
 	Processor   *audio.Processor
+	Hub         *ws.Hub
 	Version     string
 }
 
@@ -21,7 +23,7 @@ type Deps struct {
 func RegisterRoutes(r *gin.Engine, deps Deps) {
 	setupHandler := NewSetupHandler(deps.Queries)
 	authHandler := NewAuthHandler(deps.Queries, deps.RateLimiter)
-	callHandler := NewCallHandler(deps.Queries, deps.Processor)
+	callHandler := NewCallHandler(deps.Queries, deps.Processor, deps.Hub)
 
 	// Global middleware applied to every request.
 	r.Use(middleware.RequestID())
@@ -54,6 +56,10 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		upload.POST("/api/call-upload", callHandler.PostCallUpload)
 		upload.POST("/api/trunk-recorder-call-upload", callHandler.PostCallUpload)
 	}
+
+	// WebSocket endpoints.
+	r.GET("/ws", gin.WrapF(ws.HandleListenerWS(deps.Hub, deps.Queries)))
+	r.GET("/api/admin/ws", gin.WrapF(ws.HandleAdminWS(deps.Hub, deps.Queries)))
 
 	// Serve frontend (Phase 12 — placeholder)
 	// r.NoRoute(func(c *gin.Context) { c.File("...") })

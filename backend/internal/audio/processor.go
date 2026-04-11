@@ -23,6 +23,11 @@ func NewProcessor(baseDir string, pool *WorkerPool) *Processor {
 	return &Processor{baseDir: baseDir, pool: pool}
 }
 
+// BaseDir returns the base directory used for audio file storage.
+func (p *Processor) BaseDir() string {
+	return p.baseDir
+}
+
 // Store saves the uploaded file to disk under baseDir/<YYYY>/<MM>/<DD>/<filename>
 // and returns the relative path (relative to baseDir).
 // SECURITY: sanitises the filename via filepath.Base — strips directory components,

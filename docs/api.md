@@ -1,6 +1,6 @@
 # OpenScanner — API Reference
 
-> **Implementation status:** Phases 1–4 endpoints are implemented. All other endpoints listed below are planned for future phases and are marked accordingly.
+> **Implementation status:** Phases 1–5 endpoints are implemented. All other endpoints listed below are planned for future phases and are marked accordingly.
 
 ## Implemented Endpoints
 
@@ -219,6 +219,77 @@ Conversion is performed asynchronously via a bounded FFmpeg worker pool (`runtim
 
 ---
 
+### WebSocket
+
+Both WebSocket endpoints use the `coder/websocket` library with **permessage-deflate** compression (`CompressionContextTakeover`). All messages are JSON arrays: `[command, payload?, flags?]`. Audio data is sent as a separate binary frame immediately after the `CAL` text frame.
+
+#### `GET /ws` — Listener WebSocket
+
+Upgrades to a WebSocket connection for real-time call streaming.
+
+**Auth (one of):**
+
+1. **Public access** — When `publicAccess=true`, no authentication required. Client connects and immediately receives `VER` + `CFG` welcome messages.
+2. **Access code** — Client sends `["PIN", "<code>"]` as first message. Server validates against `accesses` table, checks expiration and connection limit. On failure, server sends `["XPR"]` and closes.
+3. **Listener JWT** — Client sends the JWT token string as the first array element. Server validates token, checks revocation, verifies `listener` role, and loads user grants. Connection limit enforced per user.
+
+**Welcome sequence (on successful auth):**
+
+1. `["VER", {"version": "...", "branding": "...", "email": "..."}]`
+2. `["CFG", <configPayload>]`
+
+**Rejection messages:**
+
+- `["XPR"]` — Invalid credentials, expired access code, or revoked token. Connection closed.
+- `["MAX"]` — Server has reached `maxClients` limit, or user/access-code connection limit exceeded. Connection closed.
+
+**Grant filtering:** Clients only receive `CAL` events for systems/talkgroups they are authorized to see. Public-access clients receive all events.
+
+**Connection limits:**
+
+- Global `maxClients` setting (checked before accepting connection)
+- Per-user `limit` column on `users` table
+- Per-access-code `limit` column on `accesses` table
+
+#### `GET /api/admin/ws` — Admin WebSocket
+
+Upgrades to a WebSocket connection for admin dashboard events.
+
+**Auth:** JWT with `admin` role via `?token=<jwt>` query parameter (WebSocket cannot send custom headers). Returns `401` if missing/invalid, `403` if non-admin role.
+
+**Behaviour:**
+
+- No welcome messages (`VER`/`CFG` are not sent)
+- Receives all broadcast events with no grant filtering
+- Broadcast-only — no client-to-server commands processed
+
+#### WebSocket Commands
+
+| Command | Direction | Payload | Description |
+|---------|-----------|---------|-------------|
+| `CAL` | Server → Client | `{systemId, talkgroupId, ...}` + binary audio frame | New call data. Text frame with call metadata is followed immediately by a binary frame containing the audio file bytes. The two frames are sent atomically per client (mutex-protected to prevent interleaving). |
+| `CFG` | Server → Client | `{systems, talkgroups, groups, tags, ...}` | Full config payload. Sent on connect (listener only) and when admin updates config. |
+| `VER` | Server → Client | `{"version", "branding", "email"}` | Server version and branding. Sent on connect (listener only). |
+| `LSC` | Server → Client | `<count>` (integer) | Active listener count. Broadcast on connect/disconnect, debounced to max 1 per 3 seconds. |
+| `XPR` | Server → Client | _(none)_ | Session expired or auth failure. Connection closed after sending. |
+| `MAX` | Server → Client | _(none)_ | Max clients reached or per-user/access limit exceeded. Connection closed after sending. |
+| `PIN` | Client → Server | `"<accessCode>"` (string) | Access code authentication. Only processed as the first message during auth handshake. |
+| `LFM` | Bidirectional | `{...}` (map) | Live feed map update. Client sends to update; server echoes back. |
+| `LCL` | Server → Client | `{"calls": [...], "total": <n>}` | Paginated call list results. |
+| `TRN` | Server → Client | `{"callId": <id>, "text": "..."}` | Transcript ready for a call. |
+
+**Reserved commands** (not yet implemented): `IOS`, `PID`, `SRV`.
+
+#### Architecture Notes
+
+- The Hub runs in a single goroutine processing `register`, `unregister`, and `broadcast` channels.
+- All sends are non-blocking — slow clients are dropped (message skipped) rather than blocking the hub.
+- Each client has a `readPump` (reads client commands) and `writePump` (sends queued messages + periodic pings) goroutine.
+- Ping/pong keepalive: pings sent every 30 seconds; pong wait timeout is 60 seconds.
+- Graceful shutdown: `context.WithCancel` propagates through the hub; `closeAll()` closes all client send channels.
+
+---
+
 ## Planned Endpoints (not yet implemented)
 
 ### Admin Config
@@ -238,8 +309,3 @@ Conversion is performed asynchronously via a bounded FFmpeg worker pool (`runtim
 - `/api/admin/dirwatches`
 - `/api/admin/downstreams`
 - `GET /api/admin/logs`
-
-### WebSocket
-
-- `GET /ws` — Listener socket
-- `GET /api/admin/ws` — Admin dashboard socket

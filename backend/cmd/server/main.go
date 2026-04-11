@@ -18,6 +18,7 @@ import (
 	"github.com/openscanner/openscanner/internal/config"
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/seed"
+	"github.com/openscanner/openscanner/internal/ws"
 )
 
 func main() {
@@ -92,10 +93,15 @@ func main() {
 	// Start background call pruner.
 	go audio.PruneLoop(ctx, queries, cfg.BaseDir)
 
+	// Create and start WebSocket hub.
+	hub := ws.NewHub(queries, config.Version)
+	go hub.Run(ctx)
+
 	api.RegisterRoutes(router, api.Deps{
 		Queries:     queries,
 		RateLimiter: rateLimiter,
 		Processor:   processor,
+		Hub:         hub,
 		Version:     config.Version,
 	})
 
