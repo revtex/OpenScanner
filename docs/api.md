@@ -53,12 +53,7 @@ Creates the initial admin user and marks setup as complete. Mutex-protected to p
 
 ```json
 {
-  "token": "<jwt>",
-  "user": {
-    "id": 1,
-    "username": "admin",
-    "role": "admin"
-  }
+  "ok": true
 }
 ```
 
@@ -103,7 +98,7 @@ Revokes the current JWT. Requires `Authorization: Bearer <token>`.
 
 ```json
 {
-  "message": "logged out"
+  "ok": true
 }
 ```
 
@@ -124,7 +119,7 @@ Changes the authenticated user's password. Revokes all tokens for the user (cred
 
 ```json
 {
-  "message": "password updated"
+  "ok": true
 }
 ```
 
@@ -158,7 +153,7 @@ Rdio-scanner-style multipart call upload.
 
 Alias for the above — accepts identical fields for Trunk Recorder compatibility.
 
-**Auth:** `X-API-Key: <key>` header (or `key` form field as fallback).
+**Auth:** `X-API-Key: <key>` header (or `?key=` query parameter as fallback).
 
 **Rate limit:** 60 requests per minute per API key (configurable via `apiKeyCallRate` setting). Exceeding the limit returns `429`.
 

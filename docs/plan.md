@@ -8,7 +8,7 @@ OpenScanner is a modern reimplementation of [rdio-scanner](https://github.com/ch
 
 | Layer              | Technology                                                       |
 | ------------------ | ---------------------------------------------------------------- |
-| Backend language   | Go 1.24                                                          |
+| Backend language   | Go 1.25                                                          |
 | HTTP framework     | Gin                                                              |
 | WebSocket          | coder/websocket (github.com/coder/websocket)                     |
 | Database           | SQLite via modernc.org/sqlite (pure Go, no CGO)                  |
@@ -199,15 +199,15 @@ openscanner/                     ← monorepo root
 │       ├── admin-login.spec.ts
 │       ├── scanner.spec.ts
 │       └── call-upload.spec.ts
-├── .vscode/agents/
-│   ├── go-expert.agent.md
-│   ├── react-expert.agent.md
-│   ├── db-expert.agent.md
-│   ├── docs-expert.agent.md
-│   ├── reviewer.agent.md
-│   └── testing-expert.agent.md
 ├── .github/
 │   ├── copilot-instructions.md
+│   ├── agents/
+│   │   ├── go-expert.agent.md
+│   │   ├── react-expert.agent.md
+│   │   ├── db-expert.agent.md
+│   │   ├── docs-expert.agent.md
+│   │   ├── reviewer.agent.md
+│   │   └── testing-expert.agent.md
 │   └── workflows/ci.yml
 ├── Makefile
 ├── Dockerfile
@@ -220,7 +220,7 @@ openscanner/                     ← monorepo root
 
 ## Expert Agents
 
-Six agent definition files live in `.vscode/agents/`. Each scopes itself to a domain:
+Six agent definition files live in `.github/agents/`. Each scopes itself to a domain:
 
 | Agent                     | Domain                                                                | Scope                                              |
 | ------------------------- | --------------------------------------------------------------------- | -------------------------------------------------- |
@@ -543,7 +543,7 @@ Speech-to-text results for calls.
 
 **Call Ingest Behavior:**
 
-- **Duplicate detection:** Rejects calls matching an existing call on the same talkgroup within `duplicateDetectionTimeFrame` ms (409 Conflict)
+- **Duplicate detection:** Rejects calls matching an existing call on the same talkgroup within `duplicateDetectionTimeFrame` ms (200 OK with `{"message": "duplicate"}`)
 - **Auto-populate:** When `autoPopulate=true`, upserts system and talkgroup from incoming call metadata
 - **Per-API-key rate limit:** Configurable, default 60 requests/min per API key
 - **Call pruning:** Background goroutine (1-hour ticker) deletes calls + audio files older than `pruneDays`; uses batch deletion (500 rows per batch with `runtime.Gosched()` yields) to avoid long DB locks; bookmarked calls are exempt from pruning

@@ -35,7 +35,7 @@ make test   # Runs all tests
 
 ### Dockerfile
 
-Multi-stage build: Go 1.24 + Node 22 build stages → Alpine 3.21 runtime with FFmpeg.
+Multi-stage build: Go 1.25 + Node 22 build stages → Alpine 3.21 runtime with FFmpeg.
 
 ```bash
 docker build -t openscanner .
