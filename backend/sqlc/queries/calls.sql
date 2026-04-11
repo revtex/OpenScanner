@@ -59,3 +59,20 @@ DELETE FROM calls WHERE date_time < ?;
 
 -- name: CountCalls :one
 SELECT COUNT(*) FROM calls;
+
+-- name: GetLastCallForTalkgroup :one
+SELECT c.date_time, c.duration
+FROM calls c
+WHERE c.system_id = ? AND c.talkgroup_id = ?
+ORDER BY c.date_time DESC
+LIMIT 1;
+
+-- name: GetCallIDsOlderThan :many
+SELECT id, audio_path
+FROM calls
+WHERE date_time < ?
+ORDER BY date_time ASC
+LIMIT 500;
+
+-- name: DeleteCallBatch :exec
+DELETE FROM calls WHERE id = ?;

@@ -1558,7 +1558,7 @@ All extended features are **configurable** — disabled by default (except keybo
 
 ---
 
-### Phase 4 — Backend Call Ingest
+### Phase 4 — Backend Call Ingest ✅ COMPLETE
 
 **Goal:** Audio files accepted, stored, and converted; duplicates rejected.
 

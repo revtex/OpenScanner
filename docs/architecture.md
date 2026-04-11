@@ -1,6 +1,6 @@
 # OpenScanner — Architecture
 
-> **Implementation status:** Phases 1–3 (Foundation, Database Schema, Backend Auth/RBAC/Setup) are complete. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
+> **Implementation status:** Phases 1–4 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest) are complete. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
 
 ## Overview
 
@@ -12,13 +12,13 @@ The diagram below shows the full planned architecture. Solid borders indicate im
 
 ```mermaid
 graph TD
-    Recorder["Radio Recorder\n(Trunk Recorder / SDRTrunk / etc.)"] -.->|POST /api/call-upload| API
+    Recorder["Radio Recorder\n(Trunk Recorder / SDRTrunk / etc.)"] -->|POST /api/call-upload| API
     DirWatch["DirWatch Service\n(fsnotify)"] -.->|ingests files| Audio
     API --> Auth["Auth + Middleware\n(JWT, RBAC, Rate Limit)"]
-    API -.-> Audio["Audio Processor\n(FFmpeg)"]
+    API --> Audio["Audio Processor\n(FFmpeg)"]
     Audio -.-> Transcriber["Whisper Transcriber\n(local binary)"]
-    Audio -.-> DB[(SQLite)]
-    Audio -.-> FS[(Filesystem\naudio files)]
+    Audio --> DB[(SQLite)]
+    Audio --> FS[(Filesystem\naudio files)]
     Transcriber -.-> DB
     API -.-> Hub["WebSocket Hub"]
     Hub -.->|CAL / CFG / LSC / XPR / MAX / PIN| Listeners["Browser Clients"]
@@ -36,14 +36,14 @@ graph TD
     style Auth fill:#2d6,stroke:#333
     style DB fill:#2d6,stroke:#333
     style Seed fill:#2d6,stroke:#333
-    style Audio fill:#888,stroke:#555,stroke-dasharray: 5 5
+    style Audio fill:#2d6,stroke:#333
+    style FS fill:#2d6,stroke:#333
     style Hub fill:#888,stroke:#555,stroke-dasharray: 5 5
     style Transcriber fill:#888,stroke:#555,stroke-dasharray: 5 5
     style DirWatch fill:#888,stroke:#555,stroke-dasharray: 5 5
     style Downstream fill:#888,stroke:#555,stroke-dasharray: 5 5
     style Webhooks fill:#888,stroke:#555,stroke-dasharray: 5 5
     style Push fill:#888,stroke:#555,stroke-dasharray: 5 5
-    style FS fill:#888,stroke:#555,stroke-dasharray: 5 5
 ```
 
 ## Components
@@ -58,10 +58,13 @@ graph TD
 - **backend/internal/seed** — First-run database seeding: 1 `app_state` row, 30 settings, 6 groups (Air/EMS/Fire/Interop/Law/Unknown), 9 tags; all idempotent (`INSERT OR IGNORE`) in a single transaction
 - **backend/internal/db** — SQLite WAL mode, embedded migrations (18 tables), `SetMaxOpenConns(1)`; sqlc-generated type-safe query layer
 
+- **backend/internal/audio** — FFmpeg audio conversion pipeline: `Processor.Store` writes uploaded multipart file to `{audioDir}/{YYYY}/{MM}/{DD}/`, submits a `ConversionJob` to the bounded `WorkerPool` (`runtime.NumCPU()` goroutines), waits for completion, then returns the relative `.m4a` path; `IsDuplicate` queries the last call per system+talkgroup within the configured time window; `PruneLoop` runs on a 1-hour ticker deleting old calls and audio files in 500-row batches
+- **backend/internal/api/calls.go** — `PostCallUpload` handler: validates API key (via `APIKeyAuth` middleware), applies per-API-key sliding-window rate limiter (default 60 req/min), parses multipart fields, resolves or auto-populates system+talkgroup, runs duplicate check, stores audio via `Processor.Store`, inserts call DB record, returns `{"id": <callID>}`; also registered as `POST /api/trunk-recorder-call-upload`
+
 ### Stubs (package declaration only — not yet implemented)
 
 - **backend/internal/ws** — WebSocket hub, client management, message types
-- **backend/internal/audio** — FFmpeg audio conversion, duplicate detection, worker pool, Whisper transcription
+- **backend/internal/audio/transcriber.go** — Whisper transcription worker pool
 - **backend/internal/dirwatch** — Directory watching (fsnotify) and file parsing
 - **backend/internal/downstream** — Call forwarding to remote instances
 - **backend/internal/notify** — Web Push notification delivery

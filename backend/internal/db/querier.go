@@ -32,6 +32,7 @@ type Querier interface {
 	DeleteBookmark(ctx context.Context, id int64) error
 	DeleteBookmarkByCallAndUser(ctx context.Context, arg DeleteBookmarkByCallAndUserParams) error
 	DeleteCall(ctx context.Context, id int64) error
+	DeleteCallBatch(ctx context.Context, id int64) error
 	DeleteDirwatch(ctx context.Context, id int64) error
 	DeleteDownstream(ctx context.Context, id int64) error
 	DeleteGroup(ctx context.Context, id int64) error
@@ -52,9 +53,11 @@ type Querier interface {
 	GetAppState(ctx context.Context) (AppState, error)
 	GetBookmark(ctx context.Context, id int64) (Bookmark, error)
 	GetCall(ctx context.Context, id int64) (GetCallRow, error)
+	GetCallIDsOlderThan(ctx context.Context, dateTime int64) ([]GetCallIDsOlderThanRow, error)
 	GetDirwatch(ctx context.Context, id int64) (Dirwatch, error)
 	GetDownstream(ctx context.Context, id int64) (Downstream, error)
 	GetGroup(ctx context.Context, id int64) (Group, error)
+	GetLastCallForTalkgroup(ctx context.Context, arg GetLastCallForTalkgroupParams) (GetLastCallForTalkgroupRow, error)
 	GetPushSubscription(ctx context.Context, id int64) (PushSubscription, error)
 	GetSetting(ctx context.Context, key string) (Setting, error)
 	GetSystem(ctx context.Context, id int64) (System, error)

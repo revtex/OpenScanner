@@ -1,6 +1,6 @@
 # OpenScanner — API Reference
 
-> **Implementation status:** Only Phase 3 endpoints are implemented. All other endpoints listed below are planned for future phases and are marked accordingly.
+> **Implementation status:** Phases 1–4 endpoints are implemented. All other endpoints listed below are planned for future phases and are marked accordingly.
 
 ## Implemented Endpoints
 
@@ -146,12 +146,80 @@ Returns the authenticated user's info from the JWT claims. Requires `Authorizati
 
 ---
 
+### Call Upload
+
+Both endpoints are handled by the same `PostCallUpload` handler. Requires `X-API-Key` header authentication.
+
+#### `POST /api/call-upload`
+
+Rdio-scanner-style multipart call upload.
+
+#### `POST /api/trunk-recorder-call-upload`
+
+Alias for the above — accepts identical fields for Trunk Recorder compatibility.
+
+**Auth:** `X-API-Key: <key>` header (or `key` form field as fallback).
+
+**Rate limit:** 60 requests per minute per API key (configurable via `apiKeyCallRate` setting). Exceeding the limit returns `429`.
+
+**Request: `multipart/form-data`**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `audio` | file | yes | Audio file (WAV, MP3, AAC, M4A, OGG, Opus, …) |
+| `systemId` | int string | yes | System decimal (radio system ID) |
+| `talkgroupId` | int string | yes | Talkgroup decimal |
+| `dateTime` | int64 string | yes | Unix timestamp (seconds) |
+| `systemLabel` | string | no | System name — used when `autoPopulate=true` |
+| `talkgroupGroup` | string | no | Talkgroup group — used when `autoPopulate=true` |
+| `talkgroupLabel` | string | no | Talkgroup label — used when `autoPopulate=true` |
+| `talkgroupTag` | string | no | Talkgroup tag |
+| `frequency` | int string | no | Primary frequency in Hz |
+| `duration` | int string | no | Duration in seconds |
+| `source` | int string | no | Primary source unit ID |
+| `frequencies` | string | no | JSON array of frequency objects |
+| `sources` | string | no | JSON array of source unit objects |
+| `patches` | string | no | JSON array of patched talkgroup IDs |
+
+**Response `200` — call accepted:**
+
+```json
+{"id": 12345}
+```
+
+**Response `200` — duplicate detected:**
+
+```json
+{"message": "duplicate"}
+```
+
+**Error responses:**
+
+| Code | Reason |
+|------|--------|
+| `400` | Missing `audio`, `systemId`, `talkgroupId`, or `dateTime`; unparseable integer fields |
+| `401` | Missing or invalid `X-API-Key` |
+| `429` | Rate limit exceeded (60 req/min per API key by default) |
+| `500` | Storage or DB error |
+
+**Auto-populate behaviour:** When `autoPopulate=true` (default), an unknown `systemId` or `talkgroupId` is automatically created in the database using the supplied label/group/tag fields. When `autoPopulate=false`, unknown identifiers return `400`.
+
+**Audio storage:** Files are written to `{audioDir}/{YYYY}/{MM}/{DD}/{filename}`. The conversion mode is controlled by the `audioConversion` setting:
+
+| Value | Behaviour |
+|-------|-----------|
+| `0` | Disabled — keep original file |
+| `1` | Convert to AAC 32 kbps (default) |
+| `2` | Convert to AAC 32 kbps + `acompressor` filter |
+| `3` | Convert to AAC 32 kbps + `loudnorm` filter |
+
+Conversion is performed asynchronously via a bounded FFmpeg worker pool (`runtime.NumCPU()` workers). `Store` blocks until conversion completes before inserting the DB record.
+
+**Duplicate detection:** Controlled by the `disableDuplicateDetection` and `duplicateDetectionTimeFrame` settings. If the last call for the same system+talkgroup falls within the time window (default 500 ms), the upload is rejected with `{"message": "duplicate"}` (HTTP 200).
+
+---
+
 ## Planned Endpoints (not yet implemented)
-
-### Call Ingest
-
-- `POST /api/call-upload` — Generic call upload (API key auth)
-- `POST /api/trunk-recorder-call-upload` — Trunk Recorder format (API key auth)
 
 ### Admin Config
 

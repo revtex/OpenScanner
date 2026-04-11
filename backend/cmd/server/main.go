@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/openscanner/openscanner/internal/api"
+	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/config"
 	"github.com/openscanner/openscanner/internal/db"
@@ -83,9 +84,17 @@ func main() {
 	queries := db.New(sqlDB)
 	rateLimiter := auth.NewRateLimiter(ctx)
 
+	// Set up bounded FFmpeg worker pool and audio processor.
+	pool := audio.NewWorkerPool(ctx)
+	processor := audio.NewProcessor(cfg.BaseDir, pool)
+
+	// Start background call pruner.
+	go audio.PruneLoop(ctx, queries, cfg.BaseDir)
+
 	api.RegisterRoutes(router, api.Deps{
 		Queries:     queries,
 		RateLimiter: rateLimiter,
+		Processor:   processor,
 		Version:     config.Version,
 	})
 

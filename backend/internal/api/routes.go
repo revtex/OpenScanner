@@ -3,6 +3,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/middleware"
@@ -12,6 +13,7 @@ import (
 type Deps struct {
 	Queries     *db.Queries
 	RateLimiter *auth.RateLimiter
+	Processor   *audio.Processor
 	Version     string
 }
 
@@ -19,6 +21,7 @@ type Deps struct {
 func RegisterRoutes(r *gin.Engine, deps Deps) {
 	setupHandler := NewSetupHandler(deps.Queries)
 	authHandler := NewAuthHandler(deps.Queries, deps.RateLimiter)
+	callHandler := NewCallHandler(deps.Queries, deps.Processor)
 
 	// Global middleware applied to every request.
 	r.Use(middleware.RequestID())
@@ -42,6 +45,14 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		authRequired.POST("/logout", authHandler.PostLogout)
 		authRequired.PUT("/password", authHandler.PutPassword)
 		authRequired.GET("/me", authHandler.GetMe)
+	}
+
+	// Call upload — API key auth.
+	upload := r.Group("/")
+	upload.Use(middleware.APIKeyAuth(deps.Queries))
+	{
+		upload.POST("/api/call-upload", callHandler.PostCallUpload)
+		upload.POST("/api/trunk-recorder-call-upload", callHandler.PostCallUpload)
 	}
 
 	// Serve frontend (Phase 12 — placeholder)

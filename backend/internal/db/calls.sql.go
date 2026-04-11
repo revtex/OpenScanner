@@ -95,6 +95,15 @@ func (q *Queries) DeleteCall(ctx context.Context, id int64) error {
 	return err
 }
 
+const deleteCallBatch = `-- name: DeleteCallBatch :exec
+DELETE FROM calls WHERE id = ?
+`
+
+func (q *Queries) DeleteCallBatch(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteCallBatch, id)
+	return err
+}
+
 const getCall = `-- name: GetCall :one
 SELECT
     c.id, c.audio_path, c.audio_name, c.audio_type, c.date_time, c.frequency, c.duration, c.source, c.sources_json, c.frequencies_json, c.patches_json, c.system_id, c.talkgroup_id,
@@ -148,6 +157,67 @@ func (q *Queries) GetCall(ctx context.Context, id int64) (GetCallRow, error) {
 		&i.TalkgroupLabel,
 		&i.TalkgroupName,
 	)
+	return i, err
+}
+
+const getCallIDsOlderThan = `-- name: GetCallIDsOlderThan :many
+SELECT id, audio_path
+FROM calls
+WHERE date_time < ?
+ORDER BY date_time ASC
+LIMIT 500
+`
+
+type GetCallIDsOlderThanRow struct {
+	ID        int64  `db:"id" json:"id"`
+	AudioPath string `db:"audio_path" json:"audio_path"`
+}
+
+func (q *Queries) GetCallIDsOlderThan(ctx context.Context, dateTime int64) ([]GetCallIDsOlderThanRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCallIDsOlderThan, dateTime)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetCallIDsOlderThanRow{}
+	for rows.Next() {
+		var i GetCallIDsOlderThanRow
+		if err := rows.Scan(&i.ID, &i.AudioPath); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLastCallForTalkgroup = `-- name: GetLastCallForTalkgroup :one
+SELECT c.date_time, c.duration
+FROM calls c
+WHERE c.system_id = ? AND c.talkgroup_id = ?
+ORDER BY c.date_time DESC
+LIMIT 1
+`
+
+type GetLastCallForTalkgroupParams struct {
+	SystemID    int64         `db:"system_id" json:"system_id"`
+	TalkgroupID sql.NullInt64 `db:"talkgroup_id" json:"talkgroup_id"`
+}
+
+type GetLastCallForTalkgroupRow struct {
+	DateTime int64         `db:"date_time" json:"date_time"`
+	Duration sql.NullInt64 `db:"duration" json:"duration"`
+}
+
+func (q *Queries) GetLastCallForTalkgroup(ctx context.Context, arg GetLastCallForTalkgroupParams) (GetLastCallForTalkgroupRow, error) {
+	row := q.db.QueryRowContext(ctx, getLastCallForTalkgroup, arg.SystemID, arg.TalkgroupID)
+	var i GetLastCallForTalkgroupRow
+	err := row.Scan(&i.DateTime, &i.Duration)
 	return i, err
 }
 
