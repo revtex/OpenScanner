@@ -507,9 +507,15 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 
 	// ── Delete source file if configured ────────────────────────────────────
 	if dw.DeleteAfter == 1 {
-		if err := os.Remove(parsed.AudioFilePath); err != nil && !os.IsNotExist(err) {
+		cleanPath := filepath.Clean(parsed.AudioFilePath)
+		watchedReal, _ := filepath.EvalSymlinks(filepath.Clean(dw.Directory))
+		fileReal, _ := filepath.EvalSymlinks(cleanPath)
+		if rel, err := filepath.Rel(watchedReal, fileReal); err != nil || strings.HasPrefix(rel, "..") {
+			slog.Warn("dirwatch: refusing to delete file outside watched directory",
+				"file", parsed.AudioFilePath, "dir", dw.Directory)
+		} else if err := os.Remove(fileReal); err != nil && !os.IsNotExist(err) {
 			slog.Warn("dirwatch: failed to delete source file",
-				"file", parsed.AudioFilePath, "error", err)
+				"file", rel, "error", err)
 		}
 	}
 
