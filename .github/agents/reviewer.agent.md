@@ -18,6 +18,9 @@ You are a security and code quality expert reviewing OpenScanner — a Go + Reac
 - [ ] WebSocket connections verify access code before sending any data
 - [ ] Per-access-code system/talkgroup grants are enforced — never leak calls outside granted scope
 - [ ] Audio file paths are sanitised — no directory traversal (`../`) allowed
+- [ ] Downstream HTTP client disables redirect following (SSRF protection)
+- [ ] Downstream audio path validated via `filepath.Rel` before read
+- [ ] DirWatch delete-after-ingest validates file is inside watched directory before `os.Remove`
 
 ### A02 — Cryptographic Failures
 
@@ -49,6 +52,7 @@ You are a security and code quality expert reviewing OpenScanner — a Go + Reac
 - [ ] All login attempts (success and failure) are written to the `logs` table
 - [ ] API key usage errors are logged
 - [ ] WebSocket auth failures are logged
+- [ ] Downstream push success/failure logged to `logs` table
 
 ## Code Quality Checklist
 

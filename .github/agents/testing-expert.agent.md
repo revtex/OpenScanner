@@ -51,6 +51,11 @@ You are a testing expert working on OpenScanner — a modern radio call manager.
 | GET /api/setup/status — after setup → needsSetup=false | `api/setup_test.go`       |
 | POST /api/auth/login — wrong pw 3x → 429               | `api/auth_test.go`        |
 | All CRUD endpoints: 200 / 201 / 404 / 401 paths        | `api/auth_test.go`        |
+| Downstream grant filter (nil, match, no-match)          | `downstream/pusher_test.go` |
+| Downstream pushCall multipart POST + API key header     | `downstream/pusher_test.go` |
+| Downstream retry with backoff + context cancellation    | `downstream/pusher_test.go` |
+| Downstream Notify fan-out + channel full drop           | `downstream/pusher_test.go` |
+| Downstream service lifecycle (Start/Stop/Reload)        | `downstream/pusher_test.go` |
 
 ### Frontend (Vitest)
 

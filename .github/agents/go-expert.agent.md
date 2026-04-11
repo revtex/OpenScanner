@@ -73,10 +73,11 @@ backend/
 - Call pruning: background goroutine on 1-hour ticker deletes calls older than `pruneDays` in batches of 500; skips calls with bookmarks
 - Audio conversion: 4 modes (0=disabled, 1=enabled, 2=enabled+norm, 3=enabled+loudnorm); mode 3: `ffmpeg -i <input> -c:a aac -b:a 32k -af loudnorm <output.m4a>`; jobs run through bounded worker pool (`runtime.NumCPU()` workers)
 - Transcription: after audio conversion, queue call for Whisper transcription if `transcriptionEnabled` is true; worker pool (default 1 for GPU); invoke binary with arg slice (never shell string); broadcast `TRN` event on completion
-- Webhook delivery: after call ingest, match webhooks by TG filter, deliver via goroutine pool; generic (JSON + HMAC-SHA256) or Discord (embed); retry 3× with backoff
-- Push notifications: on call ingest, match `push_subscriptions` by TG filter; deliver via webpush-go; auto-delete expired subscriptions
+- Downstream pusher: fan-out pattern — one goroutine per active downstream with buffered channel (1000 events); grant filtering via `systems_json`; multipart POST to remote `/api/call-upload` with `X-API-Key` header; exponential backoff retry (1s→30s cap, max 5, jitter); HTTP client disables redirects (SSRF); audio path traversal check; Reload triggered by admin CRUD; graceful Stop on shutdown
+- Webhook delivery: after call ingest, match webhooks by TG filter, deliver via goroutine pool; generic (JSON + HMAC-SHA256) or Discord (embed); retry 3× with backoff (stub — not yet implemented)
+- Push notifications: on call ingest, match `push_subscriptions` by TG filter; deliver via webpush-go; auto-delete expired subscriptions (stub — not yet implemented)
 - WS commands are JSON arrays: `[command, payload?, flags?]`; audio is sent as binary frames after CAL JSON
-- WS compression: permessage-deflate enabled via coder/websocket
+- WS compression: `CompressionContextTakeover` enabled via coder/websocket (configured in `ws/client.go`)
 - WS listener auth: PIN command (access code) or JWT token (listener user) or unauthenticated when `publicAccess` setting is enabled; admin WS always requires JWT with admin role
 - Public access mode: when `publicAccess` setting is `true`, WS listeners connect without auth and receive all systems/TGs; admin routes are never public
 - LSC broadcasts are debounced (max once per 3 seconds)
