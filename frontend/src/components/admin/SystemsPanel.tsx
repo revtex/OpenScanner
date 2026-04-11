@@ -434,7 +434,15 @@ export default function SystemsPanel() {
       await Promise.all(
         reordered.map((sys, idx) => {
           if (sys.order !== idx) {
-            return updateSystem({ id: sys.id, order: idx }).unwrap();
+            return updateSystem({
+              id: sys.id,
+              systemId: sys.systemId,
+              label: sys.label,
+              autoPopulate: sys.autoPopulate,
+              led: sys.led ?? null,
+              blacklistsJson: sys.blacklistsJson ?? null,
+              order: idx,
+            }).unwrap();
           }
           return Promise.resolve();
         }),
@@ -528,7 +536,12 @@ export default function SystemsPanel() {
     try {
       await updateSystem({
         id: sys.id,
+        systemId: sys.systemId,
+        label: sys.label,
         autoPopulate: sys.autoPopulate ? 0 : 1,
+        led: sys.led ?? null,
+        blacklistsJson: sys.blacklistsJson ?? null,
+        order: sys.order,
       }).unwrap();
     } catch {
       showError("Failed to update system");

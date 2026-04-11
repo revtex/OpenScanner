@@ -128,10 +128,19 @@ export default function UsersPanel() {
   };
 
   const handleToggleDisabled = async (user: AdminUser) => {
+    if (user.id === 1) {
+      showError("Cannot disable the primary admin account");
+      return;
+    }
     try {
       await updateUser({
         id: user.id,
+        username: user.username,
+        role: user.role,
         disabled: user.disabled ? 0 : 1,
+        systemsJson: user.systemsJson ?? null,
+        expiration: user.expiration ?? null,
+        limit: user.limit ?? null,
       }).unwrap();
     } catch {
       showError("Failed to update user");
@@ -191,7 +200,13 @@ export default function UsersPanel() {
                         type="checkbox"
                         className="toggle toggle-primary toggle-sm"
                         checked={user.disabled === 1}
+                        disabled={user.id === 1}
                         onChange={() => handleToggleDisabled(user)}
+                        title={
+                          user.id === 1
+                            ? "Cannot disable the primary admin"
+                            : undefined
+                        }
                       />
                     </td>
                     <td>
@@ -208,13 +223,15 @@ export default function UsersPanel() {
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button
-                        className="btn btn-ghost btn-xs"
-                        onClick={() => handleDelete(user)}
-                        aria-label="Delete user"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {user.id !== 1 && (
+                        <button
+                          className="btn btn-ghost btn-xs"
+                          onClick={() => handleDelete(user)}
+                          aria-label="Delete user"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -280,6 +297,7 @@ export default function UsersPanel() {
               <select
                 className="select select-bordered w-full"
                 value={form.role}
+                disabled={editingId === 1}
                 onChange={(e) =>
                   updateField("role", e.target.value as "admin" | "listener")
                 }
@@ -287,6 +305,13 @@ export default function UsersPanel() {
                 <option value="listener">Listener</option>
                 <option value="admin">Admin</option>
               </select>
+              {editingId === 1 && (
+                <div className="label">
+                  <span className="label-text-alt text-warning">
+                    Role is locked for the primary admin
+                  </span>
+                </div>
+              )}
             </label>
 
             <label className="form-control w-full">
@@ -297,8 +322,16 @@ export default function UsersPanel() {
                 type="date"
                 className="input input-bordered w-full"
                 value={form.expiration}
+                disabled={editingId === 1}
                 onChange={(e) => updateField("expiration", e.target.value)}
               />
+              {editingId === 1 && (
+                <div className="label">
+                  <span className="label-text-alt text-warning">
+                    Expiration is locked for the primary admin
+                  </span>
+                </div>
+              )}
             </label>
 
             <label className="form-control w-full">
@@ -309,9 +342,17 @@ export default function UsersPanel() {
                 type="number"
                 className="input input-bordered w-full"
                 value={form.limit}
+                disabled={editingId === 1}
                 onChange={(e) => updateField("limit", e.target.value)}
                 min={0}
               />
+              {editingId === 1 && (
+                <div className="label">
+                  <span className="label-text-alt text-warning">
+                    Concurrent limit is locked for the primary admin
+                  </span>
+                </div>
+              )}
             </label>
 
             <label className="form-control w-full">

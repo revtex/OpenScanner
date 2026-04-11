@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import { Lock } from "lucide-react";
 import { usePostLoginMutation } from "@/app/api";
-import { useAppDispatch } from "@/app/store";
-import { setCredentials } from "@/app/slices/authSlice";
+import { useAppDispatch, useAppSelector } from "@/app/store";
+import { setCredentials, selectToken } from "@/app/slices/authSlice";
 import { useChangePasswordMutation } from "@/app/slices/adminSlice";
 
 interface LoginLocationState {
@@ -14,6 +14,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
+  const token = useAppSelector(selectToken);
   const [postLogin, { isLoading }] = usePostLoginMutation();
   const [changePassword] = useChangePasswordMutation();
 
@@ -26,6 +27,11 @@ export default function Login() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const from = (location.state as LoginLocationState | null)?.from;
+
+  // Already authenticated — redirect away without touching credentials.
+  if (token && !needChange) {
+    return <Navigate to="/" replace />;
+  }
 
   const getPostLoginPath = (role: string) => {
     if (typeof from !== "string" || !from.startsWith("/")) {

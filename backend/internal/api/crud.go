@@ -189,6 +189,18 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
+	// Prevent disabling the bootstrap admin (id=1).
+	if id == 1 && req.Disabled != 0 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "cannot disable the primary admin account"})
+		return
+	}
+	// Prevent changing role, expiration, or limit for the bootstrap admin (id=1).
+	if id == 1 {
+		req.Role = "admin"
+		req.Expiration = nil
+		req.Limit = nil
+	}
+
 	params := db.UpdateUserParams{
 		ID:          id,
 		Username:    req.Username,
@@ -230,6 +242,12 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	userIDVal, _ := c.Get("userID")
 	if currentID, ok := userIDVal.(int64); ok && currentID == id {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot delete your own account"})
+		return
+	}
+
+	// Prevent deleting the bootstrap admin (id=1).
+	if id == 1 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "cannot delete the primary admin account"})
 		return
 	}
 

@@ -102,7 +102,7 @@ export default function AdminLayout() {
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  if (!token || role !== "admin") {
+  if (!token) {
     return (
       <Navigate
         to="/login"
@@ -111,6 +111,22 @@ export default function AdminLayout() {
           from: `${location.pathname}${location.search}${location.hash}`,
         }}
       />
+    );
+  }
+
+  if (role !== "admin") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8">
+        <div className="text-5xl">🚫</div>
+        <h1 className="text-2xl font-bold">Access Denied</h1>
+        <p className="text-base-content/70 text-center max-w-sm">
+          Your account does not have administrator privileges. Contact an admin
+          if you believe this is a mistake.
+        </p>
+        <a href="/" className="btn btn-primary">
+          Go to Scanner
+        </a>
+      </div>
     );
   }
 
