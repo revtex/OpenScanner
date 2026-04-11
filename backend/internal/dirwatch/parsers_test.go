@@ -674,7 +674,7 @@ func TestParseTrunkRecorder_SidecarTooLarge(t *testing.T) {
 	}
 	jsonPath := filepath.Join(dir, "big.json")
 	audioPath := filepath.Join(dir, "big.mp3")
-	os.WriteFile(jsonPath, largeData, 0644) //nolint:errcheck
+	os.WriteFile(jsonPath, largeData, 0644)      //nolint:errcheck
 	os.WriteFile(audioPath, []byte("ID3"), 0644) //nolint:errcheck
 
 	dw := dwFor("trunk-recorder", dir)
