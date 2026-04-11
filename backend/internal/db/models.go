@@ -157,7 +157,7 @@ type Unit struct {
 type User struct {
 	ID           int64          `db:"id" json:"id"`
 	Username     string         `db:"username" json:"username"`
-	PasswordHash string         `db:"password_hash" json:"password_hash"`
+	PasswordHash string         `db:"password_hash" json:"-"`
 	Role         string         `db:"role" json:"role"`
 	Disabled     int64          `db:"disabled" json:"disabled"`
 	SystemsJson  sql.NullString `db:"systems_json" json:"systems_json"`

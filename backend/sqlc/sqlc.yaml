@@ -14,3 +14,6 @@ sql:
         emit_exact_table_names: false
         emit_empty_slices: true
         emit_exported_queries: false
+        overrides:
+          - column: "users.password_hash"
+            go_struct_tag: 'db:"password_hash" json:"-"'

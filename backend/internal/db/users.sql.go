@@ -36,7 +36,7 @@ INSERT INTO users (
 
 type CreateUserParams struct {
 	Username     string         `db:"username" json:"username"`
-	PasswordHash string         `db:"password_hash" json:"password_hash"`
+	PasswordHash string         `db:"password_hash" json:"-"`
 	Role         string         `db:"role" json:"role"`
 	Disabled     int64          `db:"disabled" json:"disabled"`
 	SystemsJson  sql.NullString `db:"systems_json" json:"systems_json"`
@@ -199,7 +199,7 @@ WHERE id = ?3
 `
 
 type UpdateUserPasswordParams struct {
-	PasswordHash string `db:"password_hash" json:"password_hash"`
+	PasswordHash string `db:"password_hash" json:"-"`
 	UpdatedAt    int64  `db:"updated_at" json:"updated_at"`
 	ID           int64  `db:"id" json:"id"`
 }

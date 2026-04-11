@@ -64,6 +64,21 @@ func NewCallHandler(queries *db.Queries, processor *audio.Processor) *CallHandle
 func (h *CallHandler) getLimiter(apiKeyID int64, rateLimit int) *apiKeyLimiter {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
+	// Periodic cleanup: remove limiters whose window has expired to bound
+	// memory growth (one entry per unique API key ID).
+	if len(h.limiters) > 100 {
+		now := time.Now()
+		for id, l := range h.limiters {
+			l.mu.Lock()
+			stale := now.Sub(l.windowStart) >= 2*rateWindowDuration
+			l.mu.Unlock()
+			if stale {
+				delete(h.limiters, id)
+			}
+		}
+	}
+
 	l, ok := h.limiters[apiKeyID]
 	if !ok {
 		l = &apiKeyLimiter{

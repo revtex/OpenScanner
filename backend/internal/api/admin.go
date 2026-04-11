@@ -2,13 +2,14 @@
 package api
 
 import (
+	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
-	"log/slog"
 )
 
 // AuthHandler handles authentication endpoints.
@@ -59,6 +60,7 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 		// enumeration via timing side-channel (OWASP A07).
 		_ = auth.CheckPassword(req.Password, auth.DummyHash)
 		h.rateLimiter.RecordFailure(ip)
+		h.logAuthEvent(c.Request.Context(), "warn", "login failed: invalid username", ip)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
@@ -67,12 +69,14 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 		// Return the same generic error to avoid revealing account existence
 		// or disabled status (OWASP A10 — sensitive data exposure).
 		h.rateLimiter.RecordFailure(ip)
+		h.logAuthEvent(c.Request.Context(), "warn", "login failed: disabled account", ip)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
 
 	if !auth.CheckPassword(req.Password, user.PasswordHash) {
 		h.rateLimiter.RecordFailure(ip)
+		h.logAuthEvent(c.Request.Context(), "warn", "login failed: wrong password for "+user.Username, ip)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
@@ -86,6 +90,7 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 	}
 
 	auth.Tokens.Track(user.ID, jti, time.Now().Add(24*time.Hour))
+	h.logAuthEvent(c.Request.Context(), "info", "login success: "+user.Username, ip)
 	slog.Info("user logged in", "userId", user.ID, "username", user.Username)
 
 	c.JSON(http.StatusOK, loginResponse{
@@ -96,6 +101,16 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 			Role:     user.Role,
 		},
 		PasswordNeedChange: false,
+	})
+}
+
+// logAuthEvent writes an authentication event to the logs table for auditing
+// (OWASP A09 — security logging & monitoring).
+func (h *AuthHandler) logAuthEvent(ctx context.Context, level, message, ip string) {
+	_ = h.queries.CreateLog(ctx, db.CreateLogParams{
+		DateTime: time.Now().Unix(),
+		Level:    level,
+		Message:  message + " [ip=" + ip + "]",
 	})
 }
 
