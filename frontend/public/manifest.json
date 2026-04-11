@@ -1,0 +1,10 @@
+{
+  "name": "OpenScanner",
+  "short_name": "OpenScanner",
+  "description": "Modern web-based radio call manager",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#00e676",
+  "icons": []
+}

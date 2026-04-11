@@ -1,16 +1,25 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { Provider } from "react-redux";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { store } from "@/app/store";
 import "@/index.css";
 
+const Scanner = lazy(() => import("@/pages/Scanner"));
+const Login = lazy(() => import("@/pages/Login"));
+const Setup = lazy(() => import("@/pages/Setup"));
+
 function App() {
   return (
     <div className="min-h-screen bg-base-100 text-base-content">
-      <Routes>
-        <Route path="/" element={<div>OpenScanner</div>} />
-      </Routes>
+      <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><span className="loading loading-spinner loading-lg" /></div>}>
+        <Routes>
+          <Route path="/" element={<Scanner />} />
+          <Route path="/scanner" element={<Scanner />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/setup" element={<Setup />} />
+        </Routes>
+      </Suspense>
     </div>
   );
 }

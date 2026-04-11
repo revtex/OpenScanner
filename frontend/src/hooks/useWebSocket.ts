@@ -1,1 +1,37 @@
-// useWebSocket — hook that initialises and returns wsClient connection status
+import { useEffect, useRef } from 'react';
+import { useAppDispatch, useAppSelector } from '@/app/store';
+import { wsClient } from '@/services/wsClient';
+import type { ConnectionStatus } from '@/types';
+
+export function useWebSocket(): { connectionStatus: ConnectionStatus } {
+  const dispatch = useAppDispatch();
+  const token = useAppSelector((s) => s.auth.token);
+  const setupStatus = useAppSelector((s) => s.auth.setupStatus);
+  const connectionStatus = useAppSelector((s) => s.scanner.connectionStatus);
+  const connectedRef = useRef(false);
+
+  useEffect(() => {
+    // Don't connect if setup is needed
+    if (setupStatus?.needsSetup) return;
+
+    const auth: { token?: string; publicAccess?: boolean } = {};
+    if (token) {
+      auth.token = token;
+    } else if (setupStatus?.publicAccess) {
+      auth.publicAccess = true;
+    } else {
+      // Not authenticated and not public — don't connect
+      return;
+    }
+
+    wsClient.connect(dispatch, auth);
+    connectedRef.current = true;
+
+    return () => {
+      wsClient.disconnect();
+      connectedRef.current = false;
+    };
+  }, [dispatch, token, setupStatus?.needsSetup, setupStatus?.publicAccess]);
+
+  return { connectionStatus };
+}

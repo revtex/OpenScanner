@@ -1,6 +1,6 @@
 # OpenScanner — Architecture
 
-> **Implementation status:** Phases 1–8 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest, WebSocket Hub, Admin CRUD APIs, DirWatch Service, Downstream Pusher) are complete. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
+> **Implementation status:** Phases 1–9 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest, WebSocket Hub, Admin CRUD APIs, DirWatch Service, Downstream Pusher, Frontend Scanner UI) are complete. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
 
 ## Overview
 
@@ -92,10 +92,67 @@ graph TD
 - **backend/internal/audio/transcriber.go** — Whisper transcription worker pool
 - **backend/internal/notify** — Web Push notification delivery
 
-### Frontend (scaffolded — no UI implementation yet)
+### Frontend — Scanner UI (Phase 9)
 
-- **frontend/src/pages/Scanner.tsx** — Main scanner UI (placeholder)
+#### State Management
+
+- **frontend/src/app/store.ts** — Redux store combining `scannerSlice`, `authSlice`, and RTK Query `api` reducers
+- **frontend/src/app/slices/scannerSlice.ts** — Full scanner state with 18 reducers: `callReceived`, `skipCall`, `togglePause`, `toggleLive`, `holdSystem`, `holdTG`, `addAvoid`, `removeAvoid`, `toggleTG`, `setBranding`, `transcriptReceived`, queue management, and history tracking
+- **frontend/src/app/slices/authSlice.ts** — Auth state: `setCredentials` (JWT + user), `clearCredentials`, `setSetupStatus`
+- **frontend/src/app/api.ts** — RTK Query base API with `getSetupStatus`, `postSetup`, `postLogin` endpoints
+
+#### WebSocket Client
+
+- **frontend/src/services/wsClient.ts** — Singleton WebSocket client connecting to `/ws`:
+  - Auto-reconnect with exponential backoff (1 s → 30 s cap) plus random jitter
+  - Handles text commands (`CAL`, `CFG`, `VER`, `LSC`, `XPR`, `MAX`, `TRN`) and binary audio frames
+  - Runtime payload validation before dispatching to Redux
+  - Supports three auth modes: public access (no auth), PIN access code, or listener JWT
+
+#### Audio Player
+
+- **frontend/src/services/audioPlayer.ts** — Singleton audio player:
+  - `HTMLAudioElement` for playback with Web Audio API `GainNode` for volume control
+  - Bounded call queue (max 50) with preloading of the next queued call
+  - Download support and `clearQueue` for memory leak prevention
+
+#### Hooks
+
+- **useWebSocket** — WS lifecycle tied to auth state (connect/disconnect on login/logout)
+- **useAudioPlayer** — Wires audio player callbacks (play, end, error) to Redux actions
+- **useTheme** — Dark/light theme toggle with `localStorage` persistence
+- **useScanner** — Composite hook combining WebSocket, audio player, and scanner state
+
+#### Components
+
+```
+Scanner.tsx (lazy-loaded page)
+├── LEDPanel          — Branding text + theme toggle + colored LED (green=live, orange=paused, pulse=idle)
+├── DisplayPanel      — 8-row monospace display with clock; fullscreen modal on double-click
+├── TranscriptPanel   — Collapsible transcript display (below DisplayPanel)
+├── HistoryPanel      — Last 5 calls table
+├── ControlToolbar    — Two-row icon toolbar
+│   ├── Row 1: play/pause, skip, replay, LIVE toggle, volume slider
+│   └── Row 2: HOLD (system/TG), AVOID, download
+└── BookmarkButton    — Star toggle on current call
+```
+
+#### Pages
+
+- **Scanner.tsx** — Main layout assembling all scanner components (lazy-loaded)
+- **Login.tsx** — Auth flow with password-change enforcement on first login
+- **Setup.tsx** — First-run wizard (`POST /api/setup` → redirect to login)
+
+#### PWA
+
+- **frontend/public/manifest.json** — PWA manifest (`display: standalone`, dark theme color)
+- **frontend/sw.ts** — Service Worker: network-first for API requests, cache-first for static assets (HTML, JS, CSS, fonts)
+
+#### Tests
+
+- 61 unit tests across `scannerSlice.test.ts`, `LEDPanel.test.tsx`, and `ControlToolbar.test.tsx` (Vitest + React Testing Library)
+
+### Frontend — Stubs (not yet implemented)
+
 - **frontend/src/pages/Admin.tsx** — Admin dashboard (placeholder)
-- **frontend/src/pages/Setup.tsx** — First-run setup wizard (placeholder)
 - **frontend/src/pages/SharedCall.tsx** — Public shareable call player (placeholder)
-- **frontend/src/pages/Login.tsx** — Login page (placeholder)

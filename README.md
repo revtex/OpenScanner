@@ -42,7 +42,7 @@ make test   # Runs Go tests + Vitest frontend tests
 - [x] **Phase 6** — Admin CRUD APIs
 - [x] **Phase 7** — DirWatch Service
 - [x] **Phase 8** — Downstream Pusher
-- [ ] **Phase 9** — Frontend Scanner UI
+- [x] **Phase 9** — Frontend Scanner UI
 - [ ] **Phase 10** — Frontend TG Selection & Search Panels
 - [ ] **Phase 11** — Frontend Admin Dashboard
 - [ ] **Phase 12** — CLI, Daemon, SSL, Docker & Deployment
