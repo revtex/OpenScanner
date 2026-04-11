@@ -38,24 +38,24 @@ You are a testing expert working on OpenScanner — a modern radio call manager.
 
 ### Backend (Go)
 
-| Test                                                   | File                      |
-| ------------------------------------------------------ | ------------------------- |
-| JWT sign → verify round-trip                           | `auth/auth_test.go`       |
-| Login rate limiter locks after 3 fails                 | `auth/ratelimit_test.go`  |
-| Duplicate detection within timeframe                   | `audio/duplicate_test.go` |
-| Audio path sanitiser blocks `../` traversal            | `audio/processor_test.go` |
-| Meta-mask expansion for all tokens                     | `dirwatch/mask_test.go`   |
-| POST /api/call-upload — valid API key → 200 + WS CAL   | `api/calls_test.go`       |
-| POST /api/call-upload — invalid API key → 401          | `api/calls_test.go`       |
-| GET /api/setup/status — before setup → needsSetup=true | `api/setup_test.go`       |
-| GET /api/setup/status — after setup → needsSetup=false | `api/setup_test.go`       |
-| POST /api/auth/login — wrong pw 3x → 429               | `api/auth_test.go`        |
-| All CRUD endpoints: 200 / 201 / 404 / 401 paths        | `api/auth_test.go`        |
-| Downstream grant filter (nil, match, no-match)          | `downstream/pusher_test.go` |
-| Downstream pushCall multipart POST + API key header     | `downstream/pusher_test.go` |
-| Downstream retry with backoff + context cancellation    | `downstream/pusher_test.go` |
-| Downstream Notify fan-out + channel full drop           | `downstream/pusher_test.go` |
-| Downstream service lifecycle (Start/Stop/Reload)        | `downstream/pusher_test.go` |
+| Test                                                   | File                        |
+| ------------------------------------------------------ | --------------------------- |
+| JWT sign → verify round-trip                           | `auth/auth_test.go`         |
+| Login rate limiter locks after 3 fails                 | `auth/ratelimit_test.go`    |
+| Duplicate detection within timeframe                   | `audio/duplicate_test.go`   |
+| Audio path sanitiser blocks `../` traversal            | `audio/processor_test.go`   |
+| Meta-mask expansion for all tokens                     | `dirwatch/mask_test.go`     |
+| POST /api/call-upload — valid API key → 200 + WS CAL   | `api/calls_test.go`         |
+| POST /api/call-upload — invalid API key → 401          | `api/calls_test.go`         |
+| GET /api/setup/status — before setup → needsSetup=true | `api/setup_test.go`         |
+| GET /api/setup/status — after setup → needsSetup=false | `api/setup_test.go`         |
+| POST /api/auth/login — wrong pw 3x → 429               | `api/auth_test.go`          |
+| All CRUD endpoints: 200 / 201 / 404 / 401 paths        | `api/auth_test.go`          |
+| Downstream grant filter (nil, match, no-match)         | `downstream/pusher_test.go` |
+| Downstream pushCall multipart POST + API key header    | `downstream/pusher_test.go` |
+| Downstream retry with backoff + context cancellation   | `downstream/pusher_test.go` |
+| Downstream Notify fan-out + channel full drop          | `downstream/pusher_test.go` |
+| Downstream service lifecycle (Start/Stop/Reload)       | `downstream/pusher_test.go` |
 
 ### Frontend (Vitest)
 
