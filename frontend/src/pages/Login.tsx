@@ -4,11 +4,13 @@ import { Lock } from "lucide-react";
 import { usePostLoginMutation } from "@/app/api";
 import { useAppDispatch } from "@/app/store";
 import { setCredentials } from "@/app/slices/authSlice";
+import { useChangePasswordMutation } from "@/app/slices/adminSlice";
 
 export default function Login() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [postLogin, { isLoading }] = usePostLoginMutation();
+  const [changePassword] = useChangePasswordMutation();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -30,13 +32,15 @@ export default function Login() {
         return;
       }
       dispatch(setCredentials(result));
-      navigate("/", { replace: true });
+      navigate(result.role === "admin" ? "/admin/users" : "/", {
+        replace: true,
+      });
     } catch {
       setError("Invalid username or password");
     }
   };
 
-  const handleChangePassword = (e: FormEvent) => {
+  const handleChangePassword = async (e: FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 8) {
       setError("Password must be at least 8 characters");
@@ -46,10 +50,12 @@ export default function Login() {
       setError("Passwords do not match");
       return;
     }
-    // Password change API not yet available — block navigation
-    setError(
-      "Password change is not yet available. Please contact your administrator.",
-    );
+    try {
+      await changePassword({ currentPassword: password, newPassword }).unwrap();
+      navigate("/", { replace: true });
+    } catch {
+      setError("Failed to change password");
+    }
   };
 
   if (needChange) {

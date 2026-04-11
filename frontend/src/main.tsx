@@ -8,6 +8,7 @@ import "@/index.css";
 const Scanner = lazy(() => import("@/pages/Scanner"));
 const Login = lazy(() => import("@/pages/Login"));
 const Setup = lazy(() => import("@/pages/Setup"));
+const Admin = lazy(() => import("@/pages/Admin"));
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="/scanner" element={<Scanner />} />
           <Route path="/login" element={<Login />} />
           <Route path="/setup" element={<Setup />} />
+          <Route path="/admin/*" element={<Admin />} />
         </Routes>
       </Suspense>
     </div>

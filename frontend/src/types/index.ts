@@ -86,3 +86,151 @@ export interface AvoidEntry {
 
 // Connection status for WS
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
+
+// ─── Admin resource types ───
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  role: "admin" | "listener";
+  disabled: number; // 0 or 1
+  systemsJson: string | null;
+  expiration: number | null; // unix timestamp
+  limit: number | null; // concurrent connection limit
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface AdminSystem {
+  id: number;
+  systemId: number;
+  label: string;
+  autoPopulate: number;
+  blacklistsJson: string | null;
+  led: string | null;
+  order: number;
+}
+
+export interface AdminTalkgroup {
+  id: number;
+  systemId: number;
+  talkgroupId: number;
+  label: string | null;
+  name: string | null;
+  frequency: number | null;
+  led: string | null;
+  groupId: number | null;
+  tagId: number | null;
+  order: number;
+}
+
+export interface AdminUnit {
+  id: number;
+  systemId: number;
+  unitId: number;
+  label: string | null;
+  order: number;
+}
+
+export interface AdminGroup {
+  id: number;
+  label: string;
+}
+
+export interface AdminTag {
+  id: number;
+  label: string;
+}
+
+export interface AdminApiKey {
+  id: number;
+  key: string;
+  ident: string | null;
+  disabled: number;
+  systemsJson: string | null;
+  order: number;
+}
+
+export interface AdminAccess {
+  id: number;
+  code: string;
+  ident: string | null;
+  expiration: number | null;
+  limit: number | null;
+  systemsJson: string | null;
+  order: number;
+}
+
+export interface AdminDirwatch {
+  id: number;
+  directory: string;
+  type: string;
+  mask: string | null;
+  extension: string | null;
+  frequency: number | null;
+  delay: number | null;
+  deleteAfter: number;
+  usePolling: number;
+  disabled: number;
+  systemId: number | null;
+  talkgroupId: number | null;
+  order: number;
+}
+
+export interface AdminDownstream {
+  id: number;
+  url: string;
+  apiKey: string;
+  systemsJson: string | null;
+  disabled: number;
+  order: number;
+}
+
+export interface AdminWebhook {
+  id: number;
+  url: string;
+  type: string;
+  secret: string | null;
+  systemsJson: string | null;
+  disabled: number;
+  order: number;
+}
+
+export interface AdminSetting {
+  key: string;
+  value: string;
+}
+
+export interface AdminLog {
+  id: number;
+  dateTime: number;
+  level: string;
+  message: string;
+}
+
+// Password change request
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+// User create/update payload
+export interface CreateUserPayload {
+  username: string;
+  password: string;
+  role: "admin" | "listener";
+  disabled?: number;
+  systemsJson?: string | null;
+  expiration?: number | null;
+  limit?: number | null;
+}
+
+export interface UpdateUserPayload {
+  username?: string;
+  password?: string;
+  role?: "admin" | "listener";
+  disabled?: number;
+  systemsJson?: string | null;
+  expiration?: number | null;
+  limit?: number | null;
+}

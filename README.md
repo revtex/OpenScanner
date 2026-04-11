@@ -44,7 +44,7 @@ make test   # Runs Go tests + Vitest frontend tests
 - [x] **Phase 8** — Downstream Pusher
 - [x] **Phase 9** — Frontend Scanner UI
 - [x] **Phase 10** — Frontend TG Selection & Search Panels
-- [ ] **Phase 11** — Frontend Admin Dashboard
+- [x] **Phase 11** — Frontend Admin Dashboard
 - [ ] **Phase 12** — CLI, Daemon, SSL, Docker & Deployment
 - [ ] **Phase 13** — Testing
 - [ ] **Phase 14** — Documentation

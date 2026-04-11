@@ -3,6 +3,21 @@ import type { SetupStatus, LoginResponse } from "@/types";
 
 export const api = createApi({
   reducerPath: "api",
+  tagTypes: [
+    "Users",
+    "Systems",
+    "Talkgroups",
+    "Units",
+    "Groups",
+    "Tags",
+    "ApiKeys",
+    "Accesses",
+    "Dirwatches",
+    "Downstreams",
+    "Webhooks",
+    "Config",
+    "Logs",
+  ],
   baseQuery: fetchBaseQuery({
     baseUrl: "/api",
     prepareHeaders: (headers, { getState }) => {

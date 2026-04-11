@@ -1,1 +1,186 @@
-// Admin sidebar navigation
+import { useState } from "react";
+import {
+  NavLink,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
+import {
+  Users,
+  Radio,
+  FolderTree,
+  Key,
+  Shield,
+  FolderSearch,
+  ArrowDownToLine,
+  Settings,
+  ScrollText,
+  Wrench,
+  LogOut,
+  Menu,
+  X,
+} from "lucide-react";
+import { useAppSelector, useAppDispatch } from "@/app/store";
+import {
+  selectToken,
+  selectRole,
+  clearCredentials,
+} from "@/app/slices/authSlice";
+import UsersPanel from "@/components/admin/UsersPanel";
+import SystemsPanel from "@/components/admin/SystemsPanel";
+import GroupsTagsPanel from "@/components/admin/GroupsTagsPanel";
+import ApiKeysPanel from "@/components/admin/ApiKeysPanel";
+import AccessesPanel from "@/components/admin/AccessesPanel";
+import DirWatchPanel from "@/components/admin/DirWatchPanel";
+import DownstreamsPanel from "@/components/admin/DownstreamsPanel";
+import OptionsPanel from "@/components/admin/OptionsPanel";
+import LogsPanel from "@/components/admin/LogsPanel";
+import ToolsPanel from "@/components/admin/ToolsPanel";
+import WebhooksPanel from "@/components/admin/WebhooksPanel";
+
+const navItems = [
+  { to: "/admin/users", label: "Users", icon: Users },
+  { to: "/admin/systems", label: "Systems", icon: Radio },
+  { to: "/admin/groups", label: "Groups & Tags", icon: FolderTree },
+  { to: "/admin/apikeys", label: "API Keys", icon: Key },
+  { to: "/admin/accesses", label: "Accesses", icon: Shield },
+  { to: "/admin/dirwatches", label: "Dir Watches", icon: FolderSearch },
+  { to: "/admin/downstreams", label: "Downstreams", icon: ArrowDownToLine },
+  { to: "/admin/options", label: "Options", icon: Settings },
+  { to: "/admin/logs", label: "Logs", icon: ScrollText },
+  { to: "/admin/tools", label: "Tools", icon: Wrench },
+] as const;
+
+function SidebarContent({
+  showLabels,
+  onSignOut,
+  onNavClick,
+}: {
+  showLabels: boolean;
+  onSignOut: () => void;
+  onNavClick?: () => void;
+}) {
+  return (
+    <ul className="menu bg-base-200 h-full p-2 gap-1">
+      {navItems.map(({ to, label, icon: Icon }) => (
+        <li key={to}>
+          <NavLink
+            to={to}
+            onClick={onNavClick}
+            className={({ isActive }) =>
+              isActive
+                ? "border-l-4 border-primary bg-primary/10"
+                : "hover:bg-base-300"
+            }
+          >
+            <Icon className="w-5 h-5 shrink-0" />
+            {showLabels && <span>{label}</span>}
+          </NavLink>
+        </li>
+      ))}
+      <li className="mt-auto">
+        <button onClick={onSignOut} className="hover:bg-base-300">
+          <LogOut className="w-5 h-5 shrink-0" />
+          {showLabels && <span>Sign Out</span>}
+        </button>
+      </li>
+    </ul>
+  );
+}
+
+export default function AdminLayout() {
+  const token = useAppSelector(selectToken);
+  const role = useAppSelector(selectRole);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  if (!token || role !== "admin") {
+    return <Navigate to="/login" replace />;
+  }
+
+  const handleSignOut = () => {
+    dispatch(clearCredentials());
+    navigate("/login", { replace: true });
+  };
+
+  return (
+    <div className="drawer md:drawer-open">
+      <input
+        id="admin-drawer"
+        type="checkbox"
+        className="drawer-toggle"
+        checked={drawerOpen}
+        onChange={(e) => setDrawerOpen(e.target.checked)}
+      />
+
+      {/* Main content */}
+      <div className="drawer-content flex flex-col min-h-screen">
+        {/* Mobile top bar */}
+        <div className="navbar bg-base-200 md:hidden">
+          <label
+            htmlFor="admin-drawer"
+            className="btn btn-ghost btn-square"
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </label>
+        </div>
+
+        <main className="flex-1 p-6 max-w-[1200px] w-full mx-auto">
+          <Routes>
+            <Route path="users" element={<UsersPanel />} />
+            <Route path="systems" element={<SystemsPanel />} />
+            <Route path="groups" element={<GroupsTagsPanel />} />
+            <Route path="apikeys" element={<ApiKeysPanel />} />
+            <Route path="accesses" element={<AccessesPanel />} />
+            <Route path="dirwatches" element={<DirWatchPanel />} />
+            <Route path="downstreams" element={<DownstreamsPanel />} />
+            <Route path="options" element={<OptionsPanel />} />
+            <Route path="logs" element={<LogsPanel />} />
+            <Route path="tools" element={<ToolsPanel />} />
+            <Route path="webhooks" element={<WebhooksPanel />} />
+            <Route path="*" element={<Navigate to="users" replace />} />
+          </Routes>
+        </main>
+      </div>
+
+      {/* Sidebar */}
+      <div className="drawer-side z-40">
+        <label
+          htmlFor="admin-drawer"
+          className="drawer-overlay"
+          aria-label="Close menu"
+        />
+        {/* Mobile: full sidebar with labels */}
+        <div className="h-full md:hidden">
+          <div className="flex items-center justify-end p-2 bg-base-200 md:hidden">
+            <button
+              className="btn btn-ghost btn-square btn-sm"
+              onClick={() => setDrawerOpen(false)}
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <SidebarContent
+            showLabels
+            onSignOut={handleSignOut}
+            onNavClick={() => setDrawerOpen(false)}
+          />
+        </div>
+
+        {/* md: icons only */}
+        <div className="hidden md:block lg:hidden w-16 h-full">
+          <SidebarContent showLabels={false} onSignOut={handleSignOut} />
+        </div>
+
+        {/* lg: icons + labels */}
+        <div className="hidden lg:block w-[200px] h-full">
+          <SidebarContent showLabels onSignOut={handleSignOut} />
+        </div>
+      </div>
+    </div>
+  );
+}

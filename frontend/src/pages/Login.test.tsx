@@ -1,0 +1,183 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { configureStore } from "@reduxjs/toolkit";
+import { Provider } from "react-redux";
+import Login from "@/pages/Login";
+import { scannerSlice } from "@/app/slices/scannerSlice";
+import { authSlice } from "@/app/slices/authSlice";
+import { callsSlice } from "@/app/slices/callsSlice";
+import { api } from "@/app/api";
+import type { RootState } from "@/app/store";
+
+// --- Mocks ---
+
+const mockNavigate = vi.fn();
+vi.mock("react-router-dom", async () => {
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>(
+      "react-router-dom",
+    );
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
+const mockPostLogin = vi.fn();
+vi.mock("@/app/api", async () => {
+  const actual = await vi.importActual<typeof import("@/app/api")>("@/app/api");
+  return {
+    ...actual,
+    usePostLoginMutation: () => [mockPostLogin, { isLoading: false }],
+  };
+});
+
+const mockChangePassword = vi.fn();
+vi.mock("@/app/slices/adminSlice", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/app/slices/adminSlice")
+  >("@/app/slices/adminSlice");
+  return {
+    ...actual,
+    useChangePasswordMutation: () => [mockChangePassword, { isLoading: false }],
+  };
+});
+
+// --- Helpers ---
+
+function makeStore(preloadedState?: Partial<RootState>) {
+  return configureStore({
+    reducer: {
+      scanner: scannerSlice.reducer,
+      auth: authSlice.reducer,
+      calls: callsSlice.reducer,
+      [api.reducerPath]: api.reducer,
+    },
+    middleware: (gDM) => gDM().concat(api.middleware),
+    preloadedState: preloadedState as RootState,
+  });
+}
+
+function renderLogin() {
+  const store = makeStore();
+  return render(
+    <Provider store={store}>
+      <Login />
+    </Provider>,
+  );
+}
+
+// --- Tests ---
+
+describe("Login", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders login form", () => {
+    renderLogin();
+    expect(screen.getByPlaceholderText("Username")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Password")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign In" })).toBeInTheDocument();
+  });
+
+  it("shows error on login failure", async () => {
+    mockPostLogin.mockReturnValue({
+      unwrap: () => Promise.reject(new Error("bad credentials")),
+    });
+
+    renderLogin();
+    fireEvent.change(screen.getByPlaceholderText("Username"), {
+      target: { value: "admin" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password"), {
+      target: { value: "wrong" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Invalid username or password"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("shows change password form when passwordNeedChange is true", async () => {
+    mockPostLogin.mockReturnValue({
+      unwrap: () =>
+        Promise.resolve({
+          token: "t",
+          role: "admin",
+          username: "admin",
+          passwordNeedChange: true,
+        }),
+    });
+
+    renderLogin();
+    fireEvent.change(screen.getByPlaceholderText("Username"), {
+      target: { value: "admin" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password"), {
+      target: { value: "password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Change Password")).toBeInTheDocument();
+    });
+    expect(screen.getByPlaceholderText("New password")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Confirm password")).toBeInTheDocument();
+  });
+
+  it("redirects admin to /admin/users after login", async () => {
+    mockPostLogin.mockReturnValue({
+      unwrap: () =>
+        Promise.resolve({
+          token: "tok",
+          role: "admin",
+          username: "admin",
+          passwordNeedChange: false,
+        }),
+    });
+
+    renderLogin();
+    fireEvent.change(screen.getByPlaceholderText("Username"), {
+      target: { value: "admin" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password"), {
+      target: { value: "pass1234" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/users", {
+        replace: true,
+      });
+    });
+  });
+
+  it("redirects listener to / after login", async () => {
+    mockPostLogin.mockReturnValue({
+      unwrap: () =>
+        Promise.resolve({
+          token: "tok",
+          role: "listener",
+          username: "user1",
+          passwordNeedChange: false,
+        }),
+    });
+
+    renderLogin();
+    fireEvent.change(screen.getByPlaceholderText("Username"), {
+      target: { value: "user1" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password"), {
+      target: { value: "pass1234" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+    });
+  });
+});

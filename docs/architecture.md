@@ -1,6 +1,6 @@
 # OpenScanner — Architecture
 
-> **Implementation status:** Phases 1–10 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest, WebSocket Hub, Admin CRUD APIs, DirWatch Service, Downstream Pusher, Frontend Scanner UI, Frontend TG Selection & Search Panels) are complete. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
+> **Implementation status:** Phases 1–11 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest, WebSocket Hub, Admin CRUD APIs, DirWatch Service, Downstream Pusher, Frontend Scanner UI, Frontend TG Selection & Search Panels, Frontend Admin Dashboard) are complete. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
 
 ## Overview
 
@@ -156,7 +156,47 @@ Scanner.tsx (lazy-loaded page)
 
 - 61 unit tests across `scannerSlice.test.ts`, `LEDPanel.test.tsx`, and `ControlToolbar.test.tsx` (Vitest + React Testing Library)
 
+### Frontend — Admin Dashboard (Phase 11)
+
+#### Routing & Auth Guard
+
+- **frontend/src/main.tsx** — `/admin/*` route with `React.lazy` loading; nested routes for each panel
+- **frontend/src/components/admin/AdminLayout.tsx** — Auth guard (redirects to `/login` if no JWT or non-admin role); responsive sidebar using DaisyUI drawer (hamburger on mobile, icons on `md`, icons + labels on `lg`); 10 nav items + Sign Out button
+- **frontend/src/pages/Admin.tsx** — Wrapper rendering `AdminLayout` with `<Outlet>`
+
+#### State Management
+
+- **frontend/src/app/slices/adminSlice.ts** — RTK Query endpoints for all admin CRUD operations (Users, Systems, Talkgroups, Units, Groups, Tags, ApiKeys, Accesses, Dirwatches, Downstreams, Webhooks, Config, Logs, Import/Export, Password); tag-based cache invalidation
+- **frontend/src/app/slices/authSlice.ts** — Added `selectToken`, `selectRole`, `selectUsername` selectors
+- **frontend/src/app/api.ts** — Extended `tagTypes` for admin cache invalidation
+- **frontend/src/types/index.ts** — 16 admin types (`AdminUser`, `AdminSystem`, `AdminTalkgroup`, `AdminUnit`, `AdminGroup`, `AdminTag`, `AdminApiKey`, `AdminAccess`, `AdminDirwatch`, `AdminDownstream`, `AdminWebhook`, `AdminSetting`, `AdminLog`, `ChangePasswordRequest`, `CreateUserPayload`, `UpdateUserPayload`)
+
+#### Admin Panels
+
+| Panel              | Key Features                                                                                               |
+| ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `UsersPanel`       | CRUD table, role badges, disabled toggle, expiration, create/edit modal                                    |
+| `SystemsPanel`     | Drag-to-reorder (`@dnd-kit`), expandable rows with nested talkgroups (`@tanstack/react-virtual`) and units |
+| `GroupsTagsPanel`  | Two side-by-side CRUD tables                                                                               |
+| `OptionsPanel`     | Settings form with 6 sections, boolean toggles, conditional transcription fields                           |
+| `ApiKeysPanel`     | Drag-to-reorder, copy-to-clipboard, UUID generation                                                        |
+| `AccessesPanel`    | Access codes CRUD                                                                                          |
+| `DirWatchPanel`    | Directory watches CRUD with type dropdown                                                                  |
+| `DownstreamsPanel` | Downstream servers CRUD                                                                                    |
+| `LogsPanel`        | Virtualized log viewer (`@tanstack/react-virtual`) with date/level filters                                 |
+| `ToolsPanel`       | CSV import, JSON export/import, password change                                                            |
+| `WebhooksPanel`    | Webhooks CRUD with type badges                                                                             |
+
+#### Dependencies
+
+- `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` — Drag-to-reorder in SystemsPanel and ApiKeysPanel
+- `@tanstack/react-virtual` — Virtualized scrolling in SystemsPanel (nested talkgroups) and LogsPanel
+
+#### Tests
+
+- 13 new tests across `Login.test.tsx` (5), `Setup.test.tsx` (4), `AdminLayout.test.tsx` (4)
+- Total: 143 tests (9 test files)
+
 ### Frontend — Stubs (not yet implemented)
 
-- **frontend/src/pages/Admin.tsx** — Admin dashboard (placeholder)
 - **frontend/src/pages/SharedCall.tsx** — Public shareable call player (placeholder)
