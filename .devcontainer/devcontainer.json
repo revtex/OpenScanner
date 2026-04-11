@@ -1,0 +1,74 @@
+{
+  "name": "OpenScanner",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "forwardPorts": [3000, 5173],
+  "portsAttributes": {
+    "3000": { "label": "Backend", "onAutoForward": "notify" },
+    "5173": { "label": "Vite Dev", "onAutoForward": "notify" }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "chat.extensionAgents.enabled": true,
+        "go.gopath": "/home/vscode/go",
+        "go.toolsManagement.autoUpdate": true,
+        "go.lintTool": "golangci-lint",
+        "go.lintFlags": ["--fast"],
+        "go.testFlags": ["-v"],
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[go]": {
+          "editor.defaultFormatter": "golang.go"
+        },
+        "[sql]": {
+          "editor.defaultFormatter": "mtxr.sqltools"
+        },
+        "typescript.tsdk": "frontend/node_modules/typescript/lib",
+        "eslint.workingDirectories": ["frontend", "e2e"],
+        "tailwindCSS.experimental.classRegex": [
+          ["className\\s*[:=]\\s*['\"]([^'\"]*)['\"]"]
+        ]
+      },
+      "extensions": [
+        // Go
+        "golang.go",
+        // Frontend
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        // Database
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-sqlite",
+        // Docker
+        "ms-azuretools.vscode-docker",
+        // Testing
+        "ms-playwright.playwright",
+        // General
+        "editorconfig.editorconfig",
+        "github.copilot",
+        "github.copilot-chat",
+        "eamodio.gitlens",
+        "ms-vscode.makefile-tools"
+      ]
+    }
+  },
+
+  "mounts": [
+    "source=openscanner-go-mod-cache,target=/home/vscode/go/pkg/mod,type=volume",
+    "source=openscanner-pnpm-store,target=/home/vscode/.local/share/pnpm/store,type=volume",
+    "type=tmpfs,destination=/tmp,tmpfs-mode=1777,tmpfs-size=4294967296"
+  ],
+
+  "remoteUser": "vscode"
+}

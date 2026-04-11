@@ -1,0 +1,176 @@
+CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT    UNIQUE NOT NULL,
+    password_hash TEXT    NOT NULL,
+    role          TEXT    NOT NULL DEFAULT 'listener',
+    disabled      INTEGER NOT NULL DEFAULT 0,
+    systems_json  TEXT,
+    expiration    INTEGER,
+    "limit"       INTEGER,
+    created_at    INTEGER NOT NULL,
+    updated_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS app_state (
+    id             INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    setup_complete INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS groups (
+    id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    label TEXT    UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tags (
+    id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    label TEXT    UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS systems (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    system_id       INTEGER UNIQUE NOT NULL,
+    label           TEXT    NOT NULL,
+    auto_populate   INTEGER NOT NULL DEFAULT 0,
+    blacklists_json TEXT,
+    led             TEXT,
+    "order"         INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS talkgroups (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    system_id    INTEGER NOT NULL REFERENCES systems(id) ON DELETE CASCADE,
+    talkgroup_id INTEGER NOT NULL,
+    label        TEXT,
+    name         TEXT,
+    frequency    INTEGER,
+    led          TEXT,
+    group_id     INTEGER REFERENCES groups(id),
+    tag_id       INTEGER REFERENCES tags(id),
+    "order"      INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (system_id, talkgroup_id)
+);
+
+CREATE TABLE IF NOT EXISTS units (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    system_id INTEGER NOT NULL REFERENCES systems(id) ON DELETE CASCADE,
+    unit_id   INTEGER NOT NULL,
+    label     TEXT,
+    "order"   INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS calls (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    audio_path       TEXT    NOT NULL,
+    audio_name       TEXT    NOT NULL,
+    audio_type       TEXT    NOT NULL,
+    date_time        INTEGER NOT NULL,
+    frequency        INTEGER,
+    duration         INTEGER,
+    source           INTEGER,
+    sources_json     TEXT,
+    frequencies_json TEXT,
+    patches_json     TEXT,
+    system_id        INTEGER NOT NULL REFERENCES systems(id) ON DELETE CASCADE,
+    talkgroup_id     INTEGER REFERENCES talkgroups(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_calls_datetime_system_tg ON calls(date_time, system_id, talkgroup_id);
+CREATE INDEX IF NOT EXISTS idx_calls_system_tg ON calls(system_id, talkgroup_id);
+
+CREATE TABLE IF NOT EXISTS api_keys (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    key          TEXT    UNIQUE NOT NULL,
+    ident        TEXT,
+    disabled     INTEGER NOT NULL DEFAULT 0,
+    systems_json TEXT,
+    "order"      INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS accesses (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    code         TEXT    NOT NULL,
+    ident        TEXT,
+    expiration   INTEGER,
+    "limit"      INTEGER,
+    systems_json TEXT,
+    "order"      INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS dirwatches (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    directory    TEXT    NOT NULL,
+    type         TEXT    NOT NULL,
+    mask         TEXT,
+    extension    TEXT,
+    frequency    INTEGER,
+    delay        INTEGER,
+    delete_after INTEGER NOT NULL DEFAULT 0,
+    use_polling  INTEGER NOT NULL DEFAULT 0,
+    disabled     INTEGER NOT NULL DEFAULT 0,
+    system_id    INTEGER REFERENCES systems(id),
+    talkgroup_id INTEGER REFERENCES talkgroups(id),
+    "order"      INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS downstreams (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    url          TEXT    NOT NULL,
+    api_key      TEXT    NOT NULL,
+    systems_json TEXT,
+    disabled     INTEGER NOT NULL DEFAULT 0,
+    "order"      INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS logs (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    date_time INTEGER NOT NULL,
+    level     TEXT    NOT NULL,
+    message   TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS bookmarks (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    call_id    INTEGER NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
+    user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    session_id TEXT,
+    created_at INTEGER NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_user_call ON bookmarks(user_id, call_id) WHERE user_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS webhooks (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    url          TEXT    NOT NULL,
+    type         TEXT    NOT NULL DEFAULT 'generic',
+    secret       TEXT,
+    systems_json TEXT,
+    disabled     INTEGER NOT NULL DEFAULT 0,
+    "order"      INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    session_id   TEXT,
+    endpoint     TEXT    NOT NULL,
+    keys_json    TEXT    NOT NULL,
+    systems_json TEXT,
+    created_at   INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS transcriptions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    call_id     INTEGER NOT NULL UNIQUE REFERENCES calls(id) ON DELETE CASCADE,
+    text        TEXT    NOT NULL,
+    language    TEXT,
+    model       TEXT,
+    duration_ms INTEGER,
+    created_at  INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_transcriptions_text ON transcriptions(text);
