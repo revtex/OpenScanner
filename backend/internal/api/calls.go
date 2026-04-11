@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -363,13 +364,18 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		if err != nil {
 			slog.Error("failed to build CAL message", "error", err)
 		} else {
-			audioBytes, readErr := os.ReadFile(filepath.Join(h.processor.BaseDir(), relPath))
-			if readErr != nil {
-				slog.Warn("failed to read audio for WS broadcast", "path", relPath, "error", readErr)
+			audioFullPath := filepath.Join(h.processor.BaseDir(), relPath)
+			if rel, pathErr := filepath.Rel(h.processor.BaseDir(), audioFullPath); pathErr != nil || strings.HasPrefix(rel, "..") {
+				slog.Error("audio path escapes base directory", "path", relPath)
+			} else {
+				audioBytes, readErr := os.ReadFile(audioFullPath)
+				if readErr != nil {
+					slog.Warn("failed to read audio for WS broadcast", "path", rel, "error", readErr)
+				}
+				h.hub.BroadcastCAL(calMsg, audioBytes, func(cl *ws.Client) bool {
+					return cl.CanReceive(system.ID, talkgroup.ID)
+				})
 			}
-			h.hub.BroadcastCAL(calMsg, audioBytes, func(cl *ws.Client) bool {
-				return cl.CanReceive(system.ID, talkgroup.ID)
-			})
 		}
 	}
 
