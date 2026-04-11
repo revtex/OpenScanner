@@ -21,6 +21,35 @@ func (q *Queries) CountCalls(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countCallsFiltered = `-- name: CountCallsFiltered :one
+SELECT COUNT(*)
+FROM calls c
+WHERE
+    (?1    IS NULL OR c.system_id    = ?1)
+    AND (?2 IS NULL OR c.talkgroup_id = ?2)
+    AND (?3    IS NULL OR c.date_time    >= ?3)
+    AND (?4      IS NULL OR c.date_time    <= ?4)
+`
+
+type CountCallsFilteredParams struct {
+	SystemID    interface{} `db:"system_id" json:"system_id"`
+	TalkgroupID interface{} `db:"talkgroup_id" json:"talkgroup_id"`
+	DateFrom    interface{} `db:"date_from" json:"date_from"`
+	DateTo      interface{} `db:"date_to" json:"date_to"`
+}
+
+func (q *Queries) CountCallsFiltered(ctx context.Context, arg CountCallsFilteredParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCallsFiltered,
+		arg.SystemID,
+		arg.TalkgroupID,
+		arg.DateFrom,
+		arg.DateTo,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCall = `-- name: CreateCall :one
 INSERT INTO calls (
     audio_path,
@@ -245,6 +274,72 @@ type ListCallsParams struct {
 
 func (q *Queries) ListCalls(ctx context.Context, arg ListCallsParams) ([]Call, error) {
 	rows, err := q.db.QueryContext(ctx, listCalls,
+		arg.SystemID,
+		arg.TalkgroupID,
+		arg.DateFrom,
+		arg.DateTo,
+		arg.PageOffset,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Call{}
+	for rows.Next() {
+		var i Call
+		if err := rows.Scan(
+			&i.ID,
+			&i.AudioPath,
+			&i.AudioName,
+			&i.AudioType,
+			&i.DateTime,
+			&i.Frequency,
+			&i.Duration,
+			&i.Source,
+			&i.SourcesJson,
+			&i.FrequenciesJson,
+			&i.PatchesJson,
+			&i.SystemID,
+			&i.TalkgroupID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCallsAsc = `-- name: ListCallsAsc :many
+SELECT c.id, c.audio_path, c.audio_name, c.audio_type, c.date_time, c.frequency, c.duration, c.source, c.sources_json, c.frequencies_json, c.patches_json, c.system_id, c.talkgroup_id
+FROM calls c
+WHERE
+    (?1    IS NULL OR c.system_id    = ?1)
+    AND (?2 IS NULL OR c.talkgroup_id = ?2)
+    AND (?3    IS NULL OR c.date_time    >= ?3)
+    AND (?4      IS NULL OR c.date_time    <= ?4)
+ORDER BY c.date_time ASC
+LIMIT  ?6
+OFFSET ?5
+`
+
+type ListCallsAscParams struct {
+	SystemID    interface{}   `db:"system_id" json:"system_id"`
+	TalkgroupID interface{}   `db:"talkgroup_id" json:"talkgroup_id"`
+	DateFrom    interface{}   `db:"date_from" json:"date_from"`
+	DateTo      interface{}   `db:"date_to" json:"date_to"`
+	PageOffset  sql.NullInt64 `db:"page_offset" json:"page_offset"`
+	PageSize    sql.NullInt64 `db:"page_size" json:"page_size"`
+}
+
+func (q *Queries) ListCallsAsc(ctx context.Context, arg ListCallsAscParams) ([]Call, error) {
+	rows, err := q.db.QueryContext(ctx, listCallsAsc,
 		arg.SystemID,
 		arg.TalkgroupID,
 		arg.DateFrom,

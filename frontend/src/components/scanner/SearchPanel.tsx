@@ -1,1 +1,464 @@
-// SEARCH CALL slide-out panel — paginated RTK Query call list with filters
+import { useCallback, useMemo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import {
+  X,
+  Play,
+  Download,
+  Star,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+} from "lucide-react";
+import { useAppSelector, useAppDispatch } from "@/app/store";
+import {
+  useSearchCallsQuery,
+  setSystemFilter,
+  setTalkgroupFilter,
+  setGroupFilter,
+  setTagFilter,
+  setDateFrom,
+  setDateTo,
+  setSort,
+  setPage,
+  setBookmarkedOnly,
+  setDownloadMode,
+  setTranscript,
+  resetFilters,
+} from "@/app/slices/callsSlice";
+
+interface SearchPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function formatTime(unix: number): string {
+  const d = new Date(unix * 1000);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
+  const dispatch = useAppDispatch();
+  const filters = useAppSelector((s) => s.calls);
+  const config = useAppSelector((s) => s.scanner.config);
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const systems = useMemo(() => config?.systems ?? [], [config]);
+
+  // Derive talkgroups filtered by selected system
+  const talkgroups = useMemo(() => {
+    if (filters.systemId) {
+      const sys = systems.find((s) => s.id === filters.systemId);
+      return sys?.talkgroups ?? [];
+    }
+    return systems.flatMap((s) => s.talkgroups);
+  }, [systems, filters.systemId]);
+
+  // Derive unique groups
+  const groups = useMemo(() => {
+    const set = new Set<string>();
+    for (const tg of talkgroups) {
+      if (tg.group) set.add(tg.group);
+    }
+    return [...set].sort();
+  }, [talkgroups]);
+
+  // Derive unique tags
+  const tags = useMemo(() => {
+    const set = new Set<string>();
+    for (const tg of talkgroups) {
+      if (tg.tag) set.add(tg.tag);
+    }
+    return [...set].sort();
+  }, [talkgroups]);
+
+  // Build query params
+  const queryParams = useMemo(() => {
+    const params: Record<string, number | string | undefined> = {
+      systemId: filters.systemId,
+      talkgroupId: filters.talkgroupId,
+      page: filters.page,
+      limit: filters.limit,
+      sort: filters.sort,
+    };
+    if (filters.dateFrom) {
+      params.dateFrom = Math.floor(new Date(filters.dateFrom).getTime() / 1000);
+    }
+    if (filters.dateTo) {
+      // End of day
+      params.dateTo = Math.floor(
+        new Date(filters.dateTo + "T23:59:59").getTime() / 1000,
+      );
+    }
+    return params;
+  }, [filters]);
+
+  const { data, isFetching } = useSearchCallsQuery(queryParams, {
+    skip: !isOpen,
+  });
+
+  const calls = data?.calls ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / filters.limit));
+
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const virtualizer = useVirtualizer({
+    count: calls.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 44,
+    overscan: 5,
+  });
+
+  // Count active filters
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.systemId) count++;
+    if (filters.talkgroupId) count++;
+    if (filters.groupFilter) count++;
+    if (filters.tagFilter) count++;
+    if (filters.dateFrom) count++;
+    if (filters.dateTo) count++;
+    if (filters.bookmarkedOnly) count++;
+    if (filters.transcript) count++;
+    if (filters.sort !== "desc") count++;
+    return count;
+  }, [filters]);
+
+  const handleRowClick = useCallback(
+    (callId: number) => {
+      if (filters.downloadMode) {
+        console.log("download call", callId);
+      } else {
+        console.log("play call", callId);
+      }
+    },
+    [filters.downloadMode],
+  );
+
+  return (
+    <>
+      {/* Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50"
+          onClick={onClose}
+          aria-hidden
+        />
+      )}
+
+      {/* Panel */}
+      <div
+        className={`fixed top-0 left-0 z-50 flex h-full w-full flex-col bg-base-100 transition-transform duration-300 ease-in-out sm:w-[500px] ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">
+          <h2 className="text-lg font-semibold">Search Calls</h2>
+          <button
+            className="btn btn-ghost btn-sm btn-circle"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Results list */}
+        <div ref={parentRef} className="relative flex-1 overflow-y-auto">
+          {isFetching && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-base-100/60">
+              <span className="loading loading-spinner loading-md" />
+            </div>
+          )}
+
+          {calls.length === 0 && !isFetching && (
+            <div className="flex h-32 items-center justify-center text-base-content/50">
+              No results
+            </div>
+          )}
+
+          <div
+            className="relative w-full"
+            style={{ height: virtualizer.getTotalSize() }}
+          >
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const call = calls[virtualRow.index];
+              return (
+                <div
+                  key={call.id}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  className="absolute left-0 flex w-full cursor-pointer items-center gap-2 border-b border-base-300 px-4 py-2 hover:bg-base-200"
+                  style={{ top: virtualRow.start }}
+                  onClick={() => handleRowClick(call.id)}
+                >
+                  {/* Play/Stop/Download icon */}
+                  <span className="text-primary">
+                    {filters.downloadMode ? (
+                      <Download size={16} />
+                    ) : (
+                      <Play size={16} />
+                    )}
+                  </span>
+
+                  {/* Time */}
+                  <span className="w-14 shrink-0 font-mono text-sm">
+                    {formatTime(call.dateTime)}
+                  </span>
+
+                  {/* System label */}
+                  <span className="w-20 shrink-0 truncate text-xs text-base-content/70">
+                    {call.systemLabel}
+                  </span>
+
+                  {/* Talkgroup name */}
+                  <span className="flex-1 truncate text-sm">
+                    {call.talkgroupName || call.talkgroupLabel}
+                  </span>
+
+                  {/* Bookmark indicator */}
+                  {call.bookmarked && (
+                    <Star
+                      size={14}
+                      className="shrink-0 fill-warning text-warning"
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Paginator + Download mode */}
+        <div className="border-t border-base-300 px-4 py-2">
+          <div className="flex items-center justify-between">
+            <div className="join">
+              <button
+                className="join-item btn btn-sm"
+                disabled={filters.page <= 1}
+                onClick={() => dispatch(setPage(filters.page - 1))}
+              >
+                <ChevronLeft size={14} />
+                Prev
+              </button>
+              <button className="join-item btn btn-sm btn-disabled pointer-events-none">
+                Page {filters.page} of {totalPages}
+              </button>
+              <button
+                className="join-item btn btn-sm"
+                disabled={filters.page >= totalPages}
+                onClick={() => dispatch(setPage(filters.page + 1))}
+              >
+                Next
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+
+          <label className="mt-2 flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              className="toggle toggle-primary toggle-sm"
+              checked={filters.downloadMode}
+              onChange={(e) => dispatch(setDownloadMode(e.target.checked))}
+            />
+            <span className="text-sm">Download mode</span>
+          </label>
+        </div>
+
+        {/* Filters section */}
+        <div className="border-t border-base-300">
+          <div className="collapse collapse-arrow">
+            <input type="checkbox" />
+            <div className="collapse-title text-sm font-medium">
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="badge badge-primary badge-sm ml-2">
+                  {activeFilterCount}
+                </span>
+              )}
+            </div>
+            <div className="collapse-content space-y-3">
+              {/* Transcript */}
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text text-xs">Transcript</span>
+                </div>
+                <input
+                  type="text"
+                  className="input input-bordered input-sm w-full"
+                  placeholder="Search transcripts…"
+                  value={filters.transcript ?? ""}
+                  onChange={(e) =>
+                    dispatch(setTranscript(e.target.value || undefined))
+                  }
+                />
+              </label>
+
+              {/* System */}
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text text-xs">System</span>
+                </div>
+                <select
+                  className="select select-bordered select-sm w-full"
+                  value={filters.systemId ?? ""}
+                  onChange={(e) =>
+                    dispatch(
+                      setSystemFilter(
+                        e.target.value ? Number(e.target.value) : undefined,
+                      ),
+                    )
+                  }
+                >
+                  <option value="">All Systems</option>
+                  {systems.map((sys) => (
+                    <option key={sys.id} value={sys.id}>
+                      {sys.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {/* Talkgroup */}
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text text-xs">Talkgroup</span>
+                </div>
+                <select
+                  className="select select-bordered select-sm w-full"
+                  value={filters.talkgroupId ?? ""}
+                  onChange={(e) =>
+                    dispatch(
+                      setTalkgroupFilter(
+                        e.target.value ? Number(e.target.value) : undefined,
+                      ),
+                    )
+                  }
+                >
+                  <option value="">All Talkgroups</option>
+                  {talkgroups.map((tg) => (
+                    <option key={tg.id} value={tg.id}>
+                      {tg.label} — {tg.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {/* Group */}
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text text-xs">Group</span>
+                </div>
+                <select
+                  className="select select-bordered select-sm w-full"
+                  value={filters.groupFilter ?? ""}
+                  onChange={(e) =>
+                    dispatch(setGroupFilter(e.target.value || undefined))
+                  }
+                >
+                  <option value="">All Groups</option>
+                  {groups.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {/* Tag */}
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text text-xs">Tag</span>
+                </div>
+                <select
+                  className="select select-bordered select-sm w-full"
+                  value={filters.tagFilter ?? ""}
+                  onChange={(e) =>
+                    dispatch(setTagFilter(e.target.value || undefined))
+                  }
+                >
+                  <option value="">All Tags</option>
+                  {tags.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {/* Date from */}
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text text-xs">Date from</span>
+                </div>
+                <input
+                  type="date"
+                  className="input input-bordered input-sm w-full"
+                  value={filters.dateFrom ?? ""}
+                  onChange={(e) =>
+                    dispatch(setDateFrom(e.target.value || undefined))
+                  }
+                />
+              </label>
+
+              {/* Date to */}
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text text-xs">Date to</span>
+                </div>
+                <input
+                  type="date"
+                  className="input input-bordered input-sm w-full"
+                  value={filters.dateTo ?? ""}
+                  onChange={(e) =>
+                    dispatch(setDateTo(e.target.value || undefined))
+                  }
+                />
+              </label>
+
+              {/* Sort */}
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text text-xs">Sort</span>
+                </div>
+                <select
+                  className="select select-bordered select-sm w-full"
+                  value={filters.sort}
+                  onChange={(e) =>
+                    dispatch(setSort(e.target.value as "asc" | "desc"))
+                  }
+                >
+                  <option value="desc">Newest first</option>
+                  <option value="asc">Oldest first</option>
+                </select>
+              </label>
+
+              {/* Bookmarked only */}
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="toggle toggle-sm"
+                  checked={filters.bookmarkedOnly}
+                  onChange={(e) =>
+                    dispatch(setBookmarkedOnly(e.target.checked))
+                  }
+                />
+                <span className="text-sm">Bookmarked only</span>
+              </label>
+
+              {/* Reset */}
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => dispatch(resetFilters())}
+              >
+                <RotateCcw size={14} />
+                Reset filters
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

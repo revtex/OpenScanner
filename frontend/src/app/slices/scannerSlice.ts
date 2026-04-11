@@ -123,6 +123,9 @@ export const scannerSlice = createSlice({
       const id = action.payload;
       state.tgSelection[id] = !state.tgSelection[id];
     },
+    restoreTGSelection(state, action: PayloadAction<Record<number, boolean>>) {
+      state.tgSelection = action.payload;
+    },
     setAllTGs(state, action: PayloadAction<boolean>) {
       const enabled = action.payload;
       if (state.config) {
@@ -144,6 +147,12 @@ export const scannerSlice = createSlice({
           state.tgSelection[tg.id] = enabled;
         }
       }
+    },
+    expireAvoids(state) {
+      const now = Date.now();
+      state.avoidList = state.avoidList.filter(
+        (a) => a.expiresAt === 0 || a.expiresAt > now,
+      );
     },
     transcriptReceived(
       state,
@@ -177,11 +186,13 @@ export const {
   addAvoid,
   removeAvoid,
   clearAvoids,
+  expireAvoids,
   setListenerCount,
   setConnectionStatus,
   setConfig,
   setBranding,
   toggleTG,
+  restoreTGSelection,
   setAllTGs,
   setTGsBySystem,
   transcriptReceived,

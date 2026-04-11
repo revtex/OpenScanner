@@ -11,6 +11,7 @@ import (
 
 type Querier interface {
 	CountCalls(ctx context.Context) (int64, error)
+	CountCallsFiltered(ctx context.Context, arg CountCallsFilteredParams) (int64, error)
 	CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (int64, error)
 	CreateAccess(ctx context.Context, arg CreateAccessParams) (int64, error)
 	CreateBookmark(ctx context.Context, arg CreateBookmarkParams) (int64, error)
@@ -85,6 +86,7 @@ type Querier interface {
 	ListBookmarksBySession(ctx context.Context, sessionID sql.NullString) ([]Bookmark, error)
 	ListBookmarksByUser(ctx context.Context, userID sql.NullInt64) ([]Bookmark, error)
 	ListCalls(ctx context.Context, arg ListCallsParams) ([]Call, error)
+	ListCallsAsc(ctx context.Context, arg ListCallsAscParams) ([]Call, error)
 	ListDirwatches(ctx context.Context) ([]Dirwatch, error)
 	ListDownstreams(ctx context.Context) ([]Downstream, error)
 	ListGroups(ctx context.Context) ([]Group, error)

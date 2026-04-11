@@ -72,6 +72,9 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		authRequired.GET("/me", authHandler.GetMe)
 	}
 
+	// Call search — public access with optional auth for bookmarks.
+	api.GET("/calls", middleware.OptionalJWTAuth(), callHandler.GetCalls)
+
 	// Call upload — API key auth.
 	upload := r.Group("/")
 	upload.Use(middleware.APIKeyAuth(deps.Queries))

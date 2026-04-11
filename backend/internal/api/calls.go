@@ -402,3 +402,259 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		})
 	}
 }
+
+// CallSearchResult is a single call in the search response.
+type CallSearchResult struct {
+	ID             int64  `json:"id"`
+	DateTime       int64  `json:"dateTime"`
+	SystemID       int64  `json:"systemId"`
+	SystemLabel    string `json:"systemLabel"`
+	TalkgroupID    int64  `json:"talkgroupId"`
+	TalkgroupLabel string `json:"talkgroupLabel"`
+	TalkgroupName  string `json:"talkgroupName"`
+	TalkgroupGroup string `json:"talkgroupGroup,omitempty"`
+	TalkgroupTag   string `json:"talkgroupTag,omitempty"`
+	TalkgroupLed   string `json:"talkgroupLed,omitempty"`
+	Frequency      *int64 `json:"frequency,omitempty"`
+	Duration       *int64 `json:"duration,omitempty"`
+	Source         *int64 `json:"source,omitempty"`
+	Transcript     string `json:"transcript,omitempty"`
+	Bookmarked     bool   `json:"bookmarked"`
+}
+
+// CallSearchResponse is the response for GET /api/calls.
+type CallSearchResponse struct {
+	Calls []CallSearchResult `json:"calls"`
+	Total int64              `json:"total"`
+}
+
+// GetCalls handles GET /api/calls — paginated call archive search.
+func (h *CallHandler) GetCalls(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// Parse query parameters.
+	var systemID, talkgroupID interface{}
+	if v := c.Query("system_id"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid system_id"})
+			return
+		}
+		systemID = n
+	}
+	if v := c.Query("talkgroup_id"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid talkgroup_id"})
+			return
+		}
+		talkgroupID = n
+	}
+
+	var dateFrom, dateTo interface{}
+	if v := c.Query("date_from"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid date_from"})
+			return
+		}
+		dateFrom = n
+	}
+	if v := c.Query("date_to"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid date_to"})
+			return
+		}
+		dateTo = n
+	}
+
+	page := int64(1)
+	if v := c.Query("page"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || n < 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page"})
+			return
+		}
+		page = n
+	}
+
+	limit := int64(25)
+	if v := c.Query("limit"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || n < 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+			return
+		}
+		if n > 100 {
+			n = 100
+		}
+		limit = n
+	}
+
+	sortOrder := "desc"
+	if v := c.Query("sort"); v != "" {
+		v = strings.ToLower(v)
+		if v != "asc" && v != "desc" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "sort must be asc or desc"})
+			return
+		}
+		sortOrder = v
+	}
+
+	offset := (page - 1) * limit
+
+	// Count total matching calls.
+	total, err := h.queries.CountCallsFiltered(ctx, db.CountCallsFilteredParams{
+		SystemID:    systemID,
+		TalkgroupID: talkgroupID,
+		DateFrom:    dateFrom,
+		DateTo:      dateTo,
+	})
+	if err != nil {
+		slog.Error("failed to count calls", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	// Fetch calls page.
+	var calls []db.Call
+	listParams := db.ListCallsParams{
+		SystemID:    systemID,
+		TalkgroupID: talkgroupID,
+		DateFrom:    dateFrom,
+		DateTo:      dateTo,
+		PageOffset:  sql.NullInt64{Int64: offset, Valid: true},
+		PageSize:    sql.NullInt64{Int64: limit, Valid: true},
+	}
+	if sortOrder == "asc" {
+		calls, err = h.queries.ListCallsAsc(ctx, db.ListCallsAscParams(listParams))
+	} else {
+		calls, err = h.queries.ListCalls(ctx, listParams)
+	}
+	if err != nil {
+		slog.Error("failed to list calls", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	// Build set of bookmarked call IDs for authenticated users.
+	bookmarkedIDs := make(map[int64]bool)
+	if userIDVal, exists := c.Get("userID"); exists {
+		if uid, ok := userIDVal.(int64); ok {
+			bookmarks, berr := h.queries.ListBookmarksByUser(ctx, sql.NullInt64{Int64: uid, Valid: true})
+			if berr == nil {
+				for _, bm := range bookmarks {
+					bookmarkedIDs[bm.CallID] = true
+				}
+			}
+		}
+	}
+
+	// Pre-cache lookups to avoid N+1 queries.
+	systemCache := make(map[int64]db.System)
+	tgCache := make(map[int64]db.Talkgroup)
+	groupCache := make(map[int64]string)
+	tagCache := make(map[int64]string)
+
+	// Build response with joined labels and transcripts.
+	results := make([]CallSearchResult, 0, len(calls))
+	for _, call := range calls {
+		r := CallSearchResult{
+			ID:       call.ID,
+			DateTime: call.DateTime,
+			SystemID: call.SystemID,
+		}
+
+		if call.Frequency.Valid {
+			r.Frequency = &call.Frequency.Int64
+		}
+		if call.Duration.Valid {
+			r.Duration = &call.Duration.Int64
+		}
+		if call.Source.Valid {
+			r.Source = &call.Source.Int64
+		}
+
+		// Join system label (cached).
+		sys, ok := systemCache[call.SystemID]
+		if !ok {
+			var serr error
+			sys, serr = h.queries.GetSystem(ctx, call.SystemID)
+			if serr == nil {
+				systemCache[call.SystemID] = sys
+			}
+		}
+		if ok || systemCache[call.SystemID].ID != 0 {
+			r.SystemLabel = sys.Label
+		}
+
+		// Join talkgroup details (cached).
+		if call.TalkgroupID.Valid {
+			r.TalkgroupID = call.TalkgroupID.Int64
+			tg, ok := tgCache[call.TalkgroupID.Int64]
+			if !ok {
+				var terr error
+				tg, terr = h.queries.GetTalkgroup(ctx, call.TalkgroupID.Int64)
+				if terr == nil {
+					tgCache[call.TalkgroupID.Int64] = tg
+				}
+			}
+			if ok || tgCache[call.TalkgroupID.Int64].ID != 0 {
+				if tg.Label.Valid {
+					r.TalkgroupLabel = tg.Label.String
+				}
+				if tg.Name.Valid {
+					r.TalkgroupName = tg.Name.String
+				}
+				if tg.Led.Valid {
+					r.TalkgroupLed = tg.Led.String
+				}
+				// Resolve group label (cached).
+				if tg.GroupID.Valid {
+					grpLabel, ok := groupCache[tg.GroupID.Int64]
+					if !ok {
+						grp, gerr := h.queries.GetGroup(ctx, tg.GroupID.Int64)
+						if gerr == nil {
+							groupCache[tg.GroupID.Int64] = grp.Label
+							grpLabel = grp.Label
+						}
+					}
+					if ok || grpLabel != "" {
+						r.TalkgroupGroup = grpLabel
+					}
+				}
+				// Resolve tag label (cached).
+				if tg.TagID.Valid {
+					tagLabel, ok := tagCache[tg.TagID.Int64]
+					if !ok {
+						tag, tgerr := h.queries.GetTag(ctx, tg.TagID.Int64)
+						if tgerr == nil {
+							tagCache[tg.TagID.Int64] = tag.Label
+							tagLabel = tag.Label
+						}
+					}
+					if ok || tagLabel != "" {
+						r.TalkgroupTag = tagLabel
+					}
+				}
+			}
+		}
+
+		// Join transcript.
+		trn, terr := h.queries.GetTranscriptionByCallID(ctx, call.ID)
+		if terr == nil {
+			r.Transcript = trn.Text
+		}
+
+		// Bookmark status.
+		r.Bookmarked = bookmarkedIDs[call.ID]
+
+		results = append(results, r)
+	}
+
+	c.JSON(http.StatusOK, CallSearchResponse{
+		Calls: results,
+		Total: total,
+	})
+}

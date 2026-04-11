@@ -10,6 +10,7 @@ import {
   addAvoid,
   removeAvoid,
   clearAvoids,
+  expireAvoids,
   toggleTG,
   setAllTGs,
   setConfig,
@@ -274,6 +275,56 @@ describe("scannerSlice", () => {
       let state = reducer(undefined, callReceived(makeCall({ id: 1 })));
       state = reducer(state, transcriptReceived({ callId: 999, text: "nope" }));
       expect(state.currentCall?.transcript).toBeUndefined();
+    });
+  });
+
+  describe("expireAvoids", () => {
+    it("removes expired avoids (expiresAt < Date.now())", () => {
+      const pastTime = Date.now() - 60_000;
+      let state = reducer(
+        undefined,
+        addAvoid({ talkgroupId: 10, expiresAt: pastTime }),
+      );
+      state = reducer(state, expireAvoids());
+      expect(state.avoidList).toHaveLength(0);
+    });
+
+    it("keeps permanent avoids (expiresAt === 0)", () => {
+      let state = reducer(
+        undefined,
+        addAvoid({ talkgroupId: 10, expiresAt: 0 }),
+      );
+      state = reducer(state, expireAvoids());
+      expect(state.avoidList).toHaveLength(1);
+      expect(state.avoidList[0].talkgroupId).toBe(10);
+    });
+
+    it("keeps non-expired avoids (expiresAt > Date.now())", () => {
+      const futureTime = Date.now() + 60_000;
+      let state = reducer(
+        undefined,
+        addAvoid({ talkgroupId: 10, expiresAt: futureTime }),
+      );
+      state = reducer(state, expireAvoids());
+      expect(state.avoidList).toHaveLength(1);
+      expect(state.avoidList[0].talkgroupId).toBe(10);
+    });
+
+    it("filters mixed avoids correctly", () => {
+      const pastTime = Date.now() - 60_000;
+      const futureTime = Date.now() + 60_000;
+      let state = reducer(
+        undefined,
+        addAvoid({ talkgroupId: 10, expiresAt: pastTime }),
+      );
+      state = reducer(state, addAvoid({ talkgroupId: 20, expiresAt: 0 }));
+      state = reducer(
+        state,
+        addAvoid({ talkgroupId: 30, expiresAt: futureTime }),
+      );
+      state = reducer(state, expireAvoids());
+      expect(state.avoidList).toHaveLength(2);
+      expect(state.avoidList.map((a) => a.talkgroupId)).toEqual([20, 30]);
     });
   });
 });

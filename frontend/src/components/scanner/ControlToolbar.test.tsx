@@ -24,6 +24,8 @@ function defaultProps() {
     onHoldTG: vi.fn(),
     onAddAvoid: vi.fn(),
     onClearAvoids: vi.fn(),
+    onToggleSelectTG: vi.fn(),
+    onToggleSearch: vi.fn(),
   };
 }
 

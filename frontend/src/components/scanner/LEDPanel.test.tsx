@@ -5,6 +5,7 @@ import { Provider } from "react-redux";
 import { LEDPanel } from "@/components/scanner/LEDPanel";
 import { scannerSlice } from "@/app/slices/scannerSlice";
 import { authSlice } from "@/app/slices/authSlice";
+import { callsSlice } from "@/app/slices/callsSlice";
 import { api } from "@/app/api";
 import type { RootState } from "@/app/store";
 import type { Call, ScannerConfig } from "@/types";
@@ -26,6 +27,7 @@ function makeStore(preloadedState?: Partial<RootState>) {
     reducer: {
       scanner: scannerSlice.reducer,
       auth: authSlice.reducer,
+      calls: callsSlice.reducer,
       [api.reducerPath]: api.reducer,
     },
     middleware: (getDefaultMiddleware) =>

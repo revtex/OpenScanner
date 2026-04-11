@@ -38,6 +38,8 @@ interface ControlToolbarProps {
   onHoldTG: (id: number | null) => void;
   onAddAvoid: (entry: AvoidEntry) => void;
   onClearAvoids: () => void;
+  onToggleSelectTG: () => void;
+  onToggleSearch: () => void;
 }
 
 export function ControlToolbar({
@@ -60,6 +62,8 @@ export function ControlToolbar({
   onHoldTG,
   onAddAvoid,
   onClearAvoids,
+  onToggleSelectTG,
+  onToggleSearch,
 }: ControlToolbarProps) {
   const isMuted = volume === 0;
   const isHolding = heldSystem !== null || heldTG !== null;
@@ -291,7 +295,7 @@ export function ControlToolbar({
 
         {/* SELECT */}
         <div className="tooltip tooltip-bottom" data-tip="Select Talkgroups">
-          <button className="btn btn-sm btn-ghost">
+          <button className="btn btn-sm btn-ghost" onClick={onToggleSelectTG}>
             <List className="w-3.5 h-3.5" />
             SELECT▾
           </button>
@@ -299,7 +303,7 @@ export function ControlToolbar({
 
         {/* SEARCH */}
         <div className="tooltip tooltip-bottom" data-tip="Search Calls">
-          <button className="btn btn-sm btn-ghost">
+          <button className="btn btn-sm btn-ghost" onClick={onToggleSearch}>
             <Search className="w-3.5 h-3.5" />
             SEARCH
           </button>

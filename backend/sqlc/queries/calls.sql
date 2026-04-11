@@ -22,6 +22,27 @@ ORDER BY c.date_time DESC
 LIMIT  sqlc.narg('page_size')
 OFFSET sqlc.narg('page_offset');
 
+-- name: ListCallsAsc :many
+SELECT c.*
+FROM calls c
+WHERE
+    (sqlc.narg('system_id')    IS NULL OR c.system_id    = sqlc.narg('system_id'))
+    AND (sqlc.narg('talkgroup_id') IS NULL OR c.talkgroup_id = sqlc.narg('talkgroup_id'))
+    AND (sqlc.narg('date_from')    IS NULL OR c.date_time    >= sqlc.narg('date_from'))
+    AND (sqlc.narg('date_to')      IS NULL OR c.date_time    <= sqlc.narg('date_to'))
+ORDER BY c.date_time ASC
+LIMIT  sqlc.narg('page_size')
+OFFSET sqlc.narg('page_offset');
+
+-- name: CountCallsFiltered :one
+SELECT COUNT(*)
+FROM calls c
+WHERE
+    (sqlc.narg('system_id')    IS NULL OR c.system_id    = sqlc.narg('system_id'))
+    AND (sqlc.narg('talkgroup_id') IS NULL OR c.talkgroup_id = sqlc.narg('talkgroup_id'))
+    AND (sqlc.narg('date_from')    IS NULL OR c.date_time    >= sqlc.narg('date_from'))
+    AND (sqlc.narg('date_to')      IS NULL OR c.date_time    <= sqlc.narg('date_to'));
+
 -- name: CreateCall :one
 INSERT INTO calls (
     audio_path,

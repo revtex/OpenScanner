@@ -73,6 +73,37 @@ func JWTAuth() gin.HandlerFunc {
 	}
 }
 
+// OptionalJWTAuth extracts user info from a Bearer JWT if present, but does not
+// abort the request when the token is missing or invalid. Useful for endpoints
+// that are publicly accessible but provide extra data to authenticated users.
+func OptionalJWTAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		header := c.GetHeader("Authorization")
+		if !strings.HasPrefix(header, "Bearer ") {
+			c.Next()
+			return
+		}
+
+		tokenStr := strings.TrimPrefix(header, "Bearer ")
+		claims, err := auth.ParseToken(tokenStr)
+		if err != nil {
+			c.Next()
+			return
+		}
+
+		if auth.Tokens.IsRevoked(claims.ID) {
+			c.Next()
+			return
+		}
+
+		c.Set("userID", claims.UserID)
+		c.Set("username", claims.Username)
+		c.Set("role", claims.Role)
+		c.Set("jti", claims.ID)
+		c.Next()
+	}
+}
+
 // RequireAdmin checks that the authenticated user has the admin role.
 // Must be chained after JWTAuth. Aborts with 403 if the role is not admin.
 func RequireAdmin() gin.HandlerFunc {
