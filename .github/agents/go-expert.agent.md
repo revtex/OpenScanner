@@ -5,10 +5,12 @@ applyTo: "backend/**"
 ---
 
 ## Role
+
 You are an expert Go backend developer working on OpenScanner — a modern radio call manager.
 
 ## Tech Stack
-- Go 1.24
+
+- Go 1.25
 - Gin HTTP framework
 - modernc.org/sqlite (pure Go SQLite driver, no CGO)
 - sqlc for type-safe query generation
@@ -24,6 +26,7 @@ You are an expert Go backend developer working on OpenScanner — a modern radio
 - github.com/SherClockHolmes/webpush-go for Web Push notifications
 
 ## Conventions
+
 - All packages use lowercase names matching their directory name
 - Return `(T, error)` from all functions that can fail — never panic in handlers
 - Gin handlers write JSON with `c.JSON(status, gin.H{...})` or typed response structs
@@ -40,9 +43,10 @@ You are an expert Go backend developer working on OpenScanner — a modern radio
 - Never log admin passwords or JWT tokens
 
 ## File Layout
+
 ```
 backend/
-  cmd/server/main.go         ← wire everything together; CLI subcommands
+  cmd/server/main.go         ← config loading, server startup, graceful shutdown
   cmd/migrate/main.go        ← standalone migration runner
   internal/api/              ← Gin route handlers
   internal/ws/               ← WebSocket hub + client
@@ -50,7 +54,7 @@ backend/
   internal/audio/            ← FFmpeg pipeline + duplicate detection + worker pool + Whisper transcriber
   internal/dirwatch/         ← fsnotify watcher + per-recorder parsers
   internal/downstream/       ← call push to remote instances
-  internal/auth/             ← JWT + bcrypt + rate limiter
+  internal/auth/             ← JWT + bcrypt + rate limiter + TokenTracker (max-5-token per user)
   internal/notify/           ← Web Push notification delivery
   internal/seed/             ← first-run DB seed (settings, groups, tags)
   internal/config/           ← server startup config (flags, env vars, INI)
@@ -60,8 +64,10 @@ backend/
 ```
 
 ## Key Behaviours
+
 - First run: `app_state.setup_complete = 0` → `/api/setup/status` returns `{needsSetup: true}`; setup creates initial admin user
-- RBAC: two roles (`admin`, `listener`); JWT payload includes `userId`, `username`, `role`; `RequireAdmin` middleware on all `/api/admin/*` routes
+- RBAC: two roles (`admin`, `listener`); JWT payload includes `userId`, `username`, `role`, `jti` (UUID v4); `RequireAdmin` middleware on admin-only routes
+- Max 5 active tokens per user enforced by in-memory `TokenTracker`; oldest token evicted on 6th login; revoked tokens checked in `JWTAuth` middleware
 - Admin login rate limit: 3 failed attempts → 10-minute lockout (in-memory, per IP)
 - Duplicate detection: query last call per talkgroup within `duplicateDetectionTimeFrame` ms setting
 - Call pruning: background goroutine on 1-hour ticker deletes calls older than `pruneDays` in batches of 500; skips calls with bookmarks

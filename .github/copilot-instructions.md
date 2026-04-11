@@ -6,7 +6,7 @@ OpenScanner is a modern web-based radio call manager — a reimplementation of r
 
 ## Tech Stack
 
-- **Backend:** Go 1.24, Gin, coder/websocket, modernc.org/sqlite, sqlc, golang-jwt, bcrypt, golang-migrate, kardianos/service, log/slog, go:embed, webpush-go
+- **Backend:** Go 1.25, Gin, coder/websocket, modernc.org/sqlite, sqlc, golang-jwt, bcrypt, golang-migrate, kardianos/service, log/slog, go:embed, webpush-go
 - **Frontend:** React 18, TypeScript (strict), Vite, DaisyUI, Tailwind CSS (dark/light themes), Redux Toolkit, RTK Query, @tanstack/react-virtual, Service Worker (PWA + push notifications)
 - **Database:** SQLite (WAL mode) — all application configuration is stored in the DB
 - **Server config:** CLI flags, environment variables, or optional INI file (for listen address, DB path, TLS)
