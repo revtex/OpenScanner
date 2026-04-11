@@ -570,7 +570,7 @@ All resources support `GET` (list), `POST` (create), `PUT /:id` (update), `DELET
 | Units        | `/api/admin/units`       |
 | Groups       | `/api/admin/groups`      |
 | Tags         | `/api/admin/tags`        |
-| API Keys     | `/api/admin/api-keys`    |
+| API Keys     | `/api/admin/apikeys`     |
 | Access Codes | `/api/admin/accesses`    |
 | DirWatches   | `/api/admin/dirwatches`  |
 | Downstreams  | `/api/admin/downstreams` |
@@ -1635,7 +1635,7 @@ All extended features are **configurable** — disabled by default (except keybo
 1. ✅ `internal/dirwatch/watcher.go` — `fsnotify` watcher per configured directory; polling fallback for CIFS/NFS mounts (controlled by `use_polling` column, configurable delay); restarts when dirwatch config changes via admin API
 2. ✅ `internal/dirwatch/parsers.go` — one parser function per recorder type:
    - `trunk-recorder` — JSON sidecar file
-   - `sdrtrunk` — CSV-based naming
+   - `sdrtrunk` — filename pattern (`<sysID>_<tgID>_<ts>.<ext>`)
    - `rtlsdr-airband` — filename pattern
    - `dsdplus` — DSDPlus Fast Lane format
    - `proscan` — ProScan format

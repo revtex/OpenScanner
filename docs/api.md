@@ -1,6 +1,6 @@
 # OpenScanner — API Reference
 
-> **Implementation status:** Phases 1–7 endpoints are implemented. All other endpoints listed below are planned for future phases and are marked accordingly.
+> **Implementation status:** Phases 1–8 endpoints are implemented. All other endpoints listed below are planned for future phases and are marked accordingly.
 
 ## Implemented Endpoints
 
@@ -698,4 +698,4 @@ Imports a full configuration JSON blob. Runs in a single database transaction �
 
 ## Planned Endpoints (not yet implemented)
 
-_No additional planned endpoints at this time. Future phases focus on frontend UI, Downstream Pusher, Push Notifications, Webhooks delivery, and Transcription._
+_No additional planned endpoints at this time. Future phases focus on frontend UI, Push Notifications, Webhooks delivery, and Transcription._

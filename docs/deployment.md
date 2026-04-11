@@ -39,12 +39,10 @@ Multi-stage build: Go 1.25 + Node 22 build stages → Alpine 3.21 runtime with F
 
 ```bash
 docker build -t openscanner .
-docker run -p 3000:3000 -v ./data:/app openscanner
+docker run -p 3000:3000 -v ./data:/data -e OPENSCANNER_BASE_DIR=/data openscanner
 ```
 
 ### docker-compose
-
-> **Note:** The docker-compose.yml currently uses `OPENSCANNER_DATA_DIR` and `OPENSCANNER_AUDIO_DIR` environment variables which are not yet recognised by the server. For now, use the supported variables (`OPENSCANNER_LISTEN`, `OPENSCANNER_DB_FILE`, `OPENSCANNER_BASE_DIR`) instead.
 
 ```yaml
 services:
@@ -53,11 +51,10 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./data:/app
+      - ./data:/data
     environment:
+      - OPENSCANNER_BASE_DIR=/data
       - OPENSCANNER_LISTEN=0.0.0.0:3000
-      - OPENSCANNER_DB_FILE=/app/openscanner.db
-      - OPENSCANNER_BASE_DIR=/app
     restart: unless-stopped
 ```
 
