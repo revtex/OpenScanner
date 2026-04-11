@@ -7,9 +7,7 @@ services:
       - "3000:3000"
     volumes:
       - ./data:/data
-      - ./audio:/audio
     environment:
-      - OPENSCANNER_DATA_DIR=/data
-      - OPENSCANNER_AUDIO_DIR=/audio
+      - OPENSCANNER_BASE_DIR=/data
       - OPENSCANNER_LISTEN=0.0.0.0:3000
     restart: unless-stopped

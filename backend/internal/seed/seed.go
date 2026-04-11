@@ -97,7 +97,7 @@ func seedGroups(ctx context.Context, tx *sql.Tx) error {
 	groups := []string{"Air", "EMS", "Fire", "Interop", "Law", "Unknown"}
 	for _, name := range groups {
 		_, err := tx.ExecContext(ctx,
-			`INSERT OR IGNORE INTO groups (name) VALUES (?)`, name)
+			`INSERT OR IGNORE INTO groups (label) VALUES (?)`, name)
 		if err != nil {
 			return fmt.Errorf("seed group %q: %w", name, err)
 		}
@@ -119,7 +119,7 @@ func seedTags(ctx context.Context, tx *sql.Tx) error {
 	}
 	for _, name := range tags {
 		_, err := tx.ExecContext(ctx,
-			`INSERT OR IGNORE INTO tags (name) VALUES (?)`, name)
+			`INSERT OR IGNORE INTO tags (label) VALUES (?)`, name)
 		if err != nil {
 			return fmt.Errorf("seed tag %q: %w", name, err)
 		}
