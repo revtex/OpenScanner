@@ -278,8 +278,7 @@ Upgrades to a WebSocket connection for real-time call streaming.
 **Auth (one of):**
 
 1. **Public access** — When `publicAccess=true`, no authentication required. Client connects and immediately receives `VER` + `CFG` welcome messages.
-2. **Access code** — Client sends `["PIN", "<code>"]` as first message. Server validates against `accesses` table, checks expiration and connection limit. On failure, server sends `["XPR"]` and closes.
-3. **Listener JWT** — Client sends the JWT token string as the first array element. Server validates token, checks revocation, verifies `listener` role, and loads user grants. Connection limit enforced per user.
+2. **Listener JWT** — Client sends the JWT token string as the first message. Server validates token, checks revocation, verifies `listener` role, and loads user grants. Connection limit enforced per user.
 
 **Welcome sequence (on successful auth):**
 
@@ -288,8 +287,8 @@ Upgrades to a WebSocket connection for real-time call streaming.
 
 **Rejection messages:**
 
-- `["XPR"]` — Invalid credentials, expired access code, or revoked token. Connection closed.
-- `["MAX"]` — Server has reached `maxClients` limit, or user/access-code connection limit exceeded. Connection closed.
+- `["XPR"]` — Invalid credentials or revoked token. Connection closed. Frontend clears credentials and redirects to login.
+- `["MAX"]` — Server has reached `maxClients` limit, or per-user connection limit exceeded. Connection closed.
 
 **Grant filtering:** Clients only receive `CAL` events for systems/talkgroups they are authorized to see. Public-access clients receive all events.
 
@@ -297,7 +296,6 @@ Upgrades to a WebSocket connection for real-time call streaming.
 
 - Global `maxClients` setting (checked before accepting connection)
 - Per-user `limit` column on `users` table
-- Per-access-code `limit` column on `accesses` table
 
 #### `GET /api/admin/ws` — Admin WebSocket
 
@@ -320,8 +318,7 @@ Upgrades to a WebSocket connection for admin dashboard events.
 | `VER`   | Server → Client | `{"version", "branding", "email"}`                  | Server version and branding. Sent on connect (listener only).                                                                                                                                                    |
 | `LSC`   | Server → Client | `<count>` (integer)                                 | Active listener count. Broadcast on connect/disconnect, debounced to max 1 per 3 seconds.                                                                                                                        |
 | `XPR`   | Server → Client | _(none)_                                            | Session expired or auth failure. Connection closed after sending.                                                                                                                                                |
-| `MAX`   | Server → Client | _(none)_                                            | Max clients reached or per-user/access limit exceeded. Connection closed after sending.                                                                                                                          |
-| `PIN`   | Client → Server | `"<accessCode>"` (string)                           | Access code authentication. Only processed as the first message during auth handshake.                                                                                                                           |
+| `MAX`   | Server → Client | _(none)_                                            | Max clients reached or per-user limit exceeded. Connection closed after sending.                                                                                                                                 |
 | `LFM`   | Bidirectional   | `{...}` (map)                                       | Live feed map update. Client sends to update; server echoes back.                                                                                                                                                |
 | `LCL`   | Server → Client | `{"calls": [...], "total": <n>}`                    | Paginated call list results.                                                                                                                                                                                     |
 | `TRN`   | Server → Client | `{"callId": <id>, "text": "..."}`                   | Transcript ready for a call.                                                                                                                                                                                     |
@@ -369,17 +366,17 @@ All CRUD resources follow the same pattern:
 
 #### `GET /api/admin/config`
 
-Returns all settings as a flat JSON object.
+Returns all settings as a JSON array of key/value objects.
 
 **Response `200`:**
 
 ```json
-{
-  "audioConversion": "1",
-  "publicAccess": "false",
-  "maxClients": "200",
+[
+  {"key": "audioConversion", "value": "1"},
+  {"key": "publicAccess", "value": "false"},
+  {"key": "maxClients", "value": "200"},
   ...
-}
+]
 ```
 
 #### `PUT /api/admin/config`
@@ -575,20 +572,6 @@ Returns all units across all systems.
 
 ---
 
-### Accesses
-
-#### `GET /api/admin/accesses`
-
-#### `POST /api/admin/accesses`
-
-**Request:** `CreateAccessParams` fields: `code` (required, 422 if empty), `ident`, `expiration`, `limit`, `systems_json`, `order`.
-
-**Error `409`:** Access code already exists.
-
-#### `PUT /api/admin/accesses/:id`
-
-#### `DELETE /api/admin/accesses/:id`
-
 ---
 
 ### Dirwatches
@@ -724,7 +707,6 @@ Exports the full server configuration as a JSON download.
   "groups": [...],
   "tags": [...],
   "apiKeys": [...],
-  "accesses": [...],
   "dirwatches": [...],
   "downstreams": [...],
   "webhooks": [...]

@@ -8,16 +8,6 @@ import (
 	"database/sql"
 )
 
-type Access struct {
-	ID          int64          `db:"id" json:"id"`
-	Code        string         `db:"code" json:"code"`
-	Ident       sql.NullString `db:"ident" json:"ident"`
-	Expiration  sql.NullInt64  `db:"expiration" json:"expiration"`
-	Limit       sql.NullInt64  `db:"limit" json:"limit"`
-	SystemsJson sql.NullString `db:"systems_json" json:"systems_json"`
-	Order       int64          `db:"order" json:"order"`
-}
-
 type ApiKey struct {
 	ID          int64          `db:"id" json:"id"`
 	Key         string         `db:"key" json:"key"`

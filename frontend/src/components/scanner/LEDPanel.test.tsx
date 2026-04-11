@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router-dom";
 import { LEDPanel } from "@/components/scanner/LEDPanel";
 import { scannerSlice } from "@/app/slices/scannerSlice";
 import { authSlice } from "@/app/slices/authSlice";
@@ -40,9 +41,11 @@ function renderLED(preloadedState?: Partial<RootState>) {
   const store = makeStore(preloadedState);
   return {
     ...render(
-      <Provider store={store}>
-        <LEDPanel />
-      </Provider>,
+      <MemoryRouter>
+        <Provider store={store}>
+          <LEDPanel />
+        </Provider>
+      </MemoryRouter>,
     ),
     store,
   };
@@ -97,6 +100,32 @@ describe("LEDPanel", () => {
       },
     });
     expect(screen.getByText("MY SCANNER")).toBeInTheDocument();
+  });
+
+  it('falls back to "OPENSCANNER" when branding is blank', () => {
+    const config: ScannerConfig = {
+      systems: [],
+      branding: "   ",
+      email: "",
+      version: "1.0",
+    };
+    renderLED({
+      scanner: {
+        isLive: true,
+        isPaused: false,
+        heldSystem: null,
+        heldTG: null,
+        avoidList: [],
+        callQueue: [],
+        currentCall: null,
+        history: [],
+        listenerCount: 0,
+        connectionStatus: "disconnected",
+        config,
+        tgSelection: {},
+      },
+    });
+    expect(screen.getByText("OPENSCANNER")).toBeInTheDocument();
   });
 
   it("shows theme toggle button", () => {
@@ -156,7 +185,7 @@ describe("LEDPanel", () => {
       '[style*="background-color"]',
     ) as HTMLElement;
     expect(led).toBeTruthy();
-    expect(led.style.backgroundColor).toBe("rgb(255, 145, 0)"); // #ff9100
+    expect(led.style.backgroundColor).toBe("rgb(255, 145, 0)"); // #ff9100 orange
   });
 
   it("shows blink animation when paused", () => {
@@ -225,7 +254,7 @@ describe("LEDPanel", () => {
     expect(led.style.backgroundColor).toBe("rgb(255, 0, 255)"); // #ff00ff
   });
 
-  it("shows orange LED when not live (and not playing)", () => {
+  it("shows gray LED when not live and not playing", () => {
     renderLED({
       scanner: {
         isLive: false,
@@ -246,6 +275,6 @@ describe("LEDPanel", () => {
       '[style*="background-color"]',
     ) as HTMLElement;
     expect(led).toBeTruthy();
-    expect(led.style.backgroundColor).toBe("rgb(255, 145, 0)");
+    expect(led.style.backgroundColor).toBe("rgb(80, 80, 80)"); // #505050
   });
 });

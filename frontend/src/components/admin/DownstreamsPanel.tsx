@@ -143,6 +143,11 @@ export default function DownstreamsPanel() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Downstreams</h1>
+      <p className="text-sm text-base-content/70 mb-4">
+        Forward ingested calls to other OpenScanner instances. Each downstream
+        specifies the target server URL, API key, and which systems to forward.
+        Use this to chain multiple servers or distribute calls across sites.
+      </p>
       <div className="card bg-base-200">
         <div className="card-body">
           <div className="flex justify-end mb-2">

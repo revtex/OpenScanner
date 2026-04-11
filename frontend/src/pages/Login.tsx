@@ -1,13 +1,18 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Lock } from "lucide-react";
 import { usePostLoginMutation } from "@/app/api";
 import { useAppDispatch } from "@/app/store";
 import { setCredentials } from "@/app/slices/authSlice";
 import { useChangePasswordMutation } from "@/app/slices/adminSlice";
 
+interface LoginLocationState {
+  from?: string;
+}
+
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useAppDispatch();
   const [postLogin, { isLoading }] = usePostLoginMutation();
   const [changePassword] = useChangePasswordMutation();
@@ -20,21 +25,36 @@ export default function Login() {
   const [needChange, setNeedChange] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const from = (location.state as LoginLocationState | null)?.from;
+
+  const getPostLoginPath = (role: string) => {
+    if (typeof from !== "string" || !from.startsWith("/")) {
+      return "/";
+    }
+    if (from.startsWith("/admin") && role !== "admin") {
+      return "/";
+    }
+    return from;
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     try {
       const result = await postLogin({ username, password }).unwrap();
-      if (result.passwordNeedChange) {
+      const creds = {
+        token: result.token,
+        role: result.user.role,
+        username: result.user.username,
+        passwordNeedChange: result.passwordNeedChange,
+      };
+      if (creds.passwordNeedChange) {
         setNeedChange(true);
-        dispatch(setCredentials(result));
+        dispatch(setCredentials(creds));
         return;
       }
-      dispatch(setCredentials(result));
-      navigate(result.role === "admin" ? "/admin/users" : "/", {
-        replace: true,
-      });
+      dispatch(setCredentials(creds));
+      navigate(getPostLoginPath(creds.role), { replace: true });
     } catch {
       setError("Invalid username or password");
     }
@@ -52,7 +72,7 @@ export default function Login() {
     }
     try {
       await changePassword({ currentPassword: password, newPassword }).unwrap();
-      navigate("/", { replace: true });
+      navigate(getPostLoginPath("admin"), { replace: true });
     } catch {
       setError("Failed to change password");
     }

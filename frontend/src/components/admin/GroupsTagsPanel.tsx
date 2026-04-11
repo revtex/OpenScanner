@@ -207,6 +207,11 @@ export default function GroupsTagsPanel() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Groups & Tags</h1>
+      <p className="text-sm text-base-content/70 mb-4">
+        Groups organize talkgroups into categories displayed in the Select
+        Talkgroup panel. Tags provide additional classification for filtering.
+        Assign groups and tags to talkgroups in the Systems page.
+      </p>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <LabelTable<AdminGroup>
           title="Group"

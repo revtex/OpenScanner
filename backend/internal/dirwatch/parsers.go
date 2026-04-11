@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -167,35 +168,42 @@ func rawOrEmpty(raw json.RawMessage) string {
 
 // ── SDRTrunk ─────────────────────────────────────────────────────────────────
 
-// parseSDRTrunk parses the filename pattern: <systemID>_<talkgroupID>_<unixTs>.<ext>
-// If dirwatch overrides are set they take precedence.
+// Compiled regexes for SDR Trunk ID3 tag parsing.
+var (
+	reSDRArtist = regexp.MustCompile(`^([0-9]+) ?(.*)$`)
+	reSDRDate   = regexp.MustCompile(`Date:([^;]+);`)
+	reSDRFreq   = regexp.MustCompile(`Frequency:([0-9]+);`)
+	reSDRTgID   = regexp.MustCompile(`([0-9]+)`)
+)
+
+// parseSDRTrunk parses SDR Trunk recordings. It first attempts to read
+// metadata from MP3 ID3v2 tags (Artist, Comment, Title). If tag reading
+// fails or the file is not an MP3, it falls back to filename pattern
+// parsing: <systemID>_<talkgroupID>_<unixTs>.<ext>
 func parseSDRTrunk(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
 	if !isAudioFile(triggeredPath) {
 		return nil, nil
 	}
 
-	name := filepath.Base(triggeredPath)
-	stem := strings.TrimSuffix(name, filepath.Ext(name))
-	parts := strings.SplitN(stem, "_", 3)
-
-	var sysID, tgID, ts int64
-	if len(parts) == 3 {
-		sysID, _ = strconv.ParseInt(parts[0], 10, 64)
-		tgID, _ = strconv.ParseInt(parts[1], 10, 64)
-		ts, _ = strconv.ParseInt(parts[2], 10, 64)
-	}
-
-	if dw.SystemID.Valid {
-		sysID = dw.SystemID.Int64
-	}
-	if dw.TalkgroupID.Valid {
-		tgID = dw.TalkgroupID.Int64
-	}
-
+	var sysID, tgID, freq, source int64
 	var dt time.Time
-	if ts > 0 {
-		dt = time.Unix(ts, 0)
-	} else {
+
+	// Try ID3 tag reading first.
+	if tagsParsed := parseSDRTrunkTags(triggeredPath, &sysID, &tgID, &freq, &source, &dt); !tagsParsed {
+		// Fall back to filename parsing: <systemID>_<talkgroupID>_<unixTs>.<ext>
+		name := filepath.Base(triggeredPath)
+		stem := strings.TrimSuffix(name, filepath.Ext(name))
+		parts := strings.SplitN(stem, "_", 3)
+		if len(parts) == 3 {
+			sysID, _ = strconv.ParseInt(parts[0], 10, 64)
+			tgID, _ = strconv.ParseInt(parts[1], 10, 64)
+			if ts, err := strconv.ParseInt(parts[2], 10, 64); err == nil && ts > 0 {
+				dt = time.Unix(ts, 0)
+			}
+		}
+	}
+
+	if dt.IsZero() {
 		info, err := os.Stat(triggeredPath)
 		if err != nil {
 			return nil, err
@@ -203,7 +211,13 @@ func parseSDRTrunk(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
 		dt = info.ModTime()
 	}
 
-	var freq int64
+	// Config overrides take precedence.
+	if dw.SystemID.Valid {
+		sysID = dw.SystemID.Int64
+	}
+	if dw.TalkgroupID.Valid {
+		tgID = dw.TalkgroupID.Int64
+	}
 	if dw.Frequency.Valid {
 		freq = dw.Frequency.Int64
 	}
@@ -214,7 +228,214 @@ func parseSDRTrunk(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
 		SystemID:      sysID,
 		TalkgroupID:   tgID,
 		Frequency:     freq,
+		Source:        source,
 	}, nil
+}
+
+// parseSDRTrunkTags attempts to read ID3 tags from an MP3 file. Returns true
+// if tags were successfully parsed, false otherwise.
+func parseSDRTrunkTags(path string, sysID, tgID, freq, source *int64, dt *time.Time) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext != ".mp3" {
+		return false
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	m, err := readID3Tags(f)
+	if err != nil || m == nil {
+		return false
+	}
+
+	parsed := false
+
+	// Artist: "<sourceID> [optional unit label]"
+	if artist := m.artist; artist != "" {
+		if s := reSDRArtist.FindStringSubmatch(artist); len(s) >= 2 {
+			if i, err := strconv.ParseInt(s[1], 10, 64); err == nil && i > 0 {
+				*source = i
+				parsed = true
+			}
+		}
+	}
+
+	// Comment: "Date:YYYY-MM-DD HH:MM:SS.mmm;Frequency:NNNNN;System:label;"
+	if comment := m.comment; comment != "" {
+		if s := reSDRDate.FindStringSubmatch(comment); len(s) == 2 {
+			if t, err := time.ParseInLocation("2006-01-02 15:04:05.999", s[1], time.Now().Location()); err == nil {
+				*dt = t.UTC()
+				parsed = true
+			}
+		}
+		if s := reSDRFreq.FindStringSubmatch(comment); len(s) == 2 {
+			if i, err := strconv.ParseInt(s[1], 10, 64); err == nil && i > 0 {
+				*freq = i
+				parsed = true
+			}
+		}
+		// System label → we don't have a system label lookup here, but the
+		// filename fallback or dw.SystemID override handles system resolution.
+	}
+
+	// Title: contains talkgroup ID (first numeric sequence).
+	if title := m.title; title != "" {
+		if s := reSDRTgID.FindStringSubmatch(title); len(s) > 1 {
+			if i, err := strconv.ParseInt(s[1], 10, 64); err == nil && i > 0 {
+				*tgID = i
+				parsed = true
+			}
+		}
+	}
+
+	return parsed
+}
+
+// id3Meta holds the ID3 tag fields we care about.
+type id3Meta struct {
+	artist  string
+	title   string
+	comment string
+}
+
+// readID3Tags reads ID3v2 tags from an MP3 file. Returns nil if no tags found.
+func readID3Tags(f *os.File) (*id3Meta, error) {
+	// Read the first few KB to check for ID3 header.
+	header := make([]byte, 10)
+	if _, err := f.Read(header); err != nil {
+		return nil, err
+	}
+	// Check for ID3v2 header: "ID3"
+	if string(header[0:3]) != "ID3" {
+		return nil, nil
+	}
+
+	// ID3v2 size is encoded as 4 syncsafe bytes.
+	size := int(header[6])<<21 | int(header[7])<<14 | int(header[8])<<7 | int(header[9])
+	if size <= 0 || size > 1<<20 {
+		return nil, nil
+	}
+
+	// Re-read from start.
+	if _, err := f.Seek(0, 0); err != nil {
+		return nil, err
+	}
+	buf := make([]byte, 10+size)
+	if _, err := io.ReadFull(f, buf); err != nil {
+		return nil, err
+	}
+
+	version := header[3] // major version (3 = ID3v2.3, 4 = ID3v2.4)
+	m := &id3Meta{}
+
+	// Parse frames starting at offset 10.
+	pos := 10
+	for pos+10 <= len(buf) {
+		frameID := string(buf[pos : pos+4])
+		if frameID[0] == 0 {
+			break // padding
+		}
+
+		var frameSize int
+		if version == 4 {
+			// ID3v2.4: syncsafe integer
+			frameSize = int(buf[pos+4])<<21 | int(buf[pos+5])<<14 | int(buf[pos+6])<<7 | int(buf[pos+7])
+		} else {
+			// ID3v2.3: regular big-endian
+			frameSize = int(buf[pos+4])<<24 | int(buf[pos+5])<<16 | int(buf[pos+6])<<8 | int(buf[pos+7])
+		}
+
+		if frameSize <= 0 || pos+10+frameSize > len(buf) {
+			break
+		}
+
+		data := buf[pos+10 : pos+10+frameSize]
+		text := extractID3Text(data)
+
+		switch frameID {
+		case "TPE1":
+			m.artist = text
+		case "TIT2":
+			m.title = text
+		case "COMM":
+			m.comment = extractID3Comment(data)
+		}
+
+		pos += 10 + frameSize
+	}
+
+	if m.artist == "" && m.title == "" && m.comment == "" {
+		return nil, nil
+	}
+	return m, nil
+}
+
+// extractID3Text extracts a text string from an ID3v2 text frame.
+func extractID3Text(data []byte) string {
+	if len(data) < 2 {
+		return ""
+	}
+	encoding := data[0]
+	payload := data[1:]
+	switch encoding {
+	case 0: // ISO-8859-1
+		return strings.TrimRight(string(payload), "\x00")
+	case 1: // UTF-16 with BOM
+		return decodeUTF16(payload)
+	case 3: // UTF-8
+		return strings.TrimRight(string(payload), "\x00")
+	default:
+		return strings.TrimRight(string(payload), "\x00")
+	}
+}
+
+// extractID3Comment extracts text from a COMM frame (encoding + 3-byte lang + short desc + \0 + text).
+func extractID3Comment(data []byte) string {
+	if len(data) < 5 {
+		return ""
+	}
+	// Skip encoding byte + 3-byte language code.
+	payload := data[4:]
+	// Find the null terminator after the short description.
+	idx := strings.IndexByte(string(payload), 0)
+	if idx >= 0 && idx+1 < len(payload) {
+		return strings.TrimRight(string(payload[idx+1:]), "\x00")
+	}
+	return strings.TrimRight(string(payload), "\x00")
+}
+
+// decodeUTF16 decodes a UTF-16 byte slice (with optional BOM) to a Go string.
+func decodeUTF16(b []byte) string {
+	if len(b) < 2 {
+		return ""
+	}
+	// Detect BOM.
+	bigEndian := true
+	start := 0
+	if b[0] == 0xFF && b[1] == 0xFE {
+		bigEndian = false
+		start = 2
+	} else if b[0] == 0xFE && b[1] == 0xFF {
+		bigEndian = true
+		start = 2
+	}
+	var runes []rune
+	for i := start; i+1 < len(b); i += 2 {
+		var cp uint16
+		if bigEndian {
+			cp = uint16(b[i])<<8 | uint16(b[i+1])
+		} else {
+			cp = uint16(b[i+1])<<8 | uint16(b[i])
+		}
+		if cp == 0 {
+			break
+		}
+		runes = append(runes, rune(cp))
+	}
+	return string(runes)
 }
 
 // ── RTL-SDR Airband ──────────────────────────────────────────────────────────
@@ -248,27 +469,152 @@ func parseRTLSDRAirband(dw db.Dirwatch, triggeredPath string) (*ParsedCall, erro
 
 // ── DSDPlus ──────────────────────────────────────────────────────────────────
 
+// Compiled regexes for DSD+ filename parsing.
+var (
+	reDSDDate    = regexp.MustCompile(`([0-9]+)$`)
+	reDSDTime    = regexp.MustCompile(`^([0-9]+)`)
+	reDSDSysNum  = regexp.MustCompile(`^([0-9]+)-.+$`)
+	reDSDNexSys  = regexp.MustCompile(`^.([0-9]+)-[0-9]+$`)
+	reDSDNexRAN  = regexp.MustCompile(`RAN([0-9]+)`)
+	reDSDP25Sys  = regexp.MustCompile(`^[^\.]+\.([^-]+)`)
+	reDSDBracket = regexp.MustCompile(`[^\[\]]+`)
+)
+
+// parseDSDPlus handles DSD+ recordings.
+//
+// Filename format uses underscore delimiters with bracket-escaped labels:
+//
+//	HHMMSS_[data]_MODE_CHANNEL_[TALKGROUP label]_[SOURCE label]
+//
+// Date is extracted from the parent folder name (YYYYMMDD suffix).
+// MODE determines how the system ID is decoded from the CHANNEL segment.
 func parseDSDPlus(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
 	if !isAudioFile(triggeredPath) {
 		return nil, nil
 	}
-	info, err := os.Stat(triggeredPath)
-	if err != nil {
-		return nil, err
+
+	base := strings.TrimSuffix(filepath.Base(triggeredPath), filepath.Ext(filepath.Base(triggeredPath)))
+	dir := filepath.Dir(triggeredPath)
+
+	// Split by underscores but treat [...] as atomic segments.
+	meta := splitDSDPlusMeta(base)
+
+	var dt time.Time
+
+	// Extract date from parent folder (YYYYMMDD suffix) + time from filename (HHMMSS prefix).
+	if d := reDSDDate.FindStringSubmatch(dir); len(d) == 2 && len(d[1]) == 8 {
+		if t := reDSDTime.FindStringSubmatch(base); len(t) == 2 && len(t[1]) == 6 {
+			dy, ye := strconv.Atoi(d[1][0:4])
+			dm, me := strconv.Atoi(d[1][4:6])
+			dd, de := strconv.Atoi(d[1][6:8])
+			th, he := strconv.Atoi(t[1][0:2])
+			tm, mie := strconv.Atoi(t[1][2:4])
+			ts, se := strconv.Atoi(t[1][4:6])
+			if ye == nil && me == nil && de == nil && he == nil && mie == nil && se == nil {
+				dt = time.Date(dy, time.Month(dm), dd, th, tm, ts, 0, time.Now().Location()).UTC()
+			}
+		}
 	}
-	var sysID, tgID int64
+
+	// Fall back to file ModTime if date extraction failed.
+	if dt.IsZero() {
+		info, err := os.Stat(triggeredPath)
+		if err != nil {
+			return nil, err
+		}
+		dt = info.ModTime()
+	}
+
+	var sysID, tgID, source int64
+
+	// Extract system ID from MODE + CHANNEL segments.
+	if len(meta) > 3 {
+		switch meta[2] {
+		case "ConP(BS)", "DMR(BS)", "P25(BS)":
+			if s := reDSDSysNum.FindStringSubmatch(meta[3]); len(s) > 1 {
+				if i, err := strconv.ParseInt(s[1], 10, 64); err == nil {
+					sysID = i
+				}
+			}
+		case "NEXEDGE48(CB)", "NEXEDGE48(CS)", "NEXEDGE48(TB)",
+			"NEXEDGE96(CB)", "NEXEDGE96(CS)", "NEXEDGE96(TB)":
+			if s := reDSDNexSys.FindStringSubmatch(meta[3]); len(s) > 1 {
+				if i, err := strconv.ParseInt(s[1], 10, 64); err == nil && i > 0 {
+					sysID = i
+				}
+			} else if len(meta) > 4 {
+				if s := reDSDNexRAN.FindStringSubmatch(meta[4]); len(s) > 1 {
+					if i, err := strconv.ParseInt(s[1], 10, 64); err == nil && i > 0 {
+						sysID = i
+					}
+				}
+			}
+		case "P25":
+			if s := reDSDP25Sys.FindStringSubmatch(meta[3]); len(s) > 1 {
+				if i, err := strconv.ParseInt(s[1], 16, 64); err == nil && i > 0 {
+					sysID = i
+				}
+			}
+		}
+	}
+
+	// Extract talkgroup from second-to-last segment.
+	if len(meta) >= 2 {
+		if s := reDSDBracket.FindAllString(meta[len(meta)-2], -1); len(s) > 0 {
+			if i, err := strconv.ParseInt(s[0], 10, 64); err == nil && i > 0 {
+				tgID = i
+			}
+		}
+	}
+
+	// Extract source unit from last segment.
+	if len(meta) >= 1 {
+		if s := reDSDBracket.FindAllString(meta[len(meta)-1], -1); len(s) > 0 {
+			if i, err := strconv.ParseInt(s[0], 10, 64); err == nil && i > 0 {
+				source = i
+			}
+		}
+	}
+
+	// Config overrides take precedence.
 	if dw.SystemID.Valid {
 		sysID = dw.SystemID.Int64
 	}
 	if dw.TalkgroupID.Valid {
 		tgID = dw.TalkgroupID.Int64
 	}
+
 	return &ParsedCall{
 		AudioFilePath: triggeredPath,
-		DateTime:      info.ModTime(),
+		DateTime:      dt,
 		SystemID:      sysID,
 		TalkgroupID:   tgID,
+		Source:        source,
 	}, nil
+}
+
+// splitDSDPlusMeta splits a DSD+ filename by underscores, treating content
+// within square brackets as atomic (not split). Brackets are preserved in
+// the returned segments.
+func splitDSDPlusMeta(base string) []string {
+	meta := []string{""}
+	inBracket := false
+	ptr := 0
+	for i := 0; i < len(base); i++ {
+		ch := base[i]
+		if ch == '[' {
+			inBracket = true
+		} else if ch == ']' {
+			inBracket = false
+		}
+		if !inBracket && ch == '_' {
+			ptr++
+			meta = append(meta, "")
+		} else {
+			meta[ptr] += string(ch)
+		}
+	}
+	return meta
 }
 
 // ── ProScan ───────────────────────────────────────────────────────────────────

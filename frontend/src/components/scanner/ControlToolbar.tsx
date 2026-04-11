@@ -15,7 +15,9 @@ import {
   Search,
   Keyboard,
   Maximize,
+  Minimize,
 } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
 import type { AvoidEntry } from "@/types";
 
 interface ControlToolbarProps {
@@ -68,12 +70,28 @@ export function ControlToolbar({
   const isMuted = volume === 0;
   const isHolding = heldSystem !== null || heldTG !== null;
   const avoidCount = avoidList.length;
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const handleAvoid = (minutes: number) => {
     if (!currentCallTgId) return;
     const expiresAt = minutes === 0 ? 0 : Date.now() + minutes * 60 * 1000;
     onAddAvoid({ talkgroupId: currentCallTgId, expiresAt });
   };
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement.requestFullscreen();
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
 
   return (
     <div className="mt-4 space-y-2">
@@ -85,7 +103,7 @@ export function ControlToolbar({
           data-tip={isPaused ? "Resume (Space)" : "Pause (Space)"}
         >
           <button
-            className="btn btn-circle btn-primary w-11 h-11"
+            className={`btn btn-circle w-11 h-11 ${isPaused ? "btn-warning" : "btn-primary"}`}
             onClick={onTogglePause}
             aria-label={isPaused ? "Resume" : "Pause"}
           >
@@ -324,18 +342,66 @@ export function ControlToolbar({
               </button>
             </li>
             <li>
-              <button>
-                <Maximize className="w-4 h-4" /> Fullscreen
+              <button onClick={toggleFullscreen}>
+                {isFullscreen ? (
+                  <Minimize className="w-4 h-4" />
+                ) : (
+                  <Maximize className="w-4 h-4" />
+                )}{" "}
+                {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
               </button>
             </li>
             <li>
-              <button>
+              <button onClick={() => setShortcutsOpen(true)}>
                 <Keyboard className="w-4 h-4" /> Keyboard Shortcuts
               </button>
             </li>
           </ul>
         </div>
       </div>
+
+      {/* Keyboard Shortcuts Modal */}
+      {shortcutsOpen && (
+        <dialog
+          className="modal modal-open"
+          onClick={() => setShortcutsOpen(false)}
+        >
+          <div
+            className="modal-box max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-semibold text-lg mb-4">Keyboard Shortcuts</h3>
+            <div className="space-y-2 text-sm">
+              {[
+                ["Space", "Pause / Resume"],
+                ["S", "Skip next"],
+                ["R", "Replay last"],
+                ["H", "Hold current TG"],
+                ["J", "Hold current system"],
+                ["A", "Avoid (cycle 30/60/120 min)"],
+                ["F", "Toggle fullscreen"],
+                ["← / →", "Volume down / up"],
+                ["?", "Show shortcuts"],
+                ["B", "Bookmark current call"],
+                ["Esc", "Close any open panel"],
+              ].map(([key, desc]) => (
+                <div key={key} className="flex items-center justify-between">
+                  <span>{desc}</span>
+                  <kbd className="kbd kbd-sm">{key}</kbd>
+                </div>
+              ))}
+            </div>
+            <div className="modal-action">
+              <button
+                className="btn btn-sm"
+                onClick={() => setShortcutsOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </dialog>
+      )}
     </div>
   );
 }

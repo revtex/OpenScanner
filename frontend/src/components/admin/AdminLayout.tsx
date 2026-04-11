@@ -5,19 +5,20 @@ import {
   Route,
   Navigate,
   useNavigate,
+  useLocation,
 } from "react-router-dom";
 import {
   Users,
   Radio,
   FolderTree,
   Key,
-  Shield,
   FolderSearch,
   ArrowDownToLine,
   Settings,
   ScrollText,
   Wrench,
   LogOut,
+  Home,
   Menu,
   X,
 } from "lucide-react";
@@ -31,7 +32,6 @@ import UsersPanel from "@/components/admin/UsersPanel";
 import SystemsPanel from "@/components/admin/SystemsPanel";
 import GroupsTagsPanel from "@/components/admin/GroupsTagsPanel";
 import ApiKeysPanel from "@/components/admin/ApiKeysPanel";
-import AccessesPanel from "@/components/admin/AccessesPanel";
 import DirWatchPanel from "@/components/admin/DirWatchPanel";
 import DownstreamsPanel from "@/components/admin/DownstreamsPanel";
 import OptionsPanel from "@/components/admin/OptionsPanel";
@@ -44,7 +44,6 @@ const navItems = [
   { to: "/admin/systems", label: "Systems", icon: Radio },
   { to: "/admin/groups", label: "Groups & Tags", icon: FolderTree },
   { to: "/admin/apikeys", label: "API Keys", icon: Key },
-  { to: "/admin/accesses", label: "Accesses", icon: Shield },
   { to: "/admin/dirwatches", label: "Dir Watches", icon: FolderSearch },
   { to: "/admin/downstreams", label: "Downstreams", icon: ArrowDownToLine },
   { to: "/admin/options", label: "Options", icon: Settings },
@@ -80,6 +79,12 @@ function SidebarContent({
         </li>
       ))}
       <li className="mt-auto">
+        <NavLink to="/" onClick={onNavClick} className="hover:bg-base-300">
+          <Home className="w-5 h-5 shrink-0" />
+          {showLabels && <span>Scanner</span>}
+        </NavLink>
+      </li>
+      <li>
         <button onClick={onSignOut} className="hover:bg-base-300">
           <LogOut className="w-5 h-5 shrink-0" />
           {showLabels && <span>Sign Out</span>}
@@ -94,10 +99,19 @@ export default function AdminLayout() {
   const role = useAppSelector(selectRole);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   if (!token || role !== "admin") {
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          from: `${location.pathname}${location.search}${location.hash}`,
+        }}
+      />
+    );
   }
 
   const handleSignOut = () => {
@@ -134,7 +148,6 @@ export default function AdminLayout() {
             <Route path="systems" element={<SystemsPanel />} />
             <Route path="groups" element={<GroupsTagsPanel />} />
             <Route path="apikeys" element={<ApiKeysPanel />} />
-            <Route path="accesses" element={<AccessesPanel />} />
             <Route path="dirwatches" element={<DirWatchPanel />} />
             <Route path="downstreams" element={<DownstreamsPanel />} />
             <Route path="options" element={<OptionsPanel />} />

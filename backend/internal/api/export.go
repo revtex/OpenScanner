@@ -18,7 +18,6 @@ type configExport struct {
 	Groups      []db.Group      `json:"groups"`
 	Tags        []db.Tag        `json:"tags"`
 	APIKeys     []db.ApiKey     `json:"apiKeys"`
-	Accesses    []db.Access     `json:"accesses"`
 	Dirwatches  []db.Dirwatch   `json:"dirwatches"`
 	Downstreams []db.Downstream `json:"downstreams"`
 	Webhooks    []db.Webhook    `json:"webhooks"`
@@ -76,12 +75,6 @@ func (h *AdminHandler) ExportConfig(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to export api keys"})
 		return
 	}
-	accesses, err := h.queries.ListAccesses(ctx)
-	if err != nil {
-		slog.Error("export: failed to list accesses", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to export accesses"})
-		return
-	}
 	dirwatches, err := h.queries.ListDirwatches(ctx)
 	if err != nil {
 		slog.Error("export: failed to list dirwatches", "error", err)
@@ -110,7 +103,6 @@ func (h *AdminHandler) ExportConfig(c *gin.Context) {
 		Groups:      groups,
 		Tags:        tags,
 		APIKeys:     apiKeys,
-		Accesses:    accesses,
 		Dirwatches:  dirwatches,
 		Downstreams: downstreams,
 		Webhooks:    webhooks,
@@ -129,7 +121,6 @@ type configImport struct {
 	Talkgroups  []db.Talkgroup  `json:"talkgroups"`
 	Units       []db.Unit       `json:"units"`
 	APIKeys     []db.ApiKey     `json:"apiKeys"`
-	Accesses    []db.Access     `json:"accesses"`
 	Dirwatches  []db.Dirwatch   `json:"dirwatches"`
 	Downstreams []db.Downstream `json:"downstreams"`
 	Webhooks    []db.Webhook    `json:"webhooks"`
@@ -253,24 +244,6 @@ func (h *AdminHandler) ImportConfig(c *gin.Context) {
 			if !isUniqueViolation(err) {
 				slog.Error("import config: failed to create api key", "error", err)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to import api keys"})
-				return
-			}
-		}
-	}
-
-	// Accesses
-	for _, a := range data.Accesses {
-		if _, err := qtx.CreateAccess(ctx, db.CreateAccessParams{
-			Code:        a.Code,
-			Ident:       a.Ident,
-			Expiration:  a.Expiration,
-			Limit:       a.Limit,
-			SystemsJson: a.SystemsJson,
-			Order:       a.Order,
-		}); err != nil {
-			if !isUniqueViolation(err) {
-				slog.Error("import config: failed to create access", "error", err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to import accesses"})
 				return
 			}
 		}

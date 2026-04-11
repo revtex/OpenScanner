@@ -7,7 +7,6 @@ import type {
   AdminGroup,
   AdminTag,
   AdminApiKey,
-  AdminAccess,
   AdminDirwatch,
   AdminDownstream,
   AdminWebhook,
@@ -197,28 +196,6 @@ const adminApi = api.injectEndpoints({
       invalidatesTags: ["ApiKeys"],
     }),
 
-    // ── Accesses ──
-    listAccesses: builder.query<AdminAccess[], void>({
-      query: () => "/admin/accesses",
-      providesTags: ["Accesses"],
-    }),
-    createAccess: builder.mutation<AdminAccess, CreatePayload<AdminAccess>>({
-      query: (body) => ({ url: "/admin/accesses", method: "POST", body }),
-      invalidatesTags: ["Accesses"],
-    }),
-    updateAccess: builder.mutation<AdminAccess, UpdatePayload<AdminAccess>>({
-      query: ({ id, ...body }) => ({
-        url: `/admin/accesses/${id}`,
-        method: "PUT",
-        body,
-      }),
-      invalidatesTags: ["Accesses"],
-    }),
-    deleteAccess: builder.mutation<void, number>({
-      query: (id) => ({ url: `/admin/accesses/${id}`, method: "DELETE" }),
-      invalidatesTags: ["Accesses"],
-    }),
-
     // ── Dirwatches ──
     listDirwatches: builder.query<AdminDirwatch[], void>({
       query: () => "/admin/dirwatches",
@@ -354,7 +331,6 @@ const adminApi = api.injectEndpoints({
         "Groups",
         "Tags",
         "ApiKeys",
-        "Accesses",
         "Dirwatches",
         "Downstreams",
         "Webhooks",
@@ -409,11 +385,6 @@ export const {
   useCreateApiKeyMutation,
   useUpdateApiKeyMutation,
   useDeleteApiKeyMutation,
-  // Accesses
-  useListAccessesQuery,
-  useCreateAccessMutation,
-  useUpdateAccessMutation,
-  useDeleteAccessMutation,
   // Dirwatches
   useListDirwatchesQuery,
   useCreateDirwatchMutation,

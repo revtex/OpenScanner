@@ -12,6 +12,7 @@ import type { RootState } from "@/app/store";
 // --- Mocks ---
 
 const mockNavigate = vi.fn();
+let mockLocationState: unknown = null;
 vi.mock("react-router-dom", async () => {
   const actual =
     await vi.importActual<typeof import("react-router-dom")>(
@@ -20,6 +21,7 @@ vi.mock("react-router-dom", async () => {
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    useLocation: () => ({ state: mockLocationState }),
   };
 });
 
@@ -72,6 +74,7 @@ function renderLogin() {
 describe("Login", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLocationState = null;
   });
 
   it("renders login form", () => {
@@ -107,8 +110,7 @@ describe("Login", () => {
       unwrap: () =>
         Promise.resolve({
           token: "t",
-          role: "admin",
-          username: "admin",
+          user: { id: 1, username: "admin", role: "admin" },
           passwordNeedChange: true,
         }),
     });
@@ -129,13 +131,39 @@ describe("Login", () => {
     expect(screen.getByPlaceholderText("Confirm password")).toBeInTheDocument();
   });
 
-  it("redirects admin to /admin/users after login", async () => {
+  it("redirects to / after admin login", async () => {
     mockPostLogin.mockReturnValue({
       unwrap: () =>
         Promise.resolve({
           token: "tok",
-          role: "admin",
-          username: "admin",
+          user: { id: 1, username: "admin", role: "admin" },
+          passwordNeedChange: false,
+        }),
+    });
+
+    renderLogin();
+    fireEvent.change(screen.getByPlaceholderText("Username"), {
+      target: { value: "admin" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password"), {
+      target: { value: "pass1234" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/", {
+        replace: true,
+      });
+    });
+  });
+
+  it("redirects admin to requested admin route after login", async () => {
+    mockLocationState = { from: "/admin/users" };
+    mockPostLogin.mockReturnValue({
+      unwrap: () =>
+        Promise.resolve({
+          token: "tok",
+          user: { id: 1, username: "admin", role: "admin" },
           passwordNeedChange: false,
         }),
     });
@@ -161,8 +189,32 @@ describe("Login", () => {
       unwrap: () =>
         Promise.resolve({
           token: "tok",
-          role: "listener",
-          username: "user1",
+          user: { id: 2, username: "user1", role: "listener" },
+          passwordNeedChange: false,
+        }),
+    });
+
+    renderLogin();
+    fireEvent.change(screen.getByPlaceholderText("Username"), {
+      target: { value: "user1" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password"), {
+      target: { value: "pass1234" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+    });
+  });
+
+  it("redirects listener to / when requested route is admin", async () => {
+    mockLocationState = { from: "/admin/users" };
+    mockPostLogin.mockReturnValue({
+      unwrap: () =>
+        Promise.resolve({
+          token: "tok",
+          user: { id: 2, username: "user1", role: "listener" },
           passwordNeedChange: false,
         }),
     });

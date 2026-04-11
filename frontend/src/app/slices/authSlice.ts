@@ -9,10 +9,35 @@ interface AuthState {
   setupStatus: SetupStatus | null;
 }
 
+function loadPersistedAuth(): Pick<AuthState, "token" | "role" | "username"> {
+  try {
+    const raw = localStorage.getItem("os_auth");
+    if (raw) {
+      const parsed = JSON.parse(raw) as {
+        token?: string;
+        role?: string;
+        username?: string;
+      };
+      if (parsed.token && parsed.role && parsed.username) {
+        return {
+          token: parsed.token,
+          role: parsed.role,
+          username: parsed.username,
+        };
+      }
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return { token: null, role: null, username: null };
+}
+
+const persisted = loadPersistedAuth();
+
 const initialState: AuthState = {
-  token: null,
-  role: null,
-  username: null,
+  token: persisted.token,
+  role: persisted.role,
+  username: persisted.username,
   passwordNeedChange: false,
   setupStatus: null,
 };
@@ -34,12 +59,29 @@ export const authSlice = createSlice({
       state.role = action.payload.role;
       state.username = action.payload.username;
       state.passwordNeedChange = action.payload.passwordNeedChange;
+      try {
+        localStorage.setItem(
+          "os_auth",
+          JSON.stringify({
+            token: action.payload.token,
+            role: action.payload.role,
+            username: action.payload.username,
+          }),
+        );
+      } catch {
+        // storage full or unavailable
+      }
     },
     clearCredentials(state) {
       state.token = null;
       state.role = null;
       state.username = null;
       state.passwordNeedChange = false;
+      try {
+        localStorage.removeItem("os_auth");
+      } catch {
+        // ignore
+      }
     },
     setSetupStatus(state, action: PayloadAction<SetupStatus>) {
       state.setupStatus = action.payload;

@@ -13,25 +13,25 @@ import (
 // written via the admin config API (defence-in-depth: prevents arbitrary keys
 // from being persisted).
 var allowedSettingKeys = map[string]bool{
-	"audioConversion":              true,
-	"autoPopulate":                 true,
-	"branding":                     true,
-	"disableDuplicateDetection":    true,
-	"duplicateDetectionTimeFrame":  true,
-	"email":                        true,
-	"maxClients":                   true,
-	"pruneDays":                    true,
-	"publicAccess":                 true,
-	"apiKeyCallRate":               true,
-	"keypadBeeps":                  true,
-	"dimmerDelay":                  true,
-	"playbackGoesLive":             true,
-	"showListenersCount":           true,
-	"sortTalkgroups":               true,
-	"tagsToggle":                   true,
-	"searchPatchedTalkgroups":      true,
-	"audioTranscription":           true,
-	"whisperModel":                 true,
+	"audioConversion":             true,
+	"autoPopulate":                true,
+	"branding":                    true,
+	"disableDuplicateDetection":   true,
+	"duplicateDetectionTimeFrame": true,
+	"email":                       true,
+	"maxClients":                  true,
+	"pruneDays":                   true,
+	"publicAccess":                true,
+	"apiKeyCallRate":              true,
+	"keypadBeeps":                 true,
+	"dimmerDelay":                 true,
+	"playbackGoesLive":            true,
+	"showListenersCount":          true,
+	"sortTalkgroups":              true,
+	"tagsToggle":                  true,
+	"searchPatchedTalkgroups":     true,
+	"audioTranscription":          true,
+	"whisperModel":                true,
 }
 
 // GetConfig handles GET /api/admin/config.
@@ -44,28 +44,27 @@ func (h *AdminHandler) GetConfig(c *gin.Context) {
 		return
 	}
 
-	config := make(map[string]string, len(settings))
-	for _, s := range settings {
-		config[s.Key] = s.Value
-	}
-	c.JSON(http.StatusOK, config)
+	c.JSON(http.StatusOK, toSettingResponses(settings))
 }
 
 // PutConfig handles PUT /api/admin/config.
 // Accepts a JSON object of key/value pairs, upserts each setting.
 // Broadcasts CFG to all WS clients after update.
 func (h *AdminHandler) PutConfig(c *gin.Context) {
-	var config map[string]string
-	if err := c.ShouldBindJSON(&config); err != nil {
+	var settings []struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+	if err := c.ShouldBindJSON(&settings); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
 	// Validate all keys before writing anything (defence-in-depth: avoid
-	// partial writes if a disallowed key appears mid-map).
-	for key := range config {
-		if !allowedSettingKeys[key] {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown setting key: " + key})
+	// partial writes if a disallowed key appears mid-slice).
+	for _, s := range settings {
+		if !allowedSettingKeys[s.Key] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown setting key: " + s.Key})
 			return
 		}
 	}
@@ -83,9 +82,9 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 
 	qtx := h.queries.WithTx(tx)
 
-	for key, value := range config {
-		if err := qtx.UpsertSetting(ctx, db.UpsertSettingParams{Key: key, Value: value}); err != nil {
-			slog.Error("failed to upsert setting", "key", key, "error", err)
+	for _, s := range settings {
+		if err := qtx.UpsertSetting(ctx, db.UpsertSettingParams{Key: s.Key, Value: s.Value}); err != nil {
+			slog.Error("failed to upsert setting", "key", s.Key, "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save config"})
 			return
 		}
@@ -98,12 +97,12 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 	}
 
 	// Broadcast updated config to all WS clients.
-	settings, err := h.queries.ListSettings(ctx)
+	allSettings, err := h.queries.ListSettings(ctx)
 	if err != nil {
 		slog.Warn("failed to reload settings for CFG broadcast", "error", err)
 	} else {
-		cfgMap := make(map[string]string, len(settings))
-		for _, s := range settings {
+		cfgMap := make(map[string]string, len(allSettings))
+		for _, s := range allSettings {
 			cfgMap[s.Key] = s.Value
 		}
 		msg, err := ws.NewCFGMessage(cfgMap)

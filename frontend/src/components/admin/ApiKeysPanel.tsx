@@ -314,6 +314,11 @@ export default function ApiKeysPanel() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">API Keys</h1>
+      <p className="text-sm text-base-content/70 mb-4">
+        API keys authenticate external sources (e.g. trunk-recorder) that upload
+        calls. Each key can be restricted to specific systems and optionally
+        rate-limited. Provide the key in the X-API-Key header.
+      </p>
       <div className="card bg-base-200">
         <div className="card-body">
           <div className="overflow-x-auto">

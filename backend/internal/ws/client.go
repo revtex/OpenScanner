@@ -34,14 +34,13 @@ type systemGrant struct {
 
 // Client represents a single WebSocket connection.
 type Client struct {
-	hub      *Hub
-	conn     *websocket.Conn
-	send     chan []byte
-	sendMu   sync.Mutex
-	grants   []systemGrant // nil/empty = receive all
-	isAdmin  bool
-	userID   int64
-	accessID int64
+	hub     *Hub
+	conn    *websocket.Conn
+	send    chan []byte
+	sendMu  sync.Mutex
+	grants  []systemGrant // nil/empty = receive all
+	isAdmin bool
+	userID  int64
 }
 
 // CanReceive reports whether this client is authorized to receive a call for
@@ -151,85 +150,48 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
-		switch cmd {
-		case CmdPIN:
-			// Access code authentication.
-			var code string
-			if err := json.Unmarshal(payload, &code); err != nil {
-				slog.Info("ws: invalid PIN format")
-				sendExpiredAndClose(ctx, conn)
-				return
-			}
-			access, err := queries.GetAccessByCode(ctx, code)
-			if err != nil {
-				slog.Info("ws: invalid access code")
-				sendExpiredAndClose(ctx, conn)
-				return
-			}
-			// Check expiration.
-			if access.Expiration.Valid && access.Expiration.Int64 > 0 {
-				if time.Now().Unix() > access.Expiration.Int64 {
-					slog.Info("ws: expired access code", "access_id", access.ID)
-					sendExpiredAndClose(ctx, conn)
-					return
-				}
-			}
-			// Check connection limit.
-			if access.Limit.Valid && access.Limit.Int64 > 0 {
-				if int64(hub.countByAccess(access.ID)) >= access.Limit.Int64 {
-					msg, _ := NewMAXMessage()
-					_ = conn.Write(ctx, websocket.MessageText, msg)
-					conn.Close(websocket.StatusNormalClosure, "connection limit")
-					return
-				}
-			}
-			client.accessID = access.ID
-			client.grants = parseGrants(access.SystemsJson)
-
-		default:
-			// Try as JWT token string (the entire message may be just a token).
-			// First try to parse as a JSON string from payload, otherwise use raw cmd.
-			tokenStr := cmd
-			if payload != nil {
-				// The message might be ["<token>"] where cmd is the token.
-				tokenStr = cmd
-			}
-			// Also handle case where client sends raw token as first array element.
-			claims, err := auth.ParseToken(tokenStr)
-			if err != nil {
-				slog.Info("ws: invalid JWT on listener WS")
-				sendExpiredAndClose(ctx, conn)
-				return
-			}
-			if auth.Tokens.IsRevoked(claims.ID) {
-				slog.Info("ws: revoked JWT on listener WS", "jti", claims.ID)
-				sendExpiredAndClose(ctx, conn)
-				return
-			}
-			if claims.Role != auth.RoleListener {
-				slog.Info("ws: non-listener role on listener WS", "role", claims.Role)
-				sendExpiredAndClose(ctx, conn)
-				return
-			}
-			// Load user grants.
-			user, err := queries.GetUser(ctx, claims.UserID)
-			if err != nil || user.Disabled != 0 {
-				slog.Info("ws: user not found or disabled on listener WS", "user_id", claims.UserID)
-				sendExpiredAndClose(ctx, conn)
-				return
-			}
-			// Check user connection limit.
-			if user.Limit.Valid && user.Limit.Int64 > 0 {
-				if int64(hub.countByUser(user.ID)) >= user.Limit.Int64 {
-					msg, _ := NewMAXMessage()
-					_ = conn.Write(ctx, websocket.MessageText, msg)
-					conn.Close(websocket.StatusNormalClosure, "connection limit")
-					return
-				}
-			}
-			client.userID = user.ID
-			client.grants = parseGrants(user.SystemsJson)
+		// Try as JWT token string (the entire message may be just a token).
+		// First try to parse as a JSON string from payload, otherwise use raw cmd.
+		tokenStr := cmd
+		if payload != nil {
+			// The message might be ["<token>"] where cmd is the token.
+			tokenStr = cmd
 		}
+		// Also handle case where client sends raw token as first array element.
+		claims, err := auth.ParseToken(tokenStr)
+		if err != nil {
+			slog.Info("ws: invalid JWT on listener WS")
+			sendExpiredAndClose(ctx, conn)
+			return
+		}
+		if auth.Tokens.IsRevoked(claims.ID) {
+			slog.Info("ws: revoked JWT on listener WS", "jti", claims.ID)
+			sendExpiredAndClose(ctx, conn)
+			return
+		}
+		if claims.Role != auth.RoleListener && claims.Role != auth.RoleAdmin {
+			slog.Info("ws: invalid role on listener WS", "role", claims.Role)
+			sendExpiredAndClose(ctx, conn)
+			return
+		}
+		// Load user grants.
+		user, err := queries.GetUser(ctx, claims.UserID)
+		if err != nil || user.Disabled != 0 {
+			slog.Info("ws: user not found or disabled on listener WS", "user_id", claims.UserID)
+			sendExpiredAndClose(ctx, conn)
+			return
+		}
+		// Check user connection limit.
+		if user.Limit.Valid && user.Limit.Int64 > 0 {
+			if int64(hub.countByUser(user.ID)) >= user.Limit.Int64 {
+				msg, _ := NewMAXMessage()
+				_ = conn.Write(ctx, websocket.MessageText, msg)
+				conn.Close(websocket.StatusNormalClosure, "connection limit")
+				return
+			}
+		}
+		client.userID = user.ID
+		client.grants = parseGrants(user.SystemsJson)
 
 		if err := sendWelcome(ctx, conn, hub, queries); err != nil {
 			slog.Error("ws: failed to send welcome", "error", err)
@@ -329,8 +291,6 @@ func (c *Client) readPump(ctx context.Context) {
 					}
 				}
 			}
-		case CmdPIN:
-			// Re-auth is not supported after initial connection — ignore.
 		}
 	}
 }
@@ -403,6 +363,20 @@ func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *d
 	}
 
 	// Build CFG message with systems and talkgroups.
+	// Resolve group and tag labels first so talkgroups carry string labels,
+	// matching the TalkgroupConfig type expected by the frontend.
+	groups, _ := queries.ListGroups(ctx)
+	tags, _ := queries.ListTags(ctx)
+
+	groupLabels := make(map[int64]string, len(groups))
+	for _, g := range groups {
+		groupLabels[g.ID] = g.Label
+	}
+	tagLabels := make(map[int64]string, len(tags))
+	for _, t := range tags {
+		tagLabels[t.ID] = t.Label
+	}
+
 	systems, err := queries.ListSystems(ctx)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
@@ -412,8 +386,10 @@ func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *d
 		TalkgroupID int64  `json:"talkgroupId"`
 		Label       string `json:"label,omitempty"`
 		Name        string `json:"name,omitempty"`
-		GroupID     int64  `json:"groupId,omitempty"`
-		TagID       int64  `json:"tagId,omitempty"`
+		Group       string `json:"group,omitempty"`
+		Tag         string `json:"tag,omitempty"`
+		LedColor    string `json:"ledColor,omitempty"`
+		Frequency   *int64 `json:"frequency,omitempty"`
 	}
 	type sysCfg struct {
 		ID         int64   `json:"id"`
@@ -421,9 +397,9 @@ func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *d
 		Label      string  `json:"label"`
 		Talkgroups []tgCfg `json:"talkgroups"`
 	}
-	var sysCfgs []sysCfg
+	sysCfgs := []sysCfg{} // never nil — serialises as [] not null
 	for _, s := range systems {
-		sc := sysCfg{ID: s.ID, SystemID: s.SystemID, Label: s.Label}
+		sc := sysCfg{ID: s.ID, SystemID: s.SystemID, Label: s.Label, Talkgroups: []tgCfg{}}
 		tgs, err := queries.ListTalkgroupsBySystem(ctx, s.ID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
@@ -437,24 +413,25 @@ func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *d
 				t.Name = tg.Name.String
 			}
 			if tg.GroupID.Valid {
-				t.GroupID = tg.GroupID.Int64
+				t.Group = groupLabels[tg.GroupID.Int64]
 			}
 			if tg.TagID.Valid {
-				t.TagID = tg.TagID.Int64
+				t.Tag = tagLabels[tg.TagID.Int64]
+			}
+			if tg.Led.Valid {
+				t.LedColor = tg.Led.String
+			}
+			if tg.Frequency.Valid {
+				freq := tg.Frequency.Int64
+				t.Frequency = &freq
 			}
 			sc.Talkgroups = append(sc.Talkgroups, t)
 		}
 		sysCfgs = append(sysCfgs, sc)
 	}
 
-	// Gather groups and tags for the config.
-	groups, _ := queries.ListGroups(ctx)
-	tags, _ := queries.ListTags(ctx)
-
 	cfgPayload := map[string]any{
 		"systems": sysCfgs,
-		"groups":  groups,
-		"tags":    tags,
 	}
 	cfgMsg, err := NewCFGMessage(cfgPayload)
 	if err != nil {

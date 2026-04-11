@@ -20,7 +20,9 @@ The admin dashboard uses a responsive sidebar:
 - **Medium screens** — Icon-only sidebar
 - **Large screens** — Icons + text labels
 
-The sidebar contains 10 navigation items plus a **Sign Out** button.
+The sidebar contains 9 navigation items, a **Scanner** link (Home icon) to navigate back to the scanner page, and a **Sign Out** button.
+
+Each admin panel includes a help description paragraph below its heading explaining the panel’s purpose.
 
 ## Admin Panels
 
@@ -55,13 +57,6 @@ Manage upload API keys used by recorders to authenticate call uploads.
 - **Drag-to-reorder** — Reposition keys via drag handles
 - **System grants** — Control which systems each key can upload to
 - **Enable/Disable** — Toggle key active status
-
-### Accesses
-
-Manage access codes for listener (non-admin) authentication.
-
-- **Fields** — Code, ident, expiration date, concurrent connection limit
-- **System grants** — Control which systems each access code can listen to
 
 ### Dir Watches
 
@@ -131,14 +126,13 @@ Each resource supports **GET** (list), **POST** (create), **PUT /:id** (update),
 | Groups      | `/api/admin/groups`      |
 | Tags        | `/api/admin/tags`        |
 | API Keys    | `/api/admin/apikeys`     |
-| Accesses    | `/api/admin/accesses`    |
 | Dirwatches  | `/api/admin/dirwatches`  |
 | Downstreams | `/api/admin/downstreams` |
 | Webhooks    | `/api/admin/webhooks`    |
 
 ### Other Endpoints
 
-- **GET /api/admin/config** — All settings as `{key: value}` JSON
+- **GET /api/admin/config** — All settings as `[{key, value}, ...]` JSON array
 - **PUT /api/admin/config** — Update settings; broadcasts `CFG` to WebSocket clients
 - **GET /api/admin/logs** — Query params: `from`, `to` (unix), `level` (`info`/`warn`/`error`)
 - **POST /api/admin/import/talkgroups** — CSV upload with `system_id`

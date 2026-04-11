@@ -17,7 +17,6 @@ type AudioReceivedCallback = (call: Call, audioUrl: string) => void;
 
 interface WsAuth {
   token?: string;
-  pin?: string;
   publicAccess?: boolean;
 }
 
@@ -82,9 +81,7 @@ class WsClient {
       this.dispatch?.(setConnectionStatus("connected"));
 
       // Authenticate based on mode
-      if (this.auth.pin) {
-        this.send("PIN", this.auth.pin);
-      } else if (this.auth.token) {
+      if (this.auth.token) {
         // Send JWT as first message (raw string in array)
         if (this.ws?.readyState === WebSocket.OPEN) {
           this.ws.send(JSON.stringify([this.auth.token]));
@@ -182,6 +179,9 @@ class WsClient {
         }
         break;
       case "XPR":
+        // Token expired on listener WS — clear credentials so the UI
+        // redirects to the login page.
+        console.warn("[WsClient] Token expired");
         this.dispatch?.(clearCredentials());
         this.disconnect();
         break;

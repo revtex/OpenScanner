@@ -369,8 +369,8 @@ func TestSystems_CRUD(t *testing.T) {
 
 	// Create
 	body := jsonBody(t, map[string]any{
-		"system_id": 100,
-		"label":     "Test System",
+		"systemId": 100,
+		"label":    "Test System",
 	})
 	w := doRequest(engine, http.MethodPost, "/api/admin/systems", body, hdrs)
 	if w.Code != http.StatusCreated {
@@ -396,8 +396,8 @@ func TestSystems_CRUD(t *testing.T) {
 
 	// Update
 	updateBody := jsonBody(t, map[string]any{
-		"system_id": 100,
-		"label":     "Updated System",
+		"systemId": 100,
+		"label":    "Updated System",
 	})
 	w = doRequest(engine, http.MethodPut, fmt.Sprintf("/api/admin/systems/%d", sysID), updateBody, hdrs)
 	if w.Code != http.StatusOK {
@@ -422,7 +422,7 @@ func TestSystems_Create_DuplicateSystemID(t *testing.T) {
 	tok := adminToken(t, uid, "admin1")
 	hdrs := map[string]string{"Authorization": "Bearer " + tok}
 
-	body := jsonBody(t, map[string]any{"system_id": 200, "label": "Sys A"})
+	body := jsonBody(t, map[string]any{"systemId": 200, "label": "Sys A"})
 	w := doRequest(engine, http.MethodPost, "/api/admin/systems", body, hdrs)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("first create: status = %d", w.Code)
@@ -440,7 +440,7 @@ func TestSystems_Update_NotFound(t *testing.T) {
 	tok := adminToken(t, uid, "admin1")
 	hdrs := map[string]string{"Authorization": "Bearer " + tok}
 
-	body := jsonBody(t, map[string]any{"system_id": 1, "label": "x"})
+	body := jsonBody(t, map[string]any{"systemId": 1, "label": "x"})
 	w := doRequest(engine, http.MethodPut, "/api/admin/systems/99999", body, hdrs)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("status = %d, want 404", w.Code)
@@ -472,9 +472,9 @@ func TestTalkgroups_CRUD(t *testing.T) {
 
 	// Create talkgroup
 	body := jsonBody(t, map[string]any{
-		"system_id":    sysRowID,
-		"talkgroup_id": 500,
-		"label":        map[string]any{"String": "Fire Dispatch", "Valid": true},
+		"systemId":    sysRowID,
+		"talkgroupId": 500,
+		"label":       "Fire Dispatch",
 	})
 	w := doRequest(engine, http.MethodPost, "/api/admin/talkgroups", body, hdrs)
 	if w.Code != http.StatusCreated {
@@ -497,9 +497,9 @@ func TestTalkgroups_CRUD(t *testing.T) {
 
 	// Update
 	updateBody := jsonBody(t, map[string]any{
-		"system_id":    sysRowID,
-		"talkgroup_id": 500,
-		"label":        map[string]any{"String": "EMS Dispatch", "Valid": true},
+		"systemId":    sysRowID,
+		"talkgroupId": 500,
+		"label":       "EMS Dispatch",
 	})
 	w = doRequest(engine, http.MethodPut, fmt.Sprintf("/api/admin/talkgroups/%d", tgID), updateBody, hdrs)
 	if w.Code != http.StatusOK {
@@ -808,16 +808,22 @@ func TestConfig_GetPut(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET status = %d; body: %s", w.Code, w.Body.String())
 	}
-	var config map[string]string
+	var config []map[string]string
 	decodeJSON(t, w, &config)
-	if config["audioConversion"] != "0" {
-		t.Errorf("audioConversion = %q, want 0", config["audioConversion"])
+	found := false
+	for _, s := range config {
+		if s["key"] == "audioConversion" && s["value"] == "0" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("audioConversion not found or not 0 in %v", config)
 	}
 
 	// PUT
-	putBody := jsonBody(t, map[string]string{
-		"audioConversion": "1",
-		"branding":        "hello",
+	putBody := jsonBody(t, []map[string]string{
+		{"key": "audioConversion", "value": "1"},
+		{"key": "branding", "value": "hello"},
 	})
 	w = doRequest(engine, http.MethodPut, "/api/admin/config", putBody, hdrs)
 	if w.Code != http.StatusOK {
@@ -829,17 +835,21 @@ func TestConfig_GetPut(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET after PUT status = %d", w.Code)
 	}
-	var config2 map[string]string
+	var config2 []map[string]string
 	decodeJSON(t, w, &config2)
-	if config2["audioConversion"] != "1" {
-		t.Errorf("audioConversion after PUT = %q, want 1", config2["audioConversion"])
+	configMap := make(map[string]string)
+	for _, s := range config2 {
+		configMap[s["key"]] = s["value"]
 	}
-	if config2["branding"] != "hello" {
-		t.Errorf("branding = %q, want hello", config2["branding"])
+	if configMap["audioConversion"] != "1" {
+		t.Errorf("audioConversion after PUT = %q, want 1", configMap["audioConversion"])
+	}
+	if configMap["branding"] != "hello" {
+		t.Errorf("branding = %q, want hello", configMap["branding"])
 	}
 
 	// PUT with unknown key should be rejected.
-	badBody := jsonBody(t, map[string]string{"unknownKey": "value"})
+	badBody := jsonBody(t, []map[string]string{{"key": "unknownKey", "value": "value"}})
 	w = doRequest(engine, http.MethodPut, "/api/admin/config", badBody, hdrs)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("unknown key: status = %d, want 400; body: %s", w.Code, w.Body.String())
@@ -976,7 +986,6 @@ func TestImportConfig(t *testing.T) {
 		"talkgroups":  []any{},
 		"units":       []any{},
 		"apiKeys":     []any{},
-		"accesses":    []any{},
 		"dirwatches":  []any{},
 		"downstreams": []any{},
 		"webhooks":    []any{},
@@ -1120,11 +1129,11 @@ func TestAdminCRUD_AuthMatrix(t *testing.T) {
 	listenerTok := listenerToken(t, 99, "listener1")
 
 	resources := []struct {
-		name       string
-		method     string
-		path       string
-		body       map[string]any
-		wantAdmin  int
+		name      string
+		method    string
+		path      string
+		body      map[string]any
+		wantAdmin int
 	}{
 		{"GET users", http.MethodGet, "/api/admin/users", nil, http.StatusOK},
 		{"GET systems", http.MethodGet, "/api/admin/systems", nil, http.StatusOK},
@@ -1212,13 +1221,13 @@ func TestSystems_Update_DuplicateSystemID(t *testing.T) {
 	hdrs := map[string]string{"Authorization": "Bearer " + tok}
 
 	// Create two systems.
-	body1 := jsonBody(t, map[string]any{"system_id": 100, "label": "Sys A"})
+	body1 := jsonBody(t, map[string]any{"systemId": 100, "label": "Sys A"})
 	w := doRequest(engine, http.MethodPost, "/api/admin/systems", body1, hdrs)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create sys A: %d", w.Code)
 	}
 
-	body2 := jsonBody(t, map[string]any{"system_id": 200, "label": "Sys B"})
+	body2 := jsonBody(t, map[string]any{"systemId": 200, "label": "Sys B"})
 	w = doRequest(engine, http.MethodPost, "/api/admin/systems", body2, hdrs)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create sys B: %d", w.Code)
@@ -1228,7 +1237,7 @@ func TestSystems_Update_DuplicateSystemID(t *testing.T) {
 	sysBID := int64(sysB["id"].(float64))
 
 	// Try updating Sys B's system_id to 100 (conflicts with Sys A).
-	updateBody := jsonBody(t, map[string]any{"system_id": 100, "label": "Sys B"})
+	updateBody := jsonBody(t, map[string]any{"systemId": 100, "label": "Sys B"})
 	w = doRequest(engine, http.MethodPut, fmt.Sprintf("/api/admin/systems/%d", sysBID), updateBody, hdrs)
 	if w.Code != http.StatusConflict {
 		t.Errorf("status = %d, want 409; body: %s", w.Code, w.Body.String())
@@ -1346,5 +1355,3 @@ func TestWebhooks_Create_InvalidScheme(t *testing.T) {
 		t.Errorf("http scheme: status = %d, want 201; body: %s", w.Code, w.Body.String())
 	}
 }
-
-

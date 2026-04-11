@@ -50,7 +50,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       const sys = systems.find((s) => s.id === filters.systemId);
       return sys?.talkgroups ?? [];
     }
-    return systems.flatMap((s) => s.talkgroups);
+    return systems.flatMap((s) => s.talkgroups ?? []);
   }, [systems, filters.systemId]);
 
   // Derive unique groups

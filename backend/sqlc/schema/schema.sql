@@ -91,16 +91,6 @@ CREATE TABLE IF NOT EXISTS api_keys (
     "order"      INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS accesses (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    code         TEXT    NOT NULL,
-    ident        TEXT,
-    expiration   INTEGER,
-    "limit"      INTEGER,
-    systems_json TEXT,
-    "order"      INTEGER NOT NULL DEFAULT 0
-);
-
 CREATE TABLE IF NOT EXISTS dirwatches (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     directory    TEXT    NOT NULL,

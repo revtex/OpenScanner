@@ -37,6 +37,8 @@ import {
   useCreateUnitMutation,
   useUpdateUnitMutation,
   useDeleteUnitMutation,
+  useListGroupsQuery,
+  useListTagsQuery,
 } from "@/app/slices/adminSlice";
 import type { AdminSystem, AdminTalkgroup, AdminUnit } from "@/types";
 
@@ -280,15 +282,31 @@ function TalkgroupList({
 
 // ─── Main panel ───
 
+const LED_COLORS = [
+  "blue",
+  "cyan",
+  "green",
+  "magenta",
+  "red",
+  "white",
+  "yellow",
+] as const;
+
 interface SystemFormState {
   systemId: string;
   label: string;
+  led: string;
+  blacklists: string;
 }
 
 interface TgFormState {
   talkgroupId: string;
   label: string;
   name: string;
+  frequency: string;
+  led: string;
+  groupId: string;
+  tagId: string;
 }
 
 interface UnitFormState {
@@ -300,6 +318,8 @@ export default function SystemsPanel() {
   const { data: systems, isLoading: loadingSystems } = useListSystemsQuery();
   const { data: allTalkgroups } = useListTalkgroupsQuery();
   const { data: allUnits } = useListUnitsQuery();
+  const { data: groups } = useListGroupsQuery();
+  const { data: tags } = useListTagsQuery();
 
   const [createSystem] = useCreateSystemMutation();
   const [updateSystem] = useUpdateSystemMutation();
@@ -320,6 +340,8 @@ export default function SystemsPanel() {
   const [sysForm, setSysForm] = useState<SystemFormState>({
     systemId: "",
     label: "",
+    led: "",
+    blacklists: "",
   });
 
   // Talkgroup modal
@@ -330,6 +352,10 @@ export default function SystemsPanel() {
     talkgroupId: "",
     label: "",
     name: "",
+    frequency: "",
+    led: "",
+    groupId: "",
+    tagId: "",
   });
 
   // Unit modal
@@ -422,32 +448,57 @@ export default function SystemsPanel() {
 
   const openCreateSystem = () => {
     setEditingSysId(null);
-    setSysForm({ systemId: "", label: "" });
+    setSysForm({ systemId: "", label: "", led: "", blacklists: "" });
     setSysModalOpen(true);
   };
 
   const openEditSystem = (sys: AdminSystem) => {
     setEditingSysId(sys.id);
-    setSysForm({ systemId: String(sys.systemId), label: sys.label });
+    setSysForm({
+      systemId: String(sys.systemId),
+      label: sys.label,
+      led: sys.led ?? "",
+      blacklists: sys.blacklistsJson
+        ? (() => {
+            try {
+              const arr = JSON.parse(sys.blacklistsJson) as number[];
+              return arr.join(",");
+            } catch {
+              return "";
+            }
+          })()
+        : "",
+    });
     setSysModalOpen(true);
   };
 
   const handleSystemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Parse blacklists CSV → JSON array
+    const blacklistIds = sysForm.blacklists
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s !== "")
+      .map(Number)
+      .filter((n) => !isNaN(n));
+    const blacklistsJson =
+      blacklistIds.length > 0 ? JSON.stringify(blacklistIds) : null;
     try {
       if (editingSysId != null) {
         await updateSystem({
           id: editingSysId,
           systemId: Number(sysForm.systemId),
           label: sysForm.label,
+          led: sysForm.led || null,
+          blacklistsJson,
         }).unwrap();
       } else {
         await createSystem({
           systemId: Number(sysForm.systemId),
           label: sysForm.label,
           autoPopulate: 0,
-          blacklistsJson: null,
-          led: null,
+          blacklistsJson,
+          led: sysForm.led || null,
           order: sortedSystems.length,
         }).unwrap();
       }
@@ -489,7 +540,15 @@ export default function SystemsPanel() {
   const openCreateTg = (systemId: number) => {
     setEditingTgId(null);
     setTgSystemId(systemId);
-    setTgForm({ talkgroupId: "", label: "", name: "" });
+    setTgForm({
+      talkgroupId: "",
+      label: "",
+      name: "",
+      frequency: "",
+      led: "",
+      groupId: "",
+      tagId: "",
+    });
     setTgModalOpen(true);
   };
 
@@ -500,6 +559,10 @@ export default function SystemsPanel() {
       talkgroupId: String(tg.talkgroupId),
       label: tg.label ?? "",
       name: tg.name ?? "",
+      frequency: tg.frequency != null ? String(tg.frequency) : "",
+      led: tg.led ?? "",
+      groupId: tg.groupId != null ? String(tg.groupId) : "",
+      tagId: tg.tagId != null ? String(tg.tagId) : "",
     });
     setTgModalOpen(true);
   };
@@ -513,6 +576,10 @@ export default function SystemsPanel() {
           talkgroupId: Number(tgForm.talkgroupId),
           label: tgForm.label || null,
           name: tgForm.name || null,
+          frequency: tgForm.frequency ? Number(tgForm.frequency) : null,
+          led: tgForm.led || null,
+          groupId: tgForm.groupId ? Number(tgForm.groupId) : null,
+          tagId: tgForm.tagId ? Number(tgForm.tagId) : null,
         }).unwrap();
       } else {
         await createTalkgroup({
@@ -520,10 +587,10 @@ export default function SystemsPanel() {
           talkgroupId: Number(tgForm.talkgroupId),
           label: tgForm.label || null,
           name: tgForm.name || null,
-          frequency: null,
-          led: null,
-          groupId: null,
-          tagId: null,
+          frequency: tgForm.frequency ? Number(tgForm.frequency) : null,
+          led: tgForm.led || null,
+          groupId: tgForm.groupId ? Number(tgForm.groupId) : null,
+          tagId: tgForm.tagId ? Number(tgForm.tagId) : null,
           order: tgBySystem.get(tgSystemId)?.length ?? 0,
         }).unwrap();
       }
@@ -610,6 +677,11 @@ export default function SystemsPanel() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Systems</h1>
+      <p className="text-sm text-base-content/70 mb-4">
+        Define radio systems and their talkgroups. Systems represent a radio
+        network (e.g. a county or agency). Each system contains talkgroups and
+        units. Drag rows to reorder how they appear in the scanner.
+      </p>
       <div className="card bg-base-200">
         <div className="card-body">
           <div className="overflow-x-auto">
@@ -713,6 +785,46 @@ export default function SystemsPanel() {
                 required
               />
             </label>
+            <label className="form-control w-full">
+              <div className="label">
+                <span className="label-text">LED Color</span>
+                <span className="label-text-alt text-base-content/60">
+                  Indicator color when playing audio from this system
+                </span>
+              </div>
+              <select
+                className="select select-bordered w-full"
+                value={sysForm.led}
+                onChange={(e) =>
+                  setSysForm((p) => ({ ...p, led: e.target.value }))
+                }
+              >
+                <option value="">Default (green)</option>
+                {LED_COLORS.map((c) => (
+                  <option key={c} value={c}>
+                    {c.charAt(0).toUpperCase() + c.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="form-control w-full">
+              <div className="label">
+                <span className="label-text">Blacklists</span>
+                <span className="label-text-alt text-base-content/60">
+                  Comma-separated talkgroup IDs to exclude when auto-populate is
+                  on
+                </span>
+              </div>
+              <textarea
+                className="textarea textarea-bordered w-full"
+                rows={2}
+                placeholder="e.g. 1234,5678"
+                value={sysForm.blacklists}
+                onChange={(e) =>
+                  setSysForm((p) => ({ ...p, blacklists: e.target.value }))
+                }
+              />
+            </label>
             <div className="modal-action">
               <button
                 type="button"
@@ -778,6 +890,84 @@ export default function SystemsPanel() {
                 value={tgForm.name}
                 onChange={(e) =>
                   setTgForm((p) => ({ ...p, name: e.target.value }))
+                }
+              />
+            </label>
+            <label className="form-control w-full">
+              <div className="label">
+                <span className="label-text">Group</span>
+              </div>
+              <select
+                className="select select-bordered w-full"
+                value={tgForm.groupId}
+                onChange={(e) =>
+                  setTgForm((p) => ({ ...p, groupId: e.target.value }))
+                }
+              >
+                <option value="">— none —</option>
+                {(groups ?? []).map((g) => (
+                  <option key={g.id} value={String(g.id)}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="form-control w-full">
+              <div className="label">
+                <span className="label-text">Tag</span>
+              </div>
+              <select
+                className="select select-bordered w-full"
+                value={tgForm.tagId}
+                onChange={(e) =>
+                  setTgForm((p) => ({ ...p, tagId: e.target.value }))
+                }
+              >
+                <option value="">— none —</option>
+                {(tags ?? []).map((t) => (
+                  <option key={t.id} value={String(t.id)}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="form-control w-full">
+              <div className="label">
+                <span className="label-text">LED Color</span>
+                <span className="label-text-alt text-base-content/60">
+                  Overrides system color
+                </span>
+              </div>
+              <select
+                className="select select-bordered w-full"
+                value={tgForm.led}
+                onChange={(e) =>
+                  setTgForm((p) => ({ ...p, led: e.target.value }))
+                }
+              >
+                <option value="">Default (system color)</option>
+                {LED_COLORS.map((c) => (
+                  <option key={c} value={c}>
+                    {c.charAt(0).toUpperCase() + c.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="form-control w-full">
+              <div className="label">
+                <span className="label-text">Frequency (Hz)</span>
+                <span className="label-text-alt text-base-content/60">
+                  Display-only fake frequency
+                </span>
+              </div>
+              <input
+                type="number"
+                className="input input-bordered w-full"
+                value={tgForm.frequency}
+                min={0}
+                placeholder="e.g. 155325000"
+                onChange={(e) =>
+                  setTgForm((p) => ({ ...p, frequency: e.target.value }))
                 }
               />
             </label>

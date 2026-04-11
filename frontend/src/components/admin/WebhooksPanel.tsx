@@ -120,6 +120,12 @@ export default function WebhooksPanel() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Webhooks</h1>
+      <p className="text-sm text-base-content/70 mb-4">
+        Send HTTP notifications to external services when new calls are
+        ingested. Each webhook specifies a URL and an optional HMAC secret for
+        payload verification. Use webhooks to integrate with alerting, logging,
+        or automation systems.
+      </p>
       <div className="card bg-base-200">
         <div className="card-body">
           <div className="flex justify-end mb-2">

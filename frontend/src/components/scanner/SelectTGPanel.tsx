@@ -44,7 +44,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
   const groups = useMemo(() => {
     const groupMap = new Map<string, TalkgroupConfig[]>();
     for (const sys of systems) {
-      for (const tg of sys.talkgroups) {
+      for (const tg of sys.talkgroups ?? []) {
         const list = groupMap.get(tg.group);
         if (list) {
           list.push(tg);
@@ -66,7 +66,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
       // Build a validated selection map from saved data
       const restored: Record<number, boolean> = {};
       for (const sys of config.systems) {
-        for (const tg of sys.talkgroups) {
+        for (const tg of sys.talkgroups ?? []) {
           const savedVal = saved[String(tg.id)];
           restored[tg.id] = typeof savedVal === "boolean" ? savedVal : true;
         }
@@ -129,7 +129,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
   const activeCount = useCallback(
     (sys: SystemConfig) => {
       let count = 0;
-      for (const tg of sys.talkgroups) {
+      for (const tg of sys.talkgroups ?? []) {
         if (tgSelection[tg.id] !== false) count++;
       }
       return count;
@@ -218,7 +218,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
               const sys = systems[virtualRow.index];
               const expanded = !!expandedSystems[sys.id];
               const active = activeCount(sys);
-              const total = sys.talkgroups.length;
+              const total = (sys.talkgroups ?? []).length;
 
               return (
                 <div
@@ -248,7 +248,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
                   {expanded && (
                     <div className="bg-base-100 px-4 py-2">
                       <div className="flex flex-wrap gap-2">
-                        {sys.talkgroups.map((tg) => {
+                        {(sys.talkgroups ?? []).map((tg) => {
                           const enabled = tgSelection[tg.id] !== false;
                           const avoided = avoidSet.has(tg.talkgroupId);
                           return (

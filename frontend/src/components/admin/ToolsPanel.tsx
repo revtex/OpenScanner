@@ -120,6 +120,11 @@ export default function ToolsPanel() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Tools</h1>
+      <p className="text-sm text-base-content/70 mb-4">
+        Import and export data. Upload CSV files to bulk-import talkgroups or
+        units into a system, and export or import the full server configuration
+        as JSON for backup or migration.
+      </p>
 
       {/* CSV Import: Talkgroups */}
       <div className="card bg-base-200 mb-4">

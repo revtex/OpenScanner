@@ -13,6 +13,14 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// fakeAudioData returns a byte slice large enough to pass the minimum audio
+// file size validation (44 bytes — the minimum WAV header size).
+func fakeAudioData() []byte {
+	data := make([]byte, 64)
+	copy(data, []byte("ID3"))
+	return data
+}
+
 // ── DB helper ─────────────────────────────────────────────────────────────────
 
 // newWatcherTestDB opens an in-memory SQLite database with all migrations applied.
@@ -120,7 +128,7 @@ func TestHandleFile_PathTraversal_Rejected(t *testing.T) {
 
 	// Write the file in a directory that is NOT under watchDir.
 	evilPath := filepath.Join(otherDir, "evil.mp3")
-	os.WriteFile(evilPath, []byte("ID3"), 0644) //nolint:errcheck
+	os.WriteFile(evilPath, fakeAudioData(), 0644) //nolint:errcheck
 
 	dw := db.Dirwatch{
 		ID:        1,
@@ -154,7 +162,7 @@ func TestHandleFile_ExtensionFilter_WrongExtension_Skipped(t *testing.T) {
 	watchDir := t.TempDir()
 
 	mp3Path := filepath.Join(watchDir, "call.mp3")
-	os.WriteFile(mp3Path, []byte("ID3"), 0644) //nolint:errcheck
+	os.WriteFile(mp3Path, fakeAudioData(), 0644) //nolint:errcheck
 
 	// Dirwatch only accepts .wav files.
 	dw := db.Dirwatch{
@@ -257,7 +265,7 @@ func writeTRWatcherFiles(t *testing.T, dir string) (jsonPath, audioPath string) 
 	if err := os.WriteFile(jsonPath, data, 0644); err != nil {
 		t.Fatalf("write json: %v", err)
 	}
-	if err := os.WriteFile(audioPath, []byte("ID3FAKEMP3DATA"), 0644); err != nil {
+	if err := os.WriteFile(audioPath, fakeAudioData(), 0644); err != nil {
 		t.Fatalf("write audio: %v", err)
 	}
 	return jsonPath, audioPath
@@ -346,8 +354,8 @@ func TestHandleFile_Integration_MissingSystemID_Rejected(t *testing.T) {
 	data, _ := json.Marshal(sidecar)
 	jsonPath := filepath.Join(watchDir, "zero_ids.json")
 	audioPath := filepath.Join(watchDir, "zero_ids.mp3")
-	os.WriteFile(jsonPath, data, 0644)           //nolint:errcheck
-	os.WriteFile(audioPath, []byte("ID3"), 0644) //nolint:errcheck
+	os.WriteFile(jsonPath, data, 0644)             //nolint:errcheck
+	os.WriteFile(audioPath, fakeAudioData(), 0644) //nolint:errcheck
 
 	dw := db.Dirwatch{ID: 1, Directory: watchDir, Type: "trunk-recorder"}
 	svc := &Service{queries: queries, processor: processor, hub: nil}
@@ -401,8 +409,8 @@ func TestHandleFile_Integration_AutoPopulate(t *testing.T) {
 			audioPath = filepath.Join(watchDir, "callB.mp3")
 		}
 
-		os.WriteFile(jsonPath, data, 0644)           //nolint:errcheck
-		os.WriteFile(audioPath, []byte("ID3"), 0644) //nolint:errcheck
+		os.WriteFile(jsonPath, data, 0644)             //nolint:errcheck
+		os.WriteFile(audioPath, fakeAudioData(), 0644) //nolint:errcheck
 
 		dw := db.Dirwatch{ID: int64(i + 1), Directory: watchDir, Type: "trunk-recorder"}
 		svc := &Service{queries: queries, processor: processor, hub: nil}
@@ -455,7 +463,7 @@ func TestHandleFile_Symlink_Escaping_Rejected(t *testing.T) {
 
 	// Create a real file outside the watch directory.
 	secretFile := filepath.Join(secretDir, "secret.mp3")
-	os.WriteFile(secretFile, []byte("ID3"), 0644) //nolint:errcheck
+	os.WriteFile(secretFile, fakeAudioData(), 0644) //nolint:errcheck
 
 	// Create a symlink inside watchDir pointing to the secret file.
 	linkPath := filepath.Join(watchDir, "evil.mp3")

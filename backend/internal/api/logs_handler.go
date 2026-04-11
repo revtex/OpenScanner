@@ -61,5 +61,5 @@ func (h *AdminHandler) GetLogs(c *gin.Context) {
 		logs = logs[:maxLogResults]
 		c.Header("X-Truncated", "true")
 	}
-	c.JSON(http.StatusOK, logs)
+	c.JSON(http.StatusOK, toLogResponses(logs))
 }

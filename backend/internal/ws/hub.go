@@ -159,19 +159,6 @@ func (h *Hub) Unregister(c *Client) {
 	}
 }
 
-// countByAccess returns the number of active clients using the given access ID.
-func (h *Hub) countByAccess(accessID int64) int {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	count := 0
-	for c := range h.clients {
-		if c.accessID == accessID {
-			count++
-		}
-	}
-	return count
-}
-
 // countByUser returns the number of active clients for the given user ID.
 func (h *Hub) countByUser(userID int64) int {
 	h.mu.RLock()

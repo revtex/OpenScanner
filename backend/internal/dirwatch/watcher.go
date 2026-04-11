@@ -4,11 +4,13 @@ package dirwatch
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -110,7 +112,21 @@ func (s *Service) stop() {
 }
 
 // runDirwatch dispatches to the appropriate watch strategy for a single entry.
+// It includes panic recovery so that a bad file or parser bug cannot kill the
+// goroutine permanently.
 func (s *Service) runDirwatch(ctx context.Context, dw db.Dirwatch) {
+	defer func() {
+		if r := recover(); r != nil {
+			buf := make([]byte, 4096)
+			n := runtime.Stack(buf, false)
+			slog.Error("dirwatch: recovered from panic",
+				"id", dw.ID,
+				"panic", r,
+				"stack", string(buf[:n]),
+			)
+		}
+	}()
+
 	slog.Info("dirwatch: starting watcher",
 		"id", dw.ID,
 		"dir", dw.Directory,
@@ -127,7 +143,12 @@ func (s *Service) runDirwatch(ctx context.Context, dw db.Dirwatch) {
 	slog.Info("dirwatch: watcher stopped", "id", dw.ID)
 }
 
-// runWithFsnotify watches using kernel inotify/kqueue Create events.
+// minDebounceMs is the floor for fsnotify debounce to ensure complete file writes.
+const minDebounceMs = 2000
+
+// runWithFsnotify watches using kernel inotify/kqueue Create/Write events.
+// A per-file debounce timer ensures we only process a file once its writer
+// has finished — each new Create or Write resets the timer.
 func (s *Service) runWithFsnotify(ctx context.Context, dw db.Dirwatch) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -142,6 +163,26 @@ func (s *Service) runWithFsnotify(ctx context.Context, dw db.Dirwatch) {
 		return
 	}
 
+	delayMs := int64(minDebounceMs)
+	if dw.Delay.Valid && dw.Delay.Int64 > delayMs {
+		delayMs = dw.Delay.Int64
+	}
+	debounce := time.Duration(delayMs) * time.Millisecond
+
+	timers := make(map[string]*time.Timer)
+	var timersMu sync.Mutex
+
+	// stopAllTimers cancels every pending debounce timer.
+	stopAllTimers := func() {
+		timersMu.Lock()
+		defer timersMu.Unlock()
+		for path, t := range timers {
+			t.Stop()
+			delete(timers, path)
+		}
+	}
+	defer stopAllTimers()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -150,9 +191,23 @@ func (s *Service) runWithFsnotify(ctx context.Context, dw db.Dirwatch) {
 			if !ok {
 				return
 			}
-			if event.Has(fsnotify.Create) {
-				s.handleFile(ctx, dw, event.Name)
+			if !event.Has(fsnotify.Create) && !event.Has(fsnotify.Write) {
+				continue
 			}
+			path := event.Name
+
+			timersMu.Lock()
+			if t, exists := timers[path]; exists {
+				t.Stop()
+			}
+			timers[path] = time.AfterFunc(debounce, func() {
+				timersMu.Lock()
+				delete(timers, path)
+				timersMu.Unlock()
+				s.handleFile(ctx, dw, path)
+			})
+			timersMu.Unlock()
+
 		case err, ok := <-watcher.Errors:
 			if !ok {
 				return
@@ -269,6 +324,25 @@ func (s *Service) handleFile(ctx context.Context, dw db.Dirwatch, filePath strin
 		return
 	}
 
+	// File size validation: reject files smaller than a valid audio header
+	// (44 bytes is the minimum WAV header size).
+	const minAudioBytes = 44
+	if fi, err := os.Stat(parsed.AudioFilePath); err != nil {
+		slog.Warn("dirwatch: cannot stat audio file", "id", dw.ID, "file", parsed.AudioFilePath, "error", err)
+		return
+	} else if fi.Size() < minAudioBytes {
+		slog.Info("dirwatch: file too small, skipping",
+			"id", dw.ID, "file", parsed.AudioFilePath, "size", fi.Size(), "min", minAudioBytes)
+		return
+	}
+
+	// DateTime validation: reject calls with zero/missing timestamps.
+	if parsed.DateTime.IsZero() {
+		slog.Info("dirwatch: missing or zero datetime, skipping",
+			"id", dw.ID, "file", parsed.AudioFilePath)
+		return
+	}
+
 	if err := s.ingestCall(ctx, dw, parsed); err != nil {
 		slog.Error("dirwatch: ingest failed", "id", dw.ID, "file", filePath, "error", err)
 	}
@@ -316,6 +390,13 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 		}
 		slog.Info("dirwatch: auto-populated system", "system_id", parsed.SystemID, "db_id", newID)
 		system = db.System{ID: newID, SystemID: parsed.SystemID, Label: label, AutoPopulate: 1}
+	}
+
+	// ── Blacklist check ─────────────────────────────────────────────────────
+	if isBlacklisted(system.BlacklistsJson, parsed.TalkgroupID) {
+		slog.Info("dirwatch: talkgroup is blacklisted, skipping",
+			"system_id", parsed.SystemID, "talkgroup_id", parsed.TalkgroupID)
+		return nil
 	}
 
 	// ── Resolve talkgroup ───────────────────────────────────────────────────
@@ -488,22 +569,40 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 
 	// ── Notify downstream pushers ──────────────────────────────────────────
 	if s.dsNotifier != nil {
+		// Resolve labels for downstream consumers.
+		var groupLabel, tagLabel string
+		if talkgroup.GroupID.Valid {
+			if g, err := s.queries.GetGroup(ctx, talkgroup.GroupID.Int64); err == nil {
+				groupLabel = g.Label
+			}
+		}
+		if talkgroup.TagID.Valid {
+			if t, err := s.queries.GetTag(ctx, talkgroup.TagID.Int64); err == nil {
+				tagLabel = t.Label
+			}
+		}
+
 		s.dsNotifier.Notify(downstream.CallEvent{
-			CallID:      callID,
-			AudioPath:   relPath,
-			AudioName:   filepath.Base(relPath),
-			AudioType:   audioType,
-			DateTime:    dateTimeUnix,
-			SystemID:    system.SystemID,
-			System:      system.ID,
-			TalkgroupID: talkgroup.TalkgroupID,
-			Talkgroup:   talkgroup.ID,
-			Frequency:   freq.Int64,
-			Duration:    dur.Int64,
-			Source:      src.Int64,
-			Sources:     srcJSON.String,
-			Frequencies: freqJSON.String,
-			Patches:     patchJSON.String,
+			CallID:         callID,
+			AudioPath:      relPath,
+			AudioName:      filepath.Base(relPath),
+			AudioType:      audioType,
+			DateTime:       dateTimeUnix,
+			SystemID:       system.SystemID,
+			System:         system.ID,
+			TalkgroupID:    talkgroup.TalkgroupID,
+			Talkgroup:      talkgroup.ID,
+			Frequency:      freq.Int64,
+			Duration:       dur.Int64,
+			Source:         src.Int64,
+			Sources:        srcJSON.String,
+			Frequencies:    freqJSON.String,
+			Patches:        patchJSON.String,
+			SystemLabel:    system.Label,
+			TalkgroupLabel: talkgroup.Label.String,
+			TalkgroupName:  talkgroup.Name.String,
+			TalkgroupGroup: groupLabel,
+			TalkgroupTag:   tagLabel,
 		})
 	}
 
@@ -544,4 +643,24 @@ func mimeFromExt(ext string) string {
 	default:
 		return "application/octet-stream"
 	}
+}
+
+// isBlacklisted checks whether a talkgroup ID appears in the system's blacklist.
+// The blacklist is stored as a JSON array of integers in the blacklists_json column.
+// Returns false if the column is NULL, empty, or unparseable.
+func isBlacklisted(blacklistsJSON sql.NullString, talkgroupID int64) bool {
+	if !blacklistsJSON.Valid || strings.TrimSpace(blacklistsJSON.String) == "" {
+		return false
+	}
+	var ids []int64
+	if err := json.Unmarshal([]byte(blacklistsJSON.String), &ids); err != nil {
+		slog.Warn("dirwatch: failed to parse blacklists_json", "error", err)
+		return false
+	}
+	for _, id := range ids {
+		if id == talkgroupID {
+			return true
+		}
+	}
+	return false
 }

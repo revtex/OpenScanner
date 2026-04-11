@@ -24,12 +24,17 @@ export function useWebSocket(): { connectionStatus: ConnectionStatus } {
       return;
     }
 
-    wsClient.connect(dispatch, auth);
-    connectedRef.current = true;
+    const connectTimer = window.setTimeout(() => {
+      wsClient.connect(dispatch, auth);
+      connectedRef.current = true;
+    }, 0);
 
     return () => {
-      wsClient.disconnect();
-      connectedRef.current = false;
+      window.clearTimeout(connectTimer);
+      if (connectedRef.current) {
+        wsClient.disconnect();
+        connectedRef.current = false;
+      }
     };
   }, [dispatch, token, setupStatus?.needsSetup, setupStatus?.publicAccess]);
 

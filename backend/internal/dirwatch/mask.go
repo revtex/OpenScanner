@@ -22,6 +22,10 @@ type MaskTokens struct {
 	TgKHz    string // frequency in kHz
 	TgMHz    string // frequency in MHz (X.XXX)
 	TgID     string // talkgroup radio ID
+	Sys      string // system radio ID
+	Hz       string // generic frequency in Hz (non-talkgroup)
+	KHz      string // generic frequency in kHz
+	MHz      string // generic frequency in MHz
 }
 
 // ExpandMask replaces all #TOKEN occurrences in mask with their corresponding
@@ -41,12 +45,17 @@ func ExpandMask(mask string, t MaskTokens) string {
 		"#TGKHZ", t.TgKHz,
 		"#TGHZ", t.TgHz,
 		"#TGID", t.TgID,
+		"#SYS", t.Sys,
+		"#MHZ", t.MHz,
+		"#KHZ", t.KHz,
+		"#HZ", t.Hz,
+		"#TG", t.TgID,
 	)
 	return r.Replace(mask)
 }
 
 // TokensFromCall builds MaskTokens from available call metadata.
-func TokensFromCall(callTime time.Time, sysLabel, tgLabel, groupLabel, tagLabel, unit string, tgID, freqHz int64) MaskTokens {
+func TokensFromCall(callTime time.Time, sysLabel string, sysID int64, tgLabel, groupLabel, tagLabel, unit string, tgID, freqHz int64) MaskTokens {
 	utc := callTime.UTC()
 	return MaskTokens{
 		Date:     utc.Format("20060102"),
@@ -62,5 +71,9 @@ func TokensFromCall(callTime time.Time, sysLabel, tgLabel, groupLabel, tagLabel,
 		TgKHz:    fmt.Sprintf("%d", freqHz/1000),
 		TgMHz:    fmt.Sprintf("%.3f", float64(freqHz)/1_000_000),
 		TgID:     fmt.Sprintf("%d", tgID),
+		Sys:      fmt.Sprintf("%d", sysID),
+		Hz:       fmt.Sprintf("%d", freqHz),
+		KHz:      fmt.Sprintf("%d", freqHz/1000),
+		MHz:      fmt.Sprintf("%.3f", float64(freqHz)/1_000_000),
 	}
 }

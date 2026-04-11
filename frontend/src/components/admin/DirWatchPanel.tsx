@@ -5,10 +5,35 @@ import {
   useCreateDirwatchMutation,
   useUpdateDirwatchMutation,
   useDeleteDirwatchMutation,
+  useListSystemsQuery,
+  useListTalkgroupsQuery,
 } from "@/app/slices/adminSlice";
 import type { AdminDirwatch } from "@/types";
 
-const DIRWATCH_TYPES = ["trunk-recorder", "sdr-trunk", "rdio-scanner"] as const;
+const DIRWATCH_TYPES = [
+  { value: "default", label: "Default (mask-based)" },
+  { value: "dsdplus", label: "DSDPlus Fast Lane" },
+  { value: "sdr-trunk", label: "SDR Trunk" },
+  { value: "trunk-recorder", label: "Trunk Recorder" },
+] as const;
+
+const MASK_HELP = `Extract metadata from the filename using these tokens:
+  #DATE — date: 20201231, 2020-12-31, or 2020_12_31
+  #TIME — local time: 085430, 08-54-30, or 08:54:30
+  #ZTIME — zulu/UTC time
+  #SYS — system ID (decimal)
+  #SYSLBL — system label
+  #TG — talkgroup ID (decimal)
+  #TGLBL — talkgroup label
+  #TGAFS — talkgroup ID in AFS format (11-061)
+  #HZ — frequency in Hz
+  #KHZ — frequency in kHz
+  #MHZ — frequency in MHz
+  #TGHZ / #TGKHZ / #TGMHZ — frequency → talkgroup ID
+  #GROUP — group label
+  #TAG — tag label
+  #UNIT — unit ID
+Example: cymx_#TG_#DATE_#TIME_#HZ`;
 
 interface DirwatchFormState {
   directory: string;
@@ -43,6 +68,8 @@ export default function DirWatchPanel() {
   const [createDirwatch] = useCreateDirwatchMutation();
   const [updateDirwatch] = useUpdateDirwatchMutation();
   const [deleteDirwatch] = useDeleteDirwatchMutation();
+  const { data: systems } = useListSystemsQuery();
+  const { data: allTalkgroups } = useListTalkgroupsQuery();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -58,6 +85,27 @@ export default function DirWatchPanel() {
     () => (dirwatches ? [...dirwatches].sort((a, b) => a.order - b.order) : []),
     [dirwatches],
   );
+
+  // Talkgroups indexed by their DB system row ID
+  const tgBySystem = useMemo(() => {
+    const map = new Map<
+      number,
+      { id: number; talkgroupId: number; label: string | null }[]
+    >();
+    if (allTalkgroups) {
+      for (const tg of allTalkgroups) {
+        const list = map.get(tg.systemId) ?? [];
+        list.push(tg);
+        map.set(tg.systemId, list);
+      }
+    }
+    return map;
+  }, [allTalkgroups]);
+
+  const talkgroupsForSelectedSystem = useMemo(() => {
+    if (!form.systemId) return [];
+    return tgBySystem.get(Number(form.systemId)) ?? [];
+  }, [tgBySystem, form.systemId]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -139,6 +187,11 @@ export default function DirWatchPanel() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Directory Watches</h1>
+      <p className="text-sm text-base-content/70 mb-4">
+        Monitor local directories for new audio files and automatically ingest
+        them as calls. Configure the directory path, file mask pattern, and how
+        metadata (system, talkgroup, frequency) is extracted from filenames.
+      </p>
       <div className="card bg-base-200">
         <div className="card-body">
           <div className="flex justify-end mb-2">
@@ -164,10 +217,13 @@ export default function DirWatchPanel() {
                 {sorted.map((d) => (
                   <tr key={d.id}>
                     <td className="font-mono text-sm">{d.directory}</td>
-                    <td>{d.type}</td>
+                    <td>
+                      {DIRWATCH_TYPES.find((t) => t.value === d.type)?.label ??
+                        d.type}
+                    </td>
                     <td>{d.mask ?? "—"}</td>
                     <td>{d.extension ?? "—"}</td>
-                    <td>{d.delay != null ? `${d.delay}s` : "—"}</td>
+                    <td>{d.delay != null ? `${d.delay} ms` : "—"}</td>
                     <td>{d.deleteAfter ? "Yes" : "No"}</td>
                     <td>
                       <input
@@ -210,27 +266,14 @@ export default function DirWatchPanel() {
 
       {/* Create / Edit modal */}
       <dialog className={`modal ${modalOpen ? "modal-open" : ""}`}>
-        <div className="modal-box">
+        <div className="modal-box max-w-lg">
           <h3 className="font-bold text-lg mb-4">
             {editingId != null
               ? "Edit Directory Watch"
               : "Create Directory Watch"}
           </h3>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Directory</span>
-              </div>
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                value={form.directory}
-                onChange={(e) =>
-                  setForm({ ...form, directory: e.target.value })
-                }
-                required
-              />
-            </label>
+            {/* Always-shown fields */}
             <label className="form-control w-full">
               <div className="label">
                 <span className="label-text">Type</span>
@@ -238,64 +281,187 @@ export default function DirWatchPanel() {
               <select
                 className="select select-bordered w-full"
                 value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    type: e.target.value,
+                    systemId: "",
+                    talkgroupId: "",
+                  })
+                }
               >
-                {DIRWATCH_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+                {DIRWATCH_TYPES.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </select>
             </label>
             <label className="form-control w-full">
               <div className="label">
-                <span className="label-text">Mask (optional)</span>
+                <span className="label-text">Directory</span>
               </div>
               <input
                 type="text"
-                className="input input-bordered w-full"
-                value={form.mask}
-                onChange={(e) => setForm({ ...form, mask: e.target.value })}
-              />
-            </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Extension (optional)</span>
-              </div>
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                value={form.extension}
+                className="input input-bordered w-full font-mono text-sm"
+                value={form.directory}
                 onChange={(e) =>
-                  setForm({ ...form, extension: e.target.value })
+                  setForm({ ...form, directory: e.target.value })
                 }
+                required
+                placeholder="/path/to/recordings"
               />
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Frequency (optional)</span>
+
+            {/* Extension — shown for default, dsdplus, trunk-recorder */}
+            {["default", "dsdplus", "trunk-recorder"].includes(form.type) && (
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text">Extension</span>
+                  <span className="label-text-alt text-base-content/60">
+                    e.g. mp3, wav — without the dot
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  value={form.extension}
+                  placeholder="mp3"
+                  onChange={(e) =>
+                    setForm({ ...form, extension: e.target.value })
+                  }
+                />
+              </label>
+            )}
+
+            {/* System dropdown — shown for default and dsdplus */}
+            {["default", "dsdplus"].includes(form.type) && (
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text">System</span>
+                  <span className="label-text-alt text-base-content/60">
+                    Override: send all files to this system
+                  </span>
+                </div>
+                <select
+                  className="select select-bordered w-full"
+                  value={form.systemId}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      systemId: e.target.value,
+                      talkgroupId: "",
+                    })
+                  }
+                >
+                  <option value="">— extract from mask / filename —</option>
+                  {(systems ?? [])
+                    .slice()
+                    .sort((a, b) => a.order - b.order)
+                    .map((s) => (
+                      <option key={s.id} value={String(s.id)}>
+                        {s.label} ({s.systemId})
+                      </option>
+                    ))}
+                </select>
+              </label>
+            )}
+
+            {/* Talkgroup dropdown — shown for default and dsdplus, only when a system is selected */}
+            {["default", "dsdplus"].includes(form.type) && form.systemId && (
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text">Talkgroup</span>
+                  <span className="label-text-alt text-base-content/60">
+                    Override: send all files to this talkgroup
+                  </span>
+                </div>
+                <select
+                  className="select select-bordered w-full"
+                  value={form.talkgroupId}
+                  onChange={(e) =>
+                    setForm({ ...form, talkgroupId: e.target.value })
+                  }
+                >
+                  <option value="">— extract from mask / filename —</option>
+                  {talkgroupsForSelectedSystem.map((tg) => (
+                    <option key={tg.id} value={String(tg.id)}>
+                      {tg.label ?? tg.talkgroupId} ({tg.talkgroupId})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            {/* Mask — shown for default only */}
+            {form.type === "default" && (
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text">Mask</span>
+                </label>
+                <input
+                  type="text"
+                  className="input input-bordered w-full font-mono text-sm"
+                  value={form.mask}
+                  placeholder="e.g. site_#TG_#DATE_#TIME_#HZ"
+                  onChange={(e) => setForm({ ...form, mask: e.target.value })}
+                />
+                <details className="mt-1">
+                  <summary className="text-xs text-base-content/60 cursor-pointer select-none">
+                    Available mask tokens
+                  </summary>
+                  <pre className="text-xs text-base-content/70 bg-base-300 rounded p-2 mt-1 whitespace-pre-wrap">
+                    {MASK_HELP}
+                  </pre>
+                </details>
               </div>
-              <input
-                type="number"
-                className="input input-bordered w-full"
-                value={form.frequency}
-                onChange={(e) =>
-                  setForm({ ...form, frequency: e.target.value })
-                }
-              />
-            </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Delay in seconds (optional)</span>
-              </div>
-              <input
-                type="number"
-                className="input input-bordered w-full"
-                value={form.delay}
-                onChange={(e) => setForm({ ...form, delay: e.target.value })}
-                min={0}
-              />
-            </label>
+            )}
+
+            {/* Frequency — shown for default only */}
+            {form.type === "default" && (
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text">Frequency (Hz)</span>
+                  <span className="label-text-alt text-base-content/60">
+                    Display-only fake frequency
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  className="input input-bordered w-full"
+                  value={form.frequency}
+                  min={0}
+                  placeholder="e.g. 155325000"
+                  onChange={(e) =>
+                    setForm({ ...form, frequency: e.target.value })
+                  }
+                />
+              </label>
+            )}
+
+            {/* Delay — shown for default only */}
+            {form.type === "default" && (
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text">Delay (ms)</span>
+                  <span className="label-text-alt text-base-content/60">
+                    Min 2000 — wait before ingesting file
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  className="input input-bordered w-full"
+                  value={form.delay}
+                  min={2000}
+                  step={100}
+                  placeholder="2000"
+                  onChange={(e) => setForm({ ...form, delay: e.target.value })}
+                />
+              </label>
+            )}
+
+            {/* Toggles */}
+            <div className="divider my-1" />
             <div className="form-control">
               <label className="label cursor-pointer justify-start gap-3">
                 <input
@@ -306,7 +472,12 @@ export default function DirWatchPanel() {
                     setForm({ ...form, deleteAfter: e.target.checked ? 1 : 0 })
                   }
                 />
-                <span className="label-text">Delete after import</span>
+                <div>
+                  <span className="label-text">Delete after import</span>
+                  <p className="text-xs text-base-content/60">
+                    Remove audio file from disk after ingestion
+                  </p>
+                </div>
               </label>
             </div>
             <div className="form-control">
@@ -319,7 +490,12 @@ export default function DirWatchPanel() {
                     setForm({ ...form, usePolling: e.target.checked ? 1 : 0 })
                   }
                 />
-                <span className="label-text">Use polling</span>
+                <div>
+                  <span className="label-text">Use polling</span>
+                  <p className="text-xs text-base-content/60">
+                    Use filesystem polling instead of inotify (for NFS/CIFS)
+                  </p>
+                </div>
               </label>
             </div>
             <div className="form-control">
@@ -335,30 +511,7 @@ export default function DirWatchPanel() {
                 <span className="label-text">Disabled</span>
               </label>
             </div>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">System ID (optional)</span>
-              </div>
-              <input
-                type="number"
-                className="input input-bordered w-full"
-                value={form.systemId}
-                onChange={(e) => setForm({ ...form, systemId: e.target.value })}
-              />
-            </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Talkgroup ID (optional)</span>
-              </div>
-              <input
-                type="number"
-                className="input input-bordered w-full"
-                value={form.talkgroupId}
-                onChange={(e) =>
-                  setForm({ ...form, talkgroupId: e.target.value })
-                }
-              />
-            </label>
+
             <div className="modal-action">
               <button
                 type="button"

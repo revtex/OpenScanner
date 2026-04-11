@@ -20,15 +20,21 @@ vi.mock("react-router-dom", async () => {
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    Navigate: ({ to }: { to: string }) => {
+      mockNavigate(to, { replace: true });
+      return null;
+    },
   };
 });
 
 const mockPostSetup = vi.fn();
+const mockSetupStatus = { data: { needsSetup: true }, isLoading: false };
 vi.mock("@/app/api", async () => {
   const actual = await vi.importActual<typeof import("@/app/api")>("@/app/api");
   return {
     ...actual,
     usePostSetupMutation: () => [mockPostSetup, { isLoading: false }],
+    useGetSetupStatusQuery: () => mockSetupStatus,
   };
 });
 

@@ -95,7 +95,8 @@ openscanner/                     ← monorepo root
 │   │   ├── 015_create_bookmarks.sql
 │   │   ├── 016_create_webhooks.sql
 │   │   ├── 017_create_push_subscriptions.sql
-│   │   └── 018_create_transcriptions.sql
+│   │   ├── 018_create_transcriptions.sql
+│   │   └── 019_drop_accesses.sql
 │   └── sqlc/
 │       ├── sqlc.yaml
 │       └── queries/             ← one .sql file per table
@@ -109,7 +110,6 @@ openscanner/                     ← monorepo root
 │           ├── groups.sql
 │           ├── tags.sql
 │           ├── api_keys.sql
-│           ├── accesses.sql
 │           ├── dirwatches.sql
 │           ├── downstreams.sql
 │           ├── logs.sql
@@ -153,7 +153,6 @@ openscanner/                     ← monorepo root
 │   │   │       ├── UsersPanel.tsx       ← user account management (admin/listener)
 │   │   │       ├── SystemsPanel.tsx     ← systems + talkgroups + units CRUD
 │   │   │       ├── ApiKeysPanel.tsx     ← API key management
-│   │   │       ├── AccessesPanel.tsx    ← listener access code management
 │   │   │       ├── DirWatchPanel.tsx    ← directory watch configuration
 │   │   │       ├── DownstreamsPanel.tsx ← downstream instance configuration
 │   │   │       ├── GroupsTagsPanel.tsx  ← groups and tags CRUD
@@ -172,7 +171,7 @@ openscanner/                     ← monorepo root
 │   │   │   ├── useKeyboardShortcuts.ts ← keyboard event handler + shortcut map
 │   │   │   └── useTheme.ts      ← dark/light theme toggle + localStorage persist
 │   │   └── types/
-│   │       └── index.ts         ← Call, System, Talkgroup, Group, Tag, ApiKey, Access,
+│   │       └── index.ts         ← Call, System, Talkgroup, Group, Tag, ApiKey,
 │   │                               DirWatch, Downstream, Settings, WsMessage, Bookmark,
 │   │                               Webhook, PushSubscription, Transcription types
 │   ├── index.html
@@ -298,7 +297,7 @@ Every app option is a key/value pair here.
 | `tagsToggle`                  | `false`   | When `true`, show tag-based toggles in the Select TG panel alongside group/system toggles             |
 | `playbackGoesLive`            | `false`   | When `true`, finishing archive playback automatically switches back to LIVE mode                      |
 | `searchPatchedTalkgroups`     | `false`   |                                                                                                       |
-| `publicAccess`                | `false`   | When `true`, scanner is open to everyone — no login or access code required                           |
+| `publicAccess`                | `false`   | When `true`, scanner is open to everyone — no login required                                          |
 | `shareableLinks`              | `false`   | When `true`, public call share URLs are enabled (`/call/:id`)                                         |
 | `keyboardShortcuts`           | `true`    | When `true`, keyboard shortcuts are enabled on scanner page                                           |
 | `darkMode`                    | `true`    | `true` = dark theme, `false` = light theme; persisted per-instance in localStorage too                |
@@ -403,19 +402,9 @@ Audio file is stored on the filesystem. Only the relative path is in the DB.
 | `systems_json` | TEXT                     | JSON grant rules                      |
 | `order`        | INTEGER                  |                                       |
 
-### `accesses`
+### `accesses` (removed)
 
-Anonymous access codes for quick-share listener access (no user account needed). If no access codes exist and no listener users exist, all listeners connect freely.
-
-| Column         | Type                     | Notes                                 |
-| -------------- | ------------------------ | ------------------------------------- |
-| `id`           | INTEGER PK AUTOINCREMENT |                                       |
-| `code`         | TEXT                     | listener PIN code                     |
-| `ident`        | TEXT                     | human label                           |
-| `expiration`   | INTEGER                  | Unix epoch, nullable                  |
-| `limit`        | INTEGER                  | concurrent connection limit, nullable |
-| `systems_json` | TEXT                     | JSON grant rules                      |
-| `order`        | INTEGER                  |                                       |
+> **Dropped in migration 019.** The legacy access codes / PIN-based listener authentication feature has been removed. Authentication is now purely user-based (JWT) or public access mode.
 
 ### `dirwatches`
 
@@ -562,18 +551,17 @@ All resources support `GET` (list), `POST` (create), `PUT /:id` (update), `DELET
 
 **User management constraints:** Admin cannot delete own account; password is accepted on create (hashed server-side); role change requires admin; disabled users cannot authenticate.
 
-| Resource     | Path                     |
-| ------------ | ------------------------ |
-| Users        | `/api/admin/users`       |
-| Systems      | `/api/admin/systems`     |
-| Talkgroups   | `/api/admin/talkgroups`  |
-| Units        | `/api/admin/units`       |
-| Groups       | `/api/admin/groups`      |
-| Tags         | `/api/admin/tags`        |
-| API Keys     | `/api/admin/apikeys`     |
-| Access Codes | `/api/admin/accesses`    |
-| DirWatches   | `/api/admin/dirwatches`  |
-| Downstreams  | `/api/admin/downstreams` |
+| Resource    | Path                     |
+| ----------- | ------------------------ |
+| Users       | `/api/admin/users`       |
+| Systems     | `/api/admin/systems`     |
+| Talkgroups  | `/api/admin/talkgroups`  |
+| Units       | `/api/admin/units`       |
+| Groups      | `/api/admin/groups`      |
+| Tags        | `/api/admin/tags`        |
+| API Keys    | `/api/admin/apikeys`     |
+| DirWatches  | `/api/admin/dirwatches`  |
+| Downstreams | `/api/admin/downstreams` |
 
 **Read-only endpoints** (no POST/PUT/DELETE):
 
@@ -666,10 +654,10 @@ Environment: `OPENSCANNER_ADMIN_PASSWORD` can provide the password instead of `+
 
 ### WebSocket
 
-| Path                | Auth                                                  | Description                  |
-| ------------------- | ----------------------------------------------------- | ---------------------------- |
-| `GET /ws`           | Public (if enabled), access code PIN, or listener JWT | Listener connection          |
-| `GET /api/admin/ws` | JWT (admin role)                                      | Admin dashboard live updates |
+| Path                | Auth                                | Description                  |
+| ------------------- | ----------------------------------- | ---------------------------- |
+| `GET /ws`           | Public (if enabled) or listener JWT | Listener connection          |
+| `GET /api/admin/ws` | JWT (admin role)                    | Admin dashboard live updates |
 
 ### WebSocket Commands
 
@@ -684,7 +672,6 @@ All messages are JSON arrays: `[command, payload?, flags?]`
 | `LSC`   | Server → client | Active listeners count                                         |
 | `LFM`   | Bidirectional   | Live feed map update (client sends selection, server confirms) |
 | `MAX`   | Server → client | Max clients reached                                            |
-| `PIN`   | Client → server | Access code authentication                                     |
 | `VER`   | Server → client | Server version + branding + email                              |
 | `TRN`   | Server → client | Transcript ready for a call (callId + text)                    |
 
@@ -694,7 +681,7 @@ All messages are JSON arrays: `[command, payload?, flags?]`
 - **permessage-deflate compression:** Enabled via `websocket.AcceptOptions{CompressionMode: websocket.CompressionContextTakeover}` for reduced bandwidth
 - **Non-blocking sends:** Hub uses `select` with default drop — slow clients are skipped rather than blocking the broadcast loop
 - **`LSC` debouncing:** Listener-count broadcasts are debounced via `time.AfterFunc` reset (max once per 3 seconds) to avoid broadcast storms during reconnect waves
-- **Per-user/per-access-code grant filtering:** Hub only sends `CAL` events the client is authorized to receive based on their system/TG grants; public-access clients receive all
+- **Per-user grant filtering:** Hub only sends `CAL` events the client is authorized to receive based on their system/TG grants; public-access clients receive all
 
 **Reserved for future use (mobile/push notification support):**
 
@@ -793,20 +780,13 @@ Usage: `openscanner --service install`, then `openscanner --service start`.
 ### Public Access (Open Listening)
 
 - Controlled by the `publicAccess` setting (default: `false`), toggled in admin Options panel
-- When enabled, **any visitor can open the scanner and listen without logging in or entering an access code**
+- When enabled, **any visitor can open the scanner and listen without logging in**
 - Public listeners have access to all systems/talkgroups (no server-side filtering)
 - Public listeners can use the Select TG panel to filter their own feed — selection is stored client-side in `localStorage` and sent to the server via `LFM` command (same as authenticated listeners); this is a per-session preference, not persisted on the server
 - Public listeners are still subject to `maxClients` connection limit
 - Admins can enable this for community/hobbyist deployments where open access is desired
-- When disabled, listeners must authenticate via JWT (listener user) or PIN (access code)
+- When disabled, listeners must authenticate via JWT (listener user account)
 - The admin dashboard always requires admin JWT regardless of this setting
-
-### Anonymous Access Codes (WebSocket — backward compatible)
-
-- Access codes in `accesses` table provide anonymous PIN-based listener access (no user account needed)
-- Code-based PIN sent as `PIN` WS command on connect
-- Per-code grants: expiration date, concurrent connection limit, system/TG access rules
-- Useful for quick-share scenarios (e.g., temporary event access)
 
 ### API Keys (Call Ingest)
 
@@ -1252,7 +1232,7 @@ Centered card, similar to login but with step indicator:
 
 - **Sidebar** (left): icon-only on mobile (`sm`), icon + label on `lg`
 - Width: 64px collapsed, 200px expanded
-- Sidebar items (abbreviated): USR=Users, SYS=Systems, GRP=Groups & Tags, API=API Keys, ACC=Accesses, DIR=Dir Watches, DWN=Downstreams, OPT=Options, LOG=Logs, TLS=Tools, OUT=Sign Out
+- Sidebar items (abbreviated): USR=Users, SYS=Systems, GRP=Groups & Tags, API=API Keys, DIR=Dir Watches, DWN=Downstreams, OPT=Options, LOG=Logs, TLS=Tools, Scanner (Home icon), OUT=Sign Out
 - Active item highlighted with `primary` color left border
 - **Content area**: max-width 1200px, padding 24px
 - Each panel is a DaisyUI `card` with a data table inside
@@ -1588,19 +1568,19 @@ All extended features are **configurable** — disabled by default (except keybo
 **Goal:** Real-time call broadcast to all connected listeners.
 
 1. `internal/ws/hub.go` — hub with `register`, `unregister`, `broadcast` channels; runs in a single goroutine; all sends are non-blocking (`select` with default drop); **permessage-deflate** compression enabled via `websocket.AcceptOptions{CompressionMode: websocket.CompressionContextTakeover}`
-2. `internal/ws/client.go` — per-connection struct; separate goroutines for read pump and write pump; listener client authenticates via `PIN` command (access code) **or** JWT token (listener user) **or** connects freely when `publicAccess` setting is enabled; admin client validates JWT with admin role; **binary audio frames**: after sending `CAL` JSON text frame, immediately send the audio file bytes as a binary WebSocket frame (avoids a separate HTTP fetch)
-3. `internal/ws/messages.go` — typed constants and builder helpers for `CAL`, `CFG`, `XPR`, `LCL`, `LSC`, `LFM`, `MAX`, `PIN`, `VER`; reserved stubs for `IOS`, `PID`, `SRV`
+2. `internal/ws/client.go` — per-connection struct; separate goroutines for read pump and write pump; listener client authenticates via JWT token (listener user) **or** connects freely when `publicAccess` setting is enabled; admin client validates JWT with admin role; **binary audio frames**: after sending `CAL` JSON text frame, immediately send the audio file bytes as a binary WebSocket frame (avoids a separate HTTP fetch)
+3. `internal/ws/messages.go` — typed constants and builder helpers for `CAL`, `CFG`, `XPR`, `LCL`, `LSC`, `LFM`, `MAX`, `VER`; reserved stubs for `IOS`, `PID`, `SRV`
 4. Wire hub into `cmd/server/main.go`; register `GET /ws` and `GET /api/admin/ws` upgrade handlers; **graceful shutdown** with `context.WithCancel` + `srv.Shutdown(ctx)` (drain WS connections before exit)
 5. `LSC` broadcast on every connect/disconnect — **debounced** via `time.AfterFunc` reset (max once per 3 seconds to avoid broadcast storms during reconnect waves)
 6. `CFG` broadcast triggered by `PUT /api/admin/config`
-7. Per-user and per-access-code system/TG grant filtering — hub only sends `CAL` events the client is authorised to receive; public-access clients receive all systems/TGs (no filtering)
+7. Per-user system/TG grant filtering — hub only sends `CAL` events the client is authorised to receive; public-access clients receive all systems/TGs (no filtering)
 8. Unit tests: hub broadcast, client auth, grant filtering
 
 **Deliverables:** After call upload, connected WS client receives `CAL` event within 500ms.
 
 **Agents:** Go Expert (hub, client, message types, graceful shutdown), Testing Expert (unit tests), Reviewer (auth bypass review, grant filtering, binary frame handling).
 
-**References:** [WebSocket](#websocket) paths, [WebSocket Commands](#websocket-commands) (message format + all commands), [Public Access](#public-access-open-listening), [Anonymous Access Codes](#anonymous-access-codes-websocket--backward-compatible).
+**References:** [WebSocket](#websocket) paths, [WebSocket Commands](#websocket-commands) (message format + all commands), [Public Access](#public-access-open-listening).
 
 ---
 
@@ -1610,12 +1590,12 @@ All extended features are **configurable** — disabled by default (except keybo
 
 **Goal:** All admin management endpoints work; config is fully DB-backed.
 
-1. ✅ CRUD handlers for all resources: users, systems, talkgroups, units, groups, tags, apikeys, accesses, dirwatches, downstreams, webhooks
+1. ✅ CRUD handlers for all resources: users, systems, talkgroups, units, groups, tags, apikeys, dirwatches, downstreams, webhooks
 2. ✅ User management: admin can list/create/update/disable/delete users; password field accepted on create, hashed server-side; admin cannot delete own account; role validation enforced (`admin` or `listener`)
 3. ✅ `GET/PUT /api/admin/config` — reads all `settings` rows as a config object; writes back individual keys (allowlist-validated); broadcasts `CFG` on `PUT`
 4. ✅ `GET /api/admin/logs` — filterable by `from`, `to` (Unix timestamps), `level`; truncated to 10,000 rows with `X-Truncated` header
 5. ✅ `POST /api/admin/import/talkgroups` + `POST /api/admin/import/units` — CSV parsing with header detection, safety limit (100,000 rows), system existence validation
-6. ✅ `GET /api/admin/export/config` + `POST /api/admin/import/config` — full JSON config round-trip (settings, users, systems, talkgroups, units, groups, tags, apikeys, accesses, dirwatches, downstreams, webhooks) in a single transaction
+6. ✅ `GET /api/admin/export/config` + `POST /api/admin/import/config` — full JSON config round-trip (settings, users, systems, talkgroups, units, groups, tags, apikeys, dirwatches, downstreams, webhooks) in a single transaction
 7. ✅ Integration tests: every endpoint including 401 (missing JWT), 404 (not found), 422 (validation fail)
 
 **Deliverables:** Full admin dashboard backend is functional; all 50+ endpoints return correct status codes.
@@ -1681,7 +1661,7 @@ All extended features are **configurable** — disabled by default (except keybo
 1. `src/main.tsx` — React app entry; wrap with Redux `Provider` and `RouterProvider`
 2. `src/app/store.ts` — Redux store with all slices + RTK Query middleware
 3. `src/app/api.ts` — RTK Query base API with `baseUrl: '/api'`
-4. `src/services/wsClient.ts` — WebSocket service: connects to `/ws`, sends `PIN` or JWT, auto-reconnects with exponential backoff (1s → 2s → 4s → ... max 30s, with jitter), dispatches WS events to Redux; handles binary audio frames (reads `Blob` for playback after `CAL` JSON); when `publicAccess` is enabled, connects without sending any auth command
+4. `src/services/wsClient.ts` — WebSocket service: connects to `/ws`, sends JWT if authenticated, auto-reconnects with exponential backoff (1s → 2s → 4s → ... max 30s, with jitter), dispatches WS events to Redux; handles binary audio frames (reads `Blob` for playback after `CAL` JSON); when `publicAccess` is enabled, connects without sending any auth command; `XPR` handler clears credentials before disconnecting
 5. `src/services/audioPlayer.ts` — call queue manager: `HTMLAudioElement` playback, Web Audio API for volume, bundled keypad beep sounds (Uniden/Motorola WAV assets in `public/audio/`); **audio preloading** — when a call is playing, preload the next queued call's audio into a second `HTMLAudioElement` for gapless transitions
 6. `src/hooks/useWebSocket.ts` — initialises wsClient on mount, exposes connection status
 7. `src/pages/Scanner.tsx` — main layout: LED panel (top), Display panel (centre), Controls (bottom), History panel (right/bottom)
@@ -1693,7 +1673,7 @@ All extended features are **configurable** — disabled by default (except keybo
 13. `?id=` URL param: each unique ID gets its own localStorage key for TG selection (multi-instance support)
 14. `frontend/sw.ts` — Service Worker for PWA app-shell caching: cache HTML, JS, CSS, and font assets on install; network-first for API calls; enables instant load on repeat visits and mobile home screen install
 15. `frontend/public/manifest.json` — PWA manifest with app name, icons, `display: standalone`, dark theme color
-16. Startup: call `GET /api/setup/status`; redirect to `/setup` if `needsSetup=true`; if `publicAccess=true`, connect WS immediately with no auth; otherwise show unlock-code overlay on display panel
+16. Startup: call `GET /api/setup/status`; redirect to `/setup` if `needsSetup=true`; if `publicAccess=true`, connect WS immediately with no auth; otherwise redirect to `/login` for JWT authentication
 17. Unit tests: LEDPanel renders all state variants, ControlToolbar dispatch correct Redux actions
 
 **Deliverables:** Scanner page loads; live WS events update the display; audio plays.
@@ -1743,7 +1723,6 @@ All extended features are **configurable** — disabled by default (except keybo
    - `UsersPanel` — user accounts table: username, role badge (admin/listener), disabled toggle, expiration, connection limit, system grant editor; create-user form with role selector and password field
    - `SystemsPanel` — systems table with expandable nested talkgroup and unit sub-lists; drag-to-reorder via `@dnd-kit`; **virtual scrolling** via `@tanstack/react-virtual` for systems with many talkgroups
    - `ApiKeysPanel` — generate UUID, copy-to-clipboard, enable/disable toggle, system grant editor, drag-to-reorder
-   - `AccessesPanel` — code, ident, expiration date-picker, concurrent limit, system grant editor
    - `DirWatchPanel` — directory path, type dropdown, mask field, extension, delay, delete-after toggle
    - `DownstreamsPanel` — URL, API key, system grant editor, enable/disable
    - `GroupsTagsPanel` — two simple tables: groups and tags with add/rename/delete
@@ -1998,7 +1977,7 @@ Each phase is complete when all of the following pass:
 | 22  | `make dev` starts both Go (air) and Vite dev servers with hot reload                                                                                 |
 | 23  | Listener user JWT cannot access `/api/admin/*` routes (returns 403)                                                                                  |
 | 24  | Admin can create/disable/delete listener users; disabled user cannot log in                                                                          |
-| 25  | Anonymous access code (`PIN`) still grants filtered WS access when no user account exists                                                            |
+| 25  | Public access mode allows unauthenticated scanner listening; admin routes remain protected                                                           |
 | 26  | Keyboard shortcuts: `Space` pauses, `S` skips, `?` opens help modal; disabled in input fields                                                        |
 | 27  | Theme toggle switches between dark and light; persists in localStorage after reload                                                                  |
 | 28  | Share URL (`/call/:id`) renders public player with audio + metadata when `shareableLinks` enabled; returns 404 when disabled                         |
@@ -2022,7 +2001,7 @@ Everything rdio-scanner v6.6.x does:
 - SDRTrunk HTTP API ingest (in addition to DirWatch)
 - DirWatch with all recorder parsers, meta-mask, polling fallback for CIFS/NFS
 - Downstream call forwarding
-- Access codes + API keys with per-system/TG grants
+- API keys with per-system/TG grants
 - Full TG selection (ON/OFF/PARTIAL), live feed, archive search
 - Avoid (30/60/120 min), hold system/TG, patched talkgroups, AFS systems
 - Unit aliases, CSV import, JSON config export/import

@@ -101,7 +101,6 @@ describe("AdminLayout", () => {
       "Systems",
       "Groups & Tags",
       "API Keys",
-      "Accesses",
       "Dir Watches",
       "Downstreams",
       "Options",

@@ -40,6 +40,13 @@ type CallEvent struct {
 	Sources     string
 	Frequencies string
 	Patches     string
+
+	// Human-readable labels for downstream consumers.
+	SystemLabel    string
+	TalkgroupLabel string
+	TalkgroupName  string
+	TalkgroupGroup string // group label
+	TalkgroupTag   string // tag label
 }
 
 // systemGrant describes which talkgroups are permitted for a given radio system.
@@ -334,6 +341,29 @@ func (s *Service) pushCall(ctx context.Context, ds db.Downstream, event CallEven
 	}
 	if event.Patches != "" {
 		writeField("patches", event.Patches)
+	}
+	if event.AudioName != "" {
+		writeField("audioName", event.AudioName)
+	}
+	if event.AudioType != "" {
+		writeField("audioType", event.AudioType)
+	}
+
+	// Label fields — include only if non-empty.
+	if event.SystemLabel != "" {
+		writeField("systemLabel", event.SystemLabel)
+	}
+	if event.TalkgroupLabel != "" {
+		writeField("talkgroupLabel", event.TalkgroupLabel)
+	}
+	if event.TalkgroupName != "" {
+		writeField("talkgroupName", event.TalkgroupName)
+	}
+	if event.TalkgroupGroup != "" {
+		writeField("talkgroupGroup", event.TalkgroupGroup)
+	}
+	if event.TalkgroupTag != "" {
+		writeField("talkgroupTag", event.TalkgroupTag)
 	}
 
 	if err := writer.Close(); err != nil {

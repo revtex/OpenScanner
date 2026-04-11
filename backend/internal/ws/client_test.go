@@ -2,7 +2,6 @@ package ws
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -176,80 +175,6 @@ func TestHandleListenerWS_PublicAccess(t *testing.T) {
 	}
 }
 
-func TestHandleListenerWS_ValidPIN(t *testing.T) {
-	queries := newWSTestDB(t)
-
-	// Create an access code.
-	_, err := queries.CreateAccess(context.Background(), db.CreateAccessParams{
-		Code:  "test-code-123",
-		Ident: sql.NullString{String: "test", Valid: true},
-		Order: 1,
-	})
-	if err != nil {
-		t.Fatalf("create access: %v", err)
-	}
-
-	hub := NewHub(queries, "test-version")
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go hub.Run(ctx)
-
-	handler := HandleListenerWS(hub, queries)
-	srv := httptest.NewServer(handler)
-	defer srv.Close()
-	wsURL := "ws" + srv.URL[len("http"):]
-
-	conn, _, err := websocket.Dial(ctx, wsURL, nil)
-	if err != nil {
-		t.Fatalf("dial: %v", err)
-	}
-	defer conn.CloseNow() //nolint:errcheck
-	pinMsg, _ := json.Marshal([]any{"PIN", "test-code-123"})
-	if err := conn.Write(ctx, websocket.MessageText, pinMsg); err != nil {
-		t.Fatalf("write PIN: %v", err)
-	}
-
-	// Should receive VER (welcome).
-	msg := readTextMessage(t, ctx, conn, 5*time.Second)
-	cmd := extractCommand(t, msg)
-	if cmd != "VER" {
-		t.Errorf("expected VER after valid PIN, got %q", cmd)
-	}
-}
-
-func TestHandleListenerWS_InvalidPIN(t *testing.T) {
-	queries := newWSTestDB(t)
-
-	hub := NewHub(queries, "test-version")
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go hub.Run(ctx)
-
-	handler := HandleListenerWS(hub, queries)
-	srv := httptest.NewServer(handler)
-	defer srv.Close()
-	wsURL := "ws" + srv.URL[len("http"):]
-
-	conn, _, err := websocket.Dial(ctx, wsURL, nil)
-	if err != nil {
-		t.Fatalf("dial: %v", err)
-	}
-	defer func() { _ = conn.CloseNow() }()
-
-	// Send PIN with bad code.
-	pinMsg, _ := json.Marshal([]any{"PIN", "wrong-code"})
-	if err := conn.Write(ctx, websocket.MessageText, pinMsg); err != nil {
-		t.Fatalf("write PIN: %v", err)
-	}
-
-	// Should receive XPR (expired/rejected).
-	msg := readTextMessage(t, ctx, conn, 5*time.Second)
-	cmd := extractCommand(t, msg)
-	if cmd != "XPR" {
-		t.Errorf("expected XPR after invalid PIN, got %q", cmd)
-	}
-}
-
 func TestHandleListenerWS_ValidJWT(t *testing.T) {
 	queries := newWSTestDB(t)
 
@@ -303,7 +228,7 @@ func TestHandleListenerWS_ValidJWT(t *testing.T) {
 	}
 }
 
-func TestHandleListenerWS_AdminJWTRejected(t *testing.T) {
+func TestHandleListenerWS_AdminJWTAccepted(t *testing.T) {
 	queries := newWSTestDB(t)
 
 	// Create an admin user.
@@ -341,17 +266,17 @@ func TestHandleListenerWS_AdminJWTRejected(t *testing.T) {
 	}
 	defer func() { _ = conn.CloseNow() }()
 
-	// Send admin JWT — should be rejected on listener endpoint.
+	// Send admin JWT — admins are allowed on the listener endpoint.
 	tokenMsg, _ := json.Marshal([]any{token})
 	if err := conn.Write(ctx, websocket.MessageText, tokenMsg); err != nil {
 		t.Fatalf("write token: %v", err)
 	}
 
-	// Should receive XPR.
+	// Should receive VER (accepted).
 	msg := readTextMessage(t, ctx, conn, 5*time.Second)
 	cmd := extractCommand(t, msg)
-	if cmd != "XPR" {
-		t.Errorf("expected XPR for admin JWT on listener endpoint, got %q", cmd)
+	if cmd != "VER" {
+		t.Errorf("expected VER for admin JWT on listener endpoint, got %q", cmd)
 	}
 }
 

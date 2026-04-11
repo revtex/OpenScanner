@@ -13,7 +13,6 @@ type Querier interface {
 	CountCalls(ctx context.Context) (int64, error)
 	CountCallsFiltered(ctx context.Context, arg CountCallsFilteredParams) (int64, error)
 	CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (int64, error)
-	CreateAccess(ctx context.Context, arg CreateAccessParams) (int64, error)
 	CreateBookmark(ctx context.Context, arg CreateBookmarkParams) (int64, error)
 	CreateCall(ctx context.Context, arg CreateCallParams) (int64, error)
 	CreateDirwatch(ctx context.Context, arg CreateDirwatchParams) (int64, error)
@@ -29,7 +28,6 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (int64, error)
 	CreateWebhook(ctx context.Context, arg CreateWebhookParams) (int64, error)
 	DeleteAPIKey(ctx context.Context, id int64) error
-	DeleteAccess(ctx context.Context, id int64) error
 	DeleteBookmark(ctx context.Context, id int64) error
 	DeleteBookmarkByCallAndUser(ctx context.Context, arg DeleteBookmarkByCallAndUserParams) error
 	DeleteCall(ctx context.Context, id int64) error
@@ -51,8 +49,6 @@ type Querier interface {
 	DeleteWebhook(ctx context.Context, id int64) error
 	GetAPIKey(ctx context.Context, id int64) (ApiKey, error)
 	GetAPIKeyByKey(ctx context.Context, key string) (ApiKey, error)
-	GetAccess(ctx context.Context, id int64) (Access, error)
-	GetAccessByCode(ctx context.Context, code string) (Access, error)
 	GetAppState(ctx context.Context) (AppState, error)
 	GetBookmark(ctx context.Context, id int64) (Bookmark, error)
 	GetCall(ctx context.Context, id int64) (GetCallRow, error)
@@ -76,7 +72,6 @@ type Querier interface {
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	GetWebhook(ctx context.Context, id int64) (Webhook, error)
 	ListAPIKeys(ctx context.Context) ([]ApiKey, error)
-	ListAccesses(ctx context.Context) ([]Access, error)
 	ListActiveDirwatches(ctx context.Context) ([]Dirwatch, error)
 	ListActiveDownstreams(ctx context.Context) ([]Downstream, error)
 	ListActiveWebhooks(ctx context.Context) ([]Webhook, error)
@@ -105,7 +100,6 @@ type Querier interface {
 	PruneLogs(ctx context.Context, dateTime int64) error
 	SetSetupComplete(ctx context.Context, setupComplete int64) error
 	UpdateAPIKey(ctx context.Context, arg UpdateAPIKeyParams) error
-	UpdateAccess(ctx context.Context, arg UpdateAccessParams) error
 	UpdateDirwatch(ctx context.Context, arg UpdateDirwatchParams) error
 	UpdateDownstream(ctx context.Context, arg UpdateDownstreamParams) error
 	UpdateGroup(ctx context.Context, arg UpdateGroupParams) error

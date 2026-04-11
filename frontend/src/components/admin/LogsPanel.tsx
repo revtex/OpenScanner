@@ -55,6 +55,11 @@ export default function LogsPanel() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Logs</h1>
+      <p className="text-sm text-base-content/70 mb-4">
+        View server logs filtered by date range and severity level. Use this to
+        diagnose issues with call ingestion, audio processing, transcription, or
+        downstream forwarding.
+      </p>
       <div className="card bg-base-200">
         <div className="card-body">
           {/* Filter bar */}

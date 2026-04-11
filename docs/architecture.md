@@ -28,7 +28,7 @@ graph TD
     Seed["Seed<br/>(runs at startup)"] -->|default data| DB
 
     API --> Hub["WebSocket Hub"]
-    Hub -->|CAL / CFG / LSC / PIN| Listeners["Browser Clients"]
+    Hub -->|CAL / CFG / LSC| Listeners["Browser Clients"]
     API --> Downstream["Downstream Pusher"]
     Downstream -->|POST /api/call-upload| RemoteInstance["Remote OpenScanner"]
     API -.-> Webhooks["Webhook Delivery"]
@@ -57,12 +57,12 @@ graph TD
 ### Implemented
 
 - **backend/cmd/server** — Application entry point; loads config, opens DB, runs migrations, seeds defaults, starts Gin HTTP server with timeouts (`ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, `IdleTimeout`); graceful shutdown via `signal.NotifyContext` + error channel
-- **backend/internal/api** — Gin route handlers: health check (`GET /api/health`), first-run setup (`GET /api/setup/status`, `POST /api/setup`), auth (`POST /api/auth/login`, `POST /api/auth/logout`, `PUT /api/auth/password`, `GET /api/auth/me`), admin CRUD (full CRUD for users, systems, talkgroups, units, groups, tags, apikeys, accesses, dirwatches, downstreams, webhooks), admin config (`GET/PUT /api/admin/config`), admin logs (`GET /api/admin/logs`), CSV import (`POST /api/admin/import/talkgroups`, `POST /api/admin/import/units`), JSON config export/import (`GET /api/admin/export/config`, `POST /api/admin/import/config`)
+- **backend/internal/api** — Gin route handlers: health check (`GET /api/health`), first-run setup (`GET /api/setup/status`, `POST /api/setup`), auth (`POST /api/auth/login`, `POST /api/auth/logout`, `PUT /api/auth/password`, `GET /api/auth/me`), admin CRUD (full CRUD for users, systems, talkgroups, units, groups, tags, apikeys, dirwatches, downstreams, webhooks), admin config (`GET/PUT /api/admin/config`), admin logs (`GET /api/admin/logs`), CSV import (`POST /api/admin/import/talkgroups`, `POST /api/admin/import/units`), JSON config export/import (`GET /api/admin/export/config`, `POST /api/admin/import/config`); response DTOs use pointer fields (`*string`/`*int64`) for proper JSON serialization of nullable values
 - **backend/internal/auth** — JWT HS256 (32-byte random secret, 24h expiry, UUID v4 JTI); bcrypt cost 12; `TokenTracker` with max-5 tokens per user (oldest evicted); `RateLimiter` (3 failures → 10-min lockout per IP); timing-safe login with `DummyHash`
 - **backend/internal/config** — Server startup configuration (CLI flags, env vars, optional INI file); precedence: CLI > env > INI > defaults
 - **backend/internal/middleware** — Gin middleware: `RequestID` (UUID v4), `Logger` (structured slog), `JWTAuth` (validates token + checks revocation), `OptionalJWTAuth` (extracts JWT if present but allows unauthenticated access for public endpoints), `RequireAdmin` (role-based 403), `APIKeyAuth` (header or query param), `RateLimit` (429 on lockout)
 - **backend/internal/seed** — First-run database seeding: 1 `app_state` row, 30 settings, 6 groups (Air/EMS/Fire/Interop/Law/Unknown), 9 tags; all idempotent (`INSERT OR IGNORE`) in a single transaction
-- **backend/internal/db** — SQLite WAL mode, embedded migrations (18 tables), `SetMaxOpenConns(1)`; sqlc-generated type-safe query layer
+- **backend/internal/db** — SQLite WAL mode, embedded migrations (19 migrations, 17 tables — migration 019 drops the legacy `accesses` table), `SetMaxOpenConns(1)`; sqlc-generated type-safe query layer
 
 - **backend/internal/audio** — FFmpeg audio conversion pipeline: `Processor.Store` writes uploaded multipart file to `{audioDir}/{YYYY}/{MM}/{DD}/`, submits a `ConversionJob` to the bounded `WorkerPool` (`runtime.NumCPU()` goroutines), waits for completion, then returns the relative `.m4a` path; `IsDuplicate` queries the last call per system+talkgroup within the configured time window; `PruneLoop` runs on a 1-hour ticker deleting old calls and audio files in 500-row batches
 - **backend/internal/api/calls.go** — `PostCallUpload` handler: validates API key (via `APIKeyAuth` middleware), applies per-API-key sliding-window rate limiter (default 60 req/min), parses multipart fields, resolves or auto-populates system+talkgroup, runs duplicate check, stores audio via `Processor.Store`, inserts call DB record, broadcasts `CAL` + binary audio to WS hub, returns `{"id": <callID>}`; also registered as `POST /api/trunk-recorder-call-upload`
@@ -70,8 +70,8 @@ graph TD
 
 - **backend/internal/ws** — Real-time WebSocket hub for call streaming and client management:
   - **hub.go** — `Hub` struct runs a single-goroutine event loop processing `register`, `unregister`, and `broadcast` channels; non-blocking sends (slow clients dropped); `BroadcastCAL()` sends text + binary frames atomically per client (mutex-protected); `debounceLSC()` limits listener-count broadcasts to max 1 per 3 seconds via `time.AfterFunc`; graceful shutdown via context cancellation + `closeAll()`
-  - **client.go** — `Client` struct with `readPump`/`writePump` goroutines; `HandleListenerWS` supports three auth flows: public access, `PIN` access code, or listener JWT; enforces `maxClients`, per-user `limit`, and per-access-code `limit`; `HandleAdminWS` validates admin JWT via `?token=` query param; `CanReceive(systemID, talkgroupID)` filters per-client grants
-  - **messages.go** — Command constants (`CAL`, `CFG`, `VER`, `LSC`, `XPR`, `MAX`, `PIN`, `LFM`, `LCL`, `TRN`) with typed builder functions; `ParseCommand` extracts command + payload from JSON array messages
+  - **client.go** — `Client` struct with `readPump`/`writePump` goroutines; `HandleListenerWS` supports two auth flows: public access (no auth needed) or listener JWT sent as first message; enforces `maxClients` and per-user `limit`; `HandleAdminWS` validates admin JWT via `?token=` query param; `CanReceive(systemID, talkgroupID)` filters per-client grants
+  - **messages.go** — Command constants (`CAL`, `CFG`, `VER`, `LSC`, `XPR`, `MAX`, `LFM`, `LCL`, `TRN`) with typed builder functions; `ParseCommand` extracts command + payload from JSON array messages
   - **Routes:** `GET /ws` (listener), `GET /api/admin/ws` (admin); registered via `gin.WrapF` in `api/routes.go`
   - **Compression:** permessage-deflate via `websocket.CompressionContextTakeover`
 
@@ -99,9 +99,9 @@ graph TD
 
 - **frontend/src/app/store.ts** — Redux store combining `scannerSlice`, `authSlice`, and RTK Query `api` reducers
 - **frontend/src/app/slices/scannerSlice.ts** — Full scanner state with 18 reducers: `callReceived`, `skipCall`, `togglePause`, `toggleLive`, `holdSystem`, `holdTG`, `addAvoid`, `removeAvoid`, `toggleTG`, `setBranding`, `transcriptReceived`, queue management, and history tracking
-- **frontend/src/app/slices/authSlice.ts** — Auth state: `setCredentials` (JWT + user), `clearCredentials`, `setSetupStatus`
+- **frontend/src/app/slices/authSlice.ts** — Auth state: `setCredentials` (JWT + user), `clearCredentials`, `setSetupStatus`; token stored in `localStorage` (key `os_auth`) for persistence across browser tabs/windows
 - **frontend/src/app/slices/callsSlice.ts** — Search filter state: system, talkgroup, group, tag, date range, sort direction; drives SearchPanel query params
-- **frontend/src/app/api.ts** — RTK Query base API with `getSetupStatus`, `postSetup`, `postLogin` endpoints; `getCalls` query for paginated call archive search
+- **frontend/src/app/api.ts** — RTK Query base API with `getSetupStatus`, `postSetup`, `postLogin` endpoints; `getCalls` query for paginated call archive search; base query wraps `fetchBaseQuery` with a global 401 interceptor that dispatches `clearCredentials()` on any unauthorized response
 
 #### WebSocket Client
 
@@ -109,7 +109,7 @@ graph TD
   - Auto-reconnect with exponential backoff (1 s → 30 s cap) plus random jitter
   - Handles text commands (`CAL`, `CFG`, `VER`, `LSC`, `XPR`, `MAX`, `TRN`) and binary audio frames
   - Runtime payload validation before dispatching to Redux
-  - Supports three auth modes: public access (no auth), PIN access code, or listener JWT
+  - Supports two auth modes: public access (no auth needed) or listener JWT; `XPR` handler clears credentials before disconnecting
 
 #### Audio Player
 
@@ -161,15 +161,15 @@ Scanner.tsx (lazy-loaded page)
 #### Routing & Auth Guard
 
 - **frontend/src/main.tsx** — `/admin/*` route with `React.lazy` loading; nested routes for each panel
-- **frontend/src/components/admin/AdminLayout.tsx** — Auth guard (redirects to `/login` if no JWT or non-admin role); responsive sidebar using DaisyUI drawer (hamburger on mobile, icons on `md`, icons + labels on `lg`); 10 nav items + Sign Out button
+- **frontend/src/components/admin/AdminLayout.tsx** — Auth guard (redirects to `/login` if no JWT or non-admin role); responsive sidebar using DaisyUI drawer (hamburger on mobile, icons on `md`, icons + labels on `lg`); 9 nav items + Scanner link (Home icon) + Sign Out button; each admin panel includes a help description paragraph below its heading
 - **frontend/src/pages/Admin.tsx** — Wrapper rendering `AdminLayout` with `<Outlet>`
 
 #### State Management
 
-- **frontend/src/app/slices/adminSlice.ts** — RTK Query endpoints for all admin CRUD operations (Users, Systems, Talkgroups, Units, Groups, Tags, ApiKeys, Accesses, Dirwatches, Downstreams, Webhooks, Config, Logs, Import/Export, Password); tag-based cache invalidation
+- **frontend/src/app/slices/adminSlice.ts** — RTK Query endpoints for all admin CRUD operations (Users, Systems, Talkgroups, Units, Groups, Tags, ApiKeys, Dirwatches, Downstreams, Webhooks, Config, Logs, Import/Export, Password); tag-based cache invalidation
 - **frontend/src/app/slices/authSlice.ts** — Added `selectToken`, `selectRole`, `selectUsername` selectors
 - **frontend/src/app/api.ts** — Extended `tagTypes` for admin cache invalidation
-- **frontend/src/types/index.ts** — 16 admin types (`AdminUser`, `AdminSystem`, `AdminTalkgroup`, `AdminUnit`, `AdminGroup`, `AdminTag`, `AdminApiKey`, `AdminAccess`, `AdminDirwatch`, `AdminDownstream`, `AdminWebhook`, `AdminSetting`, `AdminLog`, `ChangePasswordRequest`, `CreateUserPayload`, `UpdateUserPayload`)
+- **frontend/src/types/index.ts** — 15 admin types (`AdminUser`, `AdminSystem`, `AdminTalkgroup`, `AdminUnit`, `AdminGroup`, `AdminTag`, `AdminApiKey`, `AdminDirwatch`, `AdminDownstream`, `AdminWebhook`, `AdminSetting`, `AdminLog`, `ChangePasswordRequest`, `CreateUserPayload`, `UpdateUserPayload`)
 
 #### Admin Panels
 
@@ -180,7 +180,6 @@ Scanner.tsx (lazy-loaded page)
 | `GroupsTagsPanel`  | Two side-by-side CRUD tables                                                                               |
 | `OptionsPanel`     | Settings form with 6 sections, boolean toggles, conditional transcription fields                           |
 | `ApiKeysPanel`     | Drag-to-reorder, copy-to-clipboard, UUID generation                                                        |
-| `AccessesPanel`    | Access codes CRUD                                                                                          |
 | `DirWatchPanel`    | Directory watches CRUD with type dropdown                                                                  |
 | `DownstreamsPanel` | Downstream servers CRUD                                                                                    |
 | `LogsPanel`        | Virtualized log viewer (`@tanstack/react-virtual`) with date/level filters                                 |

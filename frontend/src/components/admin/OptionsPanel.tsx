@@ -16,14 +16,24 @@ const BOOLEAN_KEYS = [
   "webhooksEnabled",
   "transcriptionEnabled",
   "activityDashboard",
+  "autoPopulate",
+  "time12hFormat",
+  "disableDuplicateDetection",
+  "sortTalkgroups",
+  "tagsToggle",
+  "playbackGoesLive",
+  "searchPatchedTalkgroups",
+  "showListenersCount",
 ] as const;
 
-const FFMPEG_MODES: Record<string, string> = {
+const AUDIO_CONVERSION_MODES: Record<string, string> = {
   "0": "Disabled",
-  "1": "Enabled",
+  "1": "Enabled (no normalization)",
   "2": "Normalize",
   "3": "Loudnorm",
 };
+
+const KEYPAD_BEEPS = ["uniden", "whistler"] as const;
 
 const TRANSCRIPTION_MODELS = ["tiny", "base", "small", "medium", "large"];
 
@@ -33,12 +43,47 @@ interface SettingSection {
 }
 
 const SECTIONS: SettingSection[] = [
-  { title: "General", keys: ["publicAccess", "darkMode", "keyboardShortcuts"] },
+  {
+    title: "General",
+    keys: [
+      "branding",
+      "email",
+      "publicAccess",
+      "darkMode",
+      "keyboardShortcuts",
+    ],
+  },
+  {
+    title: "Scanner Behavior",
+    keys: [
+      "autoPopulate",
+      "sortTalkgroups",
+      "tagsToggle",
+      "time12hFormat",
+      "showListenersCount",
+      "playbackGoesLive",
+      "afsSystems",
+      "maxClients",
+    ],
+  },
+  {
+    title: "Call Processing",
+    keys: [
+      "audioConversion",
+      "disableDuplicateDetection",
+      "duplicateDetectionTimeFrame",
+      "pruneDays",
+      "searchPatchedTalkgroups",
+    ],
+  },
+  {
+    title: "Display",
+    keys: ["dimmerDelay", "keypadBeeps"],
+  },
   {
     title: "Sharing & Notifications",
     keys: ["shareableLinks", "pushNotifications"],
   },
-  { title: "Audio Processing", keys: ["ffmpegMode", "audioWorkerCount"] },
   { title: "Webhooks", keys: ["webhooksEnabled"] },
   {
     title: "Transcription",
@@ -63,9 +108,55 @@ const LABELS: Record<string, string> = {
   transcriptionBinary: "Transcription Binary Path",
   transcriptionModel: "Transcription Model",
   transcriptionLanguage: "Transcription Language",
-  ffmpegMode: "FFmpeg Mode",
-  audioWorkerCount: "Audio Worker Count",
+  audioConversion: "Audio Conversion (FFmpeg)",
   activityDashboard: "Activity Dashboard",
+  branding: "Branding Label",
+  email: "Support Email",
+  autoPopulate: "Auto-Populate Systems & Talkgroups",
+  time12hFormat: "12-Hour Time Format",
+  afsSystems: "AFS Systems",
+  maxClients: "Max Simultaneous Clients",
+  dimmerDelay: "Dimmer Delay (ms)",
+  keypadBeeps: "Keypad Beep Style",
+  disableDuplicateDetection: "Disable Duplicate Call Detection",
+  duplicateDetectionTimeFrame: "Duplicate Detection Time Frame (ms)",
+  pruneDays: "Prune Database After (days)",
+  sortTalkgroups: "Sort Talkgroups by ID",
+  tagsToggle: "Allow Toggle by Tag",
+  playbackGoesLive: "Playback Mode Goes Live",
+  searchPatchedTalkgroups: "Search Patched Talkgroups",
+  showListenersCount: "Show Listeners Count",
+};
+
+const DESCRIPTIONS: Record<string, string> = {
+  publicAccess: "Allow unauthenticated listeners to access the scanner.",
+  branding:
+    "Short label shown above the scanner display to identify this instance.",
+  email: "Support contact email shown to users.",
+  autoPopulate:
+    "Automatically create new systems and talkgroups from incoming calls.",
+  time12hFormat: "Display timestamps in 12-hour (AM/PM) format.",
+  afsSystems:
+    "Comma-separated system IDs whose talkgroup IDs should be shown in AFS (agency-fleet-subfleet) format.",
+  maxClients: "Maximum number of simultaneous WebSocket listeners.",
+  sortTalkgroups:
+    "Sort talkgroups by their numeric ID instead of display order.",
+  tagsToggle: "Allow toggling entire groups of talkgroups by tag.",
+  playbackGoesLive:
+    "Automatically switch from playback to live mode when the search list is exhausted.",
+  searchPatchedTalkgroups:
+    "Include patched talkgroups in search results (may slow search).",
+  showListenersCount:
+    "Display the active listener count on the main scanner screen.",
+  audioConversion: "Convert incoming audio to AAC/M4A using FFmpeg.",
+  disableDuplicateDetection:
+    "Disable automatic rejection of duplicate incoming calls.",
+  duplicateDetectionTimeFrame:
+    "Calls within ±this many milliseconds of an existing call with the same system/talkgroup are rejected as duplicates.",
+  pruneDays:
+    "Automatically delete calls older than this many days. Set to 0 to disable.",
+  dimmerDelay: "Milliseconds of inactivity before the screen dims on mobile.",
+  keypadBeeps: "Audio feedback style when pressing buttons.",
 };
 
 function isBooleanKey(key: string): boolean {
@@ -132,31 +223,63 @@ export default function OptionsPanel() {
                 updateSetting(key, e.target.checked ? "true" : "false")
               }
             />
-            <span className="label-text">{LABELS[key] ?? key}</span>
-            {key === "publicAccess" && (
-              <span className="badge badge-warning">
-                Warning: Opens scanner to unauthenticated users
+            <div>
+              <span className="label-text font-medium">
+                {LABELS[key] ?? key}
               </span>
-            )}
+              {DESCRIPTIONS[key] && (
+                <p className="text-xs text-base-content/60 mt-0.5">
+                  {DESCRIPTIONS[key]}
+                </p>
+              )}
+            </div>
           </label>
         </div>
       );
     }
 
-    if (key === "ffmpegMode") {
+    const label = (
+      <div className="label pb-0">
+        <span className="label-text font-medium">{LABELS[key] ?? key}</span>
+      </div>
+    );
+    const description = DESCRIPTIONS[key] ? (
+      <p className="text-xs text-base-content/60 mb-1">{DESCRIPTIONS[key]}</p>
+    ) : null;
+
+    if (key === "audioConversion") {
       return (
         <div className="form-control">
-          <label className="label">
-            <span className="label-text">{LABELS[key]}</span>
-          </label>
+          {label}
+          {description}
           <select
             className="select select-bordered w-full max-w-xs"
             value={value}
             onChange={(e) => updateSetting(key, e.target.value)}
           >
-            {Object.entries(FFMPEG_MODES).map(([val, label]) => (
+            {Object.entries(AUDIO_CONVERSION_MODES).map(([val, lbl]) => (
               <option key={val} value={val}>
-                {label}
+                {lbl}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+
+    if (key === "keypadBeeps") {
+      return (
+        <div className="form-control">
+          {label}
+          {description}
+          <select
+            className="select select-bordered w-full max-w-xs"
+            value={value}
+            onChange={(e) => updateSetting(key, e.target.value)}
+          >
+            {KEYPAD_BEEPS.map((style) => (
+              <option key={style} value={style}>
+                {style.charAt(0).toUpperCase() + style.slice(1)}
               </option>
             ))}
           </select>
@@ -167,9 +290,8 @@ export default function OptionsPanel() {
     if (key === "transcriptionModel") {
       return (
         <div className="form-control">
-          <label className="label">
-            <span className="label-text">{LABELS[key]}</span>
-          </label>
+          {label}
+          {description}
           <select
             className="select select-bordered w-full max-w-xs"
             value={value}
@@ -185,17 +307,37 @@ export default function OptionsPanel() {
       );
     }
 
-    if (key === "audioWorkerCount") {
+    if (
+      key === "maxClients" ||
+      key === "dimmerDelay" ||
+      key === "pruneDays" ||
+      key === "duplicateDetectionTimeFrame"
+    ) {
       return (
         <div className="form-control">
-          <label className="label">
-            <span className="label-text">{LABELS[key]}</span>
-          </label>
+          {label}
+          {description}
           <input
             type="number"
             className="input input-bordered w-full max-w-xs"
             value={value}
-            min={1}
+            min={0}
+            onChange={(e) => updateSetting(key, e.target.value)}
+          />
+        </div>
+      );
+    }
+
+    if (key === "afsSystems") {
+      return (
+        <div className="form-control">
+          {label}
+          {description}
+          <textarea
+            className="textarea textarea-bordered w-full max-w-xs"
+            value={value}
+            placeholder="e.g. 1,2,5"
+            rows={2}
             onChange={(e) => updateSetting(key, e.target.value)}
           />
         </div>
@@ -205,9 +347,8 @@ export default function OptionsPanel() {
     // Default: text input
     return (
       <div className="form-control">
-        <label className="label">
-          <span className="label-text">{LABELS[key] ?? key}</span>
-        </label>
+        {label}
+        {description}
         <input
           type="text"
           className="input input-bordered w-full max-w-xs"
@@ -229,6 +370,11 @@ export default function OptionsPanel() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Options</h1>
+      <p className="text-sm text-base-content/70 mb-4">
+        Global settings for the scanner. Configure audio processing, public
+        access, branding, duplicate detection, auto-pruning, transcription, and
+        UI behavior. Changes take effect immediately for all connected clients.
+      </p>
       <div className="card bg-base-200">
         <div className="card-body space-y-6">
           {SECTIONS.map((section) => {
@@ -249,7 +395,7 @@ export default function OptionsPanel() {
                 <h2 className="text-lg font-medium mb-3 border-b border-base-300 pb-2">
                   {section.title}
                 </h2>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {keys.map((key) =>
                     key in localSettings ? (
                       <div key={key}>{renderSettingInput(key)}</div>

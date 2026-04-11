@@ -3,6 +3,7 @@ package api
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -228,6 +229,14 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		system = db.System{ID: newID, SystemID: systemIDRaw, Label: label, AutoPopulate: 1}
 	}
 
+	// Blacklist check: reject calls to blacklisted talkgroups.
+	if isBlacklistedTG(system.BlacklistsJson, talkgroupIDRaw) {
+		slog.Info("call upload: talkgroup is blacklisted",
+			"system_id", systemIDRaw, "talkgroup_id", talkgroupIDRaw)
+		c.JSON(http.StatusOK, gin.H{"message": "blacklisted"})
+		return
+	}
+
 	// Resolve talkgroup by system DB ID + radio talkgroup ID.
 	talkgroup, err := h.queries.GetTalkgroupBySystemAndTGID(ctx, db.GetTalkgroupBySystemAndTGIDParams{
 		SystemID:    system.ID,
@@ -383,22 +392,40 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 
 	// Notify downstream pushers (non-blocking, after response is sent).
 	if h.dsNotifier != nil {
+		// Resolve labels for downstream consumers.
+		var groupLabel, tagLabel string
+		if talkgroup.GroupID.Valid {
+			if g, err := h.queries.GetGroup(ctx, talkgroup.GroupID.Int64); err == nil {
+				groupLabel = g.Label
+			}
+		}
+		if talkgroup.TagID.Valid {
+			if t, err := h.queries.GetTag(ctx, talkgroup.TagID.Int64); err == nil {
+				tagLabel = t.Label
+			}
+		}
+
 		h.dsNotifier.Notify(downstream.CallEvent{
-			CallID:      callID,
-			AudioPath:   relPath,
-			AudioName:   filepath.Base(relPath),
-			AudioType:   audioType,
-			DateTime:    dateTimeUnix,
-			SystemID:    system.SystemID,
-			System:      system.ID,
-			TalkgroupID: talkgroup.TalkgroupID,
-			Talkgroup:   talkgroup.ID,
-			Frequency:   frequency.Int64,
-			Duration:    duration.Int64,
-			Source:      source.Int64,
-			Sources:     sourcesJSON.String,
-			Frequencies: frequenciesJSON.String,
-			Patches:     patchesJSON.String,
+			CallID:         callID,
+			AudioPath:      relPath,
+			AudioName:      filepath.Base(relPath),
+			AudioType:      audioType,
+			DateTime:       dateTimeUnix,
+			SystemID:       system.SystemID,
+			System:         system.ID,
+			TalkgroupID:    talkgroup.TalkgroupID,
+			Talkgroup:      talkgroup.ID,
+			Frequency:      frequency.Int64,
+			Duration:       duration.Int64,
+			Source:         source.Int64,
+			Sources:        sourcesJSON.String,
+			Frequencies:    frequenciesJSON.String,
+			Patches:        patchesJSON.String,
+			SystemLabel:    system.Label,
+			TalkgroupLabel: talkgroup.Label.String,
+			TalkgroupName:  talkgroup.Name.String,
+			TalkgroupGroup: groupLabel,
+			TalkgroupTag:   tagLabel,
 		})
 	}
 }
@@ -657,4 +684,23 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 		Calls: results,
 		Total: total,
 	})
+}
+
+// isBlacklistedTG checks whether a talkgroup ID appears in a system's blacklist.
+// The blacklist is a JSON array of integers stored in blacklists_json.
+func isBlacklistedTG(blacklistsJSON sql.NullString, talkgroupID int64) bool {
+	if !blacklistsJSON.Valid || strings.TrimSpace(blacklistsJSON.String) == "" {
+		return false
+	}
+	var ids []int64
+	if err := json.Unmarshal([]byte(blacklistsJSON.String), &ids); err != nil {
+		slog.Warn("failed to parse blacklists_json", "error", err)
+		return false
+	}
+	for _, id := range ids {
+		if id == talkgroupID {
+			return true
+		}
+	}
+	return false
 }

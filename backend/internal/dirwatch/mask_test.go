@@ -153,7 +153,7 @@ func TestTokensFromCall_FieldValues(t *testing.T) {
 	// 2024-01-15 14:30:22 UTC
 	callTime := time.Date(2024, 1, 15, 14, 30, 22, 0, time.UTC)
 
-	tok := TokensFromCall(callTime, "MySys", "MyTg", "Fire", "Alert", "5432", 12345, 851025000)
+	tok := TokensFromCall(callTime, "MySys", 42, "MyTg", "Fire", "Alert", "5432", 12345, 851025000)
 
 	cases := []struct {
 		name string
@@ -190,7 +190,7 @@ func TestTokensFromCall_UTC(t *testing.T) {
 	est := time.FixedZone("EST", -5*60*60)
 	localTime := time.Date(2024, 1, 15, 9, 30, 22, 0, est)
 
-	tok := TokensFromCall(localTime, "", "", "", "", "", 0, 0)
+	tok := TokensFromCall(localTime, "", 0, "", "", "", "", 0, 0)
 
 	if tok.Date != "20240115" {
 		t.Errorf("Date = %q, want %q (expected UTC date)", tok.Date, "20240115")
@@ -218,7 +218,7 @@ func TestTokensFromCall_FrequencyFormats(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.wantMHz, func(t *testing.T) {
-			tok := TokensFromCall(time.Now(), "", "", "", "", "", 0, tc.freqHz)
+			tok := TokensFromCall(time.Now(), "", 0, "", "", "", "", 0, tc.freqHz)
 			if tok.TgHz != tc.wantHz {
 				t.Errorf("freq %d: TgHz = %q, want %q", tc.freqHz, tok.TgHz, tc.wantHz)
 			}
@@ -235,7 +235,7 @@ func TestTokensFromCall_FrequencyFormats(t *testing.T) {
 // TestTokensFromCall_TgAFSEmpty verifies that TgAFS is always an empty string
 // (not yet implemented in TokensFromCall).
 func TestTokensFromCall_TgAFSEmpty(t *testing.T) {
-	tok := TokensFromCall(time.Now(), "sys", "tg", "grp", "tag", "unit", 1, 851000000)
+	tok := TokensFromCall(time.Now(), "sys", 1, "tg", "grp", "tag", "unit", 1, 851000000)
 	if tok.TgAFS != "" {
 		t.Errorf("TgAFS = %q, want empty string", tok.TgAFS)
 	}

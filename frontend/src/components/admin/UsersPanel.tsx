@@ -156,6 +156,11 @@ export default function UsersPanel() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Users</h1>
+      <p className="text-sm text-base-content/70 mb-4">
+        Manage user accounts that can access the scanner. Each user has a role
+        (admin or listener), and can optionally be restricted to specific
+        systems, given an expiration date, or rate-limited.
+      </p>
       <div className="card bg-base-200">
         <div className="card-body">
           <div className="overflow-x-auto">

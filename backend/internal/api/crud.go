@@ -71,7 +71,7 @@ type createUserRequest struct {
 	Password    string  `json:"password"`
 	Role        string  `json:"role"`
 	Disabled    int64   `json:"disabled"`
-	SystemsJson *string `json:"systems_json"`
+	SystemsJson *string `json:"systemsJson"`
 	Expiration  *int64  `json:"expiration"`
 	Limit       *int64  `json:"limit"`
 }
@@ -80,7 +80,7 @@ type updateUserRequest struct {
 	Username    string  `json:"username"`
 	Role        string  `json:"role"`
 	Disabled    int64   `json:"disabled"`
-	SystemsJson *string `json:"systems_json"`
+	SystemsJson *string `json:"systemsJson"`
 	Expiration  *int64  `json:"expiration"`
 	Limit       *int64  `json:"limit"`
 }
@@ -93,7 +93,7 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list users"})
 		return
 	}
-	c.JSON(http.StatusOK, users)
+	c.JSON(http.StatusOK, toUserResponses(users))
 }
 
 // CreateUser handles POST /api/admin/users.
@@ -132,17 +132,11 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		PasswordHash: hash,
 		Role:         req.Role,
 		Disabled:     req.Disabled,
+		SystemsJson:  ptrToNullStr(req.SystemsJson),
+		Expiration:   ptrToNullInt(req.Expiration),
+		Limit:        ptrToNullInt(req.Limit),
 		CreatedAt:    now,
 		UpdatedAt:    now,
-	}
-	if req.SystemsJson != nil {
-		params.SystemsJson = sql.NullString{String: *req.SystemsJson, Valid: true}
-	}
-	if req.Expiration != nil {
-		params.Expiration = sql.NullInt64{Int64: *req.Expiration, Valid: true}
-	}
-	if req.Limit != nil {
-		params.Limit = sql.NullInt64{Int64: *req.Limit, Valid: true}
 	}
 
 	id, err := h.queries.CreateUser(c.Request.Context(), params)
@@ -162,7 +156,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created user"})
 		return
 	}
-	c.JSON(http.StatusCreated, user)
+	c.JSON(http.StatusCreated, toUserResponse(user))
 }
 
 // UpdateUser handles PUT /api/admin/users/:id.
@@ -196,20 +190,14 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 	}
 
 	params := db.UpdateUserParams{
-		ID:        id,
-		Username:  req.Username,
-		Role:      req.Role,
-		Disabled:  req.Disabled,
-		UpdatedAt: time.Now().Unix(),
-	}
-	if req.SystemsJson != nil {
-		params.SystemsJson = sql.NullString{String: *req.SystemsJson, Valid: true}
-	}
-	if req.Expiration != nil {
-		params.Expiration = sql.NullInt64{Int64: *req.Expiration, Valid: true}
-	}
-	if req.Limit != nil {
-		params.Limit = sql.NullInt64{Int64: *req.Limit, Valid: true}
+		ID:          id,
+		Username:    req.Username,
+		Role:        req.Role,
+		Disabled:    req.Disabled,
+		SystemsJson: ptrToNullStr(req.SystemsJson),
+		Expiration:  ptrToNullInt(req.Expiration),
+		Limit:       ptrToNullInt(req.Limit),
+		UpdatedAt:   time.Now().Unix(),
 	}
 
 	err := h.queries.UpdateUser(c.Request.Context(), params)
@@ -229,7 +217,7 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated user"})
 		return
 	}
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, toUserResponse(user))
 }
 
 // DeleteUser handles DELETE /api/admin/users/:id.
@@ -268,18 +256,18 @@ func (h *AdminHandler) ListSystems(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list systems"})
 		return
 	}
-	c.JSON(http.StatusOK, systems)
+	c.JSON(http.StatusOK, toSystemResponses(systems))
 }
 
 // CreateSystem handles POST /api/admin/systems.
 func (h *AdminHandler) CreateSystem(c *gin.Context) {
-	var req db.CreateSystemParams
+	var req createSystemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
-	id, err := h.queries.CreateSystem(c.Request.Context(), req)
+	id, err := h.queries.CreateSystem(c.Request.Context(), req.toParams())
 	if isUniqueViolation(err) {
 		c.JSON(http.StatusConflict, gin.H{"error": "system_id already exists"})
 		return
@@ -296,7 +284,7 @@ func (h *AdminHandler) CreateSystem(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created system"})
 		return
 	}
-	c.JSON(http.StatusCreated, system)
+	c.JSON(http.StatusCreated, toSystemResponse(system))
 }
 
 // UpdateSystem handles PUT /api/admin/systems/:id.
@@ -311,14 +299,13 @@ func (h *AdminHandler) UpdateSystem(c *gin.Context) {
 		return
 	}
 
-	var req db.UpdateSystemParams
+	var req updateSystemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	req.ID = id
 
-	err := h.queries.UpdateSystem(c.Request.Context(), req)
+	err := h.queries.UpdateSystem(c.Request.Context(), req.toParams(id))
 	if isUniqueViolation(err) {
 		c.JSON(http.StatusConflict, gin.H{"error": "system_id already exists"})
 		return
@@ -335,7 +322,7 @@ func (h *AdminHandler) UpdateSystem(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated system"})
 		return
 	}
-	c.JSON(http.StatusOK, system)
+	c.JSON(http.StatusOK, toSystemResponse(system))
 }
 
 // DeleteSystem handles DELETE /api/admin/systems/:id.
@@ -368,18 +355,18 @@ func (h *AdminHandler) ListTalkgroups(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list talkgroups"})
 		return
 	}
-	c.JSON(http.StatusOK, talkgroups)
+	c.JSON(http.StatusOK, toTalkgroupResponses(talkgroups))
 }
 
 // CreateTalkgroup handles POST /api/admin/talkgroups.
 func (h *AdminHandler) CreateTalkgroup(c *gin.Context) {
-	var req db.CreateTalkgroupParams
+	var req createTalkgroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
-	id, err := h.queries.CreateTalkgroup(c.Request.Context(), req)
+	id, err := h.queries.CreateTalkgroup(c.Request.Context(), req.toParams())
 	if isUniqueViolation(err) {
 		c.JSON(http.StatusConflict, gin.H{"error": "talkgroup already exists"})
 		return
@@ -396,7 +383,7 @@ func (h *AdminHandler) CreateTalkgroup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created talkgroup"})
 		return
 	}
-	c.JSON(http.StatusCreated, tg)
+	c.JSON(http.StatusCreated, toTalkgroupResponse(tg))
 }
 
 // UpdateTalkgroup handles PUT /api/admin/talkgroups/:id.
@@ -411,14 +398,13 @@ func (h *AdminHandler) UpdateTalkgroup(c *gin.Context) {
 		return
 	}
 
-	var req db.UpdateTalkgroupParams
+	var req updateTalkgroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	req.ID = id
 
-	err := h.queries.UpdateTalkgroup(c.Request.Context(), req)
+	err := h.queries.UpdateTalkgroup(c.Request.Context(), req.toParams(id))
 	if isUniqueViolation(err) {
 		c.JSON(http.StatusConflict, gin.H{"error": "talkgroup already exists"})
 		return
@@ -435,7 +421,7 @@ func (h *AdminHandler) UpdateTalkgroup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated talkgroup"})
 		return
 	}
-	c.JSON(http.StatusOK, tg)
+	c.JSON(http.StatusOK, toTalkgroupResponse(tg))
 }
 
 // DeleteTalkgroup handles DELETE /api/admin/talkgroups/:id.
@@ -468,18 +454,18 @@ func (h *AdminHandler) ListUnits(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list units"})
 		return
 	}
-	c.JSON(http.StatusOK, units)
+	c.JSON(http.StatusOK, toUnitResponses(units))
 }
 
 // CreateUnit handles POST /api/admin/units.
 func (h *AdminHandler) CreateUnit(c *gin.Context) {
-	var req db.CreateUnitParams
+	var req createUnitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
-	id, err := h.queries.CreateUnit(c.Request.Context(), req)
+	id, err := h.queries.CreateUnit(c.Request.Context(), req.toParams())
 	if isUniqueViolation(err) {
 		c.JSON(http.StatusConflict, gin.H{"error": "unit already exists"})
 		return
@@ -496,7 +482,7 @@ func (h *AdminHandler) CreateUnit(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created unit"})
 		return
 	}
-	c.JSON(http.StatusCreated, unit)
+	c.JSON(http.StatusCreated, toUnitResponse(unit))
 }
 
 // UpdateUnit handles PUT /api/admin/units/:id.
@@ -511,14 +497,13 @@ func (h *AdminHandler) UpdateUnit(c *gin.Context) {
 		return
 	}
 
-	var req db.UpdateUnitParams
+	var req updateUnitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	req.ID = id
 
-	err := h.queries.UpdateUnit(c.Request.Context(), req)
+	err := h.queries.UpdateUnit(c.Request.Context(), req.toParams(id))
 	if isUniqueViolation(err) {
 		c.JSON(http.StatusConflict, gin.H{"error": "unit already exists"})
 		return
@@ -535,7 +520,7 @@ func (h *AdminHandler) UpdateUnit(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated unit"})
 		return
 	}
-	c.JSON(http.StatusOK, unit)
+	c.JSON(http.StatusOK, toUnitResponse(unit))
 }
 
 // DeleteUnit handles DELETE /api/admin/units/:id.
@@ -790,12 +775,12 @@ func (h *AdminHandler) ListAPIKeys(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list API keys"})
 		return
 	}
-	c.JSON(http.StatusOK, keys)
+	c.JSON(http.StatusOK, toAPIKeyResponses(keys))
 }
 
 // CreateAPIKey handles POST /api/admin/apikeys.
 func (h *AdminHandler) CreateAPIKey(c *gin.Context) {
-	var req db.CreateAPIKeyParams
+	var req createAPIKeyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
@@ -804,7 +789,7 @@ func (h *AdminHandler) CreateAPIKey(c *gin.Context) {
 		req.Key = uuid.New().String()
 	}
 
-	id, err := h.queries.CreateAPIKey(c.Request.Context(), req)
+	id, err := h.queries.CreateAPIKey(c.Request.Context(), req.toParams())
 	if isUniqueViolation(err) {
 		c.JSON(http.StatusConflict, gin.H{"error": "API key already exists"})
 		return
@@ -821,7 +806,7 @@ func (h *AdminHandler) CreateAPIKey(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created API key"})
 		return
 	}
-	c.JSON(http.StatusCreated, key)
+	c.JSON(http.StatusCreated, toAPIKeyResponse(key))
 }
 
 // UpdateAPIKey handles PUT /api/admin/apikeys/:id.
@@ -836,14 +821,13 @@ func (h *AdminHandler) UpdateAPIKey(c *gin.Context) {
 		return
 	}
 
-	var req db.UpdateAPIKeyParams
+	var req updateAPIKeyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	req.ID = id
 
-	err := h.queries.UpdateAPIKey(c.Request.Context(), req)
+	err := h.queries.UpdateAPIKey(c.Request.Context(), req.toParams(id))
 	if isUniqueViolation(err) {
 		c.JSON(http.StatusConflict, gin.H{"error": "API key already exists"})
 		return
@@ -860,7 +844,7 @@ func (h *AdminHandler) UpdateAPIKey(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated API key"})
 		return
 	}
-	c.JSON(http.StatusOK, key)
+	c.JSON(http.StatusOK, toAPIKeyResponse(key))
 }
 
 // DeleteAPIKey handles DELETE /api/admin/apikeys/:id.
@@ -883,110 +867,6 @@ func (h *AdminHandler) DeleteAPIKey(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-// ---------- Accesses ----------
-
-// ListAccesses handles GET /api/admin/accesses.
-func (h *AdminHandler) ListAccesses(c *gin.Context) {
-	accesses, err := h.queries.ListAccesses(c.Request.Context())
-	if err != nil {
-		slog.Error("failed to list accesses", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list accesses"})
-		return
-	}
-	c.JSON(http.StatusOK, accesses)
-}
-
-// CreateAccess handles POST /api/admin/accesses.
-func (h *AdminHandler) CreateAccess(c *gin.Context) {
-	var req db.CreateAccessParams
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
-		return
-	}
-	if req.Code == "" {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "code is required"})
-		return
-	}
-
-	id, err := h.queries.CreateAccess(c.Request.Context(), req)
-	if isUniqueViolation(err) {
-		c.JSON(http.StatusConflict, gin.H{"error": "access code already exists"})
-		return
-	}
-	if err != nil {
-		slog.Error("failed to create access", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create access"})
-		return
-	}
-
-	access, err := h.queries.GetAccess(c.Request.Context(), id)
-	if err != nil {
-		slog.Error("failed to fetch created access", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created access"})
-		return
-	}
-	c.JSON(http.StatusCreated, access)
-}
-
-// UpdateAccess handles PUT /api/admin/accesses/:id.
-func (h *AdminHandler) UpdateAccess(c *gin.Context) {
-	id, ok := parseID(c)
-	if !ok {
-		return
-	}
-
-	if _, err := h.queries.GetAccess(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "access not found"})
-		return
-	}
-
-	var req db.UpdateAccessParams
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
-		return
-	}
-	req.ID = id
-
-	err := h.queries.UpdateAccess(c.Request.Context(), req)
-	if isUniqueViolation(err) {
-		c.JSON(http.StatusConflict, gin.H{"error": "access code already exists"})
-		return
-	}
-	if err != nil {
-		slog.Error("failed to update access", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update access"})
-		return
-	}
-
-	access, err := h.queries.GetAccess(c.Request.Context(), id)
-	if err != nil {
-		slog.Error("failed to fetch updated access", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated access"})
-		return
-	}
-	c.JSON(http.StatusOK, access)
-}
-
-// DeleteAccess handles DELETE /api/admin/accesses/:id.
-func (h *AdminHandler) DeleteAccess(c *gin.Context) {
-	id, ok := parseID(c)
-	if !ok {
-		return
-	}
-
-	if _, err := h.queries.GetAccess(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "access not found"})
-		return
-	}
-
-	if err := h.queries.DeleteAccess(c.Request.Context(), id); err != nil {
-		slog.Error("failed to delete access", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete access"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
-}
-
 // ---------- Dirwatches ----------
 
 // ListDirwatches handles GET /api/admin/dirwatches.
@@ -997,12 +877,12 @@ func (h *AdminHandler) ListDirwatches(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list dirwatches"})
 		return
 	}
-	c.JSON(http.StatusOK, dirwatches)
+	c.JSON(http.StatusOK, toDirwatchResponses(dirwatches))
 }
 
 // CreateDirwatch handles POST /api/admin/dirwatches.
 func (h *AdminHandler) CreateDirwatch(c *gin.Context) {
-	var req db.CreateDirwatchParams
+	var req createDirwatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
@@ -1019,7 +899,7 @@ func (h *AdminHandler) CreateDirwatch(c *gin.Context) {
 		return
 	}
 
-	id, err := h.queries.CreateDirwatch(c.Request.Context(), req)
+	id, err := h.queries.CreateDirwatch(c.Request.Context(), req.toParams())
 	if err != nil {
 		slog.Error("failed to create dirwatch", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create dirwatch"})
@@ -1036,7 +916,7 @@ func (h *AdminHandler) CreateDirwatch(c *gin.Context) {
 	if h.dwReload != nil {
 		h.dwReload.Reload()
 	}
-	c.JSON(http.StatusCreated, dw)
+	c.JSON(http.StatusCreated, toDirwatchResponse(dw))
 }
 
 // UpdateDirwatch handles PUT /api/admin/dirwatches/:id.
@@ -1051,12 +931,11 @@ func (h *AdminHandler) UpdateDirwatch(c *gin.Context) {
 		return
 	}
 
-	var req db.UpdateDirwatchParams
+	var req updateDirwatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	req.ID = id
 
 	if req.Directory != "" {
 		if info, err := os.Stat(req.Directory); err != nil {
@@ -1068,7 +947,7 @@ func (h *AdminHandler) UpdateDirwatch(c *gin.Context) {
 		}
 	}
 
-	if err := h.queries.UpdateDirwatch(c.Request.Context(), req); err != nil {
+	if err := h.queries.UpdateDirwatch(c.Request.Context(), req.toParams(id)); err != nil {
 		slog.Error("failed to update dirwatch", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update dirwatch"})
 		return
@@ -1084,7 +963,7 @@ func (h *AdminHandler) UpdateDirwatch(c *gin.Context) {
 	if h.dwReload != nil {
 		h.dwReload.Reload()
 	}
-	c.JSON(http.StatusOK, dw)
+	c.JSON(http.StatusOK, toDirwatchResponse(dw))
 }
 
 // DeleteDirwatch handles DELETE /api/admin/dirwatches/:id.
@@ -1121,12 +1000,12 @@ func (h *AdminHandler) ListDownstreams(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list downstreams"})
 		return
 	}
-	c.JSON(http.StatusOK, downstreams)
+	c.JSON(http.StatusOK, toDownstreamResponses(downstreams))
 }
 
 // CreateDownstream handles POST /api/admin/downstreams.
 func (h *AdminHandler) CreateDownstream(c *gin.Context) {
-	var req db.CreateDownstreamParams
+	var req createDownstreamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
@@ -1140,7 +1019,7 @@ func (h *AdminHandler) CreateDownstream(c *gin.Context) {
 		return
 	}
 
-	id, err := h.queries.CreateDownstream(c.Request.Context(), req)
+	id, err := h.queries.CreateDownstream(c.Request.Context(), req.toParams())
 	if err != nil {
 		slog.Error("failed to create downstream", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create downstream"})
@@ -1157,7 +1036,7 @@ func (h *AdminHandler) CreateDownstream(c *gin.Context) {
 	if h.dsReload != nil {
 		h.dsReload.Reload()
 	}
-	c.JSON(http.StatusCreated, ds)
+	c.JSON(http.StatusCreated, toDownstreamResponse(ds))
 }
 
 // UpdateDownstream handles PUT /api/admin/downstreams/:id.
@@ -1172,19 +1051,18 @@ func (h *AdminHandler) UpdateDownstream(c *gin.Context) {
 		return
 	}
 
-	var req db.UpdateDownstreamParams
+	var req updateDownstreamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	req.ID = id
 
 	if req.Url != "" && !validHTTPURL(req.Url) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "url must use http or https scheme"})
 		return
 	}
 
-	if err := h.queries.UpdateDownstream(c.Request.Context(), req); err != nil {
+	if err := h.queries.UpdateDownstream(c.Request.Context(), req.toParams(id)); err != nil {
 		slog.Error("failed to update downstream", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update downstream"})
 		return
@@ -1200,7 +1078,7 @@ func (h *AdminHandler) UpdateDownstream(c *gin.Context) {
 	if h.dsReload != nil {
 		h.dsReload.Reload()
 	}
-	c.JSON(http.StatusOK, ds)
+	c.JSON(http.StatusOK, toDownstreamResponse(ds))
 }
 
 // DeleteDownstream handles DELETE /api/admin/downstreams/:id.
@@ -1237,12 +1115,12 @@ func (h *AdminHandler) ListWebhooks(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list webhooks"})
 		return
 	}
-	c.JSON(http.StatusOK, webhooks)
+	c.JSON(http.StatusOK, toWebhookResponses(webhooks))
 }
 
 // CreateWebhook handles POST /api/admin/webhooks.
 func (h *AdminHandler) CreateWebhook(c *gin.Context) {
-	var req db.CreateWebhookParams
+	var req createWebhookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
@@ -1256,7 +1134,7 @@ func (h *AdminHandler) CreateWebhook(c *gin.Context) {
 		return
 	}
 
-	id, err := h.queries.CreateWebhook(c.Request.Context(), req)
+	id, err := h.queries.CreateWebhook(c.Request.Context(), req.toParams())
 	if err != nil {
 		slog.Error("failed to create webhook", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create webhook"})
@@ -1269,7 +1147,7 @@ func (h *AdminHandler) CreateWebhook(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created webhook"})
 		return
 	}
-	c.JSON(http.StatusCreated, wh)
+	c.JSON(http.StatusCreated, toWebhookResponse(wh))
 }
 
 // UpdateWebhook handles PUT /api/admin/webhooks/:id.
@@ -1284,19 +1162,18 @@ func (h *AdminHandler) UpdateWebhook(c *gin.Context) {
 		return
 	}
 
-	var req db.UpdateWebhookParams
+	var req updateWebhookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	req.ID = id
 
 	if req.Url != "" && !validHTTPURL(req.Url) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "url must use http or https scheme"})
 		return
 	}
 
-	if err := h.queries.UpdateWebhook(c.Request.Context(), req); err != nil {
+	if err := h.queries.UpdateWebhook(c.Request.Context(), req.toParams(id)); err != nil {
 		slog.Error("failed to update webhook", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update webhook"})
 		return
@@ -1308,7 +1185,7 @@ func (h *AdminHandler) UpdateWebhook(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated webhook"})
 		return
 	}
-	c.JSON(http.StatusOK, wh)
+	c.JSON(http.StatusOK, toWebhookResponse(wh))
 }
 
 // DeleteWebhook handles DELETE /api/admin/webhooks/:id.

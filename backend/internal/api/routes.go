@@ -129,12 +129,6 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		admin.PUT("/apikeys/:id", adminHandler.UpdateAPIKey)
 		admin.DELETE("/apikeys/:id", adminHandler.DeleteAPIKey)
 
-		// Accesses
-		admin.GET("/accesses", adminHandler.ListAccesses)
-		admin.POST("/accesses", adminHandler.CreateAccess)
-		admin.PUT("/accesses/:id", adminHandler.UpdateAccess)
-		admin.DELETE("/accesses/:id", adminHandler.DeleteAccess)
-
 		// Dirwatches
 		admin.GET("/dirwatches", adminHandler.ListDirwatches)
 		admin.POST("/dirwatches", adminHandler.CreateDirwatch)

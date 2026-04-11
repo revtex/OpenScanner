@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGetSetupStatusQuery } from "@/app/api";
-import { useAppDispatch } from "@/app/store";
-import { setSetupStatus } from "@/app/slices/authSlice";
+import { useAppDispatch, useAppSelector } from "@/app/store";
+import { setSetupStatus, selectToken } from "@/app/slices/authSlice";
 import { expireAvoids } from "@/app/slices/scannerSlice";
 import { useScanner } from "@/hooks/useScanner";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { LEDPanel } from "@/components/scanner/LEDPanel";
 import { DisplayPanel } from "@/components/scanner/DisplayPanel";
 import { ControlToolbar } from "@/components/scanner/ControlToolbar";
@@ -15,6 +16,7 @@ export default function Scanner() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { data: setupStatus } = useGetSetupStatusQuery();
+  const token = useAppSelector(selectToken);
 
   const scanner = useScanner();
 
@@ -31,14 +33,50 @@ export default function Scanner() {
     setSelectTGOpen(false);
   }, []);
 
+  const handleCloseAllPanels = useCallback(() => {
+    setSelectTGOpen(false);
+    setSearchOpen(false);
+  }, []);
+
+  const kbCallbacks = useMemo(
+    () => ({
+      onSkip: scanner.skip,
+      onReplay: scanner.replay,
+      onSetVolume: scanner.setVolume,
+      onToggleSelectTG: handleToggleSelectTG,
+      onToggleSearch: handleToggleSearch,
+      onToggleShortcutsModal: () => {
+        /* handled inside ControlToolbar */
+      },
+      onCloseAllPanels: handleCloseAllPanels,
+      volume: scanner.volume,
+    }),
+    [
+      scanner.skip,
+      scanner.replay,
+      scanner.setVolume,
+      scanner.volume,
+      handleToggleSelectTG,
+      handleToggleSearch,
+      handleCloseAllPanels,
+    ],
+  );
+
+  useKeyboardShortcuts(kbCallbacks);
+
   useEffect(() => {
     if (setupStatus) {
       dispatch(setSetupStatus(setupStatus));
       if (setupStatus.needsSetup) {
         navigate("/setup", { replace: true });
+        return;
+      }
+      // If not public access and not authenticated, redirect to login
+      if (!setupStatus.publicAccess && !token) {
+        navigate("/login", { replace: true });
       }
     }
-  }, [setupStatus, navigate, dispatch]);
+  }, [setupStatus, navigate, dispatch, token]);
 
   // Expire timed avoid entries every 10 seconds
   useEffect(() => {

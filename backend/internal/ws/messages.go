@@ -13,7 +13,6 @@ const (
 	CmdLSC = "LSC" // Server → client: active listeners count
 	CmdLFM = "LFM" // Bidirectional: live feed map update
 	CmdMAX = "MAX" // Server → client: max clients reached
-	CmdPIN = "PIN" // Client → server: access code authentication
 	CmdVER = "VER" // Server → client: server version + branding + email
 	CmdTRN = "TRN" // Server → client: transcript ready for a call
 
