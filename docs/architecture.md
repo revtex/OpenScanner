@@ -8,42 +8,47 @@ OpenScanner is a modern web-based radio call manager inspired by rdio-scanner. I
 
 ## System Diagram
 
-The diagram below shows the full planned architecture. Solid borders indicate implemented components; dashed borders indicate stubs not yet implemented.
+The diagram below shows the full planned architecture. Solid lines and green fills indicate implemented components; dashed lines and grey fills indicate stubs not yet implemented.
 
 ```mermaid
 graph TD
-    Recorder["Radio Recorder\n(Trunk Recorder / SDRTrunk / etc.)"] -->|POST /api/call-upload| API
-    DirWatch["DirWatch Service\n(fsnotify)"] -.->|ingests files| Audio
-    API --> Auth["Auth + Middleware\n(JWT, RBAC, Rate Limit)"]
-    API --> Audio["Audio Processor\n(FFmpeg)"]
-    Audio -.-> Transcriber["Whisper Transcriber\n(local binary)"]
-    Audio --> DB[(SQLite)]
-    Audio --> FS[(Filesystem\naudio files)]
+    Recorder["Radio Recorder<br/>(Trunk Recorder / SDRTrunk)"] -->|POST /api/call-upload| MW
+    DirWatch["DirWatch Service<br/>(fsnotify)"] -.->|ingest files| Processor
+
+    MW["Middleware<br/>(JWT, API Key, Rate Limit)"] -->|validated request| API["API Handlers<br/>(Gin)"]
+    API -->|processor.Store| Processor["Audio Processor<br/>(FFmpeg Worker Pool)"]
+    Processor --> FS[("Filesystem<br/>audio files")]
+    Processor -.-> Transcriber["Whisper Transcriber<br/>(local binary)"]
+    API -->|sqlc queries| DB[(SQLite<br/>WAL mode)]
     Transcriber -.-> DB
+
+    Pruner["Call Pruner<br/>(hourly background)"] -->|delete old records| DB
+    Pruner -->|delete old audio| FS
+
+    Seed["Seed<br/>(runs at startup)"] -->|default data| DB
+
     API -.-> Hub["WebSocket Hub"]
-    Hub -.->|CAL / CFG / LSC / XPR / MAX / PIN| Listeners["Browser Clients"]
+    Hub -.->|CAL / CFG / LSC / PIN| Listeners["Browser Clients"]
     API -.-> Downstream["Downstream Pusher"]
     Downstream -.->|POST /api/call-upload| RemoteInstance["Remote OpenScanner"]
     API -.-> Webhooks["Webhook Delivery"]
     Webhooks -.->|POST| External["Discord / Generic"]
     API -.-> Push["Push Notifications"]
     Push -.->|Web Push| Browser["Browser Push"]
-    API --> DB
-    API --> Seed["Seed\n(default data)"]
-    Seed --> DB
 
-    style API fill:#2d6,stroke:#333
-    style Auth fill:#2d6,stroke:#333
-    style DB fill:#2d6,stroke:#333
-    style Seed fill:#2d6,stroke:#333
-    style Audio fill:#2d6,stroke:#333
-    style FS fill:#2d6,stroke:#333
-    style Hub fill:#888,stroke:#555,stroke-dasharray: 5 5
-    style Transcriber fill:#888,stroke:#555,stroke-dasharray: 5 5
-    style DirWatch fill:#888,stroke:#555,stroke-dasharray: 5 5
-    style Downstream fill:#888,stroke:#555,stroke-dasharray: 5 5
-    style Webhooks fill:#888,stroke:#555,stroke-dasharray: 5 5
-    style Push fill:#888,stroke:#555,stroke-dasharray: 5 5
+    style MW fill:#b5e6b5,stroke:#333,color:#000
+    style API fill:#b5e6b5,stroke:#333,color:#000
+    style Processor fill:#b5e6b5,stroke:#333,color:#000
+    style FS fill:#b5e6b5,stroke:#333,color:#000
+    style DB fill:#b5e6b5,stroke:#333,color:#000
+    style Seed fill:#b5e6b5,stroke:#333,color:#000
+    style Pruner fill:#b5e6b5,stroke:#333,color:#000
+    style Hub fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
+    style Transcriber fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
+    style DirWatch fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
+    style Downstream fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
+    style Webhooks fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
+    style Push fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
 ```
 
 ## Components
