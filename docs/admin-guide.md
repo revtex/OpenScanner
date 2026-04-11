@@ -1,5 +1,17 @@
 # OpenScanner — Admin Guide
 
-> Placeholder — to be completed during Phase 14.
+> **Not yet implemented.** The admin dashboard UI and CRUD endpoints are planned for future phases. This guide will be written when those features are built.
 
-Covers: first-run setup wizard, dashboard panels, systems/talkgroups/units, access codes, API keys, DirWatch, Downstreams, Options, Logs, CSV import, JSON config export/import.
+## Planned Coverage
+
+- First-run setup wizard
+- Dashboard panels
+- Systems / talkgroups / units management
+- Access codes
+- API keys
+- DirWatch configuration
+- Downstream instances
+- Options / settings
+- Logs viewer
+- CSV import
+- JSON config export/import

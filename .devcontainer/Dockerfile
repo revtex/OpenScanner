@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Go (installed directly to avoid Podman /tmp tmpfs issues with devcontainer features)
-ARG GO_VERSION=1.24.2
+ARG GO_VERSION=1.25.9
 RUN curl -sSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" \
     | tar -xz -C /usr/local
 ENV PATH="/usr/local/go/bin:/home/vscode/go/bin:${PATH}"

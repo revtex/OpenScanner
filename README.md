@@ -34,11 +34,24 @@ make test   # Runs Go tests + Vitest frontend tests
 
 ## Project Status
 
-- [x] **Phase 1** — Foundation & Scaffolding (Go module, frontend deps, config, dev tooling)
-- [ ] **Phase 2** — Database Schema & Seeding
-- [ ] **Phase 3** — Backend Auth, RBAC & Setup
+- [x] **Phase 1** — Foundation & Scaffolding
+- [x] **Phase 2** — Database Schema & Seeding
+- [x] **Phase 3** — Backend Auth, RBAC & Setup
 - [ ] **Phase 4** — Backend Call Ingest
 - [ ] **Phase 5** — WebSocket Hub
+- [ ] **Phase 6** — Admin CRUD APIs
+- [ ] **Phase 7** — DirWatch Service
+- [ ] **Phase 8** — Downstream Pusher
+- [ ] **Phase 9** — Frontend Scanner UI
+- [ ] **Phase 10** — Frontend TG Selection & Search Panels
+- [ ] **Phase 11** — Frontend Admin Dashboard
+- [ ] **Phase 12** — CLI, Daemon, SSL, Docker & Deployment
+- [ ] **Phase 13** — Testing
+- [ ] **Phase 14** — Documentation
+- [ ] **Phase 15** — Keyboard Shortcuts & Theme Toggle
+- [ ] **Phase 16** — Shareable Links, Bookmarks & Activity Dashboard
+- [ ] **Phase 17** — Push Notifications & Webhook Integration
+- [ ] **Phase 18** — Call Transcription
 
 See [docs/plan.md](docs/plan.md) for the full implementation plan.
 
