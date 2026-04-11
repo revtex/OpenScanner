@@ -1,6 +1,6 @@
 # OpenScanner — Architecture
 
-> **Implementation status:** Phases 1–7 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest, WebSocket Hub, Admin CRUD APIs, DirWatch Service) are complete. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
+> **Implementation status:** Phases 1–8 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest, WebSocket Hub, Admin CRUD APIs, DirWatch Service, Downstream Pusher) are complete. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
 
 ## Overview
 
@@ -29,8 +29,8 @@ graph TD
 
     API --> Hub["WebSocket Hub"]
     Hub -->|CAL / CFG / LSC / PIN| Listeners["Browser Clients"]
-    API -.-> Downstream["Downstream Pusher"]
-    Downstream -.->|POST /api/call-upload| RemoteInstance["Remote OpenScanner"]
+    API --> Downstream["Downstream Pusher"]
+    Downstream -->|POST /api/call-upload| RemoteInstance["Remote OpenScanner"]
     API -.-> Webhooks["Webhook Delivery"]
     Webhooks -.->|POST| External["Discord / Generic"]
     API -.-> Push["Push Notifications"]
@@ -47,7 +47,7 @@ graph TD
     style Listeners fill:#b5e6b5,stroke:#333,color:#000
     style Transcriber fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
     style DirWatch fill:#b5e6b5,stroke:#333,color:#000
-    style Downstream fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
+    style Downstream fill:#b5e6b5,stroke:#333,color:#000
     style Webhooks fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
     style Push fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
 ```
@@ -74,6 +74,14 @@ graph TD
   - **Routes:** `GET /ws` (listener), `GET /api/admin/ws` (admin); registered via `gin.WrapF` in `api/routes.go`
   - **Compression:** permessage-deflate via `websocket.CompressionContextTakeover`
 
+- **backend/internal/downstream** — Call forwarding service that pushes accepted calls to remote OpenScanner instances:
+  - **pusher.go** — `Service` struct with fan-out pattern: one goroutine per active (non-disabled) downstream config, each with a buffered channel (1000 events); `Start` loads downstream configs from DB and spawns goroutines; `Reload` stops all pushers and restarts from DB (triggered by admin CRUD create/update/delete); `Stop` cancels context and drains goroutines after HTTP server shutdown
+  - **Grant filtering:** `systems_json` column on each downstream controls which calls are forwarded — only calls matching the downstream's system/TG grants are enqueued
+  - **Multipart POST:** Each call is re-posted as `multipart/form-data` to the remote instance's `/api/call-upload` endpoint with `X-API-Key` header authentication; audio file is read from the local filesystem
+  - **Retry with backoff:** Exponential backoff on HTTP failure: 1s → 2s → 4s → 8s → 30s cap, max 5 retries per event, with random jitter to avoid thundering herd
+  - **Security:** HTTP client configured with `CheckRedirect` returning error (SSRF protection — prevents following redirects to internal services); audio file paths validated against path traversal (`../`)
+  - **Graceful shutdown:** `dsService.Stop()` is called after the HTTP server has completed shutdown, ensuring in-flight pushes complete before exit
+
 - **backend/internal/dirwatch** — Directory watching service for automatic call ingest from local recorder output directories:
   - **watcher.go** — `Service` struct managing one goroutine per active dirwatch config; `Start` loads configs from DB, `Reload` stops all watchers and restarts fresh (called by admin CRUD after config changes); `runWithFsnotify` uses kernel inotify/kqueue `Create` events; `runWithPolling` scans on a configurable ticker (≥500 ms floor, suitable for CIFS/NFS mounts); `handleFile` enforces path traversal checks and extension filtering before dispatching to the parser; `ingestCall` mirrors the HTTP upload pipeline: system/TG resolution (with `autoPopulate`), duplicate check, `Processor.StoreFile`, DB insert, WS `CAL` broadcast, optional source-file deletion (`delete_after=1`)
   - **parsers.go** — `ParsedCall` struct + one `ParseFunc` per recorder type: `trunk-recorder` (JSON sidecar + audio file pair), `sdrtrunk` (`<sysID>_<tgID>_<ts>.<ext>` filename pattern), `rtlsdr-airband` (audio file, IDs from dirwatch config), `dsdplus` (audio file, IDs from dirwatch config), `proscan` (audio file, IDs from dirwatch config), `voxcall` (audio file, IDs from dirwatch config); unrecognised types fall back to `parseGeneric`
@@ -82,7 +90,6 @@ graph TD
 ### Stubs (package declaration only — not yet implemented)
 
 - **backend/internal/audio/transcriber.go** — Whisper transcription worker pool
-- **backend/internal/downstream** — Call forwarding to remote instances
 - **backend/internal/notify** — Web Push notification delivery
 
 ### Frontend (scaffolded — no UI implementation yet)

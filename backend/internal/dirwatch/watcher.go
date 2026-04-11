@@ -17,27 +17,35 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/db"
+	"github.com/openscanner/openscanner/internal/downstream"
 	"github.com/openscanner/openscanner/internal/ws"
 )
 
+// DownstreamNotifier is the interface used to notify the downstream pusher.
+type DownstreamNotifier interface {
+	Notify(event downstream.CallEvent)
+}
+
 // Service manages all active DirWatch watchers.
 type Service struct {
-	queries   *db.Queries
-	processor *audio.Processor
-	hub       *ws.Hub
-	mu        sync.Mutex
-	reloadMu  sync.Mutex // serialises Reload calls to prevent duplicate goroutine spawning
-	appCtx    context.Context
-	cancel    context.CancelFunc
-	wg        sync.WaitGroup
+	queries    *db.Queries
+	processor  *audio.Processor
+	hub        *ws.Hub
+	dsNotifier DownstreamNotifier
+	mu         sync.Mutex
+	reloadMu   sync.Mutex // serialises Reload calls to prevent duplicate goroutine spawning
+	appCtx     context.Context
+	cancel     context.CancelFunc
+	wg         sync.WaitGroup
 }
 
 // NewService creates a DirWatch service.
-func NewService(queries *db.Queries, processor *audio.Processor, hub *ws.Hub) *Service {
+func NewService(queries *db.Queries, processor *audio.Processor, hub *ws.Hub, dsNotifier DownstreamNotifier) *Service {
 	return &Service{
-		queries:   queries,
-		processor: processor,
-		hub:       hub,
+		queries:    queries,
+		processor:  processor,
+		hub:        hub,
+		dsNotifier: dsNotifier,
 	}
 }
 
@@ -474,6 +482,27 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 				return cl.CanReceive(system.ID, talkgroup.ID)
 			})
 		}
+	}
+
+	// ── Notify downstream pushers ──────────────────────────────────────────
+	if s.dsNotifier != nil {
+		s.dsNotifier.Notify(downstream.CallEvent{
+			CallID:      callID,
+			AudioPath:   relPath,
+			AudioName:   filepath.Base(relPath),
+			AudioType:   audioType,
+			DateTime:    dateTimeUnix,
+			SystemID:    system.SystemID,
+			System:      system.ID,
+			TalkgroupID: talkgroup.TalkgroupID,
+			Talkgroup:   talkgroup.ID,
+			Frequency:   freq.Int64,
+			Duration:    dur.Int64,
+			Source:      src.Int64,
+			Sources:     srcJSON.String,
+			Frequencies: freqJSON.String,
+			Patches:     patchJSON.String,
+		})
 	}
 
 	// ── Delete source file if configured ────────────────────────────────────

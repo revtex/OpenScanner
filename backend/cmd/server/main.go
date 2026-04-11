@@ -18,6 +18,7 @@ import (
 	"github.com/openscanner/openscanner/internal/config"
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/dirwatch"
+	"github.com/openscanner/openscanner/internal/downstream"
 	"github.com/openscanner/openscanner/internal/seed"
 	"github.com/openscanner/openscanner/internal/ws"
 )
@@ -99,17 +100,22 @@ func main() {
 	go hub.Run(ctx)
 
 	// Start DirWatch service.
-	dwService := dirwatch.NewService(queries, processor, hub)
+	dsService := downstream.NewService(queries, processor)
+	dsService.Start(ctx)
+
+	dwService := dirwatch.NewService(queries, processor, hub, dsService)
 	dwService.Start(ctx)
 
 	api.RegisterRoutes(router, api.Deps{
-		Queries:          queries,
-		RateLimiter:      rateLimiter,
-		Processor:        processor,
-		Hub:              hub,
-		SQLDB:            sqlDB,
-		DirwatchReloader: dwService,
-		Version:          config.Version,
+		Queries:            queries,
+		RateLimiter:        rateLimiter,
+		Processor:          processor,
+		Hub:                hub,
+		SQLDB:              sqlDB,
+		DirwatchReloader:   dwService,
+		DownstreamReloader: dsService,
+		DownstreamNotifier: dsService,
+		Version:            config.Version,
 	})
 
 	// Create HTTP server.
@@ -149,5 +155,6 @@ func main() {
 		slog.Error("server shutdown error", "error", err)
 	}
 
+	dsService.Stop()
 	slog.Info("server stopped")
 }

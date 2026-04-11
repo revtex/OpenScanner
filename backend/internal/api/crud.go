@@ -31,11 +31,12 @@ type AdminHandler struct {
 	hub      *ws.Hub
 	sqlDB    *sql.DB
 	dwReload DirwatchReloader
+	dsReload DownstreamReloader
 }
 
 // NewAdminHandler constructs an AdminHandler.
-func NewAdminHandler(queries *db.Queries, hub *ws.Hub, sqlDB *sql.DB, dwReload DirwatchReloader) *AdminHandler {
-	return &AdminHandler{queries: queries, hub: hub, sqlDB: sqlDB, dwReload: dwReload}
+func NewAdminHandler(queries *db.Queries, hub *ws.Hub, sqlDB *sql.DB, dwReload DirwatchReloader, dsReload DownstreamReloader) *AdminHandler {
+	return &AdminHandler{queries: queries, hub: hub, sqlDB: sqlDB, dwReload: dwReload, dsReload: dsReload}
 }
 
 // parseID extracts and parses the :id path parameter.
@@ -1152,6 +1153,10 @@ func (h *AdminHandler) CreateDownstream(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created downstream"})
 		return
 	}
+	// Reload the downstream service so the new config takes effect immediately.
+	if h.dsReload != nil {
+		h.dsReload.Reload()
+	}
 	c.JSON(http.StatusCreated, ds)
 }
 
@@ -1191,6 +1196,10 @@ func (h *AdminHandler) UpdateDownstream(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated downstream"})
 		return
 	}
+	// Reload the downstream service so the updated config takes effect immediately.
+	if h.dsReload != nil {
+		h.dsReload.Reload()
+	}
 	c.JSON(http.StatusOK, ds)
 }
 
@@ -1210,6 +1219,10 @@ func (h *AdminHandler) DeleteDownstream(c *gin.Context) {
 		slog.Error("failed to delete downstream", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete downstream"})
 		return
+	}
+	// Reload the downstream service so the deleted pusher is stopped immediately.
+	if h.dsReload != nil {
+		h.dsReload.Reload()
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

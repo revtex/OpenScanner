@@ -556,6 +556,8 @@ Returns all units across all systems.
 
 ### Downstreams
 
+> **Service reload:** Creating, updating, or deleting a downstream entry triggers an immediate `Service.Reload` — all pusher goroutines are stopped and restarted from the DB. No separate restart endpoint is needed.
+
 #### `GET /api/admin/downstreams`
 
 #### `POST /api/admin/downstreams`

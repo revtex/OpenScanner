@@ -1652,15 +1652,19 @@ All extended features are **configurable** — disabled by default (except keybo
 
 ---
 
-### Phase 8 — Downstream Pusher
+### Phase 8 — Downstream Pusher ✅
+
+**Status: COMPLETE**
 
 **Goal:** Accepted calls are forwarded to configured remote OpenScanner instances.
 
-1. `internal/downstream/pusher.go` — one goroutine per enabled downstream; exponential backoff retry on failure; shuts down cleanly on context cancellation
-2. System/TG grant filter applied before each push — only forward calls the downstream is configured to receive
-3. Audio file read from filesystem and re-posted as multipart to the downstream's `/api/call-upload`
-4. Pusher restarted when downstream config changes via admin API
-5. Log all push successes and failures to `logs` table
+1. ✅ `internal/downstream/pusher.go` — fan-out pattern: one goroutine per active downstream with a buffered channel (1000 events); exponential backoff retry (1s→2s→4s→8s→30s cap, max 5 retries, with jitter); shuts down cleanly on context cancellation
+2. ✅ System/TG grant filter applied before each push — `systems_json` column controls which calls are forwarded per downstream
+3. ✅ Audio file read from filesystem and re-posted as multipart to the downstream's `/api/call-upload` with `X-API-Key` header
+4. ✅ Pusher reloaded when downstream config changes via admin CRUD operations (create/update/delete triggers `Reload`)
+5. ✅ Log all push successes and failures to `logs` table
+6. ✅ Security: HTTP client disables redirects (SSRF protection); audio path traversal protection
+7. ✅ Graceful shutdown: `dsService.Stop()` called after HTTP server shutdown
 
 **Deliverables:** Configure a downstream → upload a call → downstream instance receives it.
 

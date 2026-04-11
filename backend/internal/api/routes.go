@@ -8,6 +8,7 @@ import (
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
+	"github.com/openscanner/openscanner/internal/downstream"
 	"github.com/openscanner/openscanner/internal/middleware"
 	"github.com/openscanner/openscanner/internal/ws"
 )
@@ -17,23 +18,35 @@ type DirwatchReloader interface {
 	Reload()
 }
 
+// DownstreamReloader is implemented by downstream.Service to trigger a config reload.
+type DownstreamReloader interface {
+	Reload()
+}
+
+// DownstreamNotifier sends call events to downstream pushers.
+type DownstreamNotifier interface {
+	Notify(event downstream.CallEvent)
+}
+
 // Deps holds the dependencies required to register all API routes.
 type Deps struct {
-	Queries          *db.Queries
-	RateLimiter      *auth.RateLimiter
-	Processor        *audio.Processor
-	Hub              *ws.Hub
-	SQLDB            *sql.DB
-	DirwatchReloader DirwatchReloader
-	Version          string
+	Queries            *db.Queries
+	RateLimiter        *auth.RateLimiter
+	Processor          *audio.Processor
+	Hub                *ws.Hub
+	SQLDB              *sql.DB
+	DirwatchReloader   DirwatchReloader
+	DownstreamReloader DownstreamReloader
+	DownstreamNotifier DownstreamNotifier
+	Version            string
 }
 
 // RegisterRoutes wires all API routes onto the Gin engine.
 func RegisterRoutes(r *gin.Engine, deps Deps) {
 	setupHandler := NewSetupHandler(deps.Queries)
 	authHandler := NewAuthHandler(deps.Queries, deps.RateLimiter)
-	callHandler := NewCallHandler(deps.Queries, deps.Processor, deps.Hub)
-	adminHandler := NewAdminHandler(deps.Queries, deps.Hub, deps.SQLDB, deps.DirwatchReloader)
+	callHandler := NewCallHandler(deps.Queries, deps.Processor, deps.Hub, deps.DownstreamNotifier)
+	adminHandler := NewAdminHandler(deps.Queries, deps.Hub, deps.SQLDB, deps.DirwatchReloader, deps.DownstreamReloader)
 
 	// Global middleware applied to every request.
 	r.Use(middleware.RequestID())

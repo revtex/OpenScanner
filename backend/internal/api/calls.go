@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/db"
+	"github.com/openscanner/openscanner/internal/downstream"
 	"github.com/openscanner/openscanner/internal/ws"
 )
 
@@ -48,20 +49,22 @@ func (l *apiKeyLimiter) allow() bool {
 
 // CallHandler handles call upload endpoints.
 type CallHandler struct {
-	queries   *db.Queries
-	processor *audio.Processor
-	hub       *ws.Hub
-	mu        sync.Mutex
-	limiters  map[int64]*apiKeyLimiter
+	queries    *db.Queries
+	processor  *audio.Processor
+	hub        *ws.Hub
+	dsNotifier DownstreamNotifier
+	mu         sync.Mutex
+	limiters   map[int64]*apiKeyLimiter
 }
 
 // NewCallHandler creates a CallHandler.
-func NewCallHandler(queries *db.Queries, processor *audio.Processor, hub *ws.Hub) *CallHandler {
+func NewCallHandler(queries *db.Queries, processor *audio.Processor, hub *ws.Hub, dsNotifier DownstreamNotifier) *CallHandler {
 	return &CallHandler{
-		queries:   queries,
-		processor: processor,
-		hub:       hub,
-		limiters:  make(map[int64]*apiKeyLimiter),
+		queries:    queries,
+		processor:  processor,
+		hub:        hub,
+		dsNotifier: dsNotifier,
+		limiters:   make(map[int64]*apiKeyLimiter),
 	}
 }
 
@@ -371,4 +374,25 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"id": callID})
+
+	// Notify downstream pushers (non-blocking, after response is sent).
+	if h.dsNotifier != nil {
+		h.dsNotifier.Notify(downstream.CallEvent{
+			CallID:      callID,
+			AudioPath:   relPath,
+			AudioName:   filepath.Base(relPath),
+			AudioType:   audioType,
+			DateTime:    dateTimeUnix,
+			SystemID:    system.SystemID,
+			System:      system.ID,
+			TalkgroupID: talkgroup.TalkgroupID,
+			Talkgroup:   talkgroup.ID,
+			Frequency:   frequency.Int64,
+			Duration:    duration.Int64,
+			Source:      source.Int64,
+			Sources:     sourcesJSON.String,
+			Frequencies: frequenciesJSON.String,
+			Patches:     patchesJSON.String,
+		})
+	}
 }
