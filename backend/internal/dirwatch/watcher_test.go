@@ -390,14 +390,13 @@ func TestHandleFile_Integration_AutoPopulate(t *testing.T) {
 			"srcList": json.RawMessage(`[]`), "freqList": json.RawMessage(`[]`), "patched_talkgroups": json.RawMessage(`[]`),
 		}
 		data, _ := json.Marshal(sidecar)
-		stem := filepath.Join(watchDir, "call_tg")
-		jsonPath := filepath.Join(watchDir, filepath.Base(stem)+filepath.Join("", string(rune('A'+i)))+".json")
-		audioPath := filepath.Join(watchDir, filepath.Base(stem)+filepath.Join("", string(rune('A'+i)))+".mp3")
 
 		// Use simple sequential names to avoid collision.
-		jsonPath = filepath.Join(watchDir, "callA.json")
-		audioPath = filepath.Join(watchDir, "callA.mp3")
-		if i == 1 {
+		var jsonPath, audioPath string
+		if i == 0 {
+			jsonPath = filepath.Join(watchDir, "callA.json")
+			audioPath = filepath.Join(watchDir, "callA.mp3")
+		} else {
 			jsonPath = filepath.Join(watchDir, "callB.json")
 			audioPath = filepath.Join(watchDir, "callB.mp3")
 		}

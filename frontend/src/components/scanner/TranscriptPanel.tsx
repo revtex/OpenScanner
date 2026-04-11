@@ -1,4 +1,4 @@
-import type { Call } from '@/types';
+import type { Call } from "@/types";
 
 interface TranscriptPanelProps {
   call: Call | null;

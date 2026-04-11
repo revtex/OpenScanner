@@ -1,8 +1,8 @@
-import { useEffect, useCallback, useState } from 'react';
-import { useAppDispatch } from '@/app/store';
-import { audioPlayer } from '@/services/audioPlayer';
-import { wsClient } from '@/services/wsClient';
-import { setCurrentCall, clearCurrentCall } from '@/app/slices/scannerSlice';
+import { useEffect, useCallback, useState } from "react";
+import { useAppDispatch } from "@/app/store";
+import { audioPlayer } from "@/services/audioPlayer";
+import { wsClient } from "@/services/wsClient";
+import { setCurrentCall, clearCurrentCall } from "@/app/slices/scannerSlice";
 
 export function useAudioPlayer() {
   const dispatch = useAppDispatch();

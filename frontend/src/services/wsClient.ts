@@ -1,4 +1,4 @@
-import type { AppDispatch } from '@/app/store';
+import type { AppDispatch } from "@/app/store";
 import {
   callReceived,
   setConfig,
@@ -6,10 +6,10 @@ import {
   setListenerCount,
   setConnectionStatus,
   transcriptReceived,
-} from '@/app/slices/scannerSlice';
-import { clearCredentials } from '@/app/slices/authSlice';
-import type { Call, WsCommand } from '@/types';
-import { audioPlayer } from '@/services/audioPlayer';
+} from "@/app/slices/scannerSlice";
+import { clearCredentials } from "@/app/slices/authSlice";
+import type { Call, WsCommand } from "@/types";
+import { audioPlayer } from "@/services/audioPlayer";
 
 const MAX_BACKOFF = 30_000;
 
@@ -50,7 +50,7 @@ class WsClient {
     }
     this.pendingAudioForCall = null;
     audioPlayer.clearQueue();
-    this.dispatch?.(setConnectionStatus('disconnected'));
+    this.dispatch?.(setConnectionStatus("disconnected"));
   }
 
   send(command: WsCommand, payload?: unknown): void {
@@ -70,20 +70,20 @@ class WsClient {
       this.ws = null;
     }
 
-    this.dispatch?.(setConnectionStatus('connecting'));
+    this.dispatch?.(setConnectionStatus("connecting"));
 
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
     const url = `${proto}//${window.location.host}/ws`;
     this.ws = new WebSocket(url);
-    this.ws.binaryType = 'arraybuffer';
+    this.ws.binaryType = "arraybuffer";
 
     this.ws.onopen = () => {
       this.backoff = 1000;
-      this.dispatch?.(setConnectionStatus('connected'));
+      this.dispatch?.(setConnectionStatus("connected"));
 
       // Authenticate based on mode
       if (this.auth.pin) {
-        this.send('PIN', this.auth.pin);
+        this.send("PIN", this.auth.pin);
       } else if (this.auth.token) {
         // Send JWT as first message (raw string in array)
         if (this.ws?.readyState === WebSocket.OPEN) {
@@ -96,14 +96,14 @@ class WsClient {
     this.ws.onmessage = (event: MessageEvent) => {
       if (event.data instanceof ArrayBuffer) {
         this.handleBinaryMessage(event.data);
-      } else if (typeof event.data === 'string') {
+      } else if (typeof event.data === "string") {
         this.handleTextMessage(event.data);
       }
     };
 
     this.ws.onclose = () => {
       this.ws = null;
-      this.dispatch?.(setConnectionStatus('disconnected'));
+      this.dispatch?.(setConnectionStatus("disconnected"));
       if (!this.intentionalClose) {
         this.reconnect();
       }
@@ -128,14 +128,19 @@ class WsClient {
     const payload = parsed[1];
 
     switch (command) {
-      case 'CAL':
-        if (payload && typeof payload === 'object' && 'id' in payload && 'dateTime' in payload) {
+      case "CAL":
+        if (
+          payload &&
+          typeof payload === "object" &&
+          "id" in payload &&
+          "dateTime" in payload
+        ) {
           const call = payload as Call;
           this.pendingAudioForCall = call;
           this.dispatch?.(callReceived(call));
         }
         break;
-      case 'CFG':
+      case "CFG":
         if (this.dispatch) {
           const cfg = payload as {
             systems?: unknown;
@@ -146,16 +151,16 @@ class WsClient {
           // CFG may be partial — merge with existing config concept
           this.dispatch(
             setConfig({
-              systems: (cfg.systems ?? []) as import('@/types').SystemConfig[],
-              branding: cfg.branding ?? '',
-              email: cfg.email ?? '',
-              version: cfg.version ?? '',
+              systems: (cfg.systems ?? []) as import("@/types").SystemConfig[],
+              branding: cfg.branding ?? "",
+              email: cfg.email ?? "",
+              version: cfg.version ?? "",
             }),
           );
         }
         break;
-      case 'VER':
-        if (this.dispatch && payload && typeof payload === 'object') {
+      case "VER":
+        if (this.dispatch && payload && typeof payload === "object") {
           const ver = payload as {
             version?: string;
             branding?: string;
@@ -164,28 +169,35 @@ class WsClient {
           // VER updates branding/version/email — merge with existing config
           this.dispatch(
             setBranding({
-              branding: ver.branding ?? '',
-              email: ver.email ?? '',
-              version: ver.version ?? '',
+              branding: ver.branding ?? "",
+              email: ver.email ?? "",
+              version: ver.version ?? "",
             }),
           );
         }
         break;
-      case 'LSC':
-        if (typeof payload === 'number') {
+      case "LSC":
+        if (typeof payload === "number") {
           this.dispatch?.(setListenerCount(payload));
         }
         break;
-      case 'XPR':
+      case "XPR":
         this.dispatch?.(clearCredentials());
         this.disconnect();
         break;
-      case 'MAX':
-        console.warn('[WsClient] Server max clients reached');
+      case "MAX":
+        console.warn("[WsClient] Server max clients reached");
         break;
-      case 'TRN':
-        if (payload && typeof payload === 'object' && 'callId' in payload && 'text' in payload) {
-          this.dispatch?.(transcriptReceived(payload as { callId: number; text: string }));
+      case "TRN":
+        if (
+          payload &&
+          typeof payload === "object" &&
+          "callId" in payload &&
+          "text" in payload
+        ) {
+          this.dispatch?.(
+            transcriptReceived(payload as { callId: number; text: string }),
+          );
         }
         break;
       default:
@@ -199,7 +211,7 @@ class WsClient {
     const call = this.pendingAudioForCall;
     this.pendingAudioForCall = null;
 
-    const mimeType = call.audioType || 'audio/mpeg';
+    const mimeType = call.audioType || "audio/mpeg";
     const blob = new Blob([data], { type: mimeType });
     const audioUrl = URL.createObjectURL(blob);
 

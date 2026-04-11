@@ -53,16 +53,16 @@ export interface ScannerConfig {
 
 // WS message: JSON array [command, payload?, flags?]
 export type WsCommand =
-  | 'CAL'
-  | 'CFG'
-  | 'XPR'
-  | 'LCL'
-  | 'LSC'
-  | 'LFM'
-  | 'MAX'
-  | 'PIN'
-  | 'VER'
-  | 'TRN';
+  | "CAL"
+  | "CFG"
+  | "XPR"
+  | "LCL"
+  | "LSC"
+  | "LFM"
+  | "MAX"
+  | "PIN"
+  | "VER"
+  | "TRN";
 
 // Setup status from GET /api/setup/status
 export interface SetupStatus {
@@ -85,4 +85,4 @@ export interface AvoidEntry {
 }
 
 // Connection status for WS
-export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
+export type ConnectionStatus = "connecting" | "connected" | "disconnected";

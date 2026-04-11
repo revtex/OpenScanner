@@ -1,5 +1,5 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { SetupStatus } from '@/types';
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { SetupStatus } from "@/types";
 
 interface AuthState {
   token: string | null;
@@ -18,7 +18,7 @@ const initialState: AuthState = {
 };
 
 export const authSlice = createSlice({
-  name: 'auth',
+  name: "auth",
   initialState,
   reducers: {
     setCredentials(

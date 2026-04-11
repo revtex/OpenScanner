@@ -15,8 +15,8 @@ import {
   Search,
   Keyboard,
   Maximize,
-} from 'lucide-react';
-import type { AvoidEntry } from '@/types';
+} from "lucide-react";
+import type { AvoidEntry } from "@/types";
 
 interface ControlToolbarProps {
   isPlaying: boolean;
@@ -76,26 +76,41 @@ export function ControlToolbar({
       {/* Row 1 — Playback + Quick Actions */}
       <div className="flex items-center justify-center gap-2 flex-wrap">
         {/* Play/Pause */}
-        <div className="tooltip tooltip-bottom" data-tip={isPaused ? 'Resume (Space)' : 'Pause (Space)'}>
+        <div
+          className="tooltip tooltip-bottom"
+          data-tip={isPaused ? "Resume (Space)" : "Pause (Space)"}
+        >
           <button
             className="btn btn-circle btn-primary w-11 h-11"
             onClick={onTogglePause}
-            aria-label={isPaused ? 'Resume' : 'Pause'}
+            aria-label={isPaused ? "Resume" : "Pause"}
           >
-            {isPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
+            {isPaused ? (
+              <Play className="w-5 h-5" />
+            ) : (
+              <Pause className="w-5 h-5" />
+            )}
           </button>
         </div>
 
         {/* Skip */}
         <div className="tooltip tooltip-bottom" data-tip="Skip (S)">
-          <button className="btn btn-circle btn-ghost w-9 h-9" onClick={onSkip} aria-label="Skip">
+          <button
+            className="btn btn-circle btn-ghost w-9 h-9"
+            onClick={onSkip}
+            aria-label="Skip"
+          >
             <SkipForward className="w-4 h-4" />
           </button>
         </div>
 
         {/* Replay */}
         <div className="tooltip tooltip-bottom" data-tip="Replay (R)">
-          <button className="btn btn-circle btn-ghost w-9 h-9" onClick={onReplay} aria-label="Replay">
+          <button
+            className="btn btn-circle btn-ghost w-9 h-9"
+            onClick={onReplay}
+            aria-label="Replay"
+          >
             <RotateCcw className="w-4 h-4" />
           </button>
         </div>
@@ -107,9 +122,13 @@ export function ControlToolbar({
           <button
             className="btn btn-circle btn-ghost w-9 h-9"
             onClick={() => onSetVolume(isMuted ? 0.8 : 0)}
-            aria-label={isMuted ? 'Unmute' : 'Mute'}
+            aria-label={isMuted ? "Unmute" : "Mute"}
           >
-            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            {isMuted ? (
+              <VolumeX className="w-4 h-4" />
+            ) : (
+              <Volume2 className="w-4 h-4" />
+            )}
           </button>
           <input
             type="range"
@@ -124,10 +143,21 @@ export function ControlToolbar({
 
         {/* Volume — sm only (icon with dropdown) */}
         <div className="md:hidden dropdown dropdown-top">
-          <div tabIndex={0} role="button" className="btn btn-circle btn-ghost w-9 h-9">
-            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          <div
+            tabIndex={0}
+            role="button"
+            className="btn btn-circle btn-ghost w-9 h-9"
+          >
+            {isMuted ? (
+              <VolumeX className="w-4 h-4" />
+            ) : (
+              <Volume2 className="w-4 h-4" />
+            )}
           </div>
-          <div tabIndex={0} className="dropdown-content p-3 shadow bg-base-200 rounded-box">
+          <div
+            tabIndex={0}
+            className="dropdown-content p-3 shadow bg-base-200 rounded-box"
+          >
             <input
               type="range"
               min={0}
@@ -144,14 +174,21 @@ export function ControlToolbar({
 
         {/* Download */}
         <div className="tooltip tooltip-bottom" data-tip="Download (D)">
-          <button className="btn btn-circle btn-ghost w-9 h-9" onClick={onDownload} aria-label="Download">
+          <button
+            className="btn btn-circle btn-ghost w-9 h-9"
+            onClick={onDownload}
+            aria-label="Download"
+          >
             <Download className="w-4 h-4" />
           </button>
         </div>
 
         {/* Bookmark placeholder — uses Star icon, toggle not wired to backend yet */}
         <div className="tooltip tooltip-bottom" data-tip="Bookmark (B)">
-          <button className="btn btn-circle btn-ghost w-9 h-9" aria-label="Bookmark">
+          <button
+            className="btn btn-circle btn-ghost w-9 h-9"
+            aria-label="Bookmark"
+          >
             <Star className="w-4 h-4" />
           </button>
         </div>
@@ -162,7 +199,7 @@ export function ControlToolbar({
         {/* LIVE */}
         <div className="tooltip tooltip-bottom" data-tip="Live Mode (L)">
           <button
-            className={`btn btn-sm gap-1 ${isLive ? 'btn-primary' : 'btn-ghost'}`}
+            className={`btn btn-sm gap-1 ${isLive ? "btn-primary" : "btn-ghost"}`}
             onClick={onToggleLive}
           >
             <Radio className="w-3.5 h-3.5" />
@@ -178,20 +215,33 @@ export function ControlToolbar({
           <div
             tabIndex={0}
             role="button"
-            className={`btn btn-sm ${isHolding ? 'btn-secondary' : 'btn-ghost'}`}
+            className={`btn btn-sm ${isHolding ? "btn-secondary" : "btn-ghost"}`}
           >
             <Lock className="w-3.5 h-3.5" />
             HOLD▾
           </div>
-          <ul tabIndex={0} className="dropdown-content menu p-2 shadow bg-base-200 rounded-box w-48 z-50">
+          <ul
+            tabIndex={0}
+            className="dropdown-content menu p-2 shadow bg-base-200 rounded-box w-48 z-50"
+          >
             <li>
-              <button onClick={() => onHoldSystem(heldSystem !== null ? null : (currentCallSystemId ?? null))}>
-                {heldSystem !== null ? 'Release System' : 'Hold System'}
+              <button
+                onClick={() =>
+                  onHoldSystem(
+                    heldSystem !== null ? null : (currentCallSystemId ?? null),
+                  )
+                }
+              >
+                {heldSystem !== null ? "Release System" : "Hold System"}
               </button>
             </li>
             <li>
-              <button onClick={() => onHoldTG(heldTG !== null ? null : (currentCallTgId ?? null))}>
-                {heldTG !== null ? 'Release Talkgroup' : 'Hold Talkgroup'}
+              <button
+                onClick={() =>
+                  onHoldTG(heldTG !== null ? null : (currentCallTgId ?? null))
+                }
+              >
+                {heldTG !== null ? "Release Talkgroup" : "Hold Talkgroup"}
               </button>
             </li>
           </ul>
@@ -202,21 +252,38 @@ export function ControlToolbar({
           <div
             tabIndex={0}
             role="button"
-            className={`btn btn-sm gap-1 ${avoidCount > 0 ? 'btn-warning' : 'btn-ghost'}`}
+            className={`btn btn-sm gap-1 ${avoidCount > 0 ? "btn-warning" : "btn-ghost"}`}
           >
             <Ban className="w-3.5 h-3.5" />
             AVOID▾
-            {avoidCount > 0 && <span className="badge badge-xs">{avoidCount}</span>}
+            {avoidCount > 0 && (
+              <span className="badge badge-xs">{avoidCount}</span>
+            )}
           </div>
-          <ul tabIndex={0} className="dropdown-content menu p-2 shadow bg-base-200 rounded-box w-44 z-50">
-            <li><button onClick={() => handleAvoid(30)}>30 minutes</button></li>
-            <li><button onClick={() => handleAvoid(60)}>60 minutes</button></li>
-            <li><button onClick={() => handleAvoid(120)}>120 minutes</button></li>
-            <li><button onClick={() => handleAvoid(0)}>Permanent</button></li>
+          <ul
+            tabIndex={0}
+            className="dropdown-content menu p-2 shadow bg-base-200 rounded-box w-44 z-50"
+          >
+            <li>
+              <button onClick={() => handleAvoid(30)}>30 minutes</button>
+            </li>
+            <li>
+              <button onClick={() => handleAvoid(60)}>60 minutes</button>
+            </li>
+            <li>
+              <button onClick={() => handleAvoid(120)}>120 minutes</button>
+            </li>
+            <li>
+              <button onClick={() => handleAvoid(0)}>Permanent</button>
+            </li>
             {avoidCount > 0 && (
               <>
-                <li className="menu-title"><span>—</span></li>
-                <li><button onClick={onClearAvoids}>Clear All</button></li>
+                <li className="menu-title">
+                  <span>—</span>
+                </li>
+                <li>
+                  <button onClick={onClearAvoids}>Clear All</button>
+                </li>
               </>
             )}
           </ul>
@@ -243,7 +310,10 @@ export function ControlToolbar({
           <div tabIndex={0} role="button" className="btn btn-sm btn-ghost">
             <MoreHorizontal className="w-4 h-4" />
           </div>
-          <ul tabIndex={0} className="dropdown-content menu p-2 shadow bg-base-200 rounded-box w-52 z-50">
+          <ul
+            tabIndex={0}
+            className="dropdown-content menu p-2 shadow bg-base-200 rounded-box w-52 z-50"
+          >
             <li>
               <button>
                 <Star className="w-4 h-4" /> Saved Calls

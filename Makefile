@@ -10,8 +10,12 @@ build:
 	$(MAKE) -C frontend build
 
 dev:
-	$(MAKE) -C backend dev &
-	$(MAKE) -C frontend dev
+	$(MAKE) -C backend dev & \
+	BACKEND_PID=$$!; \
+	trap 'kill -- -$$BACKEND_PID 2>/dev/null || kill $$BACKEND_PID 2>/dev/null; pkill -P $$BACKEND_PID 2>/dev/null' EXIT; \
+	$(MAKE) -C frontend dev; \
+	kill -- -$$BACKEND_PID 2>/dev/null || kill $$BACKEND_PID 2>/dev/null; \
+	pkill -P $$BACKEND_PID 2>/dev/null
 
 test:
 	$(MAKE) -C backend test

@@ -91,7 +91,7 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 
 	auth.Tokens.Track(user.ID, jti, time.Now().Add(24*time.Hour))
 	h.logAuthEvent(c.Request.Context(), "info", "login success: "+user.Username, ip)
-	slog.Info("user logged in", "userId", user.ID, "username", user.Username)
+	slog.Info("user logged in", "userId", user.ID, "username", user.Username, "ip", ip)
 
 	c.JSON(http.StatusOK, loginResponse{
 		Token: token,

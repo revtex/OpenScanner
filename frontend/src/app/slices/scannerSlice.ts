@@ -1,10 +1,10 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type {
   Call,
   AvoidEntry,
   ConnectionStatus,
   ScannerConfig,
-} from '@/types';
+} from "@/types";
 
 const MAX_HISTORY = 5;
 const MAX_QUEUE = 50;
@@ -34,13 +34,13 @@ const initialState: ScannerState = {
   currentCall: null,
   history: [],
   listenerCount: 0,
-  connectionStatus: 'disconnected',
+  connectionStatus: "disconnected",
   config: null,
   tgSelection: {},
 };
 
 export const scannerSlice = createSlice({
-  name: 'scanner',
+  name: "scanner",
   initialState,
   reducers: {
     callReceived(state, action: PayloadAction<Call>) {
@@ -105,7 +105,11 @@ export const scannerSlice = createSlice({
     },
     setBranding(
       state,
-      action: PayloadAction<{ branding: string; email: string; version: string }>,
+      action: PayloadAction<{
+        branding: string;
+        email: string;
+        version: string;
+      }>,
     ) {
       if (state.config) {
         state.config.branding = action.payload.branding;

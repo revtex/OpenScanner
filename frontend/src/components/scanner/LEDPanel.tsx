@@ -1,6 +1,6 @@
-import { Sun, Moon } from 'lucide-react';
-import { useTheme } from '@/hooks/useTheme';
-import { useAppSelector } from '@/app/store';
+import { Sun, Moon } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
+import { useAppSelector } from "@/app/store";
 
 export function LEDPanel() {
   const { isDark, toggle } = useTheme();
@@ -10,26 +10,23 @@ export function LEDPanel() {
   const currentCall = useAppSelector((s) => s.scanner.currentCall);
   const isPlaying = !!currentCall;
 
-  const branding = config?.branding ?? 'OPENSCANNER';
+  const branding = config?.branding ?? "OPENSCANNER";
 
   // LED color logic
-  let ledColor = '#555';
+  let ledColor = "#555";
   if (currentCall?.talkgroupLedColor) {
     ledColor = currentCall.talkgroupLedColor;
   } else if (isLive && isPlaying) {
-    ledColor = '#00e676';
+    ledColor = "#00e676";
   } else if (isPaused || !isLive) {
-    ledColor = '#ff9100';
+    ledColor = "#ff9100";
   }
 
   const shouldBlink = isPaused;
 
   return (
     <div className="flex items-center justify-between h-6 mb-6">
-      <span
-        className="text-sm font-bold tracking-widest uppercase opacity-70"
-        style={{ letterSpacing: '2px' }}
-      >
+      <span className="led-branding text-sm font-bold tracking-widest uppercase opacity-70">
         {branding}
       </span>
       <div className="flex items-center gap-3">
@@ -41,13 +38,11 @@ export function LEDPanel() {
           {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
         <div
-          className={`rounded-sm ${shouldBlink ? 'animate-pulse' : ''}`}
+          className={`led-indicator rounded-sm ${shouldBlink ? "animate-pulse" : ""}`}
           style={{
-            width: '24px',
-            height: '12px',
             backgroundColor: ledColor,
             boxShadow: `0 0 8px ${ledColor}, 0 0 16px ${ledColor}`,
-            animationTimingFunction: shouldBlink ? 'step-end' : undefined,
+            animationTimingFunction: shouldBlink ? "step-end" : undefined,
           }}
         />
       </div>

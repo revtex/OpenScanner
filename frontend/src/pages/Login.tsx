@@ -1,27 +1,27 @@
-import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Lock } from 'lucide-react';
-import { usePostLoginMutation } from '@/app/api';
-import { useAppDispatch } from '@/app/store';
-import { setCredentials } from '@/app/slices/authSlice';
+import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { Lock } from "lucide-react";
+import { usePostLoginMutation } from "@/app/api";
+import { useAppDispatch } from "@/app/store";
+import { setCredentials } from "@/app/slices/authSlice";
 
 export default function Login() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [postLogin, { isLoading }] = usePostLoginMutation();
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   // Change password form
   const [needChange, setNeedChange] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     try {
       const result = await postLogin({ username, password }).unwrap();
       if (result.passwordNeedChange) {
@@ -30,24 +30,26 @@ export default function Login() {
         return;
       }
       dispatch(setCredentials(result));
-      navigate('/', { replace: true });
+      navigate("/", { replace: true });
     } catch {
-      setError('Invalid username or password');
+      setError("Invalid username or password");
     }
   };
 
   const handleChangePassword = (e: FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters');
+      setError("Password must be at least 8 characters");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
     // Password change API not yet available — block navigation
-    setError('Password change is not yet available. Please contact your administrator.');
+    setError(
+      "Password change is not yet available. Please contact your administrator.",
+    );
   };
 
   if (needChange) {
@@ -58,7 +60,10 @@ export default function Login() {
             <Lock className="w-10 h-10 text-primary mb-2" />
             <h2 className="card-title">Change Password</h2>
             <p className="text-sm opacity-60">Please set a new password</p>
-            <form onSubmit={handleChangePassword} className="w-full space-y-3 mt-2">
+            <form
+              onSubmit={handleChangePassword}
+              className="w-full space-y-3 mt-2"
+            >
               <input
                 type="password"
                 placeholder="New password"
@@ -119,7 +124,11 @@ export default function Login() {
               className="btn btn-primary btn-block"
               disabled={isLoading}
             >
-              {isLoading ? <span className="loading loading-spinner loading-sm" /> : 'Sign In'}
+              {isLoading ? (
+                <span className="loading loading-spinner loading-sm" />
+              ) : (
+                "Sign In"
+              )}
             </button>
           </form>
         </div>

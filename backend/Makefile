@@ -18,7 +18,9 @@ lint:
 	golangci-lint run ./...
 
 clean:
-	rm -f $(BINARY)
+	rm -f $(BINARY) server migrate
+	rm -rf tmp/
+	rm -f openscanner.db openscanner.db-wal openscanner.db-shm
 
 migrate:
 	go run ./cmd/migrate up

@@ -142,7 +142,7 @@ func TestHandleListenerWS_PublicAccess(t *testing.T) {
 		t.Fatalf("upsert publicAccess: %v", err)
 	}
 
-	wsURL, _, _ := startWSTestServer(t, queries, HandleListenerWS(nil, queries))
+	_, _, _ = startWSTestServer(t, queries, HandleListenerWS(nil, queries))
 	// Hub needs to be the one used by the handler — fix: pass to handler.
 	// Actually, HandleListenerWS needs a *Hub. Let's rebuild.
 	queries2 := newWSTestDB(t)
@@ -160,13 +160,13 @@ func TestHandleListenerWS_PublicAccess(t *testing.T) {
 	handler := HandleListenerWS(hub, queries2)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
-	wsURL = "ws" + srv.URL[len("http"):]
+	wsURL := "ws" + srv.URL[len("http"):]
 
 	conn, _, err := websocket.Dial(ctx, wsURL, nil)
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
-	defer conn.CloseNow()
+	defer func() { _ = conn.CloseNow() }()
 
 	// Should receive VER message (welcome).
 	msg := readTextMessage(t, ctx, conn, 5*time.Second)
@@ -203,9 +203,7 @@ func TestHandleListenerWS_ValidPIN(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
-	defer conn.CloseNow()
-
-	// Send PIN command.
+	defer conn.CloseNow() //nolint:errcheck
 	pinMsg, _ := json.Marshal([]any{"PIN", "test-code-123"})
 	if err := conn.Write(ctx, websocket.MessageText, pinMsg); err != nil {
 		t.Fatalf("write PIN: %v", err)
@@ -236,7 +234,7 @@ func TestHandleListenerWS_InvalidPIN(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
-	defer conn.CloseNow()
+	defer func() { _ = conn.CloseNow() }()
 
 	// Send PIN with bad code.
 	pinMsg, _ := json.Marshal([]any{"PIN", "wrong-code"})
@@ -288,7 +286,7 @@ func TestHandleListenerWS_ValidJWT(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
-	defer conn.CloseNow()
+	defer func() { _ = conn.CloseNow() }()
 
 	// Send the JWT token as the first message: the handler tries to parse
 	// non-PIN commands as JWT tokens.
@@ -341,7 +339,7 @@ func TestHandleListenerWS_AdminJWTRejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
-	defer conn.CloseNow()
+	defer func() { _ = conn.CloseNow() }()
 
 	// Send admin JWT — should be rejected on listener endpoint.
 	tokenMsg, _ := json.Marshal([]any{token})
@@ -396,7 +394,7 @@ func TestHandleAdminWS_ValidToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
-	defer conn.CloseNow()
+	defer func() { _ = conn.CloseNow() }()
 
 	// Admin WS doesn't send VER but should be connected. Verify by checking
 	// hub has 0 listener clients (admin doesn't count) — just verify no error.
@@ -446,7 +444,7 @@ func TestHandleAdminWS_ListenerJWTRejected(t *testing.T) {
 	// The admin handler should reject with HTTP 403 before upgrade.
 	conn, resp, err := websocket.Dial(ctx, wsURL, nil)
 	if err == nil {
-		conn.CloseNow()
+		_ = conn.CloseNow()
 		t.Fatal("expected error dialing with listener JWT, got nil")
 	}
 	if resp != nil && resp.StatusCode != http.StatusForbidden {

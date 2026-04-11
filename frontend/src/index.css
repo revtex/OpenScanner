@@ -1,3 +1,19 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .led-branding {
+    letter-spacing: 2px;
+  }
+
+  .led-indicator {
+    width: 24px;
+    height: 12px;
+  }
+
+  .history-row {
+    font-size: 11px;
+    line-height: 21px;
+  }
+}

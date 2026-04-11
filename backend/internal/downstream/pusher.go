@@ -301,28 +301,39 @@ func (s *Service) pushCall(ctx context.Context, ds db.Downstream, event CallEven
 	}
 
 	// Required fields.
-	writer.WriteField("systemId", strconv.FormatInt(event.SystemID, 10))
-	writer.WriteField("talkgroupId", strconv.FormatInt(event.TalkgroupID, 10))
-	writer.WriteField("dateTime", strconv.FormatInt(event.DateTime, 10))
+	if err := writer.WriteField("systemId", strconv.FormatInt(event.SystemID, 10)); err != nil {
+		return fmt.Errorf("write systemId field: %w", err)
+	}
+	if err := writer.WriteField("talkgroupId", strconv.FormatInt(event.TalkgroupID, 10)); err != nil {
+		return fmt.Errorf("write talkgroupId field: %w", err)
+	}
+	if err := writer.WriteField("dateTime", strconv.FormatInt(event.DateTime, 10)); err != nil {
+		return fmt.Errorf("write dateTime field: %w", err)
+	}
 
 	// Optional fields — include only if non-zero/non-empty.
+	writeField := func(key, value string) {
+		if err := writer.WriteField(key, value); err != nil {
+			slog.Warn("downstream: failed to write form field", "key", key, "error", err)
+		}
+	}
 	if event.Frequency != 0 {
-		writer.WriteField("frequency", strconv.FormatInt(event.Frequency, 10))
+		writeField("frequency", strconv.FormatInt(event.Frequency, 10))
 	}
 	if event.Duration != 0 {
-		writer.WriteField("duration", strconv.FormatInt(event.Duration, 10))
+		writeField("duration", strconv.FormatInt(event.Duration, 10))
 	}
 	if event.Source != 0 {
-		writer.WriteField("source", strconv.FormatInt(event.Source, 10))
+		writeField("source", strconv.FormatInt(event.Source, 10))
 	}
 	if event.Sources != "" {
-		writer.WriteField("sources", event.Sources)
+		writeField("sources", event.Sources)
 	}
 	if event.Frequencies != "" {
-		writer.WriteField("frequencies", event.Frequencies)
+		writeField("frequencies", event.Frequencies)
 	}
 	if event.Patches != "" {
-		writer.WriteField("patches", event.Patches)
+		writeField("patches", event.Patches)
 	}
 
 	if err := writer.Close(); err != nil {
@@ -342,7 +353,9 @@ func (s *Service) pushCall(ctx context.Context, ds db.Downstream, event CallEven
 		return fmt.Errorf("http request: %w", err)
 	}
 	defer resp.Body.Close()
-	io.Copy(io.Discard, resp.Body)
+	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+		slog.Warn("downstream: failed to drain response body", "error", err)
+	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unexpected status %d from %s", resp.StatusCode, ds.Url)

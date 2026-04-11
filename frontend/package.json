@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest --run --passWithNoTests",
     "test:ui": "vitest --ui",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.8.2",

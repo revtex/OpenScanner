@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Share2 } from 'lucide-react';
-import { BookmarkButton } from '@/components/scanner/BookmarkButton';
-import { HistoryPanel } from '@/components/scanner/HistoryPanel';
-import { TranscriptPanel } from '@/components/scanner/TranscriptPanel';
-import type { Call } from '@/types';
+import { useState, useEffect, useCallback } from "react";
+import { Share2 } from "lucide-react";
+import { BookmarkButton } from "@/components/scanner/BookmarkButton";
+import { HistoryPanel } from "@/components/scanner/HistoryPanel";
+import { TranscriptPanel } from "@/components/scanner/TranscriptPanel";
+import type { Call } from "@/types";
 
 interface DisplayPanelProps {
   currentCall: Call | null;
@@ -23,23 +23,39 @@ function useClock() {
 }
 
 function formatClock(d: Date) {
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  return d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
 }
 
 function formatCallDateTime(ts: number) {
   const d = new Date(ts * 1000);
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const time = d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
   return `${month}/${day} ${time}`;
 }
 
 function formatFrequency(hz?: number) {
-  if (!hz) return '';
+  if (!hz) return "";
   return `F: ${(hz / 1_000_000).toFixed(3)}`;
 }
 
-export function DisplayPanel({ currentCall, history, listenerCount, queueCount, avoidList }: DisplayPanelProps) {
+export function DisplayPanel({
+  currentCall,
+  history,
+  listenerCount,
+  queueCount,
+  avoidList,
+}: DisplayPanelProps) {
   const clock = useClock();
   const [fullscreen, setFullscreen] = useState(false);
   const [bookmarked, setBookmarked] = useState<Set<number>>(new Set());
@@ -90,19 +106,21 @@ export function DisplayPanel({ currentCall, history, listenerCount, queueCount, 
         <>
           {/* Row 3: system label, tag */}
           <div className="flex justify-between">
-            <span className="truncate">{currentCall.systemLabel ?? ''}</span>
-            <span className="opacity-60">{currentCall.talkgroupTag ?? ''}</span>
+            <span className="truncate">{currentCall.systemLabel ?? ""}</span>
+            <span className="opacity-60">{currentCall.talkgroupTag ?? ""}</span>
           </div>
 
           {/* Row 4: TG label, date+time */}
           <div className="flex justify-between">
-            <span className="truncate">{currentCall.talkgroupLabel ?? ''}</span>
-            <span className="opacity-60 text-xs">{formatCallDateTime(currentCall.dateTime)}</span>
+            <span className="truncate">{currentCall.talkgroupLabel ?? ""}</span>
+            <span className="opacity-60 text-xs">
+              {formatCallDateTime(currentCall.dateTime)}
+            </span>
           </div>
 
           {/* Row 5: TG name — large */}
           <div className="text-2xl font-bold text-center py-1 truncate">
-            {currentCall.talkgroupName ?? ''}
+            {currentCall.talkgroupName ?? ""}
           </div>
 
           {/* Row 6: frequency, TGID */}
@@ -114,7 +132,9 @@ export function DisplayPanel({ currentCall, history, listenerCount, queueCount, 
           {/* Row 7: errors/spikes, unit ID */}
           <div className="flex justify-between">
             <span />
-            <span>{currentCall.source ? `UID: ${currentCall.source}` : ''}</span>
+            <span>
+              {currentCall.source ? `UID: ${currentCall.source}` : ""}
+            </span>
           </div>
 
           {/* Row 8: bookmark, share, flags */}
@@ -135,10 +155,14 @@ export function DisplayPanel({ currentCall, history, listenerCount, queueCount, 
             </div>
             <div className="flex gap-1">
               {isAvoided && (
-                <span className="badge badge-xs bg-base-300 text-base-content">AVOID</span>
+                <span className="badge badge-xs bg-base-300 text-base-content">
+                  AVOID
+                </span>
               )}
               {currentCall.patches && (
-                <span className="badge badge-xs bg-base-300 text-base-content">PATCH</span>
+                <span className="badge badge-xs bg-base-300 text-base-content">
+                  PATCH
+                </span>
               )}
             </div>
           </div>
@@ -177,7 +201,10 @@ export function DisplayPanel({ currentCall, history, listenerCount, queueCount, 
       {/* Fullscreen modal */}
       {fullscreen && (
         <dialog className="modal modal-open" onClick={handleDoubleClick}>
-          <div className="modal-box max-w-3xl bg-base-200" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal-box max-w-3xl bg-base-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             {displayContent}
           </div>
           <form method="dialog" className="modal-backdrop">

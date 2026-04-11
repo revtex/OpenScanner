@@ -161,10 +161,7 @@ func (h *AdminHandler) ImportConfig(c *gin.Context) {
 			slog.Warn("import config: skipping unknown setting key", "key", s.Key)
 			continue
 		}
-		if err := qtx.UpsertSetting(ctx, db.UpsertSettingParams{
-			Key:   s.Key,
-			Value: s.Value,
-		}); err != nil {
+		if err := qtx.UpsertSetting(ctx, db.UpsertSettingParams(s)); err != nil {
 			slog.Error("import config: failed to upsert setting", "key", s.Key, "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to import settings"})
 			return

@@ -1,4 +1,4 @@
-import type { Call } from '@/types';
+import type { Call } from "@/types";
 
 interface HistoryPanelProps {
   history: Call[];
@@ -8,7 +8,11 @@ interface HistoryPanelProps {
 export function HistoryPanel({ history, currentCallId }: HistoryPanelProps) {
   const formatTime = (ts: number) => {
     const d = new Date(ts * 1000);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
   };
 
   return (
@@ -24,15 +28,14 @@ export function HistoryPanel({ history, currentCallId }: HistoryPanelProps) {
       {history.map((call) => (
         <div
           key={call.id}
-          className={`grid grid-cols-[10%_25%_25%_40%] px-1 border-b border-base-content/20 last:border-b-0 ${
-            call.id === currentCallId ? 'font-bold' : ''
+          className={`grid grid-cols-[10%_25%_25%_40%] px-1 border-b border-base-content/20 last:border-b-0 history-row ${
+            call.id === currentCallId ? "font-bold" : ""
           }`}
-          style={{ fontSize: '11px', lineHeight: '21px' }}
         >
           <span className="truncate">{formatTime(call.dateTime)}</span>
-          <span className="truncate">{call.systemLabel ?? ''}</span>
-          <span className="truncate">{call.talkgroupLabel ?? ''}</span>
-          <span className="truncate">{call.talkgroupName ?? ''}</span>
+          <span className="truncate">{call.systemLabel ?? ""}</span>
+          <span className="truncate">{call.talkgroupLabel ?? ""}</span>
+          <span className="truncate">{call.talkgroupName ?? ""}</span>
         </div>
       ))}
     </div>

@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
-import { useAppDispatch, useAppSelector } from '@/app/store';
-import { wsClient } from '@/services/wsClient';
-import type { ConnectionStatus } from '@/types';
+import { useEffect, useRef } from "react";
+import { useAppDispatch, useAppSelector } from "@/app/store";
+import { wsClient } from "@/services/wsClient";
+import type { ConnectionStatus } from "@/types";
 
 export function useWebSocket(): { connectionStatus: ConnectionStatus } {
   const dispatch = useAppDispatch();

@@ -1,4 +1,4 @@
-import type { Call } from '@/types';
+import type { Call } from "@/types";
 
 interface QueueItem {
   call: Call;
@@ -20,13 +20,13 @@ class AudioPlayer {
   constructor() {
     this.audio = new Audio();
     this.preloadAudio = new Audio();
-    this.preloadAudio.preload = 'auto';
+    this.preloadAudio.preload = "auto";
 
-    this.audio.addEventListener('ended', () => {
+    this.audio.addEventListener("ended", () => {
       this.onEnded();
     });
 
-    this.audio.addEventListener('error', () => {
+    this.audio.addEventListener("error", () => {
       this.onEnded();
     });
   }
@@ -81,12 +81,12 @@ class AudioPlayer {
 
   download(): void {
     if (!this.currentItem) return;
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = this.currentItem.audioUrl;
-    const ext = this.currentItem.call.audioType?.includes('wav')
-      ? 'wav'
-      : 'mp3';
-    a.download = `${this.currentItem.call.audioName || 'call'}.${ext}`;
+    const ext = this.currentItem.call.audioType?.includes("wav")
+      ? "wav"
+      : "mp3";
+    a.download = `${this.currentItem.call.audioName || "call"}.${ext}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

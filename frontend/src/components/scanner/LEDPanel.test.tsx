@@ -1,23 +1,23 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { configureStore } from '@reduxjs/toolkit';
-import { Provider } from 'react-redux';
-import { LEDPanel } from '@/components/scanner/LEDPanel';
-import { scannerSlice } from '@/app/slices/scannerSlice';
-import { authSlice } from '@/app/slices/authSlice';
-import { api } from '@/app/api';
-import type { RootState } from '@/app/store';
-import type { Call, ScannerConfig } from '@/types';
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { configureStore } from "@reduxjs/toolkit";
+import { Provider } from "react-redux";
+import { LEDPanel } from "@/components/scanner/LEDPanel";
+import { scannerSlice } from "@/app/slices/scannerSlice";
+import { authSlice } from "@/app/slices/authSlice";
+import { api } from "@/app/api";
+import type { RootState } from "@/app/store";
+import type { Call, ScannerConfig } from "@/types";
 
 // Mock useTheme since it reads localStorage / sets DOM attributes
 const mockToggle = vi.fn();
 let mockIsDark = true;
 
-vi.mock('@/hooks/useTheme', () => ({
+vi.mock("@/hooks/useTheme", () => ({
   useTheme: () => ({
     isDark: mockIsDark,
     toggle: mockToggle,
-    theme: mockIsDark ? 'openscanner-dark' : 'openscanner-light',
+    theme: mockIsDark ? "openscanner-dark" : "openscanner-light",
   }),
 }));
 
@@ -36,14 +36,21 @@ function makeStore(preloadedState?: Partial<RootState>) {
 
 function renderLED(preloadedState?: Partial<RootState>) {
   const store = makeStore(preloadedState);
-  return { ...render(<Provider store={store}><LEDPanel /></Provider>), store };
+  return {
+    ...render(
+      <Provider store={store}>
+        <LEDPanel />
+      </Provider>,
+    ),
+    store,
+  };
 }
 
 function makeCall(overrides: Partial<Call> = {}): Call {
   return {
     id: 1,
-    audioName: 'test.wav',
-    audioType: 'audio/wav',
+    audioName: "test.wav",
+    audioType: "audio/wav",
     dateTime: Date.now(),
     systemId: 100,
     system: 1,
@@ -53,7 +60,7 @@ function makeCall(overrides: Partial<Call> = {}): Call {
   };
 }
 
-describe('LEDPanel', () => {
+describe("LEDPanel", () => {
   beforeEach(() => {
     mockToggle.mockClear();
     mockIsDark = true;
@@ -61,15 +68,15 @@ describe('LEDPanel', () => {
 
   it('renders default branding text "OPENSCANNER"', () => {
     renderLED();
-    expect(screen.getByText('OPENSCANNER')).toBeInTheDocument();
+    expect(screen.getByText("OPENSCANNER")).toBeInTheDocument();
   });
 
-  it('renders custom branding from config', () => {
+  it("renders custom branding from config", () => {
     const config: ScannerConfig = {
       systems: [],
-      branding: 'MY SCANNER',
-      email: '',
-      version: '1.0',
+      branding: "MY SCANNER",
+      email: "",
+      version: "1.0",
     };
     renderLED({
       scanner: {
@@ -82,27 +89,27 @@ describe('LEDPanel', () => {
         currentCall: null,
         history: [],
         listenerCount: 0,
-        connectionStatus: 'disconnected',
+        connectionStatus: "disconnected",
         config,
         tgSelection: {},
       },
     });
-    expect(screen.getByText('MY SCANNER')).toBeInTheDocument();
+    expect(screen.getByText("MY SCANNER")).toBeInTheDocument();
   });
 
-  it('shows theme toggle button', () => {
+  it("shows theme toggle button", () => {
     renderLED();
-    const btn = screen.getByRole('button', { name: /toggle theme/i });
+    const btn = screen.getByRole("button", { name: /toggle theme/i });
     expect(btn).toBeInTheDocument();
   });
 
-  it('calls toggle when theme button clicked', () => {
+  it("calls toggle when theme button clicked", () => {
     renderLED();
-    fireEvent.click(screen.getByRole('button', { name: /toggle theme/i }));
+    fireEvent.click(screen.getByRole("button", { name: /toggle theme/i }));
     expect(mockToggle).toHaveBeenCalledOnce();
   });
 
-  it('shows green LED when live and playing', () => {
+  it("shows green LED when live and playing", () => {
     renderLED({
       scanner: {
         isLive: true,
@@ -114,17 +121,19 @@ describe('LEDPanel', () => {
         currentCall: makeCall(),
         history: [],
         listenerCount: 0,
-        connectionStatus: 'connected',
+        connectionStatus: "connected",
         config: null,
         tgSelection: {},
       },
     });
-    const led = document.querySelector('[style*="background-color"]') as HTMLElement;
+    const led = document.querySelector(
+      '[style*="background-color"]',
+    ) as HTMLElement;
     expect(led).toBeTruthy();
-    expect(led.style.backgroundColor).toBe('rgb(0, 230, 118)'); // #00e676
+    expect(led.style.backgroundColor).toBe("rgb(0, 230, 118)"); // #00e676
   });
 
-  it('shows orange LED when paused', () => {
+  it("shows orange LED when paused", () => {
     renderLED({
       scanner: {
         isLive: true,
@@ -136,17 +145,19 @@ describe('LEDPanel', () => {
         currentCall: null,
         history: [],
         listenerCount: 0,
-        connectionStatus: 'connected',
+        connectionStatus: "connected",
         config: null,
         tgSelection: {},
       },
     });
-    const led = document.querySelector('[style*="background-color"]') as HTMLElement;
+    const led = document.querySelector(
+      '[style*="background-color"]',
+    ) as HTMLElement;
     expect(led).toBeTruthy();
-    expect(led.style.backgroundColor).toBe('rgb(255, 145, 0)'); // #ff9100
+    expect(led.style.backgroundColor).toBe("rgb(255, 145, 0)"); // #ff9100
   });
 
-  it('shows blink animation when paused', () => {
+  it("shows blink animation when paused", () => {
     renderLED({
       scanner: {
         isLive: true,
@@ -158,16 +169,16 @@ describe('LEDPanel', () => {
         currentCall: null,
         history: [],
         listenerCount: 0,
-        connectionStatus: 'connected',
+        connectionStatus: "connected",
         config: null,
         tgSelection: {},
       },
     });
-    const led = document.querySelector('.animate-pulse') as HTMLElement;
+    const led = document.querySelector(".animate-pulse") as HTMLElement;
     expect(led).toBeTruthy();
   });
 
-  it('does not blink when not paused', () => {
+  it("does not blink when not paused", () => {
     renderLED({
       scanner: {
         isLive: true,
@@ -179,16 +190,16 @@ describe('LEDPanel', () => {
         currentCall: makeCall(),
         history: [],
         listenerCount: 0,
-        connectionStatus: 'connected',
+        connectionStatus: "connected",
         config: null,
         tgSelection: {},
       },
     });
-    const led = document.querySelector('.animate-pulse');
+    const led = document.querySelector(".animate-pulse");
     expect(led).toBeNull();
   });
 
-  it('uses talkgroupLedColor from current call when available', () => {
+  it("uses talkgroupLedColor from current call when available", () => {
     renderLED({
       scanner: {
         isLive: true,
@@ -197,20 +208,22 @@ describe('LEDPanel', () => {
         heldTG: null,
         avoidList: [],
         callQueue: [],
-        currentCall: makeCall({ talkgroupLedColor: '#ff00ff' }),
+        currentCall: makeCall({ talkgroupLedColor: "#ff00ff" }),
         history: [],
         listenerCount: 0,
-        connectionStatus: 'connected',
+        connectionStatus: "connected",
         config: null,
         tgSelection: {},
       },
     });
-    const led = document.querySelector('[style*="background-color"]') as HTMLElement;
+    const led = document.querySelector(
+      '[style*="background-color"]',
+    ) as HTMLElement;
     expect(led).toBeTruthy();
-    expect(led.style.backgroundColor).toBe('rgb(255, 0, 255)'); // #ff00ff
+    expect(led.style.backgroundColor).toBe("rgb(255, 0, 255)"); // #ff00ff
   });
 
-  it('shows orange LED when not live (and not playing)', () => {
+  it("shows orange LED when not live (and not playing)", () => {
     renderLED({
       scanner: {
         isLive: false,
@@ -222,13 +235,15 @@ describe('LEDPanel', () => {
         currentCall: null,
         history: [],
         listenerCount: 0,
-        connectionStatus: 'connected',
+        connectionStatus: "connected",
         config: null,
         tgSelection: {},
       },
     });
-    const led = document.querySelector('[style*="background-color"]') as HTMLElement;
+    const led = document.querySelector(
+      '[style*="background-color"]',
+    ) as HTMLElement;
     expect(led).toBeTruthy();
-    expect(led.style.backgroundColor).toBe('rgb(255, 145, 0)');
+    expect(led.style.backgroundColor).toBe("rgb(255, 145, 0)");
   });
 });

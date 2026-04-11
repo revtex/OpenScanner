@@ -12,7 +12,13 @@ const Setup = lazy(() => import("@/pages/Setup"));
 function App() {
   return (
     <div className="min-h-screen bg-base-100 text-base-content">
-      <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><span className="loading loading-spinner loading-lg" /></div>}>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-screen">
+            <span className="loading loading-spinner loading-lg" />
+          </div>
+        }
+      >
         <Routes>
           <Route path="/" element={<Scanner />} />
           <Route path="/scanner" element={<Scanner />} />

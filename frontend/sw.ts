@@ -1,40 +1,41 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'openscanner-v1';
-const SHELL_ASSETS = [
-  '/',
-  '/index.html',
-];
+const CACHE_NAME = "openscanner-v1";
+const SHELL_ASSETS = ["/", "/index.html"];
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
-sw.addEventListener('install', (event) => {
+sw.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_ASSETS)),
   );
   void sw.skipWaiting();
 });
 
-sw.addEventListener('activate', (event) => {
+sw.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)),
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)),
+        ),
       ),
-    ),
   );
   void sw.clients.claim();
 });
 
-sw.addEventListener('fetch', (event) => {
+sw.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   // Network-first for API calls
-  if (url.pathname.startsWith('/api')) {
+  if (url.pathname.startsWith("/api")) {
     event.respondWith(
       fetch(request).catch(() =>
-        caches.match(request).then((r) => r ?? new Response('Offline', { status: 503 })),
+        caches
+          .match(request)
+          .then((r) => r ?? new Response("Offline", { status: 503 })),
       ),
     );
     return;
@@ -45,9 +46,11 @@ sw.addEventListener('fetch', (event) => {
     caches.match(request).then((cached) => {
       if (cached) return cached;
       return fetch(request).then((response) => {
-        if (response.ok && request.method === 'GET') {
+        if (response.ok && request.method === "GET") {
           const clone = response.clone();
-          void caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          void caches
+            .open(CACHE_NAME)
+            .then((cache) => cache.put(request, clone));
         }
         return response;
       });

@@ -1,35 +1,35 @@
-import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Settings } from 'lucide-react';
-import { usePostSetupMutation } from '@/app/api';
+import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { Settings } from "lucide-react";
+import { usePostSetupMutation } from "@/app/api";
 
 export default function Setup() {
   const navigate = useNavigate();
   const [postSetup, { isLoading }] = usePostSetupMutation();
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+      setError("Password must be at least 8 characters");
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
 
     try {
       await postSetup({ username, password }).unwrap();
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
     } catch {
-      setError('Setup failed. Please try again.');
+      setError("Setup failed. Please try again.");
     }
   };
 
@@ -76,7 +76,11 @@ export default function Setup() {
               className="btn btn-primary btn-block"
               disabled={isLoading}
             >
-              {isLoading ? <span className="loading loading-spinner loading-sm" /> : 'Create Admin'}
+              {isLoading ? (
+                <span className="loading loading-spinner loading-sm" />
+              ) : (
+                "Create Admin"
+              )}
             </button>
           </form>
         </div>

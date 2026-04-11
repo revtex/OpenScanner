@@ -33,10 +33,8 @@ ARG MIGRATE_VERSION=4.18.1
 RUN curl -sSL "https://github.com/golang-migrate/migrate/releases/download/v${MIGRATE_VERSION}/migrate.linux-amd64.tar.gz" \
     | tar -xz -C /usr/local/bin migrate
 
-# golangci-lint
-ARG GOLANGCI_VERSION=1.62.2
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
-    | sh -s -- -b /usr/local/bin "v${GOLANGCI_VERSION}"
+# golangci-lint (installed from source to match Go version)
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 # air (Go hot-reload)
 RUN GOBIN=/usr/local/bin go install github.com/air-verse/air@latest

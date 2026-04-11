@@ -1,12 +1,12 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useGetSetupStatusQuery } from '@/app/api';
-import { useAppDispatch } from '@/app/store';
-import { setSetupStatus } from '@/app/slices/authSlice';
-import { useScanner } from '@/hooks/useScanner';
-import { LEDPanel } from '@/components/scanner/LEDPanel';
-import { DisplayPanel } from '@/components/scanner/DisplayPanel';
-import { ControlToolbar } from '@/components/scanner/ControlToolbar';
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useGetSetupStatusQuery } from "@/app/api";
+import { useAppDispatch } from "@/app/store";
+import { setSetupStatus } from "@/app/slices/authSlice";
+import { useScanner } from "@/hooks/useScanner";
+import { LEDPanel } from "@/components/scanner/LEDPanel";
+import { DisplayPanel } from "@/components/scanner/DisplayPanel";
+import { ControlToolbar } from "@/components/scanner/ControlToolbar";
 
 export default function Scanner() {
   const navigate = useNavigate();
@@ -19,7 +19,7 @@ export default function Scanner() {
     if (setupStatus) {
       dispatch(setSetupStatus(setupStatus));
       if (setupStatus.needsSetup) {
-        navigate('/setup', { replace: true });
+        navigate("/setup", { replace: true });
       }
     }
   }, [setupStatus, navigate, dispatch]);

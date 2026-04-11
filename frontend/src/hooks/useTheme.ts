@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
-const DARK_THEME = 'openscanner-dark';
-const LIGHT_THEME = 'openscanner-light';
-const STORAGE_KEY = 'openscanner-theme';
+const DARK_THEME = "openscanner-dark";
+const LIGHT_THEME = "openscanner-light";
+const STORAGE_KEY = "openscanner-theme";
 
 export function useTheme() {
   const [isDark, setIsDark] = useState(() => {
@@ -14,7 +14,7 @@ export function useTheme() {
 
   useEffect(() => {
     const theme = isDark ? DARK_THEME : LIGHT_THEME;
-    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem(STORAGE_KEY, theme);
   }, [isDark]);
 
