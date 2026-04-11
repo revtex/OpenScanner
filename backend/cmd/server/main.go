@@ -102,6 +102,7 @@ func main() {
 		RateLimiter: rateLimiter,
 		Processor:   processor,
 		Hub:         hub,
+		SQLDB:       sqlDB,
 		Version:     config.Version,
 	})
 

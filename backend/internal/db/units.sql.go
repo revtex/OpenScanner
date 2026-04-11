@@ -52,6 +52,15 @@ func (q *Queries) DeleteUnit(ctx context.Context, id int64) error {
 	return err
 }
 
+const deleteUnitsBySystem = `-- name: DeleteUnitsBySystem :exec
+DELETE FROM units WHERE system_id = ?
+`
+
+func (q *Queries) DeleteUnitsBySystem(ctx context.Context, systemID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteUnitsBySystem, systemID)
+	return err
+}
+
 const getUnit = `-- name: GetUnit :one
 SELECT id, system_id, unit_id, label, "order" FROM units WHERE id = ? LIMIT 1
 `
@@ -91,6 +100,39 @@ func (q *Queries) GetUnitBySystemAndUnitID(ctx context.Context, arg GetUnitBySys
 		&i.Order,
 	)
 	return i, err
+}
+
+const listAllUnits = `-- name: ListAllUnits :many
+SELECT id, system_id, unit_id, label, "order" FROM units ORDER BY system_id ASC, "order" ASC, unit_id ASC
+`
+
+func (q *Queries) ListAllUnits(ctx context.Context) ([]Unit, error) {
+	rows, err := q.db.QueryContext(ctx, listAllUnits)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Unit{}
+	for rows.Next() {
+		var i Unit
+		if err := rows.Scan(
+			&i.ID,
+			&i.SystemID,
+			&i.UnitID,
+			&i.Label,
+			&i.Order,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listUnitsBySystem = `-- name: ListUnitsBySystem :many

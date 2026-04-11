@@ -72,6 +72,15 @@ func (q *Queries) DeleteTalkgroup(ctx context.Context, id int64) error {
 	return err
 }
 
+const deleteTalkgroupsBySystem = `-- name: DeleteTalkgroupsBySystem :exec
+DELETE FROM talkgroups WHERE system_id = ?
+`
+
+func (q *Queries) DeleteTalkgroupsBySystem(ctx context.Context, systemID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteTalkgroupsBySystem, systemID)
+	return err
+}
+
 const getTalkgroup = `-- name: GetTalkgroup :one
 SELECT id, system_id, talkgroup_id, label, name, frequency, led, group_id, tag_id, "order" FROM talkgroups WHERE id = ? LIMIT 1
 `
@@ -237,6 +246,46 @@ func (q *Queries) UpdateTalkgroup(ctx context.Context, arg UpdateTalkgroupParams
 		arg.TagID,
 		arg.Order,
 		arg.ID,
+	)
+	return err
+}
+
+const upsertTalkgroup = `-- name: UpsertTalkgroup :exec
+INSERT INTO talkgroups (system_id, talkgroup_id, label, name, frequency, led, group_id, tag_id, "order")
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+ON CONFLICT (system_id, talkgroup_id) DO UPDATE SET
+    label     = excluded.label,
+    name      = excluded.name,
+    frequency = excluded.frequency,
+    led       = excluded.led,
+    group_id  = excluded.group_id,
+    tag_id    = excluded.tag_id,
+    "order"   = excluded."order"
+`
+
+type UpsertTalkgroupParams struct {
+	SystemID    int64          `db:"system_id" json:"system_id"`
+	TalkgroupID int64          `db:"talkgroup_id" json:"talkgroup_id"`
+	Label       sql.NullString `db:"label" json:"label"`
+	Name        sql.NullString `db:"name" json:"name"`
+	Frequency   sql.NullInt64  `db:"frequency" json:"frequency"`
+	Led         sql.NullString `db:"led" json:"led"`
+	GroupID     sql.NullInt64  `db:"group_id" json:"group_id"`
+	TagID       sql.NullInt64  `db:"tag_id" json:"tag_id"`
+	Order       int64          `db:"order" json:"order"`
+}
+
+func (q *Queries) UpsertTalkgroup(ctx context.Context, arg UpsertTalkgroupParams) error {
+	_, err := q.db.ExecContext(ctx, upsertTalkgroup,
+		arg.SystemID,
+		arg.TalkgroupID,
+		arg.Label,
+		arg.Name,
+		arg.Frequency,
+		arg.Led,
+		arg.GroupID,
+		arg.TagID,
+		arg.Order,
 	)
 	return err
 }

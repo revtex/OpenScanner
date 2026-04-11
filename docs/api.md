@@ -1,6 +1,6 @@
 # OpenScanner — API Reference
 
-> **Implementation status:** Phases 1–5 endpoints are implemented. All other endpoints listed below are planned for future phases and are marked accordingly.
+> **Implementation status:** Phases 1–6 endpoints are implemented. All other endpoints listed below are planned for future phases and are marked accordingly.
 
 ## Implemented Endpoints
 
@@ -285,22 +285,413 @@ Upgrades to a WebSocket connection for admin dashboard events.
 
 ---
 
+## Admin CRUD Endpoints
+
+All admin endpoints require `Authorization: Bearer <jwt>` with `admin` role. Returns `401` if JWT is missing/invalid, `403` if role is not `admin`.
+
+### Common Error Responses
+
+| Code | Meaning |
+|------|---------|
+| `400` | Invalid request body or path parameter |
+| `401` | Missing or invalid JWT |
+| `403` | Non-admin role |
+| `404` | Resource not found |
+| `409` | Unique constraint violation (duplicate) |
+| `422` | Validation failure (missing required field, invalid value) |
+| `500` | Internal server error |
+
+### Common Patterns
+
+All CRUD resources follow the same pattern:
+
+- **GET** `/api/admin/{resource}` — List all. Returns `200` with JSON array.
+- **POST** `/api/admin/{resource}` — Create. Returns `201` with created object.
+- **PUT** `/api/admin/{resource}/:id` — Update by ID. Returns `200` with updated object.
+- **DELETE** `/api/admin/{resource}/:id` — Delete by ID. Returns `200` with `{"ok": true}`.
+
+---
+
+### Config
+
+#### `GET /api/admin/config`
+
+Returns all settings as a flat JSON object.
+
+**Response `200`:**
+
+```json
+{
+  "audioConversion": "1",
+  "publicAccess": "false",
+  "maxClients": "200",
+  ...
+}
+```
+
+#### `PUT /api/admin/config`
+
+Updates one or more settings. Only known setting keys are accepted (allowlist-validated). Broadcasts a `CFG` WebSocket message to all connected clients after update.
+
+**Request:**
+
+```json
+{
+  "publicAccess": "true",
+  "maxClients": "500"
+}
+```
+
+**Allowed setting keys:** `audioConversion`, `autoPopulate`, `branding`, `disableDuplicateDetection`, `duplicateDetectionTimeFrame`, `email`, `maxClients`, `pruneDays`, `publicAccess`, `apiKeyCallRate`, `keypadBeeps`, `dimmerDelay`, `playbackGoesLive`, `showListenersCount`, `sortTalkgroups`, `tagsToggle`, `searchPatchedTalkgroups`, `audioTranscription`, `whisperModel`.
+
+**Response `200`:**
+
+```json
+{"ok": true}
+```
+
+**Error `400`:** Unknown setting key included in request body.
+
+---
+
+### Users
+
+#### `GET /api/admin/users`
+
+Returns all users.
+
+#### `POST /api/admin/users`
+
+Creates a new user.
+
+**Request:**
+
+```json
+{
+  "username": "newuser",
+  "password": "securepass123",
+  "role": "listener",
+  "disabled": 0,
+  "systems_json": null,
+  "expiration": null,
+  "limit": null
+}
+```
+
+**Validation:**
+
+- `username` is required (422 if empty)
+- `password` must be ≥ 8 characters (422 if too short)
+- `role` must be `"admin"` or `"listener"` (defaults to `"listener"` if omitted; 422 if invalid)
+- `username` must be unique (409 if duplicate)
+
+**Response `201`:** Created user object (password_hash excluded from serialisation).
+
+#### `PUT /api/admin/users/:id`
+
+Updates a user (does not change password — use `PUT /api/auth/password` for that).
+
+**Request:**
+
+```json
+{
+  "username": "updatedname",
+  "role": "admin",
+  "disabled": 0,
+  "systems_json": null,
+  "expiration": null,
+  "limit": null
+}
+```
+
+**Validation:** Same as create (minus password).
+
+#### `DELETE /api/admin/users/:id`
+
+Deletes a user. **Constraint:** An admin cannot delete their own account (returns `400`).
+
+---
+
+### Systems
+
+#### `GET /api/admin/systems`
+
+Returns all systems.
+
+#### `POST /api/admin/systems`
+
+**Request:** `CreateSystemParams` fields: `system_id` (int, unique), `label`, `auto_populate`, `blacklists_json`, `led`, `order`.
+
+**Error `409`:** `system_id` already exists.
+
+#### `PUT /api/admin/systems/:id`
+
+#### `DELETE /api/admin/systems/:id`
+
+---
+
+### Talkgroups
+
+#### `GET /api/admin/talkgroups`
+
+Returns all talkgroups across all systems.
+
+#### `POST /api/admin/talkgroups`
+
+**Request:** `CreateTalkgroupParams` fields: `system_id`, `talkgroup_id`, `label`, `name`, `frequency`, `led`, `group_id`, `tag_id`, `order`.
+
+**Error `409`:** Talkgroup already exists (unique constraint on `system_id` + `talkgroup_id`).
+
+#### `PUT /api/admin/talkgroups/:id`
+
+#### `DELETE /api/admin/talkgroups/:id`
+
+---
+
+### Units
+
+#### `GET /api/admin/units`
+
+Returns all units across all systems.
+
+#### `POST /api/admin/units`
+
+**Request:** `CreateUnitParams` fields: `system_id`, `unit_id`, `label`, `order`.
+
+**Error `409`:** Unit already exists.
+
+#### `PUT /api/admin/units/:id`
+
+#### `DELETE /api/admin/units/:id`
+
+---
+
+### Groups
+
+#### `GET /api/admin/groups`
+
+#### `POST /api/admin/groups`
+
+**Request:**
+
+```json
+{"label": "Fire"}
+```
+
+**Validation:** `label` is required (422 if empty). Must be unique (409 if duplicate).
+
+#### `PUT /api/admin/groups/:id`
+
+#### `DELETE /api/admin/groups/:id`
+
+---
+
+### Tags
+
+#### `GET /api/admin/tags`
+
+#### `POST /api/admin/tags`
+
+**Request:**
+
+```json
+{"label": "Dispatch"}
+```
+
+**Validation:** `label` is required (422 if empty). Must be unique (409 if duplicate).
+
+#### `PUT /api/admin/tags/:id`
+
+#### `DELETE /api/admin/tags/:id`
+
+---
+
+### API Keys
+
+#### `GET /api/admin/apikeys`
+
+#### `POST /api/admin/apikeys`
+
+**Request:** `CreateAPIKeyParams` fields: `key` (auto-generated UUID v4 if empty), `ident`, `disabled`, `systems_json`, `order`.
+
+**Error `409`:** Key already exists.
+
+#### `PUT /api/admin/apikeys/:id`
+
+#### `DELETE /api/admin/apikeys/:id`
+
+---
+
+### Accesses
+
+#### `GET /api/admin/accesses`
+
+#### `POST /api/admin/accesses`
+
+**Request:** `CreateAccessParams` fields: `code` (required, 422 if empty), `ident`, `expiration`, `limit`, `systems_json`, `order`.
+
+**Error `409`:** Access code already exists.
+
+#### `PUT /api/admin/accesses/:id`
+
+#### `DELETE /api/admin/accesses/:id`
+
+---
+
+### Dirwatches
+
+#### `GET /api/admin/dirwatches`
+
+#### `POST /api/admin/dirwatches`
+
+**Request:** `CreateDirwatchParams` fields: `directory` (required, 422 if empty), `type`, `mask`, `extension`, `frequency`, `delay`, `delete_after`, `use_polling`, `disabled`, `system_id`, `talkgroup_id`, `order`.
+
+#### `PUT /api/admin/dirwatches/:id`
+
+#### `DELETE /api/admin/dirwatches/:id`
+
+---
+
+### Downstreams
+
+#### `GET /api/admin/downstreams`
+
+#### `POST /api/admin/downstreams`
+
+**Request:** `CreateDownstreamParams` fields: `url` (required, 422 if empty), `api_key`, `systems_json`, `disabled`, `order`.
+
+#### `PUT /api/admin/downstreams/:id`
+
+#### `DELETE /api/admin/downstreams/:id`
+
+---
+
+### Webhooks
+
+#### `GET /api/admin/webhooks`
+
+#### `POST /api/admin/webhooks`
+
+**Request:** `CreateWebhookParams` fields: `url` (required, 422 if empty), `type`, `secret`, `systems_json`, `disabled`, `order`.
+
+#### `PUT /api/admin/webhooks/:id`
+
+#### `DELETE /api/admin/webhooks/:id`
+
+---
+
+### Logs
+
+#### `GET /api/admin/logs`
+
+Returns server log entries, optionally filtered by time range and level.
+
+**Query Parameters:**
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `from` | int64 | `0` | Start of date range (Unix timestamp) |
+| `to` | int64 | _now_ | End of date range (Unix timestamp) |
+| `level` | string | _(all)_ | Filter by level: `info`, `warn`, or `error` |
+
+**Response `200`:**
+
+```json
+[
+  {"id": 1, "date_time": 1712345678, "level": "info", "message": "server started"},
+  ...
+]
+```
+
+**Truncation:** Results are capped at 10,000 rows. When truncated, an `X-Truncated: true` response header is set.
+
+---
+
+### Import / Export
+
+#### `POST /api/admin/import/talkgroups`
+
+Imports talkgroups from a CSV file for a specific system.
+
+**Request: `multipart/form-data`**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | file | yes | CSV file |
+| `system_id` | int string | yes | Target system ID (must exist) |
+
+**CSV format:** Columns: `talkgroup_id`, `label`, `name`, `tag_id`, `group_id`, `frequency`, `led`, `order`. Header row is auto-detected and skipped. Rows with non-numeric first column are skipped.
+
+**Response `200`:**
+
+```json
+{"imported": 42}
+```
+
+**Safety limit:** Max 100,000 rows per import.
+
+**Error responses:** `400` (missing system_id/file, invalid CSV, system not found), `500` (database error).
+
+#### `POST /api/admin/import/units`
+
+Imports units from a CSV file for a specific system.
+
+**Request: `multipart/form-data`**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | file | yes | CSV file |
+| `system_id` | int string | yes | Target system ID (must exist) |
+
+**CSV format:** Columns: `unit_id`, `label`, `order`. Header row is auto-detected and skipped.
+
+**Response `200`:**
+
+```json
+{"imported": 15}
+```
+
+#### `GET /api/admin/export/config`
+
+Exports the full server configuration as a JSON download.
+
+**Response `200`:** `Content-Disposition: attachment; filename="openscanner-config.json"`
+
+```json
+{
+  "settings": [...],
+  "users": [...],
+  "systems": [...],
+  "talkgroups": [...],
+  "units": [...],
+  "groups": [...],
+  "tags": [...],
+  "apiKeys": [...],
+  "accesses": [...],
+  "dirwatches": [...],
+  "downstreams": [...],
+  "webhooks": [...]
+}
+```
+
+#### `POST /api/admin/import/config`
+
+Imports a full configuration JSON blob. Runs in a single database transaction — all-or-nothing. Duplicates are skipped (upserts where applicable).
+
+**Request:** JSON body matching the export format (all top-level arrays are optional).
+
+**Setting keys are validated** against the allowlist — unknown keys are skipped with a log warning.
+
+**Response `200`:**
+
+```json
+{"ok": true}
+```
+
+**Error `400`:** Invalid JSON body.
+
+---
+
 ## Planned Endpoints (not yet implemented)
 
-### Admin Config
-
-- `GET /api/admin/config`
-- `PUT /api/admin/config`
-
-### Admin CRUD
-
-- `/api/admin/systems`
-- `/api/admin/talkgroups`
-- `/api/admin/units`
-- `/api/admin/groups`
-- `/api/admin/tags`
-- `/api/admin/api-keys`
-- `/api/admin/accesses`
-- `/api/admin/dirwatches`
-- `/api/admin/downstreams`
-- `GET /api/admin/logs`
+_No additional planned endpoints at this time. Future phases focus on frontend UI, DirWatch, Downstream, Push Notifications, Webhooks delivery, and Transcription._

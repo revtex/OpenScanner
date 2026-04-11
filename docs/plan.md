@@ -1604,19 +1604,21 @@ All extended features are **configurable** — disabled by default (except keybo
 
 ---
 
-### Phase 6 — Admin CRUD APIs
+### Phase 6 — Admin CRUD APIs ✅
+
+**Status: COMPLETE**
 
 **Goal:** All admin management endpoints work; config is fully DB-backed.
 
-1. CRUD handlers for all resources: users, systems, talkgroups, units, groups, tags, api-keys, accesses, dirwatches, downstreams
-2. User management: admin can list/create/update/disable/delete users; password field accepted on create, hashed server-side; admin cannot delete own account; role change requires admin
-3. `GET/PUT /api/admin/config` — reads all `settings` rows as a config object; writes back individual keys; broadcasts `CFG` on `PUT`
-4. `GET /api/admin/logs` — filterable by `from`, `to` (Unix timestamps), `level`
-5. `POST /api/admin/import/talkgroups` + `POST /api/admin/import/units` — CSV parsing
-6. `GET /api/admin/export/config` + `POST /api/admin/import/config` — JSON round-trip
-7. Integration tests: every endpoint including 401 (missing JWT), 404 (not found), 422 (validation fail)
+1. ✅ CRUD handlers for all resources: users, systems, talkgroups, units, groups, tags, apikeys, accesses, dirwatches, downstreams, webhooks
+2. ✅ User management: admin can list/create/update/disable/delete users; password field accepted on create, hashed server-side; admin cannot delete own account; role validation enforced (`admin` or `listener`)
+3. ✅ `GET/PUT /api/admin/config` — reads all `settings` rows as a config object; writes back individual keys (allowlist-validated); broadcasts `CFG` on `PUT`
+4. ✅ `GET /api/admin/logs` — filterable by `from`, `to` (Unix timestamps), `level`; truncated to 10,000 rows with `X-Truncated` header
+5. ✅ `POST /api/admin/import/talkgroups` + `POST /api/admin/import/units` — CSV parsing with header detection, safety limit (100,000 rows), system existence validation
+6. ✅ `GET /api/admin/export/config` + `POST /api/admin/import/config` — full JSON config round-trip (settings, users, systems, talkgroups, units, groups, tags, apikeys, accesses, dirwatches, downstreams, webhooks) in a single transaction
+7. ✅ Integration tests: every endpoint including 401 (missing JWT), 404 (not found), 422 (validation fail)
 
-**Deliverables:** Full admin dashboard backend is functional; all 30+ endpoints return correct status codes.
+**Deliverables:** Full admin dashboard backend is functional; all 50+ endpoints return correct status codes.
 
 **Agents:** Go Expert (CRUD handlers, config API, import/export), Database Expert (any new queries needed), Testing Expert (integration tests for all endpoints).
 

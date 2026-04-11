@@ -42,8 +42,10 @@ type Querier interface {
 	DeleteSystem(ctx context.Context, id int64) error
 	DeleteTag(ctx context.Context, id int64) error
 	DeleteTalkgroup(ctx context.Context, id int64) error
+	DeleteTalkgroupsBySystem(ctx context.Context, systemID int64) error
 	DeleteTranscription(ctx context.Context, id int64) error
 	DeleteUnit(ctx context.Context, id int64) error
+	DeleteUnitsBySystem(ctx context.Context, systemID int64) error
 	DeleteUser(ctx context.Context, id int64) error
 	DeleteWebhook(ctx context.Context, id int64) error
 	GetAPIKey(ctx context.Context, id int64) (ApiKey, error)
@@ -79,6 +81,7 @@ type Querier interface {
 	ListActiveWebhooks(ctx context.Context) ([]Webhook, error)
 	ListAllActivePushSubscriptions(ctx context.Context) ([]PushSubscription, error)
 	ListAllTalkgroups(ctx context.Context) ([]Talkgroup, error)
+	ListAllUnits(ctx context.Context) ([]Unit, error)
 	ListBookmarksBySession(ctx context.Context, sessionID sql.NullString) ([]Bookmark, error)
 	ListBookmarksByUser(ctx context.Context, userID sql.NullInt64) ([]Bookmark, error)
 	ListCalls(ctx context.Context, arg ListCallsParams) ([]Call, error)
@@ -86,6 +89,8 @@ type Querier interface {
 	ListDownstreams(ctx context.Context) ([]Downstream, error)
 	ListGroups(ctx context.Context) ([]Group, error)
 	ListLogs(ctx context.Context) ([]Log, error)
+	ListLogsByDateRange(ctx context.Context, arg ListLogsByDateRangeParams) ([]Log, error)
+	ListLogsByDateRangeAndLevel(ctx context.Context, arg ListLogsByDateRangeAndLevelParams) ([]Log, error)
 	ListPushSubscriptionsByUser(ctx context.Context, userID sql.NullInt64) ([]PushSubscription, error)
 	ListSettings(ctx context.Context) ([]Setting, error)
 	ListSystems(ctx context.Context) ([]System, error)
@@ -110,6 +115,7 @@ type Querier interface {
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateWebhook(ctx context.Context, arg UpdateWebhookParams) error
 	UpsertSetting(ctx context.Context, arg UpsertSettingParams) error
+	UpsertTalkgroup(ctx context.Context, arg UpsertTalkgroupParams) error
 	UpsertUnit(ctx context.Context, arg UpsertUnitParams) error
 }
 

@@ -37,3 +37,9 @@ DELETE FROM units WHERE id = ?;
 -- name: UpsertUnit :exec
 INSERT OR IGNORE INTO units (system_id, unit_id, label, "order")
 VALUES (:system_id, :unit_id, :label, :order);
+
+-- name: ListAllUnits :many
+SELECT * FROM units ORDER BY system_id ASC, "order" ASC, unit_id ASC;
+
+-- name: DeleteUnitsBySystem :exec
+DELETE FROM units WHERE system_id = ?;

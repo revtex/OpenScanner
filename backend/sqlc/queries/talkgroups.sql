@@ -51,3 +51,18 @@ WHERE id = :id;
 
 -- name: DeleteTalkgroup :exec
 DELETE FROM talkgroups WHERE id = ?;
+
+-- name: UpsertTalkgroup :exec
+INSERT INTO talkgroups (system_id, talkgroup_id, label, name, frequency, led, group_id, tag_id, "order")
+VALUES (:system_id, :talkgroup_id, :label, :name, :frequency, :led, :group_id, :tag_id, :order)
+ON CONFLICT (system_id, talkgroup_id) DO UPDATE SET
+    label     = excluded.label,
+    name      = excluded.name,
+    frequency = excluded.frequency,
+    led       = excluded.led,
+    group_id  = excluded.group_id,
+    tag_id    = excluded.tag_id,
+    "order"   = excluded."order";
+
+-- name: DeleteTalkgroupsBySystem :exec
+DELETE FROM talkgroups WHERE system_id = ?;
