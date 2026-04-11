@@ -1,3 +1,6 @@
 {
-  "chat.extensionAgents.enabled": true
+  "chat.extensionAgents.enabled": true,
+  "gopls": {
+    "build.buildFlags": ["-tags=tools"]
+  }
 }

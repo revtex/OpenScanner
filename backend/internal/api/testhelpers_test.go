@@ -72,28 +72,3 @@ func seedAdminUser(t *testing.T, queries *db.Queries, username, password string)
 	}
 	return id
 }
-
-// seedListenerUser creates a listener (non-admin) user in the database.
-func seedListenerUser(t *testing.T, queries *db.Queries, username, password string) int64 {
-	t.Helper()
-	hash, err := auth.HashPassword(password)
-	if err != nil {
-		t.Fatalf("hash password: %v", err)
-	}
-	now := time.Now().Unix()
-	id, err := queries.CreateUser(context.Background(), db.CreateUserParams{
-		Username:     username,
-		PasswordHash: hash,
-		Role:         auth.RoleListener,
-		Disabled:     0,
-		SystemsJson:  sql.NullString{},
-		Expiration:   sql.NullInt64{},
-		Limit:        sql.NullInt64{},
-		CreatedAt:    now,
-		UpdatedAt:    now,
-	})
-	if err != nil {
-		t.Fatalf("create listener %q: %v", username, err)
-	}
-	return id
-}
