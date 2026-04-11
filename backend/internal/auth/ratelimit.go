@@ -48,15 +48,22 @@ func (r *RateLimiter) RecordFailure(ip string) bool {
 		r.entries[ip] = e
 	}
 
+	now := time.Now()
+
 	// If already locked out, just reconfirm.
-	if time.Now().Before(e.lockedUntil) {
+	if now.Before(e.lockedUntil) {
 		return true
 	}
 
+	// If lockout has expired, reset the counter to give fresh attempts.
+	if e.failures >= maxFailures && now.After(e.lockedUntil) {
+		e.failures = 0
+	}
+
 	e.failures++
-	e.lastFailure = time.Now()
+	e.lastFailure = now
 	if e.failures >= maxFailures {
-		e.lockedUntil = time.Now().Add(lockoutDuration)
+		e.lockedUntil = now.Add(lockoutDuration)
 		return true
 	}
 	return false

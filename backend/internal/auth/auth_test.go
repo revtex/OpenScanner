@@ -68,7 +68,7 @@ func TestGenerateAndParseToken(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tokenStr, err := auth.GenerateToken(tc.userID, tc.username, tc.role)
+			tokenStr, _, err := auth.GenerateToken(tc.userID, tc.username, tc.role)
 			if err != nil {
 				t.Fatalf("GenerateToken: %v", err)
 			}
@@ -112,4 +112,106 @@ func TestGenerateAndParseToken(t *testing.T) {
 			t.Error("ParseToken should return an error for an expired token")
 		}
 	})
+}
+
+func TestTokenTracker_MaxFiveTokens(t *testing.T) {
+	tt := auth.NewTokenTracker()
+	expires := time.Now().Add(24 * time.Hour)
+
+	// Issue 5 tokens for user 1 — all should be active.
+	jtis := make([]string, 6)
+	for i := 0; i < 5; i++ {
+		jtis[i] = "jti-" + time.Now().Format("150405.000") + "-" + string(rune('a'+i))
+		tt.Track(1, jtis[i], expires)
+	}
+	for i := 0; i < 5; i++ {
+		if tt.IsRevoked(jtis[i]) {
+			t.Errorf("token %d should not be revoked with only 5 active", i)
+		}
+	}
+
+	// Issue a 6th token — the oldest (jtis[0]) should be revoked.
+	jtis[5] = "jti-sixth"
+	tt.Track(1, jtis[5], expires)
+
+	if !tt.IsRevoked(jtis[0]) {
+		t.Error("oldest token (index 0) should be revoked after 6th login")
+	}
+	for i := 1; i <= 5; i++ {
+		if tt.IsRevoked(jtis[i]) {
+			t.Errorf("token %d should still be active", i)
+		}
+	}
+}
+
+func TestTokenTracker_Revoke(t *testing.T) {
+	tt := auth.NewTokenTracker()
+	expires := time.Now().Add(24 * time.Hour)
+
+	tt.Track(1, "t1", expires)
+	if tt.IsRevoked("t1") {
+		t.Error("t1 should not be revoked initially")
+	}
+
+	tt.Revoke("t1")
+	if !tt.IsRevoked("t1") {
+		t.Error("t1 should be revoked after Revoke()")
+	}
+}
+
+func TestTokenTracker_RevokeAllForUser(t *testing.T) {
+	tt := auth.NewTokenTracker()
+	expires := time.Now().Add(24 * time.Hour)
+
+	tt.Track(1, "u1-t1", expires)
+	tt.Track(1, "u1-t2", expires)
+	tt.Track(2, "u2-t1", expires)
+
+	tt.RevokeAllForUser(1)
+
+	if !tt.IsRevoked("u1-t1") {
+		t.Error("u1-t1 should be revoked")
+	}
+	if !tt.IsRevoked("u1-t2") {
+		t.Error("u1-t2 should be revoked")
+	}
+	if tt.IsRevoked("u2-t1") {
+		t.Error("u2-t1 should not be affected by revoking user 1")
+	}
+}
+
+func TestTokenTracker_ExpiredTokensCleanedUp(t *testing.T) {
+	tt := auth.NewTokenTracker()
+	pastExpiry := time.Now().Add(-1 * time.Hour)
+	futureExpiry := time.Now().Add(24 * time.Hour)
+
+	// Track 4 expired tokens + 1 valid one for the same user.
+	for i := 0; i < 4; i++ {
+		tt.Track(1, "expired-"+string(rune('a'+i)), pastExpiry)
+	}
+	tt.Track(1, "valid", futureExpiry)
+
+	// Trigger cleanup by tracking another. Should NOT overflow — expired
+	// entries were cleaned up so the count stays under 5.
+	tt.Track(1, "valid2", futureExpiry)
+
+	if tt.IsRevoked("valid") {
+		t.Error("valid token should not be revoked (expired slots were freed)")
+	}
+	if tt.IsRevoked("valid2") {
+		t.Error("valid2 token should not be revoked")
+	}
+}
+
+func TestGenerateToken_ReturnsJTI(t *testing.T) {
+	_, jti, err := auth.GenerateToken(1, "alice", auth.RoleAdmin)
+	if err != nil {
+		t.Fatalf("GenerateToken: %v", err)
+	}
+	if jti == "" {
+		t.Error("GenerateToken should return a non-empty JTI")
+	}
+	if len(jti) < 36 {
+		t.Errorf("JTI should be a UUID (len >= 36), got len=%d", len(jti))
+	}
 }

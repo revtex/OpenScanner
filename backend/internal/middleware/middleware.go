@@ -60,9 +60,15 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
+		if auth.Tokens.IsRevoked(claims.ID) {
+			c.AbortWithStatusJSON(401, gin.H{"error": "token has been revoked"})
+			return
+		}
+
 		c.Set("userID", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("role", claims.Role)
+		c.Set("jti", claims.ID)
 		c.Next()
 	}
 }
@@ -72,7 +78,8 @@ func JWTAuth() gin.HandlerFunc {
 func RequireAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, _ := c.Get("role")
-		if role != auth.RoleAdmin {
+		roleStr, _ := role.(string)
+		if roleStr != auth.RoleAdmin {
 			c.AbortWithStatusJSON(403, gin.H{"error": "admin access required"})
 			return
 		}
@@ -105,6 +112,18 @@ func APIKeyAuth(queries *db.Queries) gin.HandlerFunc {
 		}
 
 		c.Set("apiKeyID", apiKey.ID)
+		c.Next()
+	}
+}
+
+// RateLimit returns middleware that rejects requests with 429 if the client IP
+// is locked out by the given rate limiter.
+func RateLimit(rl *auth.RateLimiter) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if rl.IsLockedOut(c.ClientIP()) {
+			c.AbortWithStatusJSON(429, gin.H{"error": "too many failed attempts, try again later"})
+			return
+		}
 		c.Next()
 	}
 }

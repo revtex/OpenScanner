@@ -94,20 +94,30 @@ func main() {
 		Addr:              cfg.Listen,
 		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
+
+	// Channel to signal fatal server errors to the main goroutine.
+	serverErr := make(chan error, 1)
 
 	// Start server in a goroutine.
 	go func() {
 		slog.Info("HTTP server listening", "addr", cfg.Listen)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("server error", "error", err)
-			os.Exit(1)
+			serverErr <- err
 		}
 	}()
 
-	// Block until signal received.
-	<-ctx.Done()
-	slog.Info("shutting down server...")
+	// Block until signal or server error.
+	select {
+	case <-ctx.Done():
+		slog.Info("shutting down server...")
+	case err := <-serverErr:
+		slog.Error("server error", "error", err)
+		stop()
+	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

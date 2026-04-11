@@ -34,7 +34,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	api.POST("/setup", setupHandler.PostSetup)
 
 	// Auth — login is unauthenticated; the rest require a valid JWT.
-	api.POST("/auth/login", authHandler.PostLogin)
+	api.POST("/auth/login", middleware.RateLimit(deps.RateLimiter), authHandler.PostLogin)
 
 	authRequired := api.Group("/auth")
 	authRequired.Use(middleware.JWTAuth())

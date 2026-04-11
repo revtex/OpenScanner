@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
+	"log/slog"
 )
 
 // AuthHandler handles authentication endpoints.
@@ -42,14 +43,9 @@ type loginResponse struct {
 }
 
 // PostLogin handles POST /api/auth/login.
-// Returns 429 if rate-limited, 401 for invalid credentials, 200 with JWT on success.
+// Returns 429 if rate-limited (via middleware), 401 for invalid credentials, 200 with JWT on success.
 func (h *AuthHandler) PostLogin(c *gin.Context) {
 	ip := c.ClientIP()
-
-	if h.rateLimiter.IsLockedOut(ip) {
-		c.JSON(http.StatusTooManyRequests, gin.H{"error": "too many failed attempts, try again later"})
-		return
-	}
 
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.Username == "" || req.Password == "" {
@@ -83,11 +79,14 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 
 	h.rateLimiter.Reset(ip)
 
-	token, err := auth.GenerateToken(user.ID, user.Username, user.Role)
+	token, jti, err := auth.GenerateToken(user.ID, user.Username, user.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
 	}
+
+	auth.Tokens.Track(user.ID, jti, time.Now().Add(24*time.Hour))
+	slog.Info("user logged in", "userId", user.ID, "username", user.Username)
 
 	c.JSON(http.StatusOK, loginResponse{
 		Token: token,
@@ -101,8 +100,13 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 }
 
 // PostLogout handles POST /api/auth/logout (JWT required).
-// Token invalidation via DB is deferred to Phase 6; returns 200 immediately.
+// Revokes the current token so it cannot be reused.
 func (h *AuthHandler) PostLogout(c *gin.Context) {
+	if jtiVal, ok := c.Get("jti"); ok {
+		if jti, ok := jtiVal.(string); ok {
+			auth.Tokens.Revoke(jti)
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -154,19 +158,26 @@ func (h *AuthHandler) PutPassword(c *gin.Context) {
 		return
 	}
 
+	// Revoke all existing tokens so compromised sessions are immediately invalidated.
+	auth.Tokens.RevokeAllForUser(userID)
+
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 // GetMe handles GET /api/auth/me (JWT required).
 // Returns the current user's basic profile.
 func (h *AuthHandler) GetMe(c *gin.Context) {
-	userIDVal, _ := c.Get("userID")
-	usernameVal, _ := c.Get("username")
-	roleVal, _ := c.Get("role")
+	userID, _ := c.Get("userID")
+	username, _ := c.Get("username")
+	role, _ := c.Get("role")
+
+	uid, _ := userID.(int64)
+	uname, _ := username.(string)
+	roleStr, _ := role.(string)
 
 	c.JSON(http.StatusOK, loginUserResponse{
-		ID:       userIDVal.(int64),
-		Username: usernameVal.(string),
-		Role:     roleVal.(string),
+		ID:       uid,
+		Username: uname,
+		Role:     roleStr,
 	})
 }
