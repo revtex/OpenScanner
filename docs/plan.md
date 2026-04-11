@@ -1537,7 +1537,7 @@ All extended features are **configurable** — disabled by default (except keybo
 
 ---
 
-### Phase 3 — Backend Auth, RBAC & Setup
+### Phase 3 — Backend Auth, RBAC & Setup ✅ COMPLETE
 
 **Goal:** User accounts with roles work end-to-end; setup wizard creates initial admin; JWT auth enforces role-based access.
 

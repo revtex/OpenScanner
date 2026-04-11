@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/openscanner/openscanner/internal/api"
+	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/config"
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/seed"
@@ -69,15 +71,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Set up Gin router with health endpoint.
+	// Set up Gin router with registered routes.
 	router := gin.New()
 	router.Use(gin.Recovery())
 
-	router.GET("/api/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":  "ok",
-			"version": config.Version,
-		})
+	// Create the shutdown context early so it can be passed to long-lived components
+	// (e.g. RateLimiter cleanup goroutine) to enable clean shutdown.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	queries := db.New(sqlDB)
+	rateLimiter := auth.NewRateLimiter(ctx)
+
+	api.RegisterRoutes(router, api.Deps{
+		Queries:     queries,
+		RateLimiter: rateLimiter,
+		Version:     config.Version,
 	})
 
 	// Create HTTP server.
@@ -86,10 +95,6 @@ func main() {
 		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
-
-	// Graceful shutdown via signal context.
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	// Start server in a goroutine.
 	go func() {
