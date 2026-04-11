@@ -1,6 +1,6 @@
 # OpenScanner — API Reference
 
-> **Implementation status:** Phases 1–6 endpoints are implemented. All other endpoints listed below are planned for future phases and are marked accordingly.
+> **Implementation status:** Phases 1–7 endpoints are implemented. All other endpoints listed below are planned for future phases and are marked accordingly.
 
 ## Implemented Endpoints
 
@@ -159,54 +159,54 @@ Alias for the above — accepts identical fields for Trunk Recorder compatibilit
 
 **Request: `multipart/form-data`**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `audio` | file | yes | Audio file (WAV, MP3, AAC, M4A, OGG, Opus, …) |
-| `systemId` | int string | yes | System decimal (radio system ID) |
-| `talkgroupId` | int string | yes | Talkgroup decimal |
-| `dateTime` | int64 string | yes | Unix timestamp (seconds) |
-| `systemLabel` | string | no | System name — used when `autoPopulate=true` |
-| `talkgroupGroup` | string | no | Talkgroup group — used when `autoPopulate=true` |
-| `talkgroupLabel` | string | no | Talkgroup label — used when `autoPopulate=true` |
-| `talkgroupTag` | string | no | Talkgroup tag |
-| `frequency` | int string | no | Primary frequency in Hz |
-| `duration` | int string | no | Duration in seconds |
-| `source` | int string | no | Primary source unit ID |
-| `frequencies` | string | no | JSON array of frequency objects |
-| `sources` | string | no | JSON array of source unit objects |
-| `patches` | string | no | JSON array of patched talkgroup IDs |
+| Field            | Type         | Required | Description                                     |
+| ---------------- | ------------ | -------- | ----------------------------------------------- |
+| `audio`          | file         | yes      | Audio file (WAV, MP3, AAC, M4A, OGG, Opus, …)   |
+| `systemId`       | int string   | yes      | System decimal (radio system ID)                |
+| `talkgroupId`    | int string   | yes      | Talkgroup decimal                               |
+| `dateTime`       | int64 string | yes      | Unix timestamp (seconds)                        |
+| `systemLabel`    | string       | no       | System name — used when `autoPopulate=true`     |
+| `talkgroupGroup` | string       | no       | Talkgroup group — used when `autoPopulate=true` |
+| `talkgroupLabel` | string       | no       | Talkgroup label — used when `autoPopulate=true` |
+| `talkgroupTag`   | string       | no       | Talkgroup tag                                   |
+| `frequency`      | int string   | no       | Primary frequency in Hz                         |
+| `duration`       | int string   | no       | Duration in seconds                             |
+| `source`         | int string   | no       | Primary source unit ID                          |
+| `frequencies`    | string       | no       | JSON array of frequency objects                 |
+| `sources`        | string       | no       | JSON array of source unit objects               |
+| `patches`        | string       | no       | JSON array of patched talkgroup IDs             |
 
 **Response `200` — call accepted:**
 
 ```json
-{"id": 12345}
+{ "id": 12345 }
 ```
 
 **Response `200` — duplicate detected:**
 
 ```json
-{"message": "duplicate"}
+{ "message": "duplicate" }
 ```
 
 **Error responses:**
 
-| Code | Reason |
-|------|--------|
+| Code  | Reason                                                                                |
+| ----- | ------------------------------------------------------------------------------------- |
 | `400` | Missing `audio`, `systemId`, `talkgroupId`, or `dateTime`; unparseable integer fields |
-| `401` | Missing or invalid `X-API-Key` |
-| `429` | Rate limit exceeded (60 req/min per API key by default) |
-| `500` | Storage or DB error |
+| `401` | Missing or invalid `X-API-Key`                                                        |
+| `429` | Rate limit exceeded (60 req/min per API key by default)                               |
+| `500` | Storage or DB error                                                                   |
 
 **Auto-populate behaviour:** When `autoPopulate=true` (default), an unknown `systemId` or `talkgroupId` is automatically created in the database using the supplied label/group/tag fields. When `autoPopulate=false`, unknown identifiers return `400`.
 
 **Audio storage:** Files are written to `{audioDir}/{YYYY}/{MM}/{DD}/{filename}`. The conversion mode is controlled by the `audioConversion` setting:
 
-| Value | Behaviour |
-|-------|-----------|
-| `0` | Disabled — keep original file |
-| `1` | Convert to AAC 32 kbps (default) |
-| `2` | Convert to AAC 32 kbps + `acompressor` filter |
-| `3` | Convert to AAC 32 kbps + `loudnorm` filter |
+| Value | Behaviour                                     |
+| ----- | --------------------------------------------- |
+| `0`   | Disabled — keep original file                 |
+| `1`   | Convert to AAC 32 kbps (default)              |
+| `2`   | Convert to AAC 32 kbps + `acompressor` filter |
+| `3`   | Convert to AAC 32 kbps + `loudnorm` filter    |
 
 Conversion is performed asynchronously via a bounded FFmpeg worker pool (`runtime.NumCPU()` workers). `Store` blocks until conversion completes before inserting the DB record.
 
@@ -260,18 +260,18 @@ Upgrades to a WebSocket connection for admin dashboard events.
 
 #### WebSocket Commands
 
-| Command | Direction | Payload | Description |
-|---------|-----------|---------|-------------|
-| `CAL` | Server → Client | `{systemId, talkgroupId, ...}` + binary audio frame | New call data. Text frame with call metadata is followed immediately by a binary frame containing the audio file bytes. The two frames are sent atomically per client (mutex-protected to prevent interleaving). |
-| `CFG` | Server → Client | `{systems, talkgroups, groups, tags, ...}` | Full config payload. Sent on connect (listener only) and when admin updates config. |
-| `VER` | Server → Client | `{"version", "branding", "email"}` | Server version and branding. Sent on connect (listener only). |
-| `LSC` | Server → Client | `<count>` (integer) | Active listener count. Broadcast on connect/disconnect, debounced to max 1 per 3 seconds. |
-| `XPR` | Server → Client | _(none)_ | Session expired or auth failure. Connection closed after sending. |
-| `MAX` | Server → Client | _(none)_ | Max clients reached or per-user/access limit exceeded. Connection closed after sending. |
-| `PIN` | Client → Server | `"<accessCode>"` (string) | Access code authentication. Only processed as the first message during auth handshake. |
-| `LFM` | Bidirectional | `{...}` (map) | Live feed map update. Client sends to update; server echoes back. |
-| `LCL` | Server → Client | `{"calls": [...], "total": <n>}` | Paginated call list results. |
-| `TRN` | Server → Client | `{"callId": <id>, "text": "..."}` | Transcript ready for a call. |
+| Command | Direction       | Payload                                             | Description                                                                                                                                                                                                      |
+| ------- | --------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CAL`   | Server → Client | `{systemId, talkgroupId, ...}` + binary audio frame | New call data. Text frame with call metadata is followed immediately by a binary frame containing the audio file bytes. The two frames are sent atomically per client (mutex-protected to prevent interleaving). |
+| `CFG`   | Server → Client | `{systems, talkgroups, groups, tags, ...}`          | Full config payload. Sent on connect (listener only) and when admin updates config.                                                                                                                              |
+| `VER`   | Server → Client | `{"version", "branding", "email"}`                  | Server version and branding. Sent on connect (listener only).                                                                                                                                                    |
+| `LSC`   | Server → Client | `<count>` (integer)                                 | Active listener count. Broadcast on connect/disconnect, debounced to max 1 per 3 seconds.                                                                                                                        |
+| `XPR`   | Server → Client | _(none)_                                            | Session expired or auth failure. Connection closed after sending.                                                                                                                                                |
+| `MAX`   | Server → Client | _(none)_                                            | Max clients reached or per-user/access limit exceeded. Connection closed after sending.                                                                                                                          |
+| `PIN`   | Client → Server | `"<accessCode>"` (string)                           | Access code authentication. Only processed as the first message during auth handshake.                                                                                                                           |
+| `LFM`   | Bidirectional   | `{...}` (map)                                       | Live feed map update. Client sends to update; server echoes back.                                                                                                                                                |
+| `LCL`   | Server → Client | `{"calls": [...], "total": <n>}`                    | Paginated call list results.                                                                                                                                                                                     |
+| `TRN`   | Server → Client | `{"callId": <id>, "text": "..."}`                   | Transcript ready for a call.                                                                                                                                                                                     |
 
 **Reserved commands** (not yet implemented): `IOS`, `PID`, `SRV`.
 
@@ -291,15 +291,15 @@ All admin endpoints require `Authorization: Bearer <jwt>` with `admin` role. Ret
 
 ### Common Error Responses
 
-| Code | Meaning |
-|------|---------|
-| `400` | Invalid request body or path parameter |
-| `401` | Missing or invalid JWT |
-| `403` | Non-admin role |
-| `404` | Resource not found |
-| `409` | Unique constraint violation (duplicate) |
+| Code  | Meaning                                                    |
+| ----- | ---------------------------------------------------------- |
+| `400` | Invalid request body or path parameter                     |
+| `401` | Missing or invalid JWT                                     |
+| `403` | Non-admin role                                             |
+| `404` | Resource not found                                         |
+| `409` | Unique constraint violation (duplicate)                    |
 | `422` | Validation failure (missing required field, invalid value) |
-| `500` | Internal server error |
+| `500` | Internal server error                                      |
 
 ### Common Patterns
 
@@ -347,7 +347,7 @@ Updates one or more settings. Only known setting keys are accepted (allowlist-va
 **Response `200`:**
 
 ```json
-{"ok": true}
+{ "ok": true }
 ```
 
 **Error `400`:** Unknown setting key included in request body.
@@ -475,7 +475,7 @@ Returns all units across all systems.
 **Request:**
 
 ```json
-{"label": "Fire"}
+{ "label": "Fire" }
 ```
 
 **Validation:** `label` is required (422 if empty). Must be unique (409 if duplicate).
@@ -495,7 +495,7 @@ Returns all units across all systems.
 **Request:**
 
 ```json
-{"label": "Dispatch"}
+{ "label": "Dispatch" }
 ```
 
 **Validation:** `label` is required (422 if empty). Must be unique (409 if duplicate).
@@ -590,10 +590,10 @@ Returns server log entries, optionally filtered by time range and level.
 
 **Query Parameters:**
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `from` | int64 | `0` | Start of date range (Unix timestamp) |
-| `to` | int64 | _now_ | End of date range (Unix timestamp) |
+| Param   | Type   | Default | Description                                 |
+| ------- | ------ | ------- | ------------------------------------------- |
+| `from`  | int64  | `0`     | Start of date range (Unix timestamp)        |
+| `to`    | int64  | _now_   | End of date range (Unix timestamp)          |
 | `level` | string | _(all)_ | Filter by level: `info`, `warn`, or `error` |
 
 **Response `200`:**
@@ -617,17 +617,17 @@ Imports talkgroups from a CSV file for a specific system.
 
 **Request: `multipart/form-data`**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `file` | file | yes | CSV file |
-| `system_id` | int string | yes | Target system ID (must exist) |
+| Field       | Type       | Required | Description                   |
+| ----------- | ---------- | -------- | ----------------------------- |
+| `file`      | file       | yes      | CSV file                      |
+| `system_id` | int string | yes      | Target system ID (must exist) |
 
 **CSV format:** Columns: `talkgroup_id`, `label`, `name`, `tag_id`, `group_id`, `frequency`, `led`, `order`. Header row is auto-detected and skipped. Rows with non-numeric first column are skipped.
 
 **Response `200`:**
 
 ```json
-{"imported": 42}
+{ "imported": 42 }
 ```
 
 **Safety limit:** Max 100,000 rows per import.
@@ -640,17 +640,17 @@ Imports units from a CSV file for a specific system.
 
 **Request: `multipart/form-data`**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `file` | file | yes | CSV file |
-| `system_id` | int string | yes | Target system ID (must exist) |
+| Field       | Type       | Required | Description                   |
+| ----------- | ---------- | -------- | ----------------------------- |
+| `file`      | file       | yes      | CSV file                      |
+| `system_id` | int string | yes      | Target system ID (must exist) |
 
 **CSV format:** Columns: `unit_id`, `label`, `order`. Header row is auto-detected and skipped.
 
 **Response `200`:**
 
 ```json
-{"imported": 15}
+{ "imported": 15 }
 ```
 
 #### `GET /api/admin/export/config`
@@ -687,7 +687,7 @@ Imports a full configuration JSON blob. Runs in a single database transaction �
 **Response `200`:**
 
 ```json
-{"ok": true}
+{ "ok": true }
 ```
 
 **Error `400`:** Invalid JSON body.

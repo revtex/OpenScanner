@@ -41,20 +41,20 @@ The DirWatch service monitors local directories for new audio files and automati
 
 ### Configuration Fields
 
-| Field          | Type    | Required | Notes                                                                                   |
-| -------------- | ------- | -------- | --------------------------------------------------------------------------------------- |
-| `directory`    | text    | yes      | Absolute path to the directory to watch                                                 |
-| `type`         | text    | yes      | Recorder type — see [Recorder Types](#recorder-types) below                             |
-| `mask`         | text    | no       | Directory sub-path mask using `#TOKEN` substitution — see [Mask Tokens](#mask-tokens)   |
-| `extension`    | text    | no       | Only process files with this extension (e.g. `mp3`). Leave empty to process all audio  |
-| `frequency`    | integer | no       | Frequency override in Hz (used by types that cannot parse it from the filename)          |
-| `delay`        | integer | no       | Polling interval in ms when `use_polling = 1` (minimum 500 ms; default 2000 ms)         |
-| `delete_after` | 0/1     | no       | If `1`, delete the source audio file after successful ingest                            |
-| `use_polling`  | 0/1     | no       | If `1`, use directory polling instead of fsnotify (recommended for CIFS/NFS mounts)     |
-| `disabled`     | 0/1     | no       | If `1`, this entry is skipped on startup and reload                                     |
-| `system_id`    | int FK  | no       | Override: use this DB system ID for all ingested calls                                  |
-| `talkgroup_id` | int FK  | no       | Override: use this DB talkgroup ID for all ingested calls                               |
-| `order`        | integer | no       | Display order in admin UI                                                               |
+| Field          | Type    | Required | Notes                                                                                 |
+| -------------- | ------- | -------- | ------------------------------------------------------------------------------------- |
+| `directory`    | text    | yes      | Absolute path to the directory to watch                                               |
+| `type`         | text    | yes      | Recorder type — see [Recorder Types](#recorder-types) below                           |
+| `mask`         | text    | no       | Directory sub-path mask using `#TOKEN` substitution — see [Mask Tokens](#mask-tokens) |
+| `extension`    | text    | no       | Only process files with this extension (e.g. `mp3`). Leave empty to process all audio |
+| `frequency`    | integer | no       | Frequency override in Hz (used by types that cannot parse it from the filename)       |
+| `delay`        | integer | no       | Polling interval in ms when `use_polling = 1` (minimum 500 ms; default 2000 ms)       |
+| `delete_after` | 0/1     | no       | If `1`, delete the source audio file after successful ingest                          |
+| `use_polling`  | 0/1     | no       | If `1`, use directory polling instead of fsnotify (recommended for CIFS/NFS mounts)   |
+| `disabled`     | 0/1     | no       | If `1`, this entry is skipped on startup and reload                                   |
+| `system_id`    | int FK  | no       | Override: use this DB system ID for all ingested calls                                |
+| `talkgroup_id` | int FK  | no       | Override: use this DB talkgroup ID for all ingested calls                             |
+| `order`        | integer | no       | Display order in admin UI                                                             |
 
 ### Reload Behaviour
 
@@ -69,23 +69,24 @@ Any create, update, or delete of a dirwatch entry via `POST/PUT/DELETE /api/admi
 Trunk Recorder writes a JSON sidecar alongside each audio file (same stem, `.json` extension). The sidecar contains system ID, talkgroup ID, timestamp, frequency, and source unit lists.
 
 **Parser behaviour:**
+
 - Triggers on either the `.json` sidecar or the audio file
 - Waits for both files to exist before ingesting (returns skip if the other half has not arrived yet)
 - Reads at most 1 MiB from the sidecar to prevent OOM from crafted files
 
 **Sidecar fields used:**
 
-| Sidecar field       | Maps to          |
-| ------------------- | ---------------- |
-| `start_time`        | `date_time`      |
-| `call_length`       | `duration` (ms)  |
-| `freq`              | `frequency` (Hz) |
-| `talkgroup`         | `talkgroup_id`   |
-| `sys_num`           | `system_id`      |
-| `unit`              | `source`         |
-| `srcList`           | `sources_json`   |
-| `freqList`          | `frequencies_json` |
-| `patched_talkgroups`| `patches_json`   |
+| Sidecar field        | Maps to            |
+| -------------------- | ------------------ |
+| `start_time`         | `date_time`        |
+| `call_length`        | `duration` (ms)    |
+| `freq`               | `frequency` (Hz)   |
+| `talkgroup`          | `talkgroup_id`     |
+| `sys_num`            | `system_id`        |
+| `unit`               | `source`           |
+| `srcList`            | `sources_json`     |
+| `freqList`           | `frequencies_json` |
+| `patched_talkgroups` | `patches_json`     |
 
 **Minimal Trunk Recorder config (`config.json`):**
 
@@ -106,6 +107,7 @@ Trunk Recorder writes a JSON sidecar alongside each audio file (same stem, `.jso
 SDRTrunk names its audio files with embedded metadata: `<systemID>_<talkgroupID>_<unixTimestamp>.<ext>`
 
 **Parser behaviour:**
+
 - Triggers on audio files only
 - Parses system ID, talkgroup ID, and timestamp from the filename
 - Falls back to file modification time if the timestamp part is missing
@@ -116,6 +118,7 @@ SDRTrunk names its audio files with embedded metadata: `<systemID>_<talkgroupID>
 RTLSDR-Airband does not embed metadata in filenames. The dirwatch entry's `system_id` and `talkgroup_id` fields specify which system and talkgroup all files in this directory belong to.
 
 **Parser behaviour:**
+
 - Triggers on audio files only
 - Timestamp from file modification time
 - `frequency` from the `frequency` dirwatch field (or 0 if not set)
@@ -125,6 +128,7 @@ RTLSDR-Airband does not embed metadata in filenames. The dirwatch entry's `syste
 DSDPlus Fast Lane mode drops audio files into a directory. System/talkgroup are identified via the dirwatch config.
 
 **Parser behaviour:**
+
 - Triggers on audio files only
 - Timestamp from file modification time
 - `system_id` and `talkgroup_id` from dirwatch config overrides (required)
@@ -134,6 +138,7 @@ DSDPlus Fast Lane mode drops audio files into a directory. System/talkgroup are 
 ProScan audio exports are identified via the dirwatch config.
 
 **Parser behaviour:**
+
 - Triggers on audio files only
 - Timestamp from file modification time
 - `system_id` and `talkgroup_id` from dirwatch config overrides (required)
@@ -143,6 +148,7 @@ ProScan audio exports are identified via the dirwatch config.
 voxcall audio exports are identified via the dirwatch config.
 
 **Parser behaviour:**
+
 - Triggers on audio files only
 - Timestamp from file modification time
 - `system_id` and `talkgroup_id` from dirwatch config overrides (required)
@@ -153,21 +159,21 @@ voxcall audio exports are identified via the dirwatch config.
 
 The `mask` field supports token substitution to organise files into subdirectories based on call metadata. Tokens are expanded when a call is ingested.
 
-| Token     | Value                                  | Example        |
-| --------- | -------------------------------------- | -------------- |
-| `#DATE`   | UTC date `YYYYMMDD`                    | `20260411`     |
-| `#TIME`   | UTC time `HHMMSS`                      | `142305`       |
-| `#ZTIME`  | UTC time `HHMMSS` (zero-padded, same as `#TIME`) | `142305` |
-| `#GROUP`  | Talkgroup group label                  | `Fire`         |
-| `#SYSLBL` | System label                           | `CountyP25`    |
-| `#TAG`    | Talkgroup tag label                    | `Dispatch`     |
-| `#TGAFS`  | AFS/P25 system identifier              | `12-001`       |
-| `#UNIT`   | Source unit ID string                  | `4021`         |
-| `#TGLBL`  | Talkgroup label                        | `Fire Disp`    |
-| `#TGHZ`   | Talkgroup frequency in Hz              | `851012500`    |
-| `#TGKHZ`  | Talkgroup frequency in kHz             | `851012`       |
-| `#TGMHZ`  | Talkgroup frequency in MHz (X.XXX)     | `851.012`      |
-| `#TGID`   | Talkgroup radio ID                     | `1234`         |
+| Token     | Value                                            | Example     |
+| --------- | ------------------------------------------------ | ----------- |
+| `#DATE`   | UTC date `YYYYMMDD`                              | `20260411`  |
+| `#TIME`   | UTC time `HHMMSS`                                | `142305`    |
+| `#ZTIME`  | UTC time `HHMMSS` (zero-padded, same as `#TIME`) | `142305`    |
+| `#GROUP`  | Talkgroup group label                            | `Fire`      |
+| `#SYSLBL` | System label                                     | `CountyP25` |
+| `#TAG`    | Talkgroup tag label                              | `Dispatch`  |
+| `#TGAFS`  | AFS/P25 system identifier                        | `12-001`    |
+| `#UNIT`   | Source unit ID string                            | `4021`      |
+| `#TGLBL`  | Talkgroup label                                  | `Fire Disp` |
+| `#TGHZ`   | Talkgroup frequency in Hz                        | `851012500` |
+| `#TGKHZ`  | Talkgroup frequency in kHz                       | `851012`    |
+| `#TGMHZ`  | Talkgroup frequency in MHz (X.XXX)               | `851.012`   |
+| `#TGID`   | Talkgroup radio ID                               | `1234`      |
 
 **Example mask:** `#DATE/#SYSLBL/#TGLBL` → `20260411/CountyP25/Fire Disp`
 
