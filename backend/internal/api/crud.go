@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -48,6 +49,16 @@ func parseID(c *gin.Context) (int64, bool) {
 // isUniqueViolation checks if an error is a SQLite UNIQUE constraint violation.
 func isUniqueViolation(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "UNIQUE")
+}
+
+// validHTTPURL checks that a URL string parses as a valid http or https URL
+// (defence-in-depth against SSRF via file://, gopher://, etc.).
+func validHTTPURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	return u.Scheme == "http" || u.Scheme == "https"
 }
 
 // ---------- Users ----------
@@ -167,7 +178,11 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "username is required"})
 		return
 	}
-	if req.Role != "" && !validRoles[req.Role] {
+	if req.Role == "" {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "role is required"})
+		return
+	}
+	if !validRoles[req.Role] {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "role must be 'admin' or 'listener'"})
 		return
 	}
@@ -1088,6 +1103,10 @@ func (h *AdminHandler) CreateDownstream(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "url is required"})
 		return
 	}
+	if !validHTTPURL(req.Url) {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "url must use http or https scheme"})
+		return
+	}
 
 	id, err := h.queries.CreateDownstream(c.Request.Context(), req)
 	if err != nil {
@@ -1123,6 +1142,11 @@ func (h *AdminHandler) UpdateDownstream(c *gin.Context) {
 		return
 	}
 	req.ID = id
+
+	if req.Url != "" && !validHTTPURL(req.Url) {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "url must use http or https scheme"})
+		return
+	}
 
 	if err := h.queries.UpdateDownstream(c.Request.Context(), req); err != nil {
 		slog.Error("failed to update downstream", "error", err)
@@ -1183,6 +1207,10 @@ func (h *AdminHandler) CreateWebhook(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "url is required"})
 		return
 	}
+	if !validHTTPURL(req.Url) {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "url must use http or https scheme"})
+		return
+	}
 
 	id, err := h.queries.CreateWebhook(c.Request.Context(), req)
 	if err != nil {
@@ -1218,6 +1246,11 @@ func (h *AdminHandler) UpdateWebhook(c *gin.Context) {
 		return
 	}
 	req.ID = id
+
+	if req.Url != "" && !validHTTPURL(req.Url) {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "url must use http or https scheme"})
+		return
+	}
 
 	if err := h.queries.UpdateWebhook(c.Request.Context(), req); err != nil {
 		slog.Error("failed to update webhook", "error", err)

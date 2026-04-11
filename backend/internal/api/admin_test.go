@@ -1253,4 +1253,98 @@ func TestAPIKeys_Create_DuplicateKey(t *testing.T) {
 	}
 }
 
+// ---------- Edge case: UpdateUser with empty role ----------
+
+func TestUsers_Update_EmptyRole(t *testing.T) {
+	engine, queries := newAdminTestEngine(t)
+	uid := seedAdminUser(t, queries, "admin1", "password1234")
+	tok := adminToken(t, uid, "admin1")
+	hdrs := map[string]string{"Authorization": "Bearer " + tok}
+
+	body := jsonBody(t, map[string]any{
+		"username": "user2",
+		"password": "securepassword",
+		"role":     "listener",
+	})
+	w := doRequest(engine, http.MethodPost, "/api/admin/users", body, hdrs)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create: status = %d", w.Code)
+	}
+	var created map[string]any
+	decodeJSON(t, w, &created)
+	u2ID := int64(created["id"].(float64))
+
+	updateBody := jsonBody(t, map[string]any{"username": "user2", "role": ""})
+	w = doRequest(engine, http.MethodPut, fmt.Sprintf("/api/admin/users/%d", u2ID), updateBody, hdrs)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("empty role: status = %d, want 422; body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestUsers_Update_InvalidRole(t *testing.T) {
+	engine, queries := newAdminTestEngine(t)
+	uid := seedAdminUser(t, queries, "admin1", "password1234")
+	tok := adminToken(t, uid, "admin1")
+	hdrs := map[string]string{"Authorization": "Bearer " + tok}
+
+	body := jsonBody(t, map[string]any{
+		"username": "user2",
+		"password": "securepassword",
+		"role":     "listener",
+	})
+	w := doRequest(engine, http.MethodPost, "/api/admin/users", body, hdrs)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create: status = %d", w.Code)
+	}
+	var created map[string]any
+	decodeJSON(t, w, &created)
+	u2ID := int64(created["id"].(float64))
+
+	updateBody := jsonBody(t, map[string]any{"username": "user2", "role": "superadmin"})
+	w = doRequest(engine, http.MethodPut, fmt.Sprintf("/api/admin/users/%d", u2ID), updateBody, hdrs)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("invalid role: status = %d, want 422; body: %s", w.Code, w.Body.String())
+	}
+}
+
+// ---------- Edge case: Downstream/Webhook URL scheme ----------
+
+func TestDownstreams_Create_InvalidScheme(t *testing.T) {
+	engine, queries := newAdminTestEngine(t)
+	uid := seedAdminUser(t, queries, "admin1", "password1234")
+	tok := adminToken(t, uid, "admin1")
+	hdrs := map[string]string{"Authorization": "Bearer " + tok}
+
+	body := jsonBody(t, map[string]any{"url": "file:///etc/passwd"})
+	w := doRequest(engine, http.MethodPost, "/api/admin/downstreams", body, hdrs)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("file:// scheme: status = %d, want 422; body: %s", w.Code, w.Body.String())
+	}
+
+	body = jsonBody(t, map[string]any{"url": "https://example.com/api"})
+	w = doRequest(engine, http.MethodPost, "/api/admin/downstreams", body, hdrs)
+	if w.Code != http.StatusCreated {
+		t.Errorf("https scheme: status = %d, want 201; body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestWebhooks_Create_InvalidScheme(t *testing.T) {
+	engine, queries := newAdminTestEngine(t)
+	uid := seedAdminUser(t, queries, "admin1", "password1234")
+	tok := adminToken(t, uid, "admin1")
+	hdrs := map[string]string{"Authorization": "Bearer " + tok}
+
+	body := jsonBody(t, map[string]any{"url": "gopher://evil.com"})
+	w := doRequest(engine, http.MethodPost, "/api/admin/webhooks", body, hdrs)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("gopher:// scheme: status = %d, want 422; body: %s", w.Code, w.Body.String())
+	}
+
+	body = jsonBody(t, map[string]any{"url": "http://example.com/hook"})
+	w = doRequest(engine, http.MethodPost, "/api/admin/webhooks", body, hdrs)
+	if w.Code != http.StatusCreated {
+		t.Errorf("http scheme: status = %d, want 201; body: %s", w.Code, w.Body.String())
+	}
+}
+
 

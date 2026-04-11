@@ -61,17 +61,40 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
-	for key, value := range config {
+	// Validate all keys before writing anything (defence-in-depth: avoid
+	// partial writes if a disallowed key appears mid-map).
+	for key := range config {
 		if !allowedSettingKeys[key] {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown setting key: " + key})
 			return
 		}
-		if err := h.queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: key, Value: value}); err != nil {
+	}
+
+	ctx := c.Request.Context()
+
+	// Wrap all upserts in a transaction so the update is atomic.
+	tx, err := h.sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		slog.Error("failed to begin config transaction", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save config"})
+		return
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	qtx := h.queries.WithTx(tx)
+
+	for key, value := range config {
+		if err := qtx.UpsertSetting(ctx, db.UpsertSettingParams{Key: key, Value: value}); err != nil {
 			slog.Error("failed to upsert setting", "key", key, "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save config"})
 			return
 		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		slog.Error("failed to commit config transaction", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save config"})
+		return
 	}
 
 	// Broadcast updated config to all WS clients.
