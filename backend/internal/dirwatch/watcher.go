@@ -27,6 +27,7 @@ type Service struct {
 	hub       *ws.Hub
 	mu        sync.Mutex
 	reloadMu  sync.Mutex // serialises Reload calls to prevent duplicate goroutine spawning
+	appCtx    context.Context
 	cancel    context.CancelFunc
 	wg        sync.WaitGroup
 }
@@ -47,6 +48,7 @@ func (s *Service) Start(ctx context.Context) {
 	childCtx, cancel := context.WithCancel(ctx)
 
 	s.mu.Lock()
+	s.appCtx = ctx // remember the long-lived context for Reload
 	s.cancel = cancel
 	s.mu.Unlock()
 
@@ -58,7 +60,6 @@ func (s *Service) Start(ctx context.Context) {
 	}
 
 	for _, dw := range dirwatches {
-		dw := dw // capture loop variable
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
@@ -70,12 +71,21 @@ func (s *Service) Start(ctx context.Context) {
 // Reload stops all running watchers and restarts them fresh from the DB.
 // This should be called after admin CRUD changes to dirwatch configs.
 // Reload is serialised via reloadMu to prevent concurrent calls from spawning
-// duplicate watcher goroutines.
-func (s *Service) Reload(ctx context.Context) {
+// duplicate watcher goroutines. It reuses the application-lifetime context
+// from the initial Start call rather than accepting a request-scoped context.
+func (s *Service) Reload() {
 	s.reloadMu.Lock()
 	defer s.reloadMu.Unlock()
+
+	s.mu.Lock()
+	appCtx := s.appCtx
+	s.mu.Unlock()
+
+	if appCtx == nil {
+		return
+	}
 	s.stop()
-	s.Start(ctx)
+	s.Start(appCtx)
 }
 
 // stop cancels all running watcher goroutines and waits for them to exit.
@@ -208,13 +218,23 @@ func (s *Service) runWithPolling(ctx context.Context, dw db.Dirwatch) {
 // handleFile applies security checks, the extension filter, and calls the
 // appropriate parser before handing off to ingestCall.
 func (s *Service) handleFile(ctx context.Context, dw db.Dirwatch, filePath string) {
-	// Security: reject paths that escape the watched directory.
-	watchedClean := filepath.Clean(dw.Directory)
-	fileClean := filepath.Clean(filePath)
-	rel, err := filepath.Rel(watchedClean, fileClean)
+	// Security: resolve symlinks then reject paths that escape the watched directory.
+	watchedReal, err := filepath.EvalSymlinks(filepath.Clean(dw.Directory))
+	if err != nil {
+		slog.Warn("dirwatch: failed to resolve watched directory",
+			"dir", dw.Directory, "error", err)
+		return
+	}
+	fileReal, err := filepath.EvalSymlinks(filepath.Clean(filePath))
+	if err != nil {
+		slog.Warn("dirwatch: failed to resolve file path, rejected",
+			"file", filePath, "error", err)
+		return
+	}
+	rel, err := filepath.Rel(watchedReal, fileReal)
 	if err != nil || strings.HasPrefix(rel, "..") {
 		slog.Warn("dirwatch: file outside watched directory, rejected",
-			"file", filePath, "dir", watchedClean)
+			"file", filePath, "dir", watchedReal)
 		return
 	}
 
@@ -231,7 +251,7 @@ func (s *Service) handleFile(ctx context.Context, dw db.Dirwatch, filePath strin
 	}
 
 	parse := parserForType(dw.Type)
-	parsed, err := parse(dw, fileClean)
+	parsed, err := parse(dw, fileReal)
 	if err != nil {
 		slog.Error("dirwatch: parse error", "id", dw.ID, "file", filePath, "error", err)
 		return

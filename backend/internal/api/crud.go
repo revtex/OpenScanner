@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -1009,6 +1010,13 @@ func (h *AdminHandler) CreateDirwatch(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "directory is required"})
 		return
 	}
+	if info, err := os.Stat(req.Directory); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "directory does not exist or is not accessible"})
+		return
+	} else if !info.IsDir() {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "path is not a directory"})
+		return
+	}
 
 	id, err := h.queries.CreateDirwatch(c.Request.Context(), req)
 	if err != nil {
@@ -1025,7 +1033,7 @@ func (h *AdminHandler) CreateDirwatch(c *gin.Context) {
 	}
 	// Reload the dirwatch service so the new config takes effect immediately.
 	if h.dwReload != nil {
-		h.dwReload.Reload(c.Request.Context())
+		h.dwReload.Reload()
 	}
 	c.JSON(http.StatusCreated, dw)
 }
@@ -1049,6 +1057,16 @@ func (h *AdminHandler) UpdateDirwatch(c *gin.Context) {
 	}
 	req.ID = id
 
+	if req.Directory != "" {
+		if info, err := os.Stat(req.Directory); err != nil {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "directory does not exist or is not accessible"})
+			return
+		} else if !info.IsDir() {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "path is not a directory"})
+			return
+		}
+	}
+
 	if err := h.queries.UpdateDirwatch(c.Request.Context(), req); err != nil {
 		slog.Error("failed to update dirwatch", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update dirwatch"})
@@ -1063,7 +1081,7 @@ func (h *AdminHandler) UpdateDirwatch(c *gin.Context) {
 	}
 	// Reload the dirwatch service so the updated config takes effect immediately.
 	if h.dwReload != nil {
-		h.dwReload.Reload(c.Request.Context())
+		h.dwReload.Reload()
 	}
 	c.JSON(http.StatusOK, dw)
 }
@@ -1087,7 +1105,7 @@ func (h *AdminHandler) DeleteDirwatch(c *gin.Context) {
 	}
 	// Reload the dirwatch service so the deleted watcher is stopped immediately.
 	if h.dwReload != nil {
-		h.dwReload.Reload(c.Request.Context())
+		h.dwReload.Reload()
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

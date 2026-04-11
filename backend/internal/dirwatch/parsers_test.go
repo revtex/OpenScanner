@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/openscanner/openscanner/internal/db"
@@ -658,5 +659,47 @@ func TestRawOrEmpty(t *testing.T) {
 				t.Errorf("rawOrEmpty(%q) = %q, want %q", tc.raw, got, tc.want)
 			}
 		})
+	}
+}
+
+// ── Sidecar size limit ────────────────────────────────────────────────────────
+
+func TestParseTrunkRecorder_SidecarTooLarge(t *testing.T) {
+	dir := t.TempDir()
+
+	// Write a sidecar larger than 1 MiB.
+	largeData := make([]byte, (1<<20)+100)
+	for i := range largeData {
+		largeData[i] = '{'
+	}
+	jsonPath := filepath.Join(dir, "big.json")
+	audioPath := filepath.Join(dir, "big.mp3")
+	os.WriteFile(jsonPath, largeData, 0644) //nolint:errcheck
+	os.WriteFile(audioPath, []byte("ID3"), 0644) //nolint:errcheck
+
+	dw := dwFor("trunk-recorder", dir)
+	_, err := parseTrunkRecorder(dw, audioPath)
+	if err == nil {
+		t.Fatal("expected error for oversized sidecar, got nil")
+	}
+	if !strings.Contains(err.Error(), "too large") {
+		t.Errorf("expected 'too large' in error, got: %v", err)
+	}
+}
+
+func TestParseTrunkRecorder_SidecarNotExist_ReturnsNil(t *testing.T) {
+	dir := t.TempDir()
+
+	// Audio file present, but no sidecar.
+	audioPath := filepath.Join(dir, "nosidecar.mp3")
+	os.WriteFile(audioPath, []byte("ID3"), 0644) //nolint:errcheck
+
+	dw := dwFor("trunk-recorder", dir)
+	parsed, err := parseTrunkRecorder(dw, audioPath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if parsed != nil {
+		t.Error("expected nil parsed call when sidecar is missing")
 	}
 }

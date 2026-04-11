@@ -105,10 +105,6 @@ func parseTrunkRecorder(dw db.Dirwatch, triggeredPath string) (*ParsedCall, erro
 	case isAudioFile(triggeredPath):
 		audioPath = triggeredPath
 		jsonPath = stem + ".json"
-		if _, err := os.Stat(jsonPath); os.IsNotExist(err) {
-			// Sidecar absent — nothing parseable yet.
-			return nil, nil
-		}
 	default:
 		return nil, nil
 	}
@@ -117,10 +113,14 @@ func parseTrunkRecorder(dw db.Dirwatch, triggeredPath string) (*ParsedCall, erro
 	const maxSidecarBytes = 1 << 20 // 1 MiB
 	f, err := os.Open(jsonPath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			// Sidecar not yet written — caller will retry when it arrives.
+			return nil, nil
+		}
 		return nil, err
 	}
+	defer f.Close()
 	data, err := io.ReadAll(io.LimitReader(f, maxSidecarBytes+1))
-	f.Close()
 	if err != nil {
 		return nil, err
 	}

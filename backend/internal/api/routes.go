@@ -2,7 +2,6 @@
 package api
 
 import (
-	"context"
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
@@ -15,7 +14,7 @@ import (
 
 // DirwatchReloader is implemented by dirwatch.Service to trigger a config reload.
 type DirwatchReloader interface {
-	Reload(ctx context.Context)
+	Reload()
 }
 
 // Deps holds the dependencies required to register all API routes.

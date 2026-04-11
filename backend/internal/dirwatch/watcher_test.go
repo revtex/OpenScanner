@@ -76,7 +76,7 @@ func TestService_Reload_NoPanic(t *testing.T) {
 
 	// Reload should stop existing watchers and restart from DB — no panic even
 	// when there are no active dirwatches.
-	svc.Reload(ctx)
+	svc.Reload()
 	svc.stop()
 }
 
@@ -100,7 +100,7 @@ func TestService_MultipleReloads_NoPanic(t *testing.T) {
 	svc.Start(ctx)
 
 	for i := 0; i < 3; i++ {
-		svc.Reload(ctx)
+		svc.Reload()
 	}
 	svc.stop()
 }
@@ -446,4 +446,75 @@ func TestMimeFromExt(t *testing.T) {
 			}
 		})
 	}
+}
+
+// ── Symlink path-traversal ────────────────────────────────────────────────────
+
+func TestHandleFile_Symlink_Escaping_Rejected(t *testing.T) {
+	watchDir := t.TempDir()
+	secretDir := t.TempDir()
+
+	// Create a real file outside the watch directory.
+	secretFile := filepath.Join(secretDir, "secret.mp3")
+	os.WriteFile(secretFile, []byte("ID3"), 0644) //nolint:errcheck
+
+	// Create a symlink inside watchDir pointing to the secret file.
+	linkPath := filepath.Join(watchDir, "evil.mp3")
+	if err := os.Symlink(secretFile, linkPath); err != nil {
+		t.Skipf("symlinks not supported: %v", err)
+	}
+
+	dw := db.Dirwatch{
+		ID:        1,
+		Directory: watchDir,
+		Type:      "generic",
+	}
+
+	svc := buildSvcNilDB()
+	// Should reject because the resolved path escapes watchDir.
+	svc.handleFile(context.Background(), dw, linkPath)
+	// If we get here without panic, the file was correctly rejected.
+}
+
+// ── Reload uses app context, not request context ──────────────────────────────
+
+func TestService_Reload_UsesAppContext(t *testing.T) {
+	_, queries := newWatcherTestDB(t)
+	processor, _ := newWatcherProcessor(t)
+
+	appCtx, appCancel := context.WithCancel(context.Background())
+	defer appCancel()
+
+	svc := NewService(queries, processor, nil)
+	svc.Start(appCtx)
+
+	// Reload no longer accepts a context; it reuses the app context from Start.
+	svc.Reload()
+
+	// Verify the service stored appCtx — the watchers should still be alive
+	// (not cancelled). We can check by verifying appCtx is not done.
+	svc.mu.Lock()
+	storedCtx := svc.appCtx
+	svc.mu.Unlock()
+
+	if storedCtx == nil {
+		t.Fatal("appCtx is nil after Reload")
+	}
+	select {
+	case <-storedCtx.Done():
+		t.Error("appCtx is cancelled after Reload — watchers would be dead")
+	default:
+		// Good — context is still alive.
+	}
+
+	svc.stop()
+}
+
+func TestService_Reload_BeforeStart_NoPanic(t *testing.T) {
+	_, queries := newWatcherTestDB(t)
+	processor, _ := newWatcherProcessor(t)
+
+	svc := NewService(queries, processor, nil)
+	// Reload before Start — appCtx is nil, should be a no-op.
+	svc.Reload()
 }
