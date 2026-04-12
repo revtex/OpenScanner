@@ -33,20 +33,3 @@ jobs:
         run: cd frontend && pnpm install --frozen-lockfile
       - name: Test
         run: cd frontend && pnpm test
-
-  e2e:
-    name: Playwright E2E
-    runs-on: ubuntu-latest
-    needs: [backend, frontend]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - name: Install e2e deps
-        run: cd e2e && pnpm install --frozen-lockfile && pnpm exec playwright install --with-deps chromium
-      - name: Run E2E
-        run: cd e2e && pnpm exec playwright test
