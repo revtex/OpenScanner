@@ -50,11 +50,13 @@ export const api = createApi({
     "Config",
     "Logs",
     "Bookmarks",
+    "Setup",
   ],
   baseQuery: baseQueryWith401Redirect,
   endpoints: (builder) => ({
     getSetupStatus: builder.query<SetupStatus, void>({
       query: () => "/setup/status",
+      providesTags: ["Setup"],
     }),
     postSetup: builder.mutation<void, { username: string; password: string }>({
       query: (body) => ({
@@ -62,6 +64,7 @@ export const api = createApi({
         method: "POST",
         body,
       }),
+      invalidatesTags: ["Setup"],
     }),
     getBookmarkIDs: builder.query<{ callIds: number[] }, void>({
       query: () => "/bookmarks",
