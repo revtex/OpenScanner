@@ -111,9 +111,13 @@ export function DisplayPanel({
             <span className="opacity-60">{currentCall.talkgroupTag ?? ""}</span>
           </div>
 
-          {/* Row 4: TG label, call time */}
+          {/* Row 4: TG group/label, call time */}
           <div className="flex justify-between">
-            <span className="truncate">{currentCall.talkgroupLabel ?? ""}</span>
+            <span className="truncate">
+              {[currentCall.talkgroupGroup, currentCall.talkgroupLabel]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
             <span className="opacity-60">
               {formatCallTime(currentCall.dateTime, time12hFormat)}
             </span>
