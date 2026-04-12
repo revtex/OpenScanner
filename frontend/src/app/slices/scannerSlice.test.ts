@@ -222,6 +222,7 @@ describe("scannerSlice", () => {
       time12hFormat: false,
       showListenersCount: false,
       playbackGoesLive: false,
+      keypadBeeps: "uniden",
     };
 
     it("enables all talkgroups", () => {

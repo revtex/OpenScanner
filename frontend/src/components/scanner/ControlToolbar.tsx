@@ -18,6 +18,7 @@ import {
   Minimize,
 } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
+import { playBeep } from "@/services/beepPlayer";
 import type { AvoidEntry } from "@/types";
 
 interface ControlToolbarProps {
@@ -42,6 +43,7 @@ interface ControlToolbarProps {
   onClearAvoids: () => void;
   onToggleSelectTG: () => void;
   onToggleSearch: () => void;
+  keypadBeeps?: string;
 }
 
 export function ControlToolbar({
@@ -66,7 +68,12 @@ export function ControlToolbar({
   onClearAvoids,
   onToggleSelectTG,
   onToggleSearch,
+  keypadBeeps,
 }: ControlToolbarProps) {
+  const beep = useCallback(() => {
+    if (keypadBeeps) playBeep(keypadBeeps);
+  }, [keypadBeeps]);
+
   const isMuted = volume === 0;
   const isHolding = heldSystem !== null || heldTG !== null;
   const avoidCount = avoidList.length;
@@ -104,7 +111,10 @@ export function ControlToolbar({
         >
           <button
             className={`btn btn-circle w-11 h-11 ${isPaused ? "btn-warning" : "btn-primary"}`}
-            onClick={onTogglePause}
+            onClick={() => {
+              beep();
+              onTogglePause();
+            }}
             aria-label={isPaused ? "Resume" : "Pause"}
           >
             {isPaused ? (
@@ -119,7 +129,10 @@ export function ControlToolbar({
         <div className="tooltip tooltip-bottom" data-tip="Skip (S)">
           <button
             className="btn btn-circle btn-ghost w-9 h-9"
-            onClick={onSkip}
+            onClick={() => {
+              beep();
+              onSkip();
+            }}
             aria-label="Skip"
           >
             <SkipForward className="w-4 h-4" />
@@ -130,7 +143,10 @@ export function ControlToolbar({
         <div className="tooltip tooltip-bottom" data-tip="Replay (R)">
           <button
             className="btn btn-circle btn-ghost w-9 h-9"
-            onClick={onReplay}
+            onClick={() => {
+              beep();
+              onReplay();
+            }}
             aria-label="Replay"
           >
             <RotateCcw className="w-4 h-4" />
@@ -198,7 +214,10 @@ export function ControlToolbar({
         <div className="tooltip tooltip-bottom" data-tip="Download (D)">
           <button
             className="btn btn-circle btn-ghost w-9 h-9"
-            onClick={onDownload}
+            onClick={() => {
+              beep();
+              onDownload();
+            }}
             aria-label="Download"
           >
             <Download className="w-4 h-4" />
@@ -222,7 +241,10 @@ export function ControlToolbar({
         <div className="tooltip tooltip-bottom" data-tip="Live Mode (L)">
           <button
             className={`btn btn-sm gap-1 ${isLive ? "btn-primary" : "btn-ghost"}`}
-            onClick={onToggleLive}
+            onClick={() => {
+              beep();
+              onToggleLive();
+            }}
           >
             <Radio className="w-3.5 h-3.5" />
             LIVE
@@ -313,7 +335,13 @@ export function ControlToolbar({
 
         {/* SELECT */}
         <div className="tooltip tooltip-bottom" data-tip="Select Talkgroups">
-          <button className="btn btn-sm btn-ghost" onClick={onToggleSelectTG}>
+          <button
+            className="btn btn-sm btn-ghost"
+            onClick={() => {
+              beep();
+              onToggleSelectTG();
+            }}
+          >
             <List className="w-3.5 h-3.5" />
             SELECT▾
           </button>
@@ -321,7 +349,13 @@ export function ControlToolbar({
 
         {/* SEARCH */}
         <div className="tooltip tooltip-bottom" data-tip="Search Calls">
-          <button className="btn btn-sm btn-ghost" onClick={onToggleSearch}>
+          <button
+            className="btn btn-sm btn-ghost"
+            onClick={() => {
+              beep();
+              onToggleSearch();
+            }}
+          >
             <Search className="w-3.5 h-3.5" />
             SEARCH
           </button>

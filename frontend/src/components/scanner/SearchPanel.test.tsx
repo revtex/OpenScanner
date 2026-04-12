@@ -103,6 +103,7 @@ const testConfig: ScannerConfig = {
   time12hFormat: false,
   showListenersCount: false,
   playbackGoesLive: false,
+  keypadBeeps: "uniden",
 };
 
 function scannerState(

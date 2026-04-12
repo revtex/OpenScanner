@@ -494,6 +494,9 @@ func buildCFGMessage(ctx context.Context, queries *db.Queries) ([]byte, error) {
 	if s, err := queries.GetSetting(ctx, "playbackGoesLive"); err == nil {
 		cfgPayload["playbackGoesLive"] = s.Value == "true"
 	}
+	if s, err := queries.GetSetting(ctx, "keypadBeeps"); err == nil {
+		cfgPayload["keypadBeeps"] = s.Value
+	}
 
 	return NewCFGMessage(cfgPayload)
 }

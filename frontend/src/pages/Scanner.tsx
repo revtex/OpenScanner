@@ -119,6 +119,7 @@ export default function Scanner() {
         onClearAvoids={scanner.clearAvoids}
         onToggleSelectTG={handleToggleSelectTG}
         onToggleSearch={handleToggleSearch}
+        keypadBeeps={scanner.config?.keypadBeeps}
       />
       <SelectTGPanel
         isOpen={selectTGOpen}
