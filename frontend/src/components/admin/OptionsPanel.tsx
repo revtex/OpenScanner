@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   useGetConfigQuery,
   useUpdateConfigMutation,
 } from "@/app/slices/adminSlice";
+import { useNavigationGuard } from "@/components/admin/NavigationGuardContext";
 import type { AdminSetting } from "@/types";
 
 // ─── Known setting keys and their input types ───
@@ -176,6 +177,17 @@ export default function OptionsPanel() {
     type: "success" | "error";
   } | null>(null);
 
+  // Build a map of original server values for dirty comparison.
+  const serverSettings = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (config) {
+      for (const s of config) {
+        map[s.key] = s.value;
+      }
+    }
+    return map;
+  }, [config]);
+
   if (config && !configLoaded) {
     const map: Record<string, string> = {};
     for (const s of config) {
@@ -184,6 +196,35 @@ export default function OptionsPanel() {
     setLocalSettings(map);
     setConfigLoaded(true);
   }
+
+  const isDirty = useMemo(() => {
+    if (!configLoaded) return false;
+    for (const key of Object.keys(localSettings)) {
+      if (localSettings[key] !== serverSettings[key]) return true;
+    }
+    return false;
+  }, [localSettings, serverSettings, configLoaded]);
+
+  // Warn on browser/tab close with unsaved changes.
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  // Register navigation guard so AdminLayout can block tab switches.
+  const { setGuard } = useNavigationGuard();
+  const isDirtyRef = useRef(isDirty);
+  useEffect(() => {
+    isDirtyRef.current = isDirty;
+  }, [isDirty]);
+  useEffect(() => {
+    setGuard(() => isDirtyRef.current);
+    return () => setGuard(null);
+  }, [setGuard]);
 
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -201,6 +242,8 @@ export default function OptionsPanel() {
     try {
       await updateConfig(settings).unwrap();
       showToast("Settings saved successfully", "success");
+      // RTK Query invalidates "Config" tag → refetch updates serverSettings
+      // automatically via the useMemo, so isDirty clears on its own.
     } catch {
       showToast("Failed to save settings", "error");
     }
@@ -398,7 +441,15 @@ export default function OptionsPanel() {
                 <div className="space-y-3">
                   {keys.map((key) =>
                     key in localSettings ? (
-                      <div key={key}>{renderSettingInput(key)}</div>
+                      <div key={key} className="relative">
+                        {localSettings[key] !== serverSettings[key] && (
+                          <span
+                            className="absolute -left-3 top-3 w-2 h-2 rounded-full bg-warning"
+                            title="Modified"
+                          />
+                        )}
+                        {renderSettingInput(key)}
+                      </div>
                     ) : null,
                   )}
                 </div>
@@ -406,10 +457,13 @@ export default function OptionsPanel() {
             );
           })}
 
-          <div className="pt-4">
+          <div className="pt-4 flex items-center gap-3">
             <button className="btn btn-primary" onClick={handleSave}>
               Save Changes
             </button>
+            {isDirty && (
+              <span className="text-warning text-sm">Unsaved changes</span>
+            )}
           </div>
         </div>
       </div>

@@ -1,10 +1,13 @@
 import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import { Lock } from "lucide-react";
-import { usePostLoginMutation } from "@/app/api";
 import { useAppDispatch, useAppSelector } from "@/app/store";
-import { setCredentials, selectToken } from "@/app/slices/authSlice";
-import { useChangePasswordMutation } from "@/app/slices/adminSlice";
+import {
+  setCredentials,
+  selectToken,
+  usePostLoginMutation,
+  useChangePasswordMutation,
+} from "@/app/slices/authSlice";
 
 interface LoginLocationState {
   from?: string;

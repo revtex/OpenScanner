@@ -1,4 +1,12 @@
-import { Sun, Moon, User, LogOut, Settings } from "lucide-react";
+import {
+  Sun,
+  Moon,
+  User,
+  LogOut,
+  Settings,
+  Info,
+  KeyRound,
+} from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/hooks/useTheme";
@@ -9,6 +17,7 @@ import {
   selectUsername,
   clearCredentials,
 } from "@/app/slices/authSlice";
+import { useChangePasswordMutation } from "@/app/slices/authSlice";
 
 export function LEDPanel() {
   const { isDark, toggle } = useTheme();
@@ -23,6 +32,16 @@ export function LEDPanel() {
   const currentCall = useAppSelector((s) => s.scanner.currentCall);
   const isPlaying = !!currentCall;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwToast, setPwToast] = useState<{
+    msg: string;
+    type: "success" | "error";
+  } | null>(null);
+  const [changePassword] = useChangePasswordMutation();
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu on outside click
@@ -74,6 +93,32 @@ export function LEDPanel() {
     navigate("/login", { replace: true });
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      setPwToast({
+        msg: "New password must be at least 8 characters",
+        type: "error",
+      });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwToast({ msg: "Passwords do not match", type: "error" });
+      return;
+    }
+    try {
+      await changePassword({ currentPassword, newPassword }).unwrap();
+      setPwToast({ msg: "Password changed successfully", type: "success" });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(() => setPasswordOpen(false), 1500);
+    } catch {
+      setPwToast({ msg: "Failed to change password", type: "error" });
+    }
+    setTimeout(() => setPwToast(null), 4000);
+  };
+
   return (
     <div className="flex items-center justify-between mb-6 overflow-visible">
       <span className="led-branding text-sm font-bold tracking-widest uppercase opacity-70">
@@ -112,6 +157,16 @@ export function LEDPanel() {
                   <button
                     onClick={() => {
                       setMenuOpen(false);
+                      setPasswordOpen(true);
+                    }}
+                  >
+                    <KeyRound className="w-4 h-4" /> Change Password
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
                       handleSignOut();
                     }}
                   >
@@ -139,6 +194,13 @@ export function LEDPanel() {
         >
           {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
+        <button
+          className="btn btn-ghost btn-xs btn-circle"
+          onClick={() => setAboutOpen(true)}
+          aria-label="About"
+        >
+          <Info className="w-4 h-4" />
+        </button>
         <div
           className={`led-indicator rounded-sm ${shouldBlink ? "animate-pulse" : ""}`}
           style={{
@@ -151,6 +213,134 @@ export function LEDPanel() {
           }}
         />
       </div>
+
+      {/* About modal */}
+      {aboutOpen && (
+        <dialog
+          className="modal modal-open"
+          onClick={() => setAboutOpen(false)}
+        >
+          <div
+            className="modal-box max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-lg mb-4">About</h3>
+            <div className="space-y-2 text-sm">
+              {branding !== "OPENSCANNER" && (
+                <div>
+                  <span className="opacity-60">Instance:</span>{" "}
+                  <span className="font-semibold">{branding}</span>
+                </div>
+              )}
+              <div>
+                <span className="opacity-60">Version:</span>{" "}
+                <span>{config?.version || "—"}</span>
+              </div>
+              {config?.email && (
+                <div>
+                  <span className="opacity-60">Support:</span>{" "}
+                  <a
+                    href={`mailto:${config.email}`}
+                    className="link link-primary"
+                  >
+                    {config.email}
+                  </a>
+                </div>
+              )}
+            </div>
+            <div className="modal-action">
+              <button
+                className="btn btn-sm"
+                onClick={() => setAboutOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </dialog>
+      )}
+
+      {/* Change Password modal */}
+      {passwordOpen && (
+        <dialog
+          className="modal modal-open"
+          onClick={() => setPasswordOpen(false)}
+        >
+          <div
+            className="modal-box max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-lg mb-4">Change Password</h3>
+            <form onSubmit={handleChangePassword} className="space-y-3">
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text">Current Password</span>
+                </div>
+                <input
+                  type="password"
+                  className="input input-bordered w-full"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </label>
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text">New Password</span>
+                </div>
+                <input
+                  type="password"
+                  className="input input-bordered w-full"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+              </label>
+              <label className="form-control w-full">
+                <div className="label">
+                  <span className="label-text">Confirm New Password</span>
+                </div>
+                <input
+                  type="password"
+                  className="input input-bordered w-full"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+              </label>
+              {pwToast && (
+                <div
+                  className={`text-sm ${
+                    pwToast.type === "success" ? "text-success" : "text-error"
+                  }`}
+                >
+                  {pwToast.msg}
+                </div>
+              )}
+              <div className="modal-action">
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => {
+                    setPasswordOpen(false);
+                    setPwToast(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary btn-sm">
+                  Change Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </dialog>
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import {
   type FetchArgs,
   type FetchBaseQueryError,
 } from "@reduxjs/toolkit/query/react";
-import type { SetupStatus, LoginResponse } from "@/types";
+import type { SetupStatus } from "@/types";
 import { clearCredentials } from "@/app/slices/authSlice";
 
 const rawBaseQuery = fetchBaseQuery({
@@ -62,16 +62,6 @@ export const api = createApi({
         body,
       }),
     }),
-    postLogin: builder.mutation<
-      LoginResponse,
-      { username: string; password: string }
-    >({
-      query: (body) => ({
-        url: "/auth/login",
-        method: "POST",
-        body,
-      }),
-    }),
     getBookmarkIDs: builder.query<{ callIds: number[] }, void>({
       query: () => "/bookmarks",
       providesTags: ["Bookmarks"],
@@ -93,7 +83,6 @@ export const api = createApi({
 export const {
   useGetSetupStatusQuery,
   usePostSetupMutation,
-  usePostLoginMutation,
   useGetBookmarkIDsQuery,
   useToggleBookmarkMutation,
 } = api;

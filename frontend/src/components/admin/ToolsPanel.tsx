@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, Download, KeyRound } from "lucide-react";
+import { Upload, Download } from "lucide-react";
 import {
   useImportTalkgroupsMutation,
   useImportUnitsMutation,
@@ -7,8 +7,6 @@ import {
   useImportConfigMutation,
   useLazyGetMissingAudioCallsQuery,
   useCleanupMissingAudioCallsMutation,
-  useChangePasswordMutation,
-  useMigrateApiKeysHashingMutation,
   type MissingAudioResponse,
 } from "@/app/slices/adminSlice";
 
@@ -21,9 +19,6 @@ export default function ToolsPanel() {
     useLazyGetMissingAudioCallsQuery();
   const [cleanupMissingAudioCalls, { isLoading: cleaningMissingAudio }] =
     useCleanupMissingAudioCallsMutation();
-  const [changePassword] = useChangePasswordMutation();
-  const [migrateApiKeysHashing, { isLoading: migratingApiKeys }] =
-    useMigrateApiKeysHashingMutation();
 
   const [toast, setToast] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"error" | "success">("error");
@@ -31,12 +26,13 @@ export default function ToolsPanel() {
   const unitFileRef = useRef<HTMLInputElement>(null);
   const configFileRef = useRef<HTMLInputElement>(null);
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [missingAudioResult, setMissingAudioResult] =
     useState<MissingAudioResponse | null>(null);
   const [confirmMissingCleanup, setConfirmMissingCleanup] = useState(false);
+  const [scanProgress, setScanProgress] = useState<{
+    checked: number;
+    total: number;
+  } | null>(null);
 
   const showToast = useCallback(
     (msg: string, type: "error" | "success" = "error") => {
@@ -106,55 +102,47 @@ export default function ToolsPanel() {
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newPassword.length < 8) {
-      showToast("New password must be at least 8 characters");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      showToast("Passwords do not match");
-      return;
-    }
-    try {
-      await changePassword({
-        currentPassword,
-        newPassword,
-      }).unwrap();
-      showToast("Password changed successfully", "success");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch {
-      showToast("Failed to change password");
-    }
-  };
-
-  const handleMigrateApiKeysHashing = async () => {
-    try {
-      const result = await migrateApiKeysHashing().unwrap();
-      showToast(
-        `API key hash migration complete (${result.migrated} migrated)`,
-        "success",
-      );
-    } catch {
-      showToast("Failed to migrate API keys");
-    }
-  };
-
   const handleScanMissingAudio = async () => {
+    const PAGE_SIZE = 500;
+    let offset = 0;
+    const allMissing: MissingAudioResponse["missing"] = [];
+    let totalChecked = 0;
+    let lastResult: MissingAudioResponse | null = null;
+    setScanProgress({ checked: 0, total: 0 });
+
     try {
-      const result = await getMissingAudioCalls({
-        limit: 500,
+      for (;;) {
+        const result = await getMissingAudioCalls({
+          limit: PAGE_SIZE,
+          offset,
+        }).unwrap();
+        lastResult = result;
+        totalChecked += result.checked;
+        allMissing.push(...result.missing);
+        setScanProgress({ checked: totalChecked, total: result.totalCalls });
+
+        if (result.checked < PAGE_SIZE || totalChecked >= result.totalCalls)
+          break;
+        offset += PAGE_SIZE;
+      }
+
+      const combined: MissingAudioResponse = {
+        baseDir: lastResult?.baseDir ?? ".",
+        limit: totalChecked,
         offset: 0,
-      }).unwrap();
-      setMissingAudioResult(result);
+        totalCalls: lastResult?.totalCalls ?? 0,
+        checked: totalChecked,
+        missing: allMissing,
+      };
+      setMissingAudioResult(combined);
       showToast(
-        `Scan complete: ${result.missing.length} missing in ${result.checked} checked calls`,
+        `Scan complete: ${allMissing.length} missing in ${totalChecked} checked calls`,
         "success",
       );
     } catch {
       showToast("Failed to scan for missing audio files");
+    } finally {
+      setScanProgress(null);
     }
   };
 
@@ -177,11 +165,7 @@ export default function ToolsPanel() {
         `Cleanup complete: deleted ${result.deleted} of ${result.requested}`,
         "success",
       );
-      const refreshed = await getMissingAudioCalls({
-        limit: 500,
-        offset: 0,
-      }).unwrap();
-      setMissingAudioResult(refreshed);
+      setMissingAudioResult(null);
       setConfirmMissingCleanup(false);
     } catch {
       showToast("Failed to delete missing audio rows");
@@ -280,86 +264,6 @@ export default function ToolsPanel() {
         </div>
       </div>
 
-      {/* Change Password */}
-      <div className="card bg-base-200 mb-4">
-        <div className="card-body">
-          <h2 className="card-title text-base">
-            <KeyRound className="w-4 h-4" /> Change Password
-          </h2>
-          <form
-            onSubmit={handleChangePassword}
-            className="flex flex-col gap-3 max-w-sm"
-          >
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Current Password</span>
-              </div>
-              <input
-                type="password"
-                className="input input-bordered w-full"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-            </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">New Password</span>
-              </div>
-              <input
-                type="password"
-                className="input input-bordered w-full"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-            </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Confirm New Password</span>
-              </div>
-              <input
-                type="password"
-                className="input input-bordered w-full"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-            </label>
-            <button type="submit" className="btn btn-primary btn-sm w-fit">
-              Change Password
-            </button>
-          </form>
-        </div>
-      </div>
-
-      {/* API Key hash migration */}
-      <div className="card bg-base-200 mb-4">
-        <div className="card-body">
-          <h2 className="card-title text-base">
-            <KeyRound className="w-4 h-4" /> Migrate Legacy API Keys
-          </h2>
-          <p className="text-sm text-base-content/70">
-            Convert legacy plaintext API key rows to hashed storage. New keys
-            are already hashed.
-          </p>
-          <div>
-            <button
-              className="btn btn-primary"
-              onClick={handleMigrateApiKeysHashing}
-              disabled={migratingApiKeys}
-            >
-              {migratingApiKeys ? "Migrating..." : "Migrate API Keys"}
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Missing audio scan */}
       <div className="card bg-base-200 mb-4">
         <div className="card-body">
@@ -374,7 +278,11 @@ export default function ToolsPanel() {
               onClick={handleScanMissingAudio}
               disabled={scanningMissingAudio}
             >
-              {scanningMissingAudio ? "Scanning..." : "Scan Missing Audio"}
+              {scanningMissingAudio
+                ? scanProgress
+                  ? `Scanning... ${scanProgress.checked} / ${scanProgress.total}`
+                  : "Scanning..."
+                : "Scan Missing Audio"}
             </button>
             <label className="label cursor-pointer gap-2">
               <input

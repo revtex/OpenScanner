@@ -1,5 +1,10 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { SetupStatus } from "@/types";
+import { api } from "@/app/api";
+import type {
+  SetupStatus,
+  LoginResponse,
+  ChangePasswordRequest,
+} from "@/types";
 
 interface AuthState {
   token: string | null;
@@ -96,3 +101,29 @@ export const selectToken = (state: { auth: AuthState }) => state.auth.token;
 export const selectRole = (state: { auth: AuthState }) => state.auth.role;
 export const selectUsername = (state: { auth: AuthState }) =>
   state.auth.username;
+
+// ── Auth RTK Query endpoints ──
+
+const authApi = api.injectEndpoints({
+  endpoints: (builder) => ({
+    postLogin: builder.mutation<
+      LoginResponse,
+      { username: string; password: string }
+    >({
+      query: (body) => ({
+        url: "/auth/login",
+        method: "POST",
+        body,
+      }),
+    }),
+    changePassword: builder.mutation<void, ChangePasswordRequest>({
+      query: (body) => ({
+        url: "/auth/password",
+        method: "PUT",
+        body,
+      }),
+    }),
+  }),
+});
+
+export const { usePostLoginMutation, useChangePasswordMutation } = authApi;

@@ -100,6 +100,7 @@ func main() {
 	rateLimiter := auth.NewRateLimiter(ctx)
 
 	// Set up bounded FFmpeg worker pool and audio processor.
+	audio.CheckFFmpeg()
 	pool := audio.NewWorkerPool(ctx)
 	processor := audio.NewProcessor(cfg.BaseDir, pool)
 

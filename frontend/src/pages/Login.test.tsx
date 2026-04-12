@@ -27,21 +27,20 @@ vi.mock("react-router-dom", async () => {
 });
 
 const mockPostLogin = vi.fn();
+const mockChangePassword = vi.fn();
 vi.mock("@/app/api", async () => {
   const actual = await vi.importActual<typeof import("@/app/api")>("@/app/api");
   return {
     ...actual,
-    usePostLoginMutation: () => [mockPostLogin, { isLoading: false }],
   };
 });
-
-const mockChangePassword = vi.fn();
-vi.mock("@/app/slices/adminSlice", async () => {
-  const actual = await vi.importActual<
-    typeof import("@/app/slices/adminSlice")
-  >("@/app/slices/adminSlice");
+vi.mock("@/app/slices/authSlice", async () => {
+  const actual = await vi.importActual<typeof import("@/app/slices/authSlice")>(
+    "@/app/slices/authSlice",
+  );
   return {
     ...actual,
+    usePostLoginMutation: () => [mockPostLogin, { isLoading: false }],
     useChangePasswordMutation: () => [mockChangePassword, { isLoading: false }],
   };
 });

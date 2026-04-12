@@ -8,6 +8,10 @@ import {
   useLocation,
 } from "react-router-dom";
 import {
+  NavigationGuardProvider,
+  useNavigationGuard,
+} from "@/components/admin/NavigationGuardContext";
+import {
   Users,
   Radio,
   FolderTree,
@@ -60,13 +64,26 @@ function SidebarContent({
   onSignOut: () => void;
   onNavClick?: () => void;
 }) {
+  const { requestNavigation } = useNavigationGuard();
+  const navigate = useNavigate();
+
+  const handleClick =
+    (to: string, extra?: () => void) =>
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      if (requestNavigation(to)) {
+        navigate(to);
+        extra?.();
+      }
+    };
+
   return (
     <ul className="menu bg-base-200 h-full p-2 gap-1">
       {navItems.map(({ to, label, icon: Icon }) => (
         <li key={to}>
           <NavLink
             to={to}
-            onClick={onNavClick}
+            onClick={handleClick(to, onNavClick)}
             className={({ isActive }) =>
               isActive
                 ? "border-l-4 border-primary bg-primary/10"
@@ -79,7 +96,11 @@ function SidebarContent({
         </li>
       ))}
       <li className="mt-auto">
-        <NavLink to="/" onClick={onNavClick} className="hover:bg-base-300">
+        <NavLink
+          to="/"
+          onClick={handleClick("/", onNavClick)}
+          className="hover:bg-base-300"
+        >
           <Home className="w-5 h-5 shrink-0" />
           {showLabels && <span>Scanner</span>}
         </NavLink>
@@ -136,80 +157,82 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="drawer md:drawer-open">
-      <input
-        id="admin-drawer"
-        type="checkbox"
-        className="drawer-toggle"
-        checked={drawerOpen}
-        onChange={(e) => setDrawerOpen(e.target.checked)}
-      />
+    <NavigationGuardProvider>
+      <div className="drawer md:drawer-open">
+        <input
+          id="admin-drawer"
+          type="checkbox"
+          className="drawer-toggle"
+          checked={drawerOpen}
+          onChange={(e) => setDrawerOpen(e.target.checked)}
+        />
 
-      {/* Main content */}
-      <div className="drawer-content flex flex-col min-h-screen">
-        {/* Mobile top bar */}
-        <div className="navbar bg-base-200 md:hidden">
+        {/* Main content */}
+        <div className="drawer-content flex flex-col min-h-screen">
+          {/* Mobile top bar */}
+          <div className="navbar bg-base-200 md:hidden">
+            <label
+              htmlFor="admin-drawer"
+              className="btn btn-ghost btn-square"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </label>
+          </div>
+
+          <main className="flex-1 p-6 max-w-[1200px] w-full mx-auto">
+            <Routes>
+              <Route path="users" element={<UsersPanel />} />
+              <Route path="systems" element={<SystemsPanel />} />
+              <Route path="groups" element={<GroupsTagsPanel />} />
+              <Route path="apikeys" element={<ApiKeysPanel />} />
+              <Route path="dirwatches" element={<DirWatchPanel />} />
+              <Route path="downstreams" element={<DownstreamsPanel />} />
+              <Route path="options" element={<OptionsPanel />} />
+              <Route path="logs" element={<LogsPanel />} />
+              <Route path="tools" element={<ToolsPanel />} />
+              <Route path="webhooks" element={<WebhooksPanel />} />
+              <Route path="*" element={<Navigate to="users" replace />} />
+            </Routes>
+          </main>
+        </div>
+
+        {/* Sidebar */}
+        <div className="drawer-side z-40">
           <label
             htmlFor="admin-drawer"
-            className="btn btn-ghost btn-square"
-            aria-label="Open menu"
-          >
-            <Menu className="w-5 h-5" />
-          </label>
-        </div>
-
-        <main className="flex-1 p-6 max-w-[1200px] w-full mx-auto">
-          <Routes>
-            <Route path="users" element={<UsersPanel />} />
-            <Route path="systems" element={<SystemsPanel />} />
-            <Route path="groups" element={<GroupsTagsPanel />} />
-            <Route path="apikeys" element={<ApiKeysPanel />} />
-            <Route path="dirwatches" element={<DirWatchPanel />} />
-            <Route path="downstreams" element={<DownstreamsPanel />} />
-            <Route path="options" element={<OptionsPanel />} />
-            <Route path="logs" element={<LogsPanel />} />
-            <Route path="tools" element={<ToolsPanel />} />
-            <Route path="webhooks" element={<WebhooksPanel />} />
-            <Route path="*" element={<Navigate to="users" replace />} />
-          </Routes>
-        </main>
-      </div>
-
-      {/* Sidebar */}
-      <div className="drawer-side z-40">
-        <label
-          htmlFor="admin-drawer"
-          className="drawer-overlay"
-          aria-label="Close menu"
-        />
-        {/* Mobile: full sidebar with labels */}
-        <div className="h-full md:hidden">
-          <div className="flex items-center justify-end p-2 bg-base-200 md:hidden">
-            <button
-              className="btn btn-ghost btn-square btn-sm"
-              onClick={() => setDrawerOpen(false)}
-              aria-label="Close menu"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <SidebarContent
-            showLabels
-            onSignOut={handleSignOut}
-            onNavClick={() => setDrawerOpen(false)}
+            className="drawer-overlay"
+            aria-label="Close menu"
           />
-        </div>
+          {/* Mobile: full sidebar with labels */}
+          <div className="h-full md:hidden">
+            <div className="flex items-center justify-end p-2 bg-base-200 md:hidden">
+              <button
+                className="btn btn-ghost btn-square btn-sm"
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Close menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <SidebarContent
+              showLabels
+              onSignOut={handleSignOut}
+              onNavClick={() => setDrawerOpen(false)}
+            />
+          </div>
 
-        {/* md: icons only */}
-        <div className="hidden md:block lg:hidden w-16 h-full">
-          <SidebarContent showLabels={false} onSignOut={handleSignOut} />
-        </div>
+          {/* md: icons only */}
+          <div className="hidden md:block lg:hidden w-16 h-full">
+            <SidebarContent showLabels={false} onSignOut={handleSignOut} />
+          </div>
 
-        {/* lg: icons + labels */}
-        <div className="hidden lg:block w-[200px] h-full">
-          <SidebarContent showLabels onSignOut={handleSignOut} />
+          {/* lg: icons + labels */}
+          <div className="hidden lg:block w-[200px] h-full">
+            <SidebarContent showLabels onSignOut={handleSignOut} />
+          </div>
         </div>
       </div>
-    </div>
+    </NavigationGuardProvider>
   );
 }

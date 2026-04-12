@@ -14,7 +14,6 @@ import type {
   AdminWebhook,
   AdminSetting,
   AdminLog,
-  ChangePasswordRequest,
   CreateUserPayload,
   UpdateUserPayload,
 } from "@/types";
@@ -617,15 +616,6 @@ const adminApi = api.injectEndpoints({
         body,
       }),
     }),
-
-    // ── Password change ──
-    changePassword: builder.mutation<void, ChangePasswordRequest>({
-      query: (body) => ({
-        url: "/auth/password",
-        method: "PUT",
-        body,
-      }),
-    }),
   }),
 });
 
@@ -702,6 +692,4 @@ export const {
   useImportConfigMutation,
   useLazyGetMissingAudioCallsQuery,
   useCleanupMissingAudioCallsMutation,
-  // Password
-  useChangePasswordMutation,
 } = adminApi;

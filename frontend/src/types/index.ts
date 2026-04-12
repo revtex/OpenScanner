@@ -49,9 +49,9 @@ export interface TalkgroupConfig {
 // Scanner configuration from CFG/VER events
 export interface ScannerConfig {
   systems: SystemConfig[];
-  branding: string;
-  email: string;
-  version: string;
+  branding?: string;
+  email?: string;
+  version?: string;
   time12hFormat: boolean;
   showListenersCount: boolean;
 }

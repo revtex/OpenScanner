@@ -126,7 +126,13 @@ export const scannerSlice = createSlice({
       state.connectionStatus = action.payload;
     },
     setConfig(state, action: PayloadAction<ScannerConfig>) {
-      state.config = action.payload;
+      const incoming = action.payload;
+      state.config = {
+        ...incoming,
+        branding: incoming.branding ?? state.config?.branding ?? "",
+        email: incoming.email ?? state.config?.email ?? "",
+        version: incoming.version ?? state.config?.version ?? "",
+      };
     },
     setBranding(
       state,

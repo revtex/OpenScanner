@@ -147,13 +147,15 @@ class WsClient {
             time12hFormat?: boolean | string;
             showListenersCount?: boolean | string;
           };
-          // CFG may be partial — merge with existing config concept
+          // CFG carries systems + display prefs. Branding/email/version
+          // arrive separately via VER, so only override if CFG explicitly
+          // provides them — otherwise keep current values.
           this.dispatch(
             setConfig({
               systems: (cfg.systems ?? []) as import("@/types").SystemConfig[],
-              branding: cfg.branding ?? "",
-              email: cfg.email ?? "",
-              version: cfg.version ?? "",
+              branding: cfg.branding,
+              email: cfg.email,
+              version: cfg.version,
               time12hFormat:
                 cfg.time12hFormat === true || cfg.time12hFormat === "true",
               showListenersCount:
