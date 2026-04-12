@@ -7,9 +7,16 @@ services:
     volumes:
       - ./data:/data
     environment:
-      - OPENSCANNER_RECORDINGS_DIR=/data
+      - OPENSCANNER_DB_FILE=/data/openscanner.db
+      - OPENSCANNER_RECORDINGS_DIR=/data/recordings
       - OPENSCANNER_LISTEN=0.0.0.0:3000
       # Set timezone for recorder timestamp interpretation (IANA format).
       # Example: TZ=America/New_York
       # - TZ=America/New_York
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
     restart: unless-stopped

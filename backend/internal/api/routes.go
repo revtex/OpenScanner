@@ -3,6 +3,10 @@ package api
 
 import (
 	"database/sql"
+	"io/fs"
+	"log/slog"
+	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/openscanner/openscanner/internal/audio"
@@ -10,6 +14,7 @@ import (
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/downstream"
 	"github.com/openscanner/openscanner/internal/middleware"
+	"github.com/openscanner/openscanner/internal/static"
 	"github.com/openscanner/openscanner/internal/ws"
 )
 
@@ -192,6 +197,45 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	r.GET("/ws", gin.WrapF(ws.HandleListenerWS(deps.Hub, deps.Queries)))
 	r.GET("/api/admin/ws", gin.WrapF(ws.HandleAdminWS(deps.Hub, deps.Queries)))
 
-	// Serve frontend (Phase 12 — placeholder)
-	// r.NoRoute(func(c *gin.Context) { c.File("...") })
+	// Serve embedded frontend (SPA mode).
+	serveFrontend(r)
+}
+
+// serveFrontend serves the embedded frontend dist/ as a SPA.
+// Non-API, non-WS routes serve static files; unmatched paths fall back to index.html.
+func serveFrontend(r *gin.Engine) {
+	distFS, err := fs.Sub(static.DistFS, "dist")
+	if err != nil {
+		slog.Warn("embedded frontend not available", "error", err)
+		return
+	}
+
+	// Check if the embedded FS has an index.html (i.e. a real build was embedded).
+	if _, err := fs.Stat(distFS, "index.html"); err != nil {
+		slog.Warn("no embedded frontend found — run frontend build and rebuild backend to embed")
+		return
+	}
+
+	fileServer := http.FileServer(http.FS(distFS))
+
+	r.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+
+		// Don't serve frontend for API or WS paths.
+		if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/ws") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+
+		// Try to serve the exact file (JS, CSS, images, etc.).
+		if f, err := distFS.Open(strings.TrimPrefix(path, "/")); err == nil {
+			f.Close()
+			fileServer.ServeHTTP(c.Writer, c.Request)
+			return
+		}
+
+		// SPA fallback: serve index.html for client-side routing.
+		c.Request.URL.Path = "/"
+		fileServer.ServeHTTP(c.Writer, c.Request)
+	})
 }

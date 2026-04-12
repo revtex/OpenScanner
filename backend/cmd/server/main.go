@@ -7,20 +7,24 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kardianos/service"
 	"github.com/openscanner/openscanner/internal/api"
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/auth"
+	"github.com/openscanner/openscanner/internal/cli"
 	"github.com/openscanner/openscanner/internal/config"
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/dirwatch"
 	"github.com/openscanner/openscanner/internal/downstream"
 	"github.com/openscanner/openscanner/internal/seed"
 	"github.com/openscanner/openscanner/internal/ws"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 func main() {
@@ -43,6 +47,63 @@ func main() {
 		fmt.Printf("Configuration saved to %s\n", cfg.ConfigFile)
 		os.Exit(0)
 	}
+
+	// Check for CLI subcommands (login, logout, config-get, etc.) before starting the server.
+	if cli.Run() {
+		return
+	}
+
+	// kardianos/service configuration.
+	svcConfig := &service.Config{
+		Name:        "openscanner",
+		DisplayName: "OpenScanner",
+		Description: "OpenScanner Radio Call Manager",
+	}
+
+	prg := &program{cfg: cfg}
+	svc, err := service.New(prg, svcConfig)
+	if err != nil {
+		slog.Error("failed to create service", "error", err)
+		os.Exit(1)
+	}
+
+	// Handle service control commands (install/uninstall/start/stop/restart).
+	if cfg.Service != "" {
+		if err := service.Control(svc, cfg.Service); err != nil {
+			slog.Error("service control failed", "action", cfg.Service, "error", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Service action %q completed successfully\n", cfg.Service)
+		os.Exit(0)
+	}
+
+	// Run the service (works for both foreground and service manager modes).
+	if err := svc.Run(); err != nil {
+		slog.Error("service run failed", "error", err)
+		os.Exit(1)
+	}
+}
+
+// program implements the kardianos/service.Interface.
+type program struct {
+	cfg  *config.Config
+	stop context.CancelFunc
+}
+
+func (p *program) Start(_ service.Service) error {
+	go p.run()
+	return nil
+}
+
+func (p *program) Stop(_ service.Service) error {
+	if p.stop != nil {
+		p.stop()
+	}
+	return nil
+}
+
+func (p *program) run() {
+	cfg := p.cfg
 
 	// Apply configured timezone so recorder timestamps are interpreted correctly.
 	if cfg.Timezone != "" {
@@ -72,6 +133,9 @@ func main() {
 		"recordings_dir", cfg.RecordingsDir,
 	)
 
+	// Startup checks: verify external tool availability.
+	checkExternalTools()
+
 	// Open database (runs migrations automatically).
 	sqlDB, err := db.Open(cfg.DBFile)
 	if err != nil {
@@ -95,6 +159,7 @@ func main() {
 	// (e.g. RateLimiter cleanup goroutine) to enable clean shutdown.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	p.stop = stop
 
 	queries := db.New(sqlDB)
 	rateLimiter := auth.NewRateLimiter(ctx)
@@ -132,8 +197,8 @@ func main() {
 
 	// Create HTTP server.
 	srv := &http.Server{
-		Addr:              cfg.Listen,
-		Handler:           router,
+		Addr:    cfg.Listen,
+		Handler: router, // may be replaced below when SSL is enabled
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      60 * time.Second,
@@ -141,15 +206,32 @@ func main() {
 	}
 
 	// Channel to signal fatal server errors to the main goroutine.
-	serverErr := make(chan error, 1)
+	serverErr := make(chan error, 2)
 
-	// Start server in a goroutine.
+	// When SSL is configured, replace the HTTP handler with a redirect so that
+	// plaintext application traffic is never served to clients.
+	sslEnabled := cfg.SSLAutoCert != "" || (cfg.SSLCert != "" && cfg.SSLKey != "")
+	if sslEnabled {
+		srv.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
+		})
+	}
+
+	// Start HTTP server in a goroutine.
 	go func() {
 		slog.Info("HTTP server listening", "addr", cfg.Listen)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			serverErr <- err
 		}
 	}()
+
+	// Start TLS server if configured.
+	var tlsSrv *http.Server
+	if cfg.SSLAutoCert != "" {
+		tlsSrv = p.startAutoCertServer(cfg, router, srv, serverErr)
+	} else if cfg.SSLCert != "" && cfg.SSLKey != "" {
+		tlsSrv = p.startTLSServer(cfg, router, serverErr)
+	}
 
 	// Block until signal or server error.
 	select {
@@ -164,9 +246,90 @@ func main() {
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		slog.Error("server shutdown error", "error", err)
+		slog.Error("HTTP server shutdown error", "error", err)
+	}
+
+	if tlsSrv != nil {
+		if err := tlsSrv.Shutdown(shutdownCtx); err != nil {
+			slog.Error("TLS server shutdown error", "error", err)
+		}
 	}
 
 	dsService.Stop()
 	slog.Info("server stopped")
+}
+
+// startTLSServer starts an HTTPS server with the provided certificate and key files.
+func (p *program) startTLSServer(cfg *config.Config, handler http.Handler, errCh chan<- error) *http.Server {
+	addr := cfg.SSLListen
+	if addr == "" {
+		addr = ":443"
+	}
+
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+
+	go func() {
+		slog.Info("TLS server listening", "addr", addr, "cert", cfg.SSLCert)
+		if err := srv.ListenAndServeTLS(cfg.SSLCert, cfg.SSLKey); err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+	}()
+
+	return srv
+}
+
+// startAutoCertServer starts an HTTPS server with Let's Encrypt auto-certificate management.
+// httpSrv is the already-started HTTP server whose handler is augmented with the
+// ACME HTTP-01 challenge responder for certificate issuance without ALPN.
+func (p *program) startAutoCertServer(cfg *config.Config, handler http.Handler, httpSrv *http.Server, errCh chan<- error) *http.Server {
+	addr := cfg.SSLListen
+	if addr == "" {
+		addr = ":443"
+	}
+
+	m := &autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(cfg.SSLAutoCert),
+		Cache:      autocert.DirCache("autocert-cache"),
+	}
+
+	// Augment the HTTP listener to handle ACME HTTP-01 challenges.
+	// The existing redirect handler is preserved for non-challenge requests.
+	httpSrv.Handler = m.HTTPHandler(httpSrv.Handler)
+
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		TLSConfig:         m.TLSConfig(),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+
+	go func() {
+		slog.Info("TLS server listening (auto-cert)", "addr", addr, "domain", cfg.SSLAutoCert)
+		if err := srv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+	}()
+
+	return srv
+}
+
+// checkExternalTools logs warnings if optional external tools are not available.
+func checkExternalTools() {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		slog.Warn("ffmpeg not found on PATH, audio conversion disabled")
+	}
+	if _, err := exec.LookPath("whisper"); err != nil {
+		slog.Warn("whisper not found on PATH, transcription disabled")
+	}
 }
