@@ -53,6 +53,15 @@ type updateSystemRequest struct {
 	Order          int64   `json:"order"`
 }
 
+type reorderSystemItem struct {
+	ID    int64 `json:"id"`
+	Order int64 `json:"order"`
+}
+
+type reorderSystemsRequest struct {
+	Systems []reorderSystemItem `json:"systems"`
+}
+
 func (r updateSystemRequest) toParams(id int64) db.UpdateSystemParams {
 	return db.UpdateSystemParams{
 		ID:             id,

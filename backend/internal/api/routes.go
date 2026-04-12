@@ -96,6 +96,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		// Systems
 		admin.GET("/systems", adminHandler.ListSystems)
 		admin.POST("/systems", adminHandler.CreateSystem)
+		admin.PUT("/systems/reorder", adminHandler.ReorderSystems)
 		admin.PUT("/systems/:id", adminHandler.UpdateSystem)
 		admin.DELETE("/systems/:id", adminHandler.DeleteSystem)
 

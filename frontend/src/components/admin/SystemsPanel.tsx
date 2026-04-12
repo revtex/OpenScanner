@@ -28,6 +28,7 @@ import {
   useListSystemsQuery,
   useCreateSystemMutation,
   useUpdateSystemMutation,
+  useReorderSystemsMutation,
   useDeleteSystemMutation,
   useListTalkgroupsQuery,
   useCreateTalkgroupMutation,
@@ -323,6 +324,7 @@ export default function SystemsPanel() {
 
   const [createSystem] = useCreateSystemMutation();
   const [updateSystem] = useUpdateSystemMutation();
+  const [reorderSystems] = useReorderSystemsMutation();
   const [deleteSystem] = useDeleteSystemMutation();
   const [createTalkgroup] = useCreateTalkgroupMutation();
   const [updateTalkgroup] = useUpdateTalkgroupMutation();
@@ -429,24 +431,16 @@ export default function SystemsPanel() {
 
     const reordered = arrayMove(sortedSystems, oldIndex, newIndex);
 
-    // Update order for affected systems
+    // Submit one bulk reorder request to avoid N per-row updates.
     try {
-      await Promise.all(
-        reordered.map((sys, idx) => {
-          if (sys.order !== idx) {
-            return updateSystem({
-              id: sys.id,
-              systemId: sys.systemId,
-              label: sys.label,
-              autoPopulate: sys.autoPopulate,
-              led: sys.led ?? null,
-              blacklistsJson: sys.blacklistsJson ?? null,
-              order: idx,
-            }).unwrap();
-          }
-          return Promise.resolve();
-        }),
-      );
+      const changed = reordered
+        .map((sys, idx) => ({ id: sys.id, order: idx, oldOrder: sys.order }))
+        .filter((s) => s.oldOrder !== s.order)
+        .map(({ id, order }) => ({ id, order }));
+
+      if (changed.length === 0) return;
+
+      await reorderSystems(changed).unwrap();
     } catch {
       showError("Failed to reorder systems");
     }
@@ -493,12 +487,19 @@ export default function SystemsPanel() {
       blacklistIds.length > 0 ? JSON.stringify(blacklistIds) : null;
     try {
       if (editingSysId != null) {
+        const existing = sortedSystems.find((s) => s.id === editingSysId);
+        if (!existing) {
+          showError("System not found");
+          return;
+        }
         await updateSystem({
           id: editingSysId,
           systemId: Number(sysForm.systemId),
           label: sysForm.label,
+          autoPopulate: existing.autoPopulate,
           led: sysForm.led || null,
           blacklistsJson,
+          order: existing.order,
         }).unwrap();
       } else {
         await createSystem({

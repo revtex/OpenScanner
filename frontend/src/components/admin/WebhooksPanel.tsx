@@ -99,7 +99,12 @@ export default function WebhooksPanel() {
     try {
       await updateWebhook({
         id: w.id,
+        url: w.url,
+        type: w.type,
+        secret: w.secret,
+        systemsJson: w.systemsJson,
         disabled: w.disabled ? 0 : 1,
+        order: w.order,
       }).unwrap();
     } catch {
       showError("Failed to update webhook");

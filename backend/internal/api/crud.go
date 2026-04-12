@@ -343,6 +343,66 @@ func (h *AdminHandler) UpdateSystem(c *gin.Context) {
 	c.JSON(http.StatusOK, toSystemResponse(system))
 }
 
+// ReorderSystems handles PUT /api/admin/systems/reorder.
+// Applies all order updates in one transaction to avoid many per-row updates.
+func (h *AdminHandler) ReorderSystems(c *gin.Context) {
+	var req reorderSystemsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if len(req.Systems) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "systems is required"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	tx, err := h.sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		slog.Error("failed to begin systems reorder transaction", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reorder systems"})
+		return
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	qtx := h.queries.WithTx(tx)
+	for _, item := range req.Systems {
+		sys, err := qtx.GetSystem(ctx, item.ID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				c.JSON(http.StatusNotFound, gin.H{"error": "system not found"})
+				return
+			}
+			slog.Error("failed to load system for reorder", "id", item.ID, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reorder systems"})
+			return
+		}
+
+		err = qtx.UpdateSystem(ctx, db.UpdateSystemParams{
+			ID:             sys.ID,
+			SystemID:       sys.SystemID,
+			Label:          sys.Label,
+			AutoPopulate:   sys.AutoPopulate,
+			BlacklistsJson: sys.BlacklistsJson,
+			Led:            sys.Led,
+			Order:          item.Order,
+		})
+		if err != nil {
+			slog.Error("failed to update system order", "id", item.ID, "order", item.Order, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reorder systems"})
+			return
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		slog.Error("failed to commit systems reorder transaction", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reorder systems"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 // DeleteSystem handles DELETE /api/admin/systems/:id.
 func (h *AdminHandler) DeleteSystem(c *gin.Context) {
 	id, ok := parseID(c)

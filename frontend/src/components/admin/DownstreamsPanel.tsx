@@ -122,7 +122,11 @@ export default function DownstreamsPanel() {
     try {
       await updateDownstream({
         id: d.id,
+        url: d.url,
+        apiKey: d.apiKey,
+        systemsJson: d.systemsJson,
         disabled: d.disabled ? 0 : 1,
+        order: d.order,
       }).unwrap();
     } catch {
       showError("Failed to update downstream");

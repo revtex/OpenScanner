@@ -50,6 +50,20 @@ const adminApi = api.injectEndpoints({
           method: "PUT",
           body,
         }),
+        async onQueryStarted({ id, ...body }, { dispatch, queryFulfilled }) {
+          const patch = dispatch(
+            adminApi.util.updateQueryData("listUsers", undefined, (draft) => {
+              const user = draft.find((u) => u.id === id);
+              if (!user) return;
+              Object.assign(user, body);
+            }),
+          );
+          try {
+            await queryFulfilled;
+          } catch {
+            patch.undo();
+          }
+        },
         invalidatesTags: ["Users"],
       },
     ),
@@ -73,7 +87,49 @@ const adminApi = api.injectEndpoints({
         method: "PUT",
         body,
       }),
+      async onQueryStarted({ id, ...body }, { dispatch, queryFulfilled }) {
+        const patch = dispatch(
+          adminApi.util.updateQueryData("listSystems", undefined, (draft) => {
+            const sys = draft.find((s) => s.id === id);
+            if (!sys) return;
+            Object.assign(sys, body);
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patch.undo();
+        }
+      },
       invalidatesTags: ["Systems"],
+    }),
+    reorderSystems: builder.mutation<
+      void,
+      Array<{ id: number; order: number }>
+    >({
+      query: (systems) => ({
+        url: "/admin/systems/reorder",
+        method: "PUT",
+        body: { systems },
+      }),
+      async onQueryStarted(systems, { dispatch, queryFulfilled }) {
+        const patch = dispatch(
+          adminApi.util.updateQueryData("listSystems", undefined, (draft) => {
+            const nextOrder = new Map(systems.map((s) => [s.id, s.order]));
+            for (const sys of draft) {
+              const order = nextOrder.get(sys.id);
+              if (order !== undefined) {
+                sys.order = order;
+              }
+            }
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patch.undo();
+        }
+      },
     }),
     deleteSystem: builder.mutation<void, number>({
       query: (id) => ({ url: `/admin/systems/${id}`, method: "DELETE" }),
@@ -217,6 +273,24 @@ const adminApi = api.injectEndpoints({
         method: "PUT",
         body,
       }),
+      async onQueryStarted({ id, ...body }, { dispatch, queryFulfilled }) {
+        const patch = dispatch(
+          adminApi.util.updateQueryData(
+            "listDirwatches",
+            undefined,
+            (draft) => {
+              const dw = draft.find((d) => d.id === id);
+              if (!dw) return;
+              Object.assign(dw, body);
+            },
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patch.undo();
+        }
+      },
       invalidatesTags: ["Dirwatches"],
     }),
     deleteDirwatch: builder.mutation<void, number>({
@@ -245,6 +319,24 @@ const adminApi = api.injectEndpoints({
         method: "PUT",
         body,
       }),
+      async onQueryStarted({ id, ...body }, { dispatch, queryFulfilled }) {
+        const patch = dispatch(
+          adminApi.util.updateQueryData(
+            "listDownstreams",
+            undefined,
+            (draft) => {
+              const ds = draft.find((d) => d.id === id);
+              if (!ds) return;
+              Object.assign(ds, body);
+            },
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patch.undo();
+        }
+      },
       invalidatesTags: ["Downstreams"],
     }),
     deleteDownstream: builder.mutation<void, number>({
@@ -267,6 +359,20 @@ const adminApi = api.injectEndpoints({
         method: "PUT",
         body,
       }),
+      async onQueryStarted({ id, ...body }, { dispatch, queryFulfilled }) {
+        const patch = dispatch(
+          adminApi.util.updateQueryData("listWebhooks", undefined, (draft) => {
+            const wh = draft.find((w) => w.id === id);
+            if (!wh) return;
+            Object.assign(wh, body);
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patch.undo();
+        }
+      },
       invalidatesTags: ["Webhooks"],
     }),
     deleteWebhook: builder.mutation<void, number>({
@@ -359,6 +465,7 @@ export const {
   useListSystemsQuery,
   useCreateSystemMutation,
   useUpdateSystemMutation,
+  useReorderSystemsMutation,
   useDeleteSystemMutation,
   // Talkgroups
   useListTalkgroupsQuery,
