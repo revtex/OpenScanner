@@ -146,11 +146,15 @@ export interface AdminTag {
 
 export interface AdminApiKey {
   id: number;
-  key: string;
+  fingerprint: string;
   ident: string | null;
   disabled: number;
   systemsJson: string | null;
   order: number;
+}
+
+export interface AdminApiKeyCreateResponse extends AdminApiKey {
+  createdKey: string;
 }
 
 export interface AdminDirwatch {

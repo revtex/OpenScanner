@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -32,6 +34,20 @@ type AdminHandler struct {
 	sqlDB    *sql.DB
 	dwReload DirwatchReloader
 	dsReload DownstreamReloader
+}
+
+func isSHA256Hex(s string) bool {
+	if len(s) != 64 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+		if (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // NewAdminHandler constructs an AdminHandler.
@@ -83,6 +99,78 @@ type updateUserRequest struct {
 	SystemsJson *string `json:"systemsJson"`
 	Expiration  *int64  `json:"expiration"`
 	Limit       *int64  `json:"limit"`
+}
+
+type serverDirectoryEntry struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+}
+
+type listServerDirectoriesResponse struct {
+	Path        string                 `json:"path"`
+	Parent      *string                `json:"parent"`
+	Directories []serverDirectoryEntry `json:"directories"`
+}
+
+// ListServerDirectories handles GET /api/admin/fs/directories.
+// Returns immediate child directories for a given absolute server path.
+func (h *AdminHandler) ListServerDirectories(c *gin.Context) {
+	path := c.Query("path")
+	if path == "" {
+		path = "/"
+	}
+
+	clean := filepath.Clean(path)
+	if !filepath.IsAbs(clean) {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "path must be absolute"})
+		return
+	}
+
+	info, err := os.Stat(clean)
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error": "directory does not exist or is not accessible: " + err.Error(),
+		})
+		return
+	}
+	if !info.IsDir() {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "path is not a directory: " + clean})
+		return
+	}
+
+	entries, err := os.ReadDir(clean)
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error": "failed to read directory: " + err.Error(),
+		})
+		return
+	}
+
+	dirs := make([]serverDirectoryEntry, 0, len(entries))
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		dirs = append(dirs, serverDirectoryEntry{
+			Name: e.Name(),
+			Path: filepath.Join(clean, e.Name()),
+		})
+	}
+	sort.Slice(dirs, func(i, j int) bool {
+		return strings.ToLower(dirs[i].Name) < strings.ToLower(dirs[j].Name)
+	})
+
+	var parent *string
+	if clean != "/" {
+		p := filepath.Dir(clean)
+		parent = &p
+	}
+
+	c.JSON(http.StatusOK, listServerDirectoriesResponse{
+		Path:        clean,
+		Parent:      parent,
+		Directories: dirs,
+	})
 }
 
 // ListUsers handles GET /api/admin/users.
@@ -863,11 +951,13 @@ func (h *AdminHandler) CreateAPIKey(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	if req.Key == "" {
-		req.Key = uuid.New().String()
+	plainKey := uuid.New().String()
+	if req.Key != nil && *req.Key != "" {
+		plainKey = *req.Key
 	}
+	hashedKey := auth.HashAPIKey(plainKey)
 
-	id, err := h.queries.CreateAPIKey(c.Request.Context(), req.toParams())
+	id, err := h.queries.CreateAPIKey(c.Request.Context(), req.toParams(hashedKey))
 	if isUniqueViolation(err) {
 		c.JSON(http.StatusConflict, gin.H{"error": "API key already exists"})
 		return
@@ -884,7 +974,10 @@ func (h *AdminHandler) CreateAPIKey(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created API key"})
 		return
 	}
-	c.JSON(http.StatusCreated, toAPIKeyResponse(key))
+	c.JSON(http.StatusCreated, apiKeyCreateResponse{
+		apiKeyResponse: toAPIKeyResponse(key),
+		CreatedKey:     plainKey,
+	})
 }
 
 // UpdateAPIKey handles PUT /api/admin/apikeys/:id.
@@ -905,7 +998,25 @@ func (h *AdminHandler) UpdateAPIKey(c *gin.Context) {
 		return
 	}
 
-	err := h.queries.UpdateAPIKey(c.Request.Context(), req.toParams(id))
+	current, err := h.queries.GetAPIKey(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "API key not found"})
+		return
+	}
+
+	keyHash := current.Key
+	if req.Key != nil && *req.Key != "" {
+		keyHash = auth.HashAPIKey(*req.Key)
+	}
+
+	err = h.queries.UpdateAPIKey(c.Request.Context(), db.UpdateAPIKeyParams{
+		ID:          id,
+		Key:         keyHash,
+		Ident:       ptrToNullStr(req.Ident),
+		Disabled:    req.Disabled,
+		SystemsJson: ptrToNullStr(req.SystemsJson),
+		Order:       req.Order,
+	})
 	if isUniqueViolation(err) {
 		c.JSON(http.StatusConflict, gin.H{"error": "API key already exists"})
 		return
@@ -923,6 +1034,116 @@ func (h *AdminHandler) UpdateAPIKey(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, toAPIKeyResponse(key))
+}
+
+// ReorderAPIKeys handles PUT /api/admin/apikeys/reorder.
+// Applies all order updates in one transaction.
+func (h *AdminHandler) ReorderAPIKeys(c *gin.Context) {
+	var req reorderAPIKeysRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if len(req.APIKeys) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "apiKeys is required"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	tx, err := h.sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		slog.Error("failed to begin API key reorder transaction", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reorder API keys"})
+		return
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	qtx := h.queries.WithTx(tx)
+	for _, item := range req.APIKeys {
+		ak, err := qtx.GetAPIKey(ctx, item.ID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				c.JSON(http.StatusNotFound, gin.H{"error": "API key not found"})
+				return
+			}
+			slog.Error("failed to load API key for reorder", "id", item.ID, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reorder API keys"})
+			return
+		}
+
+		err = qtx.UpdateAPIKey(ctx, db.UpdateAPIKeyParams{
+			ID:          ak.ID,
+			Key:         ak.Key,
+			Ident:       ak.Ident,
+			Disabled:    ak.Disabled,
+			SystemsJson: ak.SystemsJson,
+			Order:       item.Order,
+		})
+		if err != nil {
+			slog.Error("failed to update API key order", "id", item.ID, "order", item.Order, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reorder API keys"})
+			return
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		slog.Error("failed to commit API key reorder transaction", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reorder API keys"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// MigrateAPIKeysHashing handles POST /api/admin/apikeys/migrate-hash.
+// It hashes legacy plaintext API keys in place and returns the migrated count.
+func (h *AdminHandler) MigrateAPIKeysHashing(c *gin.Context) {
+	ctx := c.Request.Context()
+	keys, err := h.queries.ListAPIKeys(ctx)
+	if err != nil {
+		slog.Error("failed to list API keys for migration", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to migrate API keys"})
+		return
+	}
+
+	tx, err := h.sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		slog.Error("failed to begin API key migration transaction", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to migrate API keys"})
+		return
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	qtx := h.queries.WithTx(tx)
+	migrated := 0
+	for _, k := range keys {
+		if isSHA256Hex(k.Key) {
+			continue
+		}
+
+		err := qtx.UpdateAPIKey(ctx, db.UpdateAPIKeyParams{
+			ID:          k.ID,
+			Key:         auth.HashAPIKey(k.Key),
+			Ident:       k.Ident,
+			Disabled:    k.Disabled,
+			SystemsJson: k.SystemsJson,
+			Order:       k.Order,
+		})
+		if err != nil {
+			slog.Error("failed to hash API key", "id", k.ID, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to migrate API keys"})
+			return
+		}
+		migrated++
+	}
+
+	if err := tx.Commit(); err != nil {
+		slog.Error("failed to commit API key migration transaction", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to migrate API keys"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"migrated": migrated})
 }
 
 // DeleteAPIKey handles DELETE /api/admin/apikeys/:id.
@@ -969,11 +1190,15 @@ func (h *AdminHandler) CreateDirwatch(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "directory is required"})
 		return
 	}
-	if info, err := os.Stat(req.Directory); err != nil {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "directory does not exist or is not accessible"})
+	if info, statErr := os.Stat(req.Directory); statErr != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error": "directory does not exist or is not accessible: " + statErr.Error(),
+		})
 		return
 	} else if !info.IsDir() {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "path is not a directory"})
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error": "path is not a directory: " + req.Directory,
+		})
 		return
 	}
 
@@ -1015,14 +1240,20 @@ func (h *AdminHandler) UpdateDirwatch(c *gin.Context) {
 		return
 	}
 
-	if req.Directory != "" {
-		if info, err := os.Stat(req.Directory); err != nil {
-			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "directory does not exist or is not accessible"})
-			return
-		} else if !info.IsDir() {
-			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "path is not a directory"})
-			return
-		}
+	if req.Directory == "" {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "directory is required"})
+		return
+	}
+	if info, statErr := os.Stat(req.Directory); statErr != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error": "directory does not exist or is not accessible: " + statErr.Error(),
+		})
+		return
+	} else if !info.IsDir() {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error": "path is not a directory: " + req.Directory,
+		})
+		return
 	}
 
 	if err := h.queries.UpdateDirwatch(c.Request.Context(), req.toParams(id)); err != nil {

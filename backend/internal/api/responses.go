@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 
+	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
 )
 
@@ -160,17 +161,26 @@ func toUnitResponses(units []db.Unit) []unitResponse {
 
 type apiKeyResponse struct {
 	ID          int64   `json:"id"`
-	Key         string  `json:"key"`
+	Fingerprint string  `json:"fingerprint"`
 	Ident       *string `json:"ident"`
 	Disabled    int64   `json:"disabled"`
 	SystemsJson *string `json:"systemsJson"`
 	Order       int64   `json:"order"`
 }
 
+type apiKeyCreateResponse struct {
+	apiKeyResponse
+	CreatedKey string `json:"createdKey"`
+}
+
 func toAPIKeyResponse(k db.ApiKey) apiKeyResponse {
+	fingerprint := auth.HashAPIKey(k.Key)
+	if len(fingerprint) > 12 {
+		fingerprint = fingerprint[:12]
+	}
 	return apiKeyResponse{
 		ID:          k.ID,
-		Key:         k.Key,
+		Fingerprint: fingerprint,
 		Ident:       nullStr(k.Ident),
 		Disabled:    k.Disabled,
 		SystemsJson: nullStr(k.SystemsJson),

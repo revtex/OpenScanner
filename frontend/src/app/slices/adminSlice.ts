@@ -7,6 +7,7 @@ import type {
   AdminGroup,
   AdminTag,
   AdminApiKey,
+  AdminApiKeyCreateResponse,
   AdminDirwatch,
   AdminDownstream,
   AdminWebhook,
@@ -21,6 +22,20 @@ import type {
 
 type CreatePayload<T> = Omit<T, "id">;
 type UpdatePayload<T> = { id: number } & Partial<Omit<T, "id">>;
+type CreateApiKeyPayload = {
+  ident: string | null;
+  disabled: number;
+  systemsJson: string | null;
+  order: number;
+  key?: string | null;
+};
+type UpdateApiKeyPayload = {
+  ident: string | null;
+  disabled: number;
+  systemsJson: string | null;
+  order: number;
+  key?: string | null;
+};
 
 // --- Log query params ---
 
@@ -28,6 +43,17 @@ interface LogQueryParams {
   from?: number;
   to?: number;
   level?: string;
+}
+
+interface ServerDirectoryEntry {
+  name: string;
+  path: string;
+}
+
+interface ServerDirectoryListResponse {
+  path: string;
+  parent: string | null;
+  directories: ServerDirectoryEntry[];
 }
 
 // --- Admin RTK Query endpoints ---
@@ -235,24 +261,88 @@ const adminApi = api.injectEndpoints({
       query: () => "/admin/apikeys",
       providesTags: ["ApiKeys"],
     }),
-    createApiKey: builder.mutation<AdminApiKey, CreatePayload<AdminApiKey>>({
+    createApiKey: builder.mutation<
+      AdminApiKeyCreateResponse,
+      CreateApiKeyPayload
+    >({
       query: (body) => ({ url: "/admin/apikeys", method: "POST", body }),
       invalidatesTags: ["ApiKeys"],
     }),
-    updateApiKey: builder.mutation<AdminApiKey, UpdatePayload<AdminApiKey>>({
+    updateApiKey: builder.mutation<
+      AdminApiKey,
+      { id: number } & UpdateApiKeyPayload
+    >({
       query: ({ id, ...body }) => ({
         url: `/admin/apikeys/${id}`,
         method: "PUT",
         body,
       }),
+      async onQueryStarted({ id, ...body }, { dispatch, queryFulfilled }) {
+        const patch = dispatch(
+          adminApi.util.updateQueryData("listApiKeys", undefined, (draft) => {
+            const key = draft.find((k) => k.id === id);
+            if (!key) return;
+            Object.assign(key, body);
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patch.undo();
+        }
+      },
       invalidatesTags: ["ApiKeys"],
+    }),
+    reorderApiKeys: builder.mutation<
+      void,
+      Array<{ id: number; order: number }>
+    >({
+      query: (apiKeys) => ({
+        url: "/admin/apikeys/reorder",
+        method: "PUT",
+        body: { apiKeys },
+      }),
+      async onQueryStarted(apiKeys, { dispatch, queryFulfilled }) {
+        const patch = dispatch(
+          adminApi.util.updateQueryData("listApiKeys", undefined, (draft) => {
+            const nextOrder = new Map(apiKeys.map((k) => [k.id, k.order]));
+            for (const key of draft) {
+              const order = nextOrder.get(key.id);
+              if (order !== undefined) {
+                key.order = order;
+              }
+            }
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patch.undo();
+        }
+      },
     }),
     deleteApiKey: builder.mutation<void, number>({
       query: (id) => ({ url: `/admin/apikeys/${id}`, method: "DELETE" }),
       invalidatesTags: ["ApiKeys"],
     }),
+    migrateApiKeysHashing: builder.mutation<{ migrated: number }, void>({
+      query: () => ({
+        url: "/admin/apikeys/migrate-hash",
+        method: "POST",
+      }),
+      invalidatesTags: ["ApiKeys"],
+    }),
 
     // ── Dirwatches ──
+    listServerDirectories: builder.query<
+      ServerDirectoryListResponse,
+      { path: string }
+    >({
+      query: ({ path }) => ({
+        url: "/admin/fs/directories",
+        params: { path },
+      }),
+    }),
     listDirwatches: builder.query<AdminDirwatch[], void>({
       query: () => "/admin/dirwatches",
       providesTags: ["Dirwatches"],
@@ -491,8 +581,11 @@ export const {
   useListApiKeysQuery,
   useCreateApiKeyMutation,
   useUpdateApiKeyMutation,
+  useReorderApiKeysMutation,
   useDeleteApiKeyMutation,
+  useMigrateApiKeysHashingMutation,
   // Dirwatches
+  useLazyListServerDirectoriesQuery,
   useListDirwatchesQuery,
   useCreateDirwatchMutation,
   useUpdateDirwatchMutation,

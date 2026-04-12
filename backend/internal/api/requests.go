@@ -163,16 +163,16 @@ func (r updateUnitRequest) toParams(id int64) db.UpdateUnitParams {
 // ── API Key requests ──
 
 type createAPIKeyRequest struct {
-	Key         string  `json:"key"`
+	Key         *string `json:"key"`
 	Ident       *string `json:"ident"`
 	Disabled    int64   `json:"disabled"`
 	SystemsJson *string `json:"systemsJson"`
 	Order       int64   `json:"order"`
 }
 
-func (r createAPIKeyRequest) toParams() db.CreateAPIKeyParams {
+func (r createAPIKeyRequest) toParams(hashedKey string) db.CreateAPIKeyParams {
 	return db.CreateAPIKeyParams{
-		Key:         r.Key,
+		Key:         hashedKey,
 		Ident:       ptrToNullStr(r.Ident),
 		Disabled:    r.Disabled,
 		SystemsJson: ptrToNullStr(r.SystemsJson),
@@ -181,17 +181,30 @@ func (r createAPIKeyRequest) toParams() db.CreateAPIKeyParams {
 }
 
 type updateAPIKeyRequest struct {
-	Key         string  `json:"key"`
+	Key         *string `json:"key"`
 	Ident       *string `json:"ident"`
 	Disabled    int64   `json:"disabled"`
 	SystemsJson *string `json:"systemsJson"`
 	Order       int64   `json:"order"`
 }
 
+type reorderAPIKeyItem struct {
+	ID    int64 `json:"id"`
+	Order int64 `json:"order"`
+}
+
+type reorderAPIKeysRequest struct {
+	APIKeys []reorderAPIKeyItem `json:"apiKeys"`
+}
+
 func (r updateAPIKeyRequest) toParams(id int64) db.UpdateAPIKeyParams {
+	key := ""
+	if r.Key != nil {
+		key = *r.Key
+	}
 	return db.UpdateAPIKeyParams{
 		ID:          id,
-		Key:         r.Key,
+		Key:         key,
 		Ident:       ptrToNullStr(r.Ident),
 		Disabled:    r.Disabled,
 		SystemsJson: ptrToNullStr(r.SystemsJson),

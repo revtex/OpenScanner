@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import {
+  useLazyListServerDirectoriesQuery,
   useListDirwatchesQuery,
   useCreateDirwatchMutation,
   useUpdateDirwatchMutation,
@@ -70,8 +71,13 @@ export default function DirWatchPanel() {
   const [deleteDirwatch] = useDeleteDirwatchMutation();
   const { data: systems } = useListSystemsQuery();
   const { data: allTalkgroups } = useListTalkgroupsQuery();
+  const [loadServerDirs, { data: serverDirs, isFetching: loadingServerDirs }] =
+    useLazyListServerDirectoriesQuery();
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [directoryBrowserOpen, setDirectoryBrowserOpen] = useState(false);
+  const [directoryBrowserPath, setDirectoryBrowserPath] = useState("/");
+  const [directoryJumpInput, setDirectoryJumpInput] = useState("/");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<DirwatchFormState>(emptyForm);
   const [toast, setToast] = useState<string | null>(null);
@@ -153,12 +159,21 @@ export default function DirWatchPanel() {
         await createDirwatch({ ...payload, order: sorted.length }).unwrap();
       }
       setModalOpen(false);
-    } catch {
-      showError(
-        editingId
+    } catch (err) {
+      const fallback =
+        editingId != null
           ? "Failed to update directory watch"
-          : "Failed to create directory watch",
-      );
+          : "Failed to create directory watch";
+      const msg =
+        typeof err === "object" &&
+        err !== null &&
+        "data" in err &&
+        typeof (err as { data?: unknown }).data === "object" &&
+        (err as { data?: { error?: unknown } }).data?.error &&
+        typeof (err as { data?: { error?: unknown } }).data?.error === "string"
+          ? (err as { data: { error: string } }).data.error
+          : fallback;
+      showError(msg);
     }
   };
 
@@ -175,10 +190,61 @@ export default function DirWatchPanel() {
     try {
       await updateDirwatch({
         id: d.id,
+        directory: d.directory,
+        type: d.type,
+        mask: d.mask,
+        extension: d.extension,
+        frequency: d.frequency,
+        delay: d.delay,
+        deleteAfter: d.deleteAfter,
+        usePolling: d.usePolling,
         disabled: d.disabled ? 0 : 1,
+        systemId: d.systemId,
+        talkgroupId: d.talkgroupId,
+        order: d.order,
       }).unwrap();
     } catch {
       showError("Failed to update directory watch");
+    }
+  };
+
+  const handlePickDirectory = async () => {
+    const startPath = form.directory.startsWith("/") ? form.directory : "/";
+    setDirectoryBrowserPath(startPath);
+    setDirectoryJumpInput(startPath);
+    setDirectoryBrowserOpen(true);
+    try {
+      await loadServerDirs({ path: startPath }).unwrap();
+    } catch (err) {
+      const msg =
+        typeof err === "object" &&
+        err !== null &&
+        "data" in err &&
+        typeof (err as { data?: unknown }).data === "object" &&
+        (err as { data?: { error?: unknown } }).data?.error &&
+        typeof (err as { data?: { error?: unknown } }).data?.error === "string"
+          ? (err as { data: { error: string } }).data.error
+          : "Failed to load directories";
+      showError(msg);
+    }
+  };
+
+  const navigateDirectory = async (path: string) => {
+    setDirectoryBrowserPath(path);
+    setDirectoryJumpInput(path);
+    try {
+      await loadServerDirs({ path }).unwrap();
+    } catch (err) {
+      const msg =
+        typeof err === "object" &&
+        err !== null &&
+        "data" in err &&
+        typeof (err as { data?: unknown }).data === "object" &&
+        (err as { data?: { error?: unknown } }).data?.error &&
+        typeof (err as { data?: { error?: unknown } }).data?.error === "string"
+          ? (err as { data: { error: string } }).data.error
+          : "Failed to load directories";
+      showError(msg);
     }
   };
 
@@ -301,16 +367,30 @@ export default function DirWatchPanel() {
               <div className="label">
                 <span className="label-text">Directory</span>
               </div>
-              <input
-                type="text"
-                className="input input-bordered w-full font-mono text-sm"
-                value={form.directory}
-                onChange={(e) =>
-                  setForm({ ...form, directory: e.target.value })
-                }
-                required
-                placeholder="/path/to/recordings"
-              />
+              <div className="join w-full">
+                <input
+                  type="text"
+                  className="input input-bordered join-item w-full font-mono text-sm"
+                  value={form.directory}
+                  onChange={(e) =>
+                    setForm({ ...form, directory: e.target.value })
+                  }
+                  required
+                  placeholder="/path/to/recordings"
+                />
+                <button
+                  type="button"
+                  className="btn join-item"
+                  onClick={handlePickDirectory}
+                >
+                  Browse
+                </button>
+              </div>
+              <div className="label">
+                <span className="label-text-alt text-base-content/60">
+                  Browse uses server directories and returns full paths.
+                </span>
+              </div>
             </label>
 
             {/* Extension — shown for default, dsdplus, trunk-recorder */}
@@ -531,6 +611,92 @@ export default function DirWatchPanel() {
             close
           </button>
         </form>
+      </dialog>
+
+      <dialog className={`modal ${directoryBrowserOpen ? "modal-open" : ""}`}>
+        <div className="modal-box max-w-2xl">
+          <h3 className="font-bold text-lg mb-2">Select Server Directory</h3>
+          <div className="join w-full mb-3">
+            <input
+              type="text"
+              className="input input-bordered join-item w-full font-mono text-sm"
+              value={directoryJumpInput}
+              onChange={(e) => setDirectoryJumpInput(e.target.value)}
+              placeholder="/absolute/path"
+            />
+            <button
+              type="button"
+              className="btn join-item"
+              disabled={loadingServerDirs}
+              onClick={() => {
+                const raw = directoryJumpInput.trim();
+                const target = raw === "" ? "/" : raw;
+                const normalized = target.startsWith("/")
+                  ? target
+                  : `/${target}`;
+                void navigateDirectory(normalized);
+              }}
+            >
+              Go
+            </button>
+          </div>
+          <p className="text-sm text-base-content/70 mb-3 font-mono break-all">
+            {serverDirs?.path ?? directoryBrowserPath}
+          </p>
+          <div className="max-h-80 overflow-auto border border-base-300 rounded-md">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm w-full justify-start rounded-none"
+              disabled={!serverDirs?.parent || loadingServerDirs}
+              onClick={() => {
+                if (serverDirs?.parent) {
+                  void navigateDirectory(serverDirs.parent);
+                }
+              }}
+            >
+              ..
+            </button>
+            {(serverDirs?.directories ?? []).map((d) => (
+              <button
+                key={d.path}
+                type="button"
+                className="btn btn-ghost btn-sm w-full justify-start rounded-none font-mono"
+                disabled={loadingServerDirs}
+                onClick={() => {
+                  void navigateDirectory(d.path);
+                }}
+              >
+                {d.name}
+              </button>
+            ))}
+            {(serverDirs?.directories ?? []).length === 0 && (
+              <div className="p-3 text-sm text-base-content/60">
+                No child directories
+              </div>
+            )}
+          </div>
+
+          <div className="modal-action">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setDirectoryBrowserOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                const chosen = serverDirs?.path ?? directoryBrowserPath;
+                setForm((prev) => ({ ...prev, directory: chosen }));
+                setDirectoryBrowserOpen(false);
+              }}
+            >
+              Use This Directory
+            </button>
+          </div>
+        </div>
       </dialog>
 
       {toast && (

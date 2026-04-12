@@ -6,6 +6,7 @@ import {
   useLazyExportConfigQuery,
   useImportConfigMutation,
   useChangePasswordMutation,
+  useMigrateApiKeysHashingMutation,
 } from "@/app/slices/adminSlice";
 
 export default function ToolsPanel() {
@@ -14,6 +15,8 @@ export default function ToolsPanel() {
   const [triggerExport] = useLazyExportConfigQuery();
   const [importConfig] = useImportConfigMutation();
   const [changePassword] = useChangePasswordMutation();
+  const [migrateApiKeysHashing, { isLoading: migratingApiKeys }] =
+    useMigrateApiKeysHashingMutation();
 
   const [toast, setToast] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"error" | "success">("error");
@@ -114,6 +117,18 @@ export default function ToolsPanel() {
       setConfirmPassword("");
     } catch {
       showToast("Failed to change password");
+    }
+  };
+
+  const handleMigrateApiKeysHashing = async () => {
+    try {
+      const result = await migrateApiKeysHashing().unwrap();
+      showToast(
+        `API key hash migration complete (${result.migrated} migrated)`,
+        "success",
+      );
+    } catch {
+      showToast("Failed to migrate API keys");
     }
   };
 
@@ -264,6 +279,28 @@ export default function ToolsPanel() {
               Change Password
             </button>
           </form>
+        </div>
+      </div>
+
+      {/* API Key hash migration */}
+      <div className="card bg-base-200 mb-4">
+        <div className="card-body">
+          <h2 className="card-title text-base">
+            <KeyRound className="w-4 h-4" /> Migrate Legacy API Keys
+          </h2>
+          <p className="text-sm text-base-content/70">
+            Convert legacy plaintext API key rows to hashed storage. New keys
+            are already hashed.
+          </p>
+          <div>
+            <button
+              className="btn btn-primary"
+              onClick={handleMigrateApiKeysHashing}
+              disabled={migratingApiKeys}
+            >
+              {migratingApiKeys ? "Migrating..." : "Migrate API Keys"}
+            </button>
+          </div>
         </div>
       </div>
 

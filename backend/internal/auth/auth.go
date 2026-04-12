@@ -3,6 +3,8 @@ package auth
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"sync"
 	"time"
 
@@ -10,6 +12,12 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// HashAPIKey returns a stable SHA-256 hex digest of an API key.
+func HashAPIKey(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:])
+}
 
 const (
 	RoleAdmin    = "admin"
