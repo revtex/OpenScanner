@@ -93,6 +93,9 @@ export default function Scanner() {
         listenerCount={scanner.listenerCount}
         queueCount={scanner.callQueue.length}
         avoidList={scanner.avoidList}
+        time12hFormat={scanner.config?.time12hFormat ?? false}
+        showListenersCount={scanner.config?.showListenersCount ?? false}
+        isAuthenticated={!!token}
       />
       <ControlToolbar
         isPlaying={scanner.isPlaying}

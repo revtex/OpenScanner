@@ -363,7 +363,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 	autoPopulate := getSetting("autoPopulate") == "true"
 
 	// Validate required IDs before touching the DB.
-	if parsed.SystemID == 0 {
+	if parsed.SystemID == 0 && strings.TrimSpace(parsed.SystemLabel) == "" {
 		return fmt.Errorf("no system ID in parsed call for file %s", parsed.AudioFilePath)
 	}
 	if parsed.TalkgroupID == 0 {
@@ -371,31 +371,75 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 	}
 
 	// ── Resolve system ──────────────────────────────────────────────────────
-	system, err := s.queries.GetSystemBySystemID(ctx, parsed.SystemID)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("query system %d: %w", parsed.SystemID, err)
+	var (
+		system db.System
+		err    error
+	)
+
+	if parsed.SystemID > 0 {
+		system, err = s.queries.GetSystemBySystemID(ctx, parsed.SystemID)
+		if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("query system %d: %w", parsed.SystemID, err)
+			}
+			if !autoPopulate {
+				return fmt.Errorf("system %d not found and autoPopulate is disabled", parsed.SystemID)
+			}
+			label := strings.TrimSpace(parsed.SystemLabel)
+			if label == "" {
+				label = strconv.FormatInt(parsed.SystemID, 10)
+			}
+			newID, cerr := s.queries.CreateSystem(ctx, db.CreateSystemParams{
+				SystemID:     parsed.SystemID,
+				Label:        label,
+				AutoPopulate: 1,
+			})
+			if cerr != nil {
+				return fmt.Errorf("auto-create system %d: %w", parsed.SystemID, cerr)
+			}
+			slog.Info("dirwatch: auto-populated system", "system_id", parsed.SystemID, "db_id", newID)
+			system = db.System{ID: newID, SystemID: parsed.SystemID, Label: label, AutoPopulate: 1}
 		}
-		if !autoPopulate {
-			return fmt.Errorf("system %d not found and autoPopulate is disabled", parsed.SystemID)
+	} else {
+		label := strings.TrimSpace(parsed.SystemLabel)
+		system, err = s.queries.GetSystemByLabel(ctx, label)
+		if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("query system label %q: %w", label, err)
+			}
+			if !autoPopulate {
+				return fmt.Errorf("system %q not found and autoPopulate is disabled", label)
+			}
+
+			systems, lerr := s.queries.ListSystems(ctx)
+			if lerr != nil {
+				return fmt.Errorf("list systems for auto-create: %w", lerr)
+			}
+			nextSystemID := int64(1)
+			for _, existing := range systems {
+				if existing.SystemID >= nextSystemID {
+					nextSystemID = existing.SystemID + 1
+				}
+			}
+
+			newID, cerr := s.queries.CreateSystem(ctx, db.CreateSystemParams{
+				SystemID:     nextSystemID,
+				Label:        label,
+				AutoPopulate: 1,
+			})
+			if cerr != nil {
+				return fmt.Errorf("auto-create system %q: %w", label, cerr)
+			}
+			slog.Info("dirwatch: auto-populated system from label", "system_label", label, "system_id", nextSystemID, "db_id", newID)
+			system = db.System{ID: newID, SystemID: nextSystemID, Label: label, AutoPopulate: 1}
 		}
-		label := strconv.FormatInt(parsed.SystemID, 10)
-		newID, cerr := s.queries.CreateSystem(ctx, db.CreateSystemParams{
-			SystemID:     parsed.SystemID,
-			Label:        label,
-			AutoPopulate: 1,
-		})
-		if cerr != nil {
-			return fmt.Errorf("auto-create system %d: %w", parsed.SystemID, cerr)
-		}
-		slog.Info("dirwatch: auto-populated system", "system_id", parsed.SystemID, "db_id", newID)
-		system = db.System{ID: newID, SystemID: parsed.SystemID, Label: label, AutoPopulate: 1}
+		parsed.SystemID = system.SystemID
 	}
 
 	// ── Blacklist check ─────────────────────────────────────────────────────
 	if isBlacklisted(system.BlacklistsJson, parsed.TalkgroupID) {
 		slog.Info("dirwatch: talkgroup is blacklisted, skipping",
-			"system_id", parsed.SystemID, "talkgroup_id", parsed.TalkgroupID)
+			"system_id", system.SystemID, "talkgroup_id", parsed.TalkgroupID)
 		return nil
 	}
 
@@ -411,16 +455,41 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 		if !autoPopulate {
 			return fmt.Errorf("talkgroup %d not found and autoPopulate is disabled", parsed.TalkgroupID)
 		}
+		var tgName sql.NullString
+		if parsed.TalkgroupTitle != "" {
+			tgName = sql.NullString{String: parsed.TalkgroupTitle, Valid: true}
+		}
 		newID, cerr := s.queries.CreateTalkgroup(ctx, db.CreateTalkgroupParams{
 			SystemID:    system.ID,
 			TalkgroupID: parsed.TalkgroupID,
+			Name:        tgName,
 		})
 		if cerr != nil {
 			return fmt.Errorf("auto-create talkgroup %d: %w", parsed.TalkgroupID, cerr)
 		}
 		slog.Info("dirwatch: auto-populated talkgroup",
 			"talkgroup_id", parsed.TalkgroupID, "db_id", newID)
-		talkgroup = db.Talkgroup{ID: newID, SystemID: system.ID, TalkgroupID: parsed.TalkgroupID}
+		talkgroup = db.Talkgroup{ID: newID, SystemID: system.ID, TalkgroupID: parsed.TalkgroupID, Name: tgName}
+	} else if !talkgroup.Name.Valid && parsed.TalkgroupTitle != "" {
+		// Existing talkgroup has no name — backfill from audio metadata.
+		talkgroup.Name = sql.NullString{String: parsed.TalkgroupTitle, Valid: true}
+		if uerr := s.queries.UpdateTalkgroup(ctx, db.UpdateTalkgroupParams{
+			ID:          talkgroup.ID,
+			TalkgroupID: talkgroup.TalkgroupID,
+			Label:       talkgroup.Label,
+			Name:        talkgroup.Name,
+			Frequency:   talkgroup.Frequency,
+			Led:         talkgroup.Led,
+			GroupID:     talkgroup.GroupID,
+			TagID:       talkgroup.TagID,
+			Order:       talkgroup.Order,
+		}); uerr != nil {
+			slog.Warn("dirwatch: failed to backfill talkgroup name from metadata",
+				"talkgroup_id", talkgroup.TalkgroupID, "error", uerr)
+		} else {
+			slog.Info("dirwatch: backfilled talkgroup name from audio metadata",
+				"talkgroup_id", talkgroup.TalkgroupID, "name", parsed.TalkgroupTitle)
+		}
 	}
 
 	// ── Duplicate detection ─────────────────────────────────────────────────
@@ -437,7 +506,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 			// Non-fatal: proceed.
 		} else if dup {
 			slog.Info("dirwatch: duplicate call rejected",
-				"system_id", parsed.SystemID, "talkgroup_id", parsed.TalkgroupID)
+				"system_id", system.SystemID, "talkgroup_id", parsed.TalkgroupID)
 			return nil
 		}
 	}
@@ -490,6 +559,18 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 
 	dateTimeUnix := parsed.DateTime.Unix()
 
+	// ── Optional string metadata ──────────────────────────────────────────
+	var siteCol, channelCol, decoderCol sql.NullString
+	if parsed.Site != "" {
+		siteCol = sql.NullString{String: parsed.Site, Valid: true}
+	}
+	if parsed.Channel != "" {
+		channelCol = sql.NullString{String: parsed.Channel, Valid: true}
+	}
+	if parsed.Decoder != "" {
+		decoderCol = sql.NullString{String: parsed.Decoder, Valid: true}
+	}
+
 	// ── Insert call record ──────────────────────────────────────────────────
 	callID, err := s.queries.CreateCall(ctx, db.CreateCallParams{
 		AudioPath:       relPath,
@@ -504,6 +585,9 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 		PatchesJson:     patchJSON,
 		SystemID:        system.ID,
 		TalkgroupID:     sql.NullInt64{Int64: talkgroup.ID, Valid: true},
+		Site:            siteCol,
+		Channel:         channelCol,
+		Decoder:         decoderCol,
 	})
 	if err != nil {
 		return fmt.Errorf("insert call record: %w", err)
@@ -535,6 +619,15 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 		}
 		if src.Valid {
 			calPayload["source"] = src.Int64
+		}
+		if siteCol.Valid {
+			calPayload["site"] = siteCol.String
+		}
+		if channelCol.Valid {
+			calPayload["channel"] = channelCol.String
+		}
+		if decoderCol.Valid {
+			calPayload["decoder"] = decoderCol.String
 		}
 
 		calMsg, err := ws.NewCALMessage(calPayload)

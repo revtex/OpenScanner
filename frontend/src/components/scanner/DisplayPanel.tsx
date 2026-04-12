@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Share2 } from "lucide-react";
 import { BookmarkButton } from "@/components/scanner/BookmarkButton";
+import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { HistoryPanel } from "@/components/scanner/HistoryPanel";
 import { TranscriptPanel } from "@/components/scanner/TranscriptPanel";
 import type { Call } from "@/types";
@@ -11,6 +12,9 @@ interface DisplayPanelProps {
   listenerCount: number;
   queueCount: number;
   avoidList: { talkgroupId: number }[];
+  time12hFormat: boolean;
+  showListenersCount: boolean;
+  isAuthenticated: boolean;
 }
 
 function useClock() {
@@ -22,31 +26,29 @@ function useClock() {
   return time;
 }
 
-function formatClock(d: Date) {
+function formatClock(d: Date, hour12: boolean) {
   return d.toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-    hour12: false,
+    hour12,
   });
 }
 
-function formatCallDateTime(ts: number) {
+function formatCallTime(ts: number, hour12: boolean) {
   const d = new Date(ts * 1000);
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const time = d.toLocaleTimeString([], {
+  return d.toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
+    hour12,
   });
-  return `${month}/${day} ${time}`;
 }
 
 function formatFrequency(hz?: number) {
   if (!hz) return "";
-  return `F: ${(hz / 1_000_000).toFixed(3)}`;
+  const str = hz.toString();
+  const spaced = str.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return `F: ${spaced} Hz`;
 }
 
 export function DisplayPanel({
@@ -55,10 +57,18 @@ export function DisplayPanel({
   listenerCount,
   queueCount,
   avoidList,
+  time12hFormat,
+  showListenersCount,
+  isAuthenticated,
 }: DisplayPanelProps) {
   const clock = useClock();
   const [fullscreen, setFullscreen] = useState(false);
-  const [bookmarked, setBookmarked] = useState<Set<number>>(new Set());
+
+  const { data: bookmarkData } = useGetBookmarkIDsQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+  const [toggleBookmark] = useToggleBookmarkMutation();
+  const bookmarkedCallIds = bookmarkData?.callIds ?? [];
 
   const handleDoubleClick = useCallback(() => {
     setFullscreen((prev) => !prev);
@@ -72,17 +82,13 @@ export function DisplayPanel({
     });
   }, [currentCall]);
 
-  const toggleBookmark = useCallback((callId: number) => {
-    setBookmarked((prev) => {
-      const next = new Set(prev);
-      if (next.has(callId)) {
-        next.delete(callId);
-      } else {
-        next.add(callId);
-      }
-      return next;
-    });
-  }, []);
+  const handleToggleBookmark = useCallback(
+    (callId: number) => {
+      if (!isAuthenticated) return;
+      void toggleBookmark(callId);
+    },
+    [isAuthenticated, toggleBookmark],
+  );
 
   const isAvoided = currentCall
     ? avoidList.some((a) => a.talkgroupId === currentCall.talkgroupId)
@@ -92,15 +98,10 @@ export function DisplayPanel({
     <div className="font-mono text-sm leading-5 p-3 min-h-[200px]">
       {/* Row 1: clock, listeners, queue */}
       <div className="flex justify-between">
-        <span>{formatClock(clock)}</span>
-        <span className="flex gap-4">
-          <span>L: {listenerCount}</span>
-          <span>Q: {queueCount}</span>
-        </span>
+        <span>{formatClock(clock, time12hFormat)}</span>
+        {showListenersCount && <span>L: {listenerCount}</span>}
+        <span>Q: {queueCount}</span>
       </div>
-
-      {/* Row 2: spacer */}
-      <div className="h-5" />
 
       {currentCall ? (
         <>
@@ -110,11 +111,11 @@ export function DisplayPanel({
             <span className="opacity-60">{currentCall.talkgroupTag ?? ""}</span>
           </div>
 
-          {/* Row 4: TG label, date+time */}
+          {/* Row 4: TG label, call time */}
           <div className="flex justify-between">
             <span className="truncate">{currentCall.talkgroupLabel ?? ""}</span>
-            <span className="opacity-60 text-xs">
-              {formatCallDateTime(currentCall.dateTime)}
+            <span className="opacity-60">
+              {formatCallTime(currentCall.dateTime, time12hFormat)}
             </span>
           </div>
 
@@ -126,12 +127,16 @@ export function DisplayPanel({
           {/* Row 6: frequency, TGID */}
           <div className="flex justify-between">
             <span>{formatFrequency(currentCall.frequency)}</span>
-            <span>TG: {currentCall.talkgroupId}</span>
+            <span>TGID: {currentCall.talkgroupId}</span>
           </div>
 
-          {/* Row 7: errors/spikes, unit ID */}
+          {/* Row 7: site/decoder, unit ID */}
           <div className="flex justify-between">
-            <span />
+            <span className="truncate opacity-60">
+              {[currentCall.site, currentCall.decoder]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
             <span>
               {currentCall.source ? `UID: ${currentCall.source}` : ""}
             </span>
@@ -141,8 +146,8 @@ export function DisplayPanel({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <BookmarkButton
-                isBookmarked={bookmarked.has(currentCall.id)}
-                onToggle={() => toggleBookmark(currentCall.id)}
+                isBookmarked={bookmarkedCallIds.includes(currentCall.id)}
+                onToggle={() => handleToggleBookmark(currentCall.id)}
               />
               <button
                 className="btn btn-ghost btn-xs btn-circle opacity-50 hover:opacity-100"
@@ -169,14 +174,9 @@ export function DisplayPanel({
       ) : (
         /* Idle state */
         <>
-          <div className="h-5" />
-          <div className="h-5" />
-          <div className="text-2xl font-bold text-center py-1 opacity-30">
+          <div className="text-2xl font-bold text-center py-4 opacity-30">
             OPENSCANNER
           </div>
-          <div className="h-5" />
-          <div className="h-5" />
-          <div className="h-5" />
         </>
       )}
 
@@ -184,7 +184,11 @@ export function DisplayPanel({
       <TranscriptPanel call={currentCall} />
 
       {/* History */}
-      <HistoryPanel history={history} currentCallId={currentCall?.id ?? null} />
+      <HistoryPanel
+        history={history}
+        currentCallId={currentCall?.id ?? null}
+        time12hFormat={time12hFormat}
+      />
     </div>
   );
 

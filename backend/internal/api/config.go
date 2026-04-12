@@ -15,6 +15,7 @@ import (
 var allowedSettingKeys = map[string]bool{
 	"activityDashboard":           true,
 	"afsSystems":                  true,
+	"apiKeyCallRate":              true,
 	"audioConversion":             true,
 	"autoPopulate":                true,
 	"branding":                    true,

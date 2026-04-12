@@ -8,7 +8,9 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -79,14 +81,39 @@ func parseGrants(systemsJSON sql.NullString) []systemGrant {
 	return grants
 }
 
+func wsAcceptOptions(r *http.Request) *websocket.AcceptOptions {
+	patterns := []string{r.Host}
+
+	// Allow localhost dev frontend origins (e.g. :5173) when backend runs on localhost.
+	hostname := strings.ToLower(r.URL.Hostname())
+	if hostname == "" {
+		if u, err := url.Parse("http://" + r.Host); err == nil {
+			hostname = strings.ToLower(u.Hostname())
+		}
+	}
+	if hostname == "localhost" || hostname == "127.0.0.1" {
+		patterns = append(patterns,
+			"localhost:*",
+			"127.0.0.1:*",
+		)
+	}
+
+	return &websocket.AcceptOptions{
+		OriginPatterns:  patterns,
+		CompressionMode: websocket.CompressionContextTakeover,
+	}
+}
+
 // HandleListenerWS upgrades the HTTP connection for a listener WebSocket.
 func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-			CompressionMode: websocket.CompressionContextTakeover,
-		})
+		conn, err := websocket.Accept(w, r, wsAcceptOptions(r))
 		if err != nil {
-			slog.Error("ws: failed to accept listener connection", "error", err)
+			slog.Error("ws: failed to accept listener connection",
+				"error", err,
+				"origin", r.Header.Get("Origin"),
+				"host", r.Host,
+			)
 			return
 		}
 
@@ -181,6 +208,14 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 			sendExpiredAndClose(ctx, conn)
 			return
 		}
+		// Enforce account expiration on WS connections.
+		if user.Expiration.Valid && user.Expiration.Int64 > 0 {
+			if time.Now().Unix() > user.Expiration.Int64 {
+				slog.Info("ws: expired user on listener WS", "user_id", claims.UserID)
+				sendExpiredAndClose(ctx, conn)
+				return
+			}
+		}
 		// Check user connection limit.
 		if user.Limit.Valid && user.Limit.Int64 > 0 {
 			if int64(hub.countByUser(user.ID)) >= user.Limit.Int64 {
@@ -215,6 +250,10 @@ func HandleAdminWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
+		// Strip the token from the URL immediately to prevent it from being
+		// logged in access logs, error reports, or proxy logs (OWASP A09).
+		r.URL.RawQuery = ""
+
 		claims, err := auth.ParseToken(tokenStr)
 		if err != nil || auth.Tokens.IsRevoked(claims.ID) {
 			http.Error(w, "invalid token", http.StatusUnauthorized)
@@ -225,11 +264,13 @@ func HandleAdminWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
-		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-			CompressionMode: websocket.CompressionContextTakeover,
-		})
+		conn, err := websocket.Accept(w, r, wsAcceptOptions(r))
 		if err != nil {
-			slog.Error("ws: failed to accept admin connection", "error", err)
+			slog.Error("ws: failed to accept admin connection",
+				"error", err,
+				"origin", r.Header.Get("Origin"),
+				"host", r.Host,
+			)
 			return
 		}
 
@@ -433,6 +474,15 @@ func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *d
 	cfgPayload := map[string]any{
 		"systems": sysCfgs,
 	}
+
+	// Include scanner display settings in the config payload.
+	if s, err := queries.GetSetting(ctx, "time12hFormat"); err == nil {
+		cfgPayload["time12hFormat"] = s.Value == "true"
+	}
+	if s, err := queries.GetSetting(ctx, "showListenersCount"); err == nil {
+		cfgPayload["showListenersCount"] = s.Value == "true"
+	}
+
 	cfgMsg, err := NewCFGMessage(cfgPayload)
 	if err != nil {
 		return err

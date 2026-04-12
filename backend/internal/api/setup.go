@@ -104,15 +104,16 @@ func (h *SetupHandler) PostSetup(c *gin.Context) {
 
 	now := time.Now().Unix()
 	if _, err = h.queries.CreateUser(ctx, db.CreateUserParams{
-		Username:     req.Username,
-		PasswordHash: hash,
-		Role:         auth.RoleAdmin,
-		Disabled:     0,
-		SystemsJson:  sql.NullString{},
-		Expiration:   sql.NullInt64{},
-		Limit:        sql.NullInt64{},
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		Username:           req.Username,
+		PasswordHash:       hash,
+		Role:               auth.RoleAdmin,
+		Disabled:           0,
+		SystemsJson:        sql.NullString{},
+		Expiration:         sql.NullInt64{},
+		Limit:              sql.NullInt64{},
+		PasswordNeedChange: 0,
+		CreatedAt:          now,
+		UpdatedAt:          now,
 	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
 		return

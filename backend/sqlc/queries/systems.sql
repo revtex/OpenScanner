@@ -4,6 +4,9 @@ SELECT * FROM systems WHERE id = ? LIMIT 1;
 -- name: GetSystemBySystemID :one
 SELECT * FROM systems WHERE system_id = ? LIMIT 1;
 
+-- name: GetSystemByLabel :one
+SELECT * FROM systems WHERE label = ? LIMIT 1;
+
 -- name: ListSystems :many
 SELECT * FROM systems ORDER BY "order" ASC, id ASC;
 

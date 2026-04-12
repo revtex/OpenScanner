@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router-dom";
 import Login from "@/pages/Login";
 import { scannerSlice } from "@/app/slices/scannerSlice";
 import { authSlice } from "@/app/slices/authSlice";
@@ -64,7 +65,9 @@ function renderLogin() {
   const store = makeStore();
   return render(
     <Provider store={store}>
-      <Login />
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
     </Provider>,
   );
 }

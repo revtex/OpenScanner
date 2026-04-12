@@ -44,6 +44,17 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Apply configured timezone so recorder timestamps are interpreted correctly.
+	if cfg.Timezone != "" {
+		loc, err := time.LoadLocation(cfg.Timezone)
+		if err != nil {
+			slog.Error("invalid timezone", "timezone", cfg.Timezone, "error", err)
+			os.Exit(1)
+		}
+		time.Local = loc
+		slog.Info("timezone configured", "timezone", cfg.Timezone)
+	}
+
 	// Configure structured logging.
 	var handler slog.Handler
 	if os.Getenv("OPENSCANNER_ENV") == "development" {

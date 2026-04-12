@@ -360,3 +360,46 @@ func (r updateWebhookRequest) toParams(id int64) db.UpdateWebhookParams {
 		Order:       r.Order,
 	}
 }
+
+// ── Access requests ──
+
+type createAccessRequest struct {
+	Code        string  `json:"code"`
+	Ident       *string `json:"ident"`
+	Expiration  *int64  `json:"expiration"`
+	Limit       *int64  `json:"limit"`
+	SystemsJson *string `json:"systemsJson"`
+	Order       int64   `json:"order"`
+}
+
+func (r createAccessRequest) toParams() db.CreateAccessParams {
+	return db.CreateAccessParams{
+		Code:        r.Code,
+		Ident:       ptrToNullStr(r.Ident),
+		Expiration:  ptrToNullInt(r.Expiration),
+		Limit:       ptrToNullInt(r.Limit),
+		SystemsJson: ptrToNullStr(r.SystemsJson),
+		Order:       r.Order,
+	}
+}
+
+type updateAccessRequest struct {
+	Code        string  `json:"code"`
+	Ident       *string `json:"ident"`
+	Expiration  *int64  `json:"expiration"`
+	Limit       *int64  `json:"limit"`
+	SystemsJson *string `json:"systemsJson"`
+	Order       int64   `json:"order"`
+}
+
+func (r updateAccessRequest) toParams(id int64) db.UpdateAccessParams {
+	return db.UpdateAccessParams{
+		ID:          id,
+		Code:        r.Code,
+		Ident:       ptrToNullStr(r.Ident),
+		Expiration:  ptrToNullInt(r.Expiration),
+		Limit:       ptrToNullInt(r.Limit),
+		SystemsJson: ptrToNullStr(r.SystemsJson),
+		Order:       r.Order,
+	}
+}

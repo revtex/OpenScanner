@@ -1,14 +1,15 @@
 CREATE TABLE IF NOT EXISTS users (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    username      TEXT    UNIQUE NOT NULL,
-    password_hash TEXT    NOT NULL,
-    role          TEXT    NOT NULL DEFAULT 'listener',
-    disabled      INTEGER NOT NULL DEFAULT 0,
-    systems_json  TEXT,
-    expiration    INTEGER,
-    "limit"       INTEGER,
-    created_at    INTEGER NOT NULL,
-    updated_at    INTEGER NOT NULL
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    username             TEXT    UNIQUE NOT NULL,
+    password_hash        TEXT    NOT NULL,
+    role                 TEXT    NOT NULL DEFAULT 'listener',
+    disabled             INTEGER NOT NULL DEFAULT 0,
+    systems_json         TEXT,
+    expiration           INTEGER,
+    "limit"              INTEGER,
+    password_need_change INTEGER NOT NULL DEFAULT 0,
+    created_at           INTEGER NOT NULL,
+    updated_at           INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS app_state (
@@ -76,7 +77,10 @@ CREATE TABLE IF NOT EXISTS calls (
     frequencies_json TEXT,
     patches_json     TEXT,
     system_id        INTEGER NOT NULL REFERENCES systems(id) ON DELETE CASCADE,
-    talkgroup_id     INTEGER REFERENCES talkgroups(id) ON DELETE SET NULL
+    talkgroup_id     INTEGER REFERENCES talkgroups(id) ON DELETE SET NULL,
+    site             TEXT,
+    channel          TEXT,
+    decoder          TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_calls_datetime_system_tg ON calls(date_time, system_id, talkgroup_id);
@@ -164,3 +168,13 @@ CREATE TABLE IF NOT EXISTS transcriptions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_transcriptions_text ON transcriptions(text);
+
+CREATE TABLE IF NOT EXISTS accesses (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    code         TEXT    NOT NULL,
+    ident        TEXT,
+    expiration   INTEGER,
+    "limit"      INTEGER,
+    systems_json TEXT,
+    "order"      INTEGER NOT NULL DEFAULT 0
+);

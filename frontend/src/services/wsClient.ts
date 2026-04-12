@@ -144,6 +144,8 @@ class WsClient {
             branding?: string;
             email?: string;
             version?: string;
+            time12hFormat?: boolean | string;
+            showListenersCount?: boolean | string;
           };
           // CFG may be partial — merge with existing config concept
           this.dispatch(
@@ -152,6 +154,11 @@ class WsClient {
               branding: cfg.branding ?? "",
               email: cfg.email ?? "",
               version: cfg.version ?? "",
+              time12hFormat:
+                cfg.time12hFormat === true || cfg.time12hFormat === "true",
+              showListenersCount:
+                cfg.showListenersCount === true ||
+                cfg.showListenersCount === "true",
             }),
           );
         }

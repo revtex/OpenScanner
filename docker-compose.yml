@@ -10,4 +10,7 @@ services:
     environment:
       - OPENSCANNER_BASE_DIR=/data
       - OPENSCANNER_LISTEN=0.0.0.0:3000
+      # Set timezone for recorder timestamp interpretation (IANA format).
+      # Example: TZ=America/New_York
+      # - TZ=America/New_York
     restart: unless-stopped

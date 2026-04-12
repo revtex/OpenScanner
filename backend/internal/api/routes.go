@@ -46,10 +46,16 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	setupHandler := NewSetupHandler(deps.Queries)
 	authHandler := NewAuthHandler(deps.Queries, deps.RateLimiter)
 	callHandler := NewCallHandler(deps.Queries, deps.Processor, deps.Hub, deps.DownstreamNotifier)
-	adminHandler := NewAdminHandler(deps.Queries, deps.Hub, deps.SQLDB, deps.DirwatchReloader, deps.DownstreamReloader)
+	bookmarkHandler := &BookmarkHandler{queries: deps.Queries}
+	baseDir := "."
+	if deps.Processor != nil {
+		baseDir = deps.Processor.BaseDir()
+	}
+	adminHandler := NewAdminHandler(deps.Queries, deps.Hub, deps.SQLDB, deps.DirwatchReloader, deps.DownstreamReloader, baseDir)
 
 	// Global middleware applied to every request.
 	r.Use(middleware.RequestID())
+	r.Use(middleware.CORS())
 	r.Use(middleware.Logger())
 
 	api := r.Group("/api")
@@ -62,7 +68,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	api.POST("/setup", setupHandler.PostSetup)
 
 	// Auth — login is unauthenticated; the rest require a valid JWT.
-	api.POST("/auth/login", middleware.RateLimit(deps.RateLimiter), authHandler.PostLogin)
+	api.POST("/auth/login", middleware.MaxBodySize(1<<20), middleware.RateLimit(deps.RateLimiter), authHandler.PostLogin)
 
 	authRequired := api.Group("/auth")
 	authRequired.Use(middleware.JWTAuth())
@@ -74,6 +80,15 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 
 	// Call search — public access with optional auth for bookmarks.
 	api.GET("/calls", middleware.OptionalJWTAuth(), callHandler.GetCalls)
+	api.GET("/calls/:id/audio", middleware.OptionalJWTAuth(), callHandler.GetCallAudio)
+
+	// Bookmarks — JWT required.
+	bookmarks := api.Group("/bookmarks")
+	bookmarks.Use(middleware.JWTAuth())
+	{
+		bookmarks.GET("", bookmarkHandler.GetBookmarkIDs)
+		bookmarks.POST("", bookmarkHandler.PostToggleBookmark)
+	}
 
 	// Call upload — API key auth.
 	upload := r.Group("/")
@@ -85,7 +100,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 
 	// Admin CRUD — JWT + admin role required.
 	admin := api.Group("/admin")
-	admin.Use(middleware.JWTAuth(), middleware.RequireAdmin())
+	admin.Use(middleware.JWTAuth(), middleware.RequireAdmin(), middleware.MaxBodySize(2<<20)) // 2 MiB JSON body limit
 	{
 		// Users
 		admin.GET("/users", adminHandler.ListUsers)
@@ -151,9 +166,17 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		admin.PUT("/webhooks/:id", adminHandler.UpdateWebhook)
 		admin.DELETE("/webhooks/:id", adminHandler.DeleteWebhook)
 
+		// Accesses
+		admin.GET("/accesses", adminHandler.ListAccesses)
+		admin.POST("/accesses", adminHandler.CreateAccess)
+		admin.PUT("/accesses/:id", adminHandler.UpdateAccess)
+		admin.DELETE("/accesses/:id", adminHandler.DeleteAccess)
+
 		// Config
 		admin.GET("/config", adminHandler.GetConfig)
 		admin.PUT("/config", adminHandler.PutConfig)
+		admin.GET("/tools/audio-missing", adminHandler.GetMissingAudioCalls)
+		admin.POST("/tools/audio-missing/cleanup", adminHandler.CleanupMissingAudioCalls)
 
 		// Import / Export
 		admin.POST("/import/talkgroups", adminHandler.ImportTalkgroups)

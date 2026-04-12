@@ -56,7 +56,10 @@ INSERT INTO calls (
     frequencies_json,
     patches_json,
     system_id,
-    talkgroup_id
+    talkgroup_id,
+    site,
+    channel,
+    decoder
 ) VALUES (
     :audio_path,
     :audio_name,
@@ -69,7 +72,10 @@ INSERT INTO calls (
     :frequencies_json,
     :patches_json,
     :system_id,
-    :talkgroup_id
+    :talkgroup_id,
+    :site,
+    :channel,
+    :decoder
 ) RETURNING id;
 
 -- name: DeleteCall :exec
@@ -81,12 +87,20 @@ DELETE FROM calls WHERE date_time < ?;
 -- name: CountCalls :one
 SELECT COUNT(*) FROM calls;
 
--- name: GetLastCallForTalkgroup :one
-SELECT c.date_time, c.duration
-FROM calls c
-WHERE c.system_id = ? AND c.talkgroup_id = ?
-ORDER BY c.date_time DESC
-LIMIT 1;
+-- name: HasCallInTimeRange :one
+SELECT EXISTS(
+    SELECT 1
+    FROM calls c
+    WHERE c.system_id = ? AND c.talkgroup_id = ?
+      AND c.date_time >= ? AND c.date_time <= ?
+);
+
+-- name: HasCallAtTimestamp :one
+SELECT EXISTS(
+    SELECT 1
+    FROM calls c
+    WHERE c.system_id = ? AND c.talkgroup_id = ? AND c.date_time = ?
+);
 
 -- name: GetCallIDsOlderThan :many
 SELECT id, audio_path

@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"math"
 	"time"
 
 	"github.com/openscanner/openscanner/internal/db"
@@ -20,9 +19,33 @@ func IsDuplicate(ctx context.Context, queries *db.Queries, systemID, talkgroupID
 		return false, nil
 	}
 
-	lastCall, err := queries.GetLastCallForTalkgroup(ctx, db.GetLastCallForTalkgroupParams{
+	// First, enforce idempotency for re-imports: same system + talkgroup +
+	// timestamp is always a duplicate regardless of the rolling window size.
+	hasAtTimestamp, err := queries.HasCallAtTimestamp(ctx, db.HasCallAtTimestampParams{
 		SystemID:    systemID,
 		TalkgroupID: sql.NullInt64{Int64: talkgroupID, Valid: true},
+		DateTime:    dateTime.Unix(),
+	})
+	if err != nil {
+		return false, err
+	}
+	if hasAtTimestamp != 0 {
+		return true, nil
+	}
+
+	// Check for any call in the time-range window around the new call's timestamp.
+	// This correctly handles out-of-order ingest (e.g. replaying old recordings).
+	windowSec := windowMs / 1000
+	if windowSec < 1 {
+		windowSec = 1
+	}
+	tsSec := dateTime.Unix()
+
+	found, err := queries.HasCallInTimeRange(ctx, db.HasCallInTimeRangeParams{
+		SystemID:    systemID,
+		TalkgroupID: sql.NullInt64{Int64: talkgroupID, Valid: true},
+		DateTime:    tsSec - windowSec,
+		DateTime_2:  tsSec + windowSec,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -31,6 +54,5 @@ func IsDuplicate(ctx context.Context, queries *db.Queries, systemID, talkgroupID
 		return false, err
 	}
 
-	diffMs := math.Abs(float64(dateTime.Unix()-lastCall.DateTime)) * 1000
-	return diffMs < float64(windowMs), nil
+	return found != 0, nil
 }

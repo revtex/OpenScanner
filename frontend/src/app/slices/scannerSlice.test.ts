@@ -219,6 +219,8 @@ describe("scannerSlice", () => {
       branding: "TEST",
       email: "",
       version: "1.0",
+      time12hFormat: false,
+      showListenersCount: false,
     };
 
     it("enables all talkgroups", () => {

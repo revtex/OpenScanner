@@ -8,6 +8,7 @@ import type {
   AdminTag,
   AdminApiKey,
   AdminApiKeyCreateResponse,
+  AdminAccess,
   AdminDirwatch,
   AdminDownstream,
   AdminWebhook,
@@ -54,6 +55,29 @@ interface ServerDirectoryListResponse {
   path: string;
   parent: string | null;
   directories: ServerDirectoryEntry[];
+}
+
+export interface MissingAudioCall {
+  id: number;
+  dateTime: number;
+  audioPath: string;
+  audioName: string;
+  reason: string;
+}
+
+export interface MissingAudioResponse {
+  baseDir: string;
+  limit: number;
+  offset: number;
+  totalCalls: number;
+  checked: number;
+  missing: MissingAudioCall[];
+}
+
+export interface MissingAudioCleanupResponse {
+  requested: number;
+  deleted: number;
+  skipped: MissingAudioCall[];
 }
 
 // --- Admin RTK Query endpoints ---
@@ -470,6 +494,42 @@ const adminApi = api.injectEndpoints({
       invalidatesTags: ["Webhooks"],
     }),
 
+    // ── Accesses ──
+    listAccesses: builder.query<AdminAccess[], void>({
+      query: () => "/admin/accesses",
+      providesTags: ["Accesses"],
+    }),
+    createAccess: builder.mutation<AdminAccess, CreatePayload<AdminAccess>>({
+      query: (body) => ({ url: "/admin/accesses", method: "POST", body }),
+      invalidatesTags: ["Accesses"],
+    }),
+    updateAccess: builder.mutation<AdminAccess, UpdatePayload<AdminAccess>>({
+      query: ({ id, ...body }) => ({
+        url: `/admin/accesses/${id}`,
+        method: "PUT",
+        body,
+      }),
+      async onQueryStarted({ id, ...body }, { dispatch, queryFulfilled }) {
+        const patch = dispatch(
+          adminApi.util.updateQueryData("listAccesses", undefined, (draft) => {
+            const acc = draft.find((a) => a.id === id);
+            if (!acc) return;
+            Object.assign(acc, body);
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patch.undo();
+        }
+      },
+      invalidatesTags: ["Accesses"],
+    }),
+    deleteAccess: builder.mutation<void, number>({
+      query: (id) => ({ url: `/admin/accesses/${id}`, method: "DELETE" }),
+      invalidatesTags: ["Accesses"],
+    }),
+
     // ── Config (Settings) ──
     getConfig: builder.query<AdminSetting[], void>({
       query: () => "/admin/config",
@@ -532,6 +592,30 @@ const adminApi = api.injectEndpoints({
         "Webhooks",
         "Config",
       ],
+    }),
+
+    // ── Maintenance ──
+    getMissingAudioCalls: builder.query<
+      MissingAudioResponse,
+      { limit?: number; offset?: number } | void
+    >({
+      query: (params) => ({
+        url: "/admin/tools/audio-missing",
+        params: {
+          limit: params?.limit,
+          offset: params?.offset,
+        },
+      }),
+    }),
+    cleanupMissingAudioCalls: builder.mutation<
+      MissingAudioCleanupResponse,
+      { confirm: boolean; callIds: number[] }
+    >({
+      query: (body) => ({
+        url: "/admin/tools/audio-missing/cleanup",
+        method: "POST",
+        body,
+      }),
     }),
 
     // ── Password change ──
@@ -600,6 +684,11 @@ export const {
   useCreateWebhookMutation,
   useUpdateWebhookMutation,
   useDeleteWebhookMutation,
+  // Accesses
+  useListAccessesQuery,
+  useCreateAccessMutation,
+  useUpdateAccessMutation,
+  useDeleteAccessMutation,
   // Config
   useGetConfigQuery,
   useUpdateConfigMutation,
@@ -611,6 +700,8 @@ export const {
   useExportConfigQuery,
   useLazyExportConfigQuery,
   useImportConfigMutation,
+  useLazyGetMissingAudioCallsQuery,
+  useCleanupMissingAudioCallsMutation,
   // Password
   useChangePasswordMutation,
 } = adminApi;

@@ -5,8 +5,11 @@ import {
   useImportUnitsMutation,
   useLazyExportConfigQuery,
   useImportConfigMutation,
+  useLazyGetMissingAudioCallsQuery,
+  useCleanupMissingAudioCallsMutation,
   useChangePasswordMutation,
   useMigrateApiKeysHashingMutation,
+  type MissingAudioResponse,
 } from "@/app/slices/adminSlice";
 
 export default function ToolsPanel() {
@@ -14,6 +17,10 @@ export default function ToolsPanel() {
   const [importUnits] = useImportUnitsMutation();
   const [triggerExport] = useLazyExportConfigQuery();
   const [importConfig] = useImportConfigMutation();
+  const [getMissingAudioCalls, { isFetching: scanningMissingAudio }] =
+    useLazyGetMissingAudioCallsQuery();
+  const [cleanupMissingAudioCalls, { isLoading: cleaningMissingAudio }] =
+    useCleanupMissingAudioCallsMutation();
   const [changePassword] = useChangePasswordMutation();
   const [migrateApiKeysHashing, { isLoading: migratingApiKeys }] =
     useMigrateApiKeysHashingMutation();
@@ -27,6 +34,9 @@ export default function ToolsPanel() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [missingAudioResult, setMissingAudioResult] =
+    useState<MissingAudioResponse | null>(null);
+  const [confirmMissingCleanup, setConfirmMissingCleanup] = useState(false);
 
   const showToast = useCallback(
     (msg: string, type: "error" | "success" = "error") => {
@@ -129,6 +139,52 @@ export default function ToolsPanel() {
       );
     } catch {
       showToast("Failed to migrate API keys");
+    }
+  };
+
+  const handleScanMissingAudio = async () => {
+    try {
+      const result = await getMissingAudioCalls({
+        limit: 500,
+        offset: 0,
+      }).unwrap();
+      setMissingAudioResult(result);
+      showToast(
+        `Scan complete: ${result.missing.length} missing in ${result.checked} checked calls`,
+        "success",
+      );
+    } catch {
+      showToast("Failed to scan for missing audio files");
+    }
+  };
+
+  const handleCleanupMissingAudio = async () => {
+    if (!missingAudioResult || missingAudioResult.missing.length === 0) {
+      showToast("No missing rows to delete");
+      return;
+    }
+    if (!confirmMissingCleanup) {
+      showToast("Please confirm deletion first");
+      return;
+    }
+    try {
+      const callIds = missingAudioResult.missing.map((row) => row.id);
+      const result = await cleanupMissingAudioCalls({
+        confirm: true,
+        callIds,
+      }).unwrap();
+      showToast(
+        `Cleanup complete: deleted ${result.deleted} of ${result.requested}`,
+        "success",
+      );
+      const refreshed = await getMissingAudioCalls({
+        limit: 500,
+        offset: 0,
+      }).unwrap();
+      setMissingAudioResult(refreshed);
+      setConfirmMissingCleanup(false);
+    } catch {
+      showToast("Failed to delete missing audio rows");
     }
   };
 
@@ -301,6 +357,82 @@ export default function ToolsPanel() {
               {migratingApiKeys ? "Migrating..." : "Migrate API Keys"}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Missing audio scan */}
+      <div className="card bg-base-200 mb-4">
+        <div className="card-body">
+          <h2 className="card-title text-base">Find Missing Call Audio</h2>
+          <p className="text-sm text-base-content/70">
+            Scan recent archived calls and report DB records whose stored audio
+            file is missing from the configured base directory.
+          </p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              className="btn btn-primary"
+              onClick={handleScanMissingAudio}
+              disabled={scanningMissingAudio}
+            >
+              {scanningMissingAudio ? "Scanning..." : "Scan Missing Audio"}
+            </button>
+            <label className="label cursor-pointer gap-2">
+              <input
+                type="checkbox"
+                className="checkbox checkbox-sm"
+                checked={confirmMissingCleanup}
+                onChange={(e) => setConfirmMissingCleanup(e.target.checked)}
+              />
+              <span className="label-text">Confirm delete missing rows</span>
+            </label>
+            <button
+              className="btn btn-error"
+              onClick={handleCleanupMissingAudio}
+              disabled={
+                cleaningMissingAudio ||
+                !missingAudioResult ||
+                missingAudioResult.missing.length === 0
+              }
+            >
+              {cleaningMissingAudio ? "Deleting..." : "Delete Missing Rows"}
+            </button>
+            {missingAudioResult && (
+              <span className="text-sm text-base-content/70">
+                Base dir: {missingAudioResult.baseDir} | Checked:{" "}
+                {missingAudioResult.checked} / {missingAudioResult.totalCalls} |
+                Missing: {missingAudioResult.missing.length}
+              </span>
+            )}
+          </div>
+          {missingAudioResult && missingAudioResult.missing.length > 0 && (
+            <div className="overflow-x-auto mt-3">
+              <table className="table table-zebra table-xs">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Audio Name</th>
+                    <th>Audio Path</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {missingAudioResult.missing.slice(0, 50).map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.id}</td>
+                      <td>{row.audioName || "-"}</td>
+                      <td className="font-mono text-xs">{row.audioPath}</td>
+                      <td>{row.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {missingAudioResult.missing.length > 50 && (
+                <p className="text-xs text-base-content/70 mt-2">
+                  Showing first 50 missing rows.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

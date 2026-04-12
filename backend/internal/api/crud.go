@@ -34,6 +34,7 @@ type AdminHandler struct {
 	sqlDB    *sql.DB
 	dwReload DirwatchReloader
 	dsReload DownstreamReloader
+	baseDir  string
 }
 
 func isSHA256Hex(s string) bool {
@@ -51,8 +52,12 @@ func isSHA256Hex(s string) bool {
 }
 
 // NewAdminHandler constructs an AdminHandler.
-func NewAdminHandler(queries *db.Queries, hub *ws.Hub, sqlDB *sql.DB, dwReload DirwatchReloader, dsReload DownstreamReloader) *AdminHandler {
-	return &AdminHandler{queries: queries, hub: hub, sqlDB: sqlDB, dwReload: dwReload, dsReload: dsReload}
+func NewAdminHandler(queries *db.Queries, hub *ws.Hub, sqlDB *sql.DB, dwReload DirwatchReloader, dsReload DownstreamReloader, baseDir ...string) *AdminHandler {
+	b := "."
+	if len(baseDir) > 0 && strings.TrimSpace(baseDir[0]) != "" {
+		b = baseDir[0]
+	}
+	return &AdminHandler{queries: queries, hub: hub, sqlDB: sqlDB, dwReload: dwReload, dsReload: dsReload, baseDir: b}
 }
 
 // parseID extracts and parses the :id path parameter.
@@ -112,17 +117,62 @@ type listServerDirectoriesResponse struct {
 	Directories []serverDirectoryEntry `json:"directories"`
 }
 
+// allowedBrowseRoots are the top-level directories that the admin FS browser
+// is allowed to enumerate. This limits exposure if an admin account is
+// compromised (defence-in-depth — OWASP A01).
+var allowedBrowseRoots = []string{
+	"/home",
+	"/opt",
+	"/srv",
+	"/tmp",
+	"/var",
+	"/mnt",
+	"/media",
+}
+
+// isUnderAllowedRoot checks whether a cleaned absolute path falls under one of
+// the allowed browse roots.
+func isUnderAllowedRoot(clean string) bool {
+	for _, root := range allowedBrowseRoots {
+		if clean == root || strings.HasPrefix(clean, root+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 // ListServerDirectories handles GET /api/admin/fs/directories.
 // Returns immediate child directories for a given absolute server path.
+// Browsing is restricted to a set of safe directory roots.
 func (h *AdminHandler) ListServerDirectories(c *gin.Context) {
 	path := c.Query("path")
 	if path == "" {
-		path = "/"
+		// Return the list of allowed roots that actually exist.
+		dirs := make([]serverDirectoryEntry, 0, len(allowedBrowseRoots))
+		for _, root := range allowedBrowseRoots {
+			if info, err := os.Stat(root); err == nil && info.IsDir() {
+				dirs = append(dirs, serverDirectoryEntry{
+					Name: filepath.Base(root),
+					Path: root,
+				})
+			}
+		}
+		c.JSON(http.StatusOK, listServerDirectoriesResponse{
+			Path:        "/",
+			Parent:      nil,
+			Directories: dirs,
+		})
+		return
 	}
 
 	clean := filepath.Clean(path)
 	if !filepath.IsAbs(clean) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "path must be absolute"})
+		return
+	}
+
+	if !isUnderAllowedRoot(clean) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "browsing this path is not allowed"})
 		return
 	}
 
@@ -161,9 +211,13 @@ func (h *AdminHandler) ListServerDirectories(c *gin.Context) {
 	})
 
 	var parent *string
-	if clean != "/" {
-		p := filepath.Dir(clean)
+	p := filepath.Dir(clean)
+	if isUnderAllowedRoot(p) {
 		parent = &p
+	} else {
+		// Parent would be outside allowed roots — link back to the root listing.
+		root := "/"
+		parent = &root
 	}
 
 	c.JSON(http.StatusOK, listServerDirectoriesResponse{
@@ -216,15 +270,16 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 
 	now := time.Now().Unix()
 	params := db.CreateUserParams{
-		Username:     req.Username,
-		PasswordHash: hash,
-		Role:         req.Role,
-		Disabled:     req.Disabled,
-		SystemsJson:  ptrToNullStr(req.SystemsJson),
-		Expiration:   ptrToNullInt(req.Expiration),
-		Limit:        ptrToNullInt(req.Limit),
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		Username:           req.Username,
+		PasswordHash:       hash,
+		Role:               req.Role,
+		Disabled:           req.Disabled,
+		SystemsJson:        ptrToNullStr(req.SystemsJson),
+		Expiration:         ptrToNullInt(req.Expiration),
+		Limit:              ptrToNullInt(req.Limit),
+		PasswordNeedChange: 1,
+		CreatedAt:          now,
+		UpdatedAt:          now,
 	}
 
 	id, err := h.queries.CreateUser(c.Request.Context(), params)
@@ -1512,6 +1567,100 @@ func (h *AdminHandler) DeleteWebhook(c *gin.Context) {
 	if err := h.queries.DeleteWebhook(c.Request.Context(), id); err != nil {
 		slog.Error("failed to delete webhook", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete webhook"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// ---------- Accesses ----------
+
+// ListAccesses handles GET /api/admin/accesses.
+func (h *AdminHandler) ListAccesses(c *gin.Context) {
+	accesses, err := h.queries.ListAccesses(c.Request.Context())
+	if err != nil {
+		slog.Error("failed to list accesses", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list accesses"})
+		return
+	}
+	c.JSON(http.StatusOK, toAccessResponses(accesses))
+}
+
+// CreateAccess handles POST /api/admin/accesses.
+func (h *AdminHandler) CreateAccess(c *gin.Context) {
+	var req createAccessRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if req.Code == "" {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "code is required"})
+		return
+	}
+
+	id, err := h.queries.CreateAccess(c.Request.Context(), req.toParams())
+	if err != nil {
+		slog.Error("failed to create access", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create access"})
+		return
+	}
+
+	access, err := h.queries.GetAccess(c.Request.Context(), id)
+	if err != nil {
+		slog.Error("failed to fetch created access", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created access"})
+		return
+	}
+	c.JSON(http.StatusCreated, toAccessResponse(access))
+}
+
+// UpdateAccess handles PUT /api/admin/accesses/:id.
+func (h *AdminHandler) UpdateAccess(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+
+	if _, err := h.queries.GetAccess(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "access not found"})
+		return
+	}
+
+	var req updateAccessRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	if err := h.queries.UpdateAccess(c.Request.Context(), req.toParams(id)); err != nil {
+		slog.Error("failed to update access", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update access"})
+		return
+	}
+
+	access, err := h.queries.GetAccess(c.Request.Context(), id)
+	if err != nil {
+		slog.Error("failed to fetch updated access", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated access"})
+		return
+	}
+	c.JSON(http.StatusOK, toAccessResponse(access))
+}
+
+// DeleteAccess handles DELETE /api/admin/accesses/:id.
+func (h *AdminHandler) DeleteAccess(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+
+	if _, err := h.queries.GetAccess(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "access not found"})
+		return
+	}
+
+	if err := h.queries.DeleteAccess(c.Request.Context(), id); err != nil {
+		slog.Error("failed to delete access", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete access"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})

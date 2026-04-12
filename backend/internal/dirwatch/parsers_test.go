@@ -351,6 +351,15 @@ func TestParseSDRTrunk_InvalidFilenameUsesModTime(t *testing.T) {
 	}
 }
 
+func TestParserForType_SDRTrunkAlias(t *testing.T) {
+	if p := parserForType("sdr-trunk"); p == nil {
+		t.Fatal("expected parser for sdr-trunk")
+	}
+	if p := parserForType("sdrtrunk"); p == nil {
+		t.Fatal("expected parser for sdrtrunk")
+	}
+}
+
 // ── RTL-SDR Airband ───────────────────────────────────────────────────────────
 
 func TestParseRTLSDRAirband_WithDirwatchOverrides(t *testing.T) {

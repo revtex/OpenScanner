@@ -12,6 +12,7 @@ import {
 import { useAppSelector, useAppDispatch } from "@/app/store";
 import {
   useSearchCallsQuery,
+  type CallSearchResult,
   setSystemFilter,
   setTalkgroupFilter,
   setGroupFilter,
@@ -25,6 +26,8 @@ import {
   setTranscript,
   resetFilters,
 } from "@/app/slices/callsSlice";
+import { audioPlayer } from "@/services/audioPlayer";
+import type { Call } from "@/types";
 
 interface SearchPanelProps {
   isOpen: boolean;
@@ -40,6 +43,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const dispatch = useAppDispatch();
   const filters = useAppSelector((s) => s.calls);
   const config = useAppSelector((s) => s.scanner.config);
+  const token = useAppSelector((s) => s.auth.token);
   const parentRef = useRef<HTMLDivElement>(null);
 
   const systems = useMemo(() => config?.systems ?? [], [config]);
@@ -124,14 +128,58 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   }, [filters]);
 
   const handleRowClick = useCallback(
-    (callId: number) => {
-      if (filters.downloadMode) {
-        console.log("download call", callId);
-      } else {
-        console.log("play call", callId);
+    async (call: CallSearchResult) => {
+      try {
+        const headers: HeadersInit = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+
+        const resp = await fetch(`/api/calls/${call.id}/audio`, { headers });
+        if (!resp.ok) {
+          console.error("failed to load call audio", call.id, resp.status);
+          return;
+        }
+
+        const blob = await resp.blob();
+        const audioUrl = URL.createObjectURL(blob);
+        if (filters.downloadMode) {
+          const a = document.createElement("a");
+          a.href = audioUrl;
+          a.download = call.audioName || `call-${call.id}.mp3`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(audioUrl);
+          return;
+        }
+
+        const playCall: Call = {
+          id: call.id,
+          audioName: call.audioName || `call-${call.id}`,
+          audioType: call.audioType || blob.type || "audio/mpeg",
+          dateTime: call.dateTime,
+          systemId: call.systemId,
+          system: call.systemId,
+          talkgroupId: call.talkgroupId,
+          talkgroup: call.talkgroupId,
+          frequency: call.frequency,
+          duration: call.duration,
+          source: call.source,
+          systemLabel: call.systemLabel,
+          talkgroupLabel: call.talkgroupLabel,
+          talkgroupName: call.talkgroupName,
+          talkgroupTag: call.talkgroupTag,
+          talkgroupGroup: call.talkgroupGroup,
+          transcript: call.transcript,
+        };
+
+        audioPlayer.play(playCall, audioUrl);
+      } catch (err) {
+        console.error("failed to play call", call.id, err);
       }
     },
-    [filters.downloadMode],
+    [filters.downloadMode, token],
   );
 
   return (
@@ -190,7 +238,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                   ref={virtualizer.measureElement}
                   className="absolute left-0 flex w-full cursor-pointer items-center gap-2 border-b border-base-300 px-4 py-2 hover:bg-base-200"
                   style={{ top: virtualRow.start }}
-                  onClick={() => handleRowClick(call.id)}
+                  onClick={() => void handleRowClick(call)}
                 >
                   {/* Play/Stop/Download icon */}
                   <span className="text-primary">

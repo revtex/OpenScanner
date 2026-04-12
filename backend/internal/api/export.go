@@ -8,19 +8,48 @@ import (
 	"github.com/openscanner/openscanner/internal/db"
 )
 
+// ── Export-safe types that strip secrets ──
+
+type exportAPIKey struct {
+	ID          int64   `json:"id"`
+	Ident       *string `json:"ident,omitempty"`
+	Disabled    int64   `json:"disabled"`
+	SystemsJson *string `json:"systemsJson,omitempty"`
+	Order       int64   `json:"order"`
+}
+
+type exportDownstream struct {
+	ID          int64   `json:"id"`
+	Url         string  `json:"url"`
+	SystemsJson *string `json:"systemsJson,omitempty"`
+	Disabled    int64   `json:"disabled"`
+	Order       int64   `json:"order"`
+}
+
+type exportWebhook struct {
+	ID          int64   `json:"id"`
+	Url         string  `json:"url"`
+	Type        string  `json:"type"`
+	SystemsJson *string `json:"systemsJson,omitempty"`
+	Disabled    int64   `json:"disabled"`
+	Order       int64   `json:"order"`
+}
+
 // configExport is the full JSON config export structure.
+// Sensitive fields (API key hashes, downstream API keys, webhook secrets)
+// are deliberately excluded.
 type configExport struct {
-	Settings    []db.Setting    `json:"settings"`
-	Users       []db.User       `json:"users"`
-	Systems     []db.System     `json:"systems"`
-	Talkgroups  []db.Talkgroup  `json:"talkgroups"`
-	Units       []db.Unit       `json:"units"`
-	Groups      []db.Group      `json:"groups"`
-	Tags        []db.Tag        `json:"tags"`
-	APIKeys     []db.ApiKey     `json:"apiKeys"`
-	Dirwatches  []db.Dirwatch   `json:"dirwatches"`
-	Downstreams []db.Downstream `json:"downstreams"`
-	Webhooks    []db.Webhook    `json:"webhooks"`
+	Settings    []db.Setting       `json:"settings"`
+	Users       []db.User          `json:"users"`
+	Systems     []db.System        `json:"systems"`
+	Talkgroups  []db.Talkgroup     `json:"talkgroups"`
+	Units       []db.Unit          `json:"units"`
+	Groups      []db.Group         `json:"groups"`
+	Tags        []db.Tag           `json:"tags"`
+	APIKeys     []exportAPIKey     `json:"apiKeys"`
+	Dirwatches  []db.Dirwatch      `json:"dirwatches"`
+	Downstreams []exportDownstream `json:"downstreams"`
+	Webhooks    []exportWebhook    `json:"webhooks"`
 }
 
 // ExportConfig handles GET /api/admin/export/config.
@@ -94,6 +123,39 @@ func (h *AdminHandler) ExportConfig(c *gin.Context) {
 		return
 	}
 
+	// Sanitize sensitive fields before export.
+	safeAPIKeys := make([]exportAPIKey, len(apiKeys))
+	for i, k := range apiKeys {
+		safeAPIKeys[i] = exportAPIKey{
+			ID:          k.ID,
+			Ident:       nullStr(k.Ident),
+			Disabled:    k.Disabled,
+			SystemsJson: nullStr(k.SystemsJson),
+			Order:       k.Order,
+		}
+	}
+	safeDownstreams := make([]exportDownstream, len(downstreams))
+	for i, d := range downstreams {
+		safeDownstreams[i] = exportDownstream{
+			ID:          d.ID,
+			Url:         d.Url,
+			SystemsJson: nullStr(d.SystemsJson),
+			Disabled:    d.Disabled,
+			Order:       d.Order,
+		}
+	}
+	safeWebhooks := make([]exportWebhook, len(webhooks))
+	for i, w := range webhooks {
+		safeWebhooks[i] = exportWebhook{
+			ID:          w.ID,
+			Url:         w.Url,
+			Type:        w.Type,
+			SystemsJson: nullStr(w.SystemsJson),
+			Disabled:    w.Disabled,
+			Order:       w.Order,
+		}
+	}
+
 	export := configExport{
 		Settings:    settings,
 		Users:       users,
@@ -102,10 +164,10 @@ func (h *AdminHandler) ExportConfig(c *gin.Context) {
 		Units:       units,
 		Groups:      groups,
 		Tags:        tags,
-		APIKeys:     apiKeys,
+		APIKeys:     safeAPIKeys,
 		Dirwatches:  dirwatches,
-		Downstreams: downstreams,
-		Webhooks:    webhooks,
+		Downstreams: safeDownstreams,
+		Webhooks:    safeWebhooks,
 	}
 
 	c.Header("Content-Disposition", `attachment; filename="openscanner-config.json"`)
@@ -275,6 +337,10 @@ func (h *AdminHandler) ImportConfig(c *gin.Context) {
 
 	// Downstreams
 	for _, d := range data.Downstreams {
+		if !validHTTPURL(d.Url) {
+			slog.Warn("import config: skipping downstream with invalid URL", "url", d.Url)
+			continue
+		}
 		if _, err := qtx.CreateDownstream(ctx, db.CreateDownstreamParams{
 			Url:         d.Url,
 			ApiKey:      d.ApiKey,
@@ -292,6 +358,10 @@ func (h *AdminHandler) ImportConfig(c *gin.Context) {
 
 	// Webhooks
 	for _, w := range data.Webhooks {
+		if !validHTTPURL(w.Url) {
+			slog.Warn("import config: skipping webhook with invalid URL", "url", w.Url)
+			continue
+		}
 		if _, err := qtx.CreateWebhook(ctx, db.CreateWebhookParams{
 			Url:         w.Url,
 			Type:        w.Type,

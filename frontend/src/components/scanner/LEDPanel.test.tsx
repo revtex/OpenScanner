@@ -82,6 +82,8 @@ describe("LEDPanel", () => {
       branding: "MY SCANNER",
       email: "",
       version: "1.0",
+      time12hFormat: false,
+      showListenersCount: false,
     };
     renderLED({
       scanner: {
@@ -108,6 +110,8 @@ describe("LEDPanel", () => {
       branding: "   ",
       email: "",
       version: "1.0",
+      time12hFormat: false,
+      showListenersCount: false,
     };
     renderLED({
       scanner: {

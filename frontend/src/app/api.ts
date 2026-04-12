@@ -45,8 +45,10 @@ export const api = createApi({
     "Dirwatches",
     "Downstreams",
     "Webhooks",
+    "Accesses",
     "Config",
     "Logs",
+    "Bookmarks",
   ],
   baseQuery: baseQueryWith401Redirect,
   endpoints: (builder) => ({
@@ -70,6 +72,21 @@ export const api = createApi({
         body,
       }),
     }),
+    getBookmarkIDs: builder.query<{ callIds: number[] }, void>({
+      query: () => "/bookmarks",
+      providesTags: ["Bookmarks"],
+    }),
+    toggleBookmark: builder.mutation<
+      { bookmarked: boolean; id?: number },
+      number
+    >({
+      query: (callId) => ({
+        url: "/bookmarks",
+        method: "POST",
+        body: { callId },
+      }),
+      invalidatesTags: ["Bookmarks"],
+    }),
   }),
 });
 
@@ -77,4 +94,6 @@ export const {
   useGetSetupStatusQuery,
   usePostSetupMutation,
   usePostLoginMutation,
+  useGetBookmarkIDsQuery,
+  useToggleBookmarkMutation,
 } = api;

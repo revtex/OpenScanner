@@ -4,6 +4,7 @@ tmp_dir = "tmp"
 [build]
   bin = "./tmp/openscanner"
   cmd = "go build -o ./tmp/openscanner ./cmd/server"
+  full_bin = "./tmp/openscanner --base-dir . --db-file openscanner.db"
   delay = 1000
   exclude_dir = ["tmp", "vendor", "testdata", "migrations", "sqlc"]
   exclude_regex = ["_test\\.go$"]

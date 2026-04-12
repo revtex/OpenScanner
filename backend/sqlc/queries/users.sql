@@ -16,6 +16,7 @@ INSERT INTO users (
     systems_json,
     expiration,
     "limit",
+    password_need_change,
     created_at,
     updated_at
 ) VALUES (
@@ -26,6 +27,7 @@ INSERT INTO users (
     :systems_json,
     :expiration,
     :limit,
+    :password_need_change,
     :created_at,
     :updated_at
 ) RETURNING id;
@@ -43,8 +45,9 @@ WHERE id = :id;
 
 -- name: UpdateUserPassword :exec
 UPDATE users SET
-    password_hash = :password_hash,
-    updated_at    = :updated_at
+    password_hash        = :password_hash,
+    password_need_change = 0,
+    updated_at           = :updated_at
 WHERE id = :id;
 
 -- name: DeleteUser :exec

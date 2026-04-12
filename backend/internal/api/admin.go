@@ -74,6 +74,16 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 		return
 	}
 
+	// Check account expiration (OWASP A01 — broken access control).
+	if user.Expiration.Valid && user.Expiration.Int64 > 0 {
+		if time.Now().Unix() > user.Expiration.Int64 {
+			h.rateLimiter.RecordFailure(ip)
+			h.logAuthEvent(c.Request.Context(), "warn", "login failed: expired account for "+user.Username, ip)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+			return
+		}
+	}
+
 	if !auth.CheckPassword(req.Password, user.PasswordHash) {
 		h.rateLimiter.RecordFailure(ip)
 		h.logAuthEvent(c.Request.Context(), "warn", "login failed: wrong password for "+user.Username, ip)
@@ -100,7 +110,7 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 			Username: user.Username,
 			Role:     user.Role,
 		},
-		PasswordNeedChange: false,
+		PasswordNeedChange: user.PasswordNeedChange != 0,
 	})
 }
 

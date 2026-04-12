@@ -17,3 +17,9 @@ DELETE FROM bookmarks WHERE id = ?;
 
 -- name: DeleteBookmarkByCallAndUser :exec
 DELETE FROM bookmarks WHERE call_id = ? AND user_id = ?;
+
+-- name: GetBookmarkByCallAndUser :one
+SELECT * FROM bookmarks WHERE call_id = ? AND user_id = ? LIMIT 1;
+
+-- name: ListBookmarkCallIDsByUser :many
+SELECT call_id FROM bookmarks WHERE user_id = ? ORDER BY created_at DESC;

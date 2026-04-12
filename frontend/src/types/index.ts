@@ -14,6 +14,9 @@ export interface Call {
   sources?: string; // JSON array
   frequencies?: string; // JSON array
   patches?: string; // JSON array
+  site?: string; // receiver site name
+  channel?: string; // channel identifier
+  decoder?: string; // decoder type (e.g. "P25 Phase 1")
   systemLabel?: string; // populated from config
   talkgroupLabel?: string; // populated from config
   talkgroupName?: string; // populated from config
@@ -49,6 +52,8 @@ export interface ScannerConfig {
   branding: string;
   email: string;
   version: string;
+  time12hFormat: boolean;
+  showListenersCount: boolean;
 }
 
 // WS message: JSON array [command, payload?, flags?]
@@ -189,6 +194,16 @@ export interface AdminWebhook {
   secret: string | null;
   systemsJson: string | null;
   disabled: number;
+  order: number;
+}
+
+export interface AdminAccess {
+  id: number;
+  code: string;
+  ident: string | null;
+  expiration: number | null;
+  limit: number | null;
+  systemsJson: string | null;
   order: number;
 }
 

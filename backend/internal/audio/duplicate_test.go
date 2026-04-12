@@ -149,3 +149,23 @@ func TestIsDuplicate_ZeroWindow(t *testing.T) {
 		t.Error("IsDuplicate = true, want false when windowMs=0 disables detection")
 	}
 }
+
+// TestIsDuplicate_ExactTimestampReimport verifies idempotent behavior for
+// replayed imports: exact same system+talkgroup+timestamp is duplicate even
+// when window-based detection would otherwise not apply.
+func TestIsDuplicate_ExactTimestampReimport(t *testing.T) {
+	q := newDuplicateTestDB(t)
+	ctx := context.Background()
+
+	baseTime := time.Now().UTC().Truncate(time.Second)
+	sysID, tgID := seedCallAtTime(t, q, baseTime.Unix())
+
+	// Exact same timestamp should always be duplicate.
+	isDup, err := audio.IsDuplicate(ctx, q, sysID, tgID, baseTime, 1)
+	if err != nil {
+		t.Fatalf("IsDuplicate: %v", err)
+	}
+	if !isDup {
+		t.Error("IsDuplicate = false, want true for exact timestamp re-import")
+	}
+}

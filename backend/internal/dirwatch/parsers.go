@@ -17,16 +17,21 @@ import (
 
 // ParsedCall is the normalised metadata extracted by a recorder-specific parser.
 type ParsedCall struct {
-	AudioFilePath string    // absolute path to audio file on disk
-	DateTime      time.Time // call timestamp
-	SystemID      int64     // radio system ID (0 = unknown)
-	TalkgroupID   int64     // radio talkgroup ID (0 = unknown)
-	Frequency     int64     // Hz; 0 if unknown
-	Duration      int64     // ms; 0 if unknown
-	Source        int64     // source unit ID; 0 if unknown
-	SourcesJSON   string    // JSON array string; "" if unknown
-	FreqsJSON     string    // JSON array string; "" if unknown
-	PatchesJSON   string    // JSON array string; "" if unknown
+	AudioFilePath  string    // absolute path to audio file on disk
+	DateTime       time.Time // call timestamp
+	SystemID       int64     // radio system ID (0 = unknown)
+	SystemLabel    string    // radio system label (used when SystemID is unknown)
+	TalkgroupID    int64     // radio talkgroup ID (0 = unknown)
+	TalkgroupTitle string    // talkgroup title from metadata (e.g. MP3 ID3 Title tag)
+	Frequency      int64     // Hz; 0 if unknown
+	Duration       int64     // ms; 0 if unknown
+	Source         int64     // source unit ID; 0 if unknown
+	SourcesJSON    string    // JSON array string; "" if unknown
+	FreqsJSON      string    // JSON array string; "" if unknown
+	PatchesJSON    string    // JSON array string; "" if unknown
+	Site           string    // receiver site name; "" if unknown
+	Channel        string    // channel identifier; "" if unknown
+	Decoder        string    // decoder type (e.g. "P25 Phase 1"); "" if unknown
 }
 
 // ParseFunc parses a newly detected file for a given dirwatch config.
@@ -56,7 +61,7 @@ func parserForType(recorderType string) ParseFunc {
 	switch strings.ToLower(recorderType) {
 	case "trunk-recorder":
 		return parseTrunkRecorder
-	case "sdrtrunk":
+	case "sdrtrunk", "sdr-trunk":
 		return parseSDRTrunk
 	case "rtlsdr-airband":
 		return parseRTLSDRAirband
@@ -170,10 +175,14 @@ func rawOrEmpty(raw json.RawMessage) string {
 
 // Compiled regexes for SDR Trunk ID3 tag parsing.
 var (
-	reSDRArtist = regexp.MustCompile(`^([0-9]+) ?(.*)$`)
-	reSDRDate   = regexp.MustCompile(`Date:([^;]+);`)
-	reSDRFreq   = regexp.MustCompile(`Frequency:([0-9]+);`)
-	reSDRTgID   = regexp.MustCompile(`([0-9]+)`)
+	reSDRArtist  = regexp.MustCompile(`^([0-9]+) ?(.*)$`)
+	reSDRDate    = regexp.MustCompile(`Date:([^;]+);`)
+	reSDRFreq    = regexp.MustCompile(`Frequency:([0-9]+);`)
+	reSDRSystem  = regexp.MustCompile(`System:([^;]+);`)
+	reSDRSite    = regexp.MustCompile(`Site:([^;]+);`)
+	reSDRChannel = regexp.MustCompile(`Channel:([^;]+);`)
+	reSDRDecoder = regexp.MustCompile(`Decoder:([^;]+);`)
+	reSDRTgID    = regexp.MustCompile(`([0-9]+)`)
 )
 
 // parseSDRTrunk parses SDR Trunk recordings. It first attempts to read
@@ -186,10 +195,12 @@ func parseSDRTrunk(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
 	}
 
 	var sysID, tgID, freq, source int64
+	var systemLabel, tgTitle string
+	var site, channel, decoder string
 	var dt time.Time
 
 	// Try ID3 tag reading first.
-	if tagsParsed := parseSDRTrunkTags(triggeredPath, &sysID, &tgID, &freq, &source, &dt); !tagsParsed {
+	if tagsParsed := parseSDRTrunkTags(triggeredPath, &sysID, &systemLabel, &tgID, &freq, &source, &dt, &tgTitle, &site, &channel, &decoder); !tagsParsed {
 		// Fall back to filename parsing: <systemID>_<talkgroupID>_<unixTs>.<ext>
 		name := filepath.Base(triggeredPath)
 		stem := strings.TrimSuffix(name, filepath.Ext(name))
@@ -214,6 +225,7 @@ func parseSDRTrunk(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
 	// Config overrides take precedence.
 	if dw.SystemID.Valid {
 		sysID = dw.SystemID.Int64
+		systemLabel = ""
 	}
 	if dw.TalkgroupID.Valid {
 		tgID = dw.TalkgroupID.Int64
@@ -223,18 +235,23 @@ func parseSDRTrunk(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
 	}
 
 	return &ParsedCall{
-		AudioFilePath: triggeredPath,
-		DateTime:      dt,
-		SystemID:      sysID,
-		TalkgroupID:   tgID,
-		Frequency:     freq,
-		Source:        source,
+		AudioFilePath:  triggeredPath,
+		DateTime:       dt,
+		SystemID:       sysID,
+		SystemLabel:    systemLabel,
+		TalkgroupID:    tgID,
+		TalkgroupTitle: tgTitle,
+		Frequency:      freq,
+		Source:         source,
+		Site:           site,
+		Channel:        channel,
+		Decoder:        decoder,
 	}, nil
 }
 
 // parseSDRTrunkTags attempts to read ID3 tags from an MP3 file. Returns true
 // if tags were successfully parsed, false otherwise.
-func parseSDRTrunkTags(path string, sysID, tgID, freq, source *int64, dt *time.Time) bool {
+func parseSDRTrunkTags(path string, sysID *int64, systemLabel *string, tgID, freq, source *int64, dt *time.Time, tgTitle *string, site, channel, decoder *string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
 	if ext != ".mp3" {
 		return false
@@ -277,16 +294,46 @@ func parseSDRTrunkTags(path string, sysID, tgID, freq, source *int64, dt *time.T
 				parsed = true
 			}
 		}
-		// System label → we don't have a system label lookup here, but the
-		// filename fallback or dw.SystemID override handles system resolution.
+		if s := reSDRSystem.FindStringSubmatch(comment); len(s) == 2 {
+			label := strings.TrimSpace(s[1])
+			if label != "" {
+				*systemLabel = label
+				parsed = true
+			}
+		}
+		if s := reSDRSite.FindStringSubmatch(comment); len(s) == 2 {
+			if v := strings.TrimSpace(s[1]); v != "" {
+				*site = v
+				parsed = true
+			}
+		}
+		if s := reSDRChannel.FindStringSubmatch(comment); len(s) == 2 {
+			if v := strings.TrimSpace(s[1]); v != "" {
+				*channel = v
+				parsed = true
+			}
+		}
+		if s := reSDRDecoder.FindStringSubmatch(comment); len(s) == 2 {
+			if v := strings.TrimSpace(s[1]); v != "" {
+				*decoder = v
+				parsed = true
+			}
+		}
 	}
 
-	// Title: contains talkgroup ID (first numeric sequence).
+	// Title: contains talkgroup ID (first numeric sequence) and full title text.
 	if title := m.title; title != "" {
 		if s := reSDRTgID.FindStringSubmatch(title); len(s) > 1 {
 			if i, err := strconv.ParseInt(s[1], 10, 64); err == nil && i > 0 {
 				*tgID = i
 				parsed = true
+			}
+			// Strip the leading talkgroup ID and surrounding quotes from the title to get just the name.
+			name := strings.TrimSpace(strings.TrimPrefix(title, s[1]))
+			name = strings.Trim(name, "\"")
+			name = strings.TrimSpace(name)
+			if name != "" {
+				*tgTitle = name
 			}
 		}
 	}

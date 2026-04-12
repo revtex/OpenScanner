@@ -182,7 +182,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
                     : "btn-ghost";
               return (
                 <button
-                  key={name}
+                  key={`group-${name}`}
                   className={`btn btn-xs ${cls}`}
                   onClick={() => handleGroupToggle(tgs)}
                 >
@@ -253,7 +253,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
                           const avoided = avoidSet.has(tg.talkgroupId);
                           return (
                             <button
-                              key={tg.id}
+                              key={`${sys.id}-${tg.id}-${tg.talkgroupId}`}
                               className={`btn btn-xs ${enabled ? "btn-primary" : "btn-ghost"} ${avoided ? "animate-pulse" : ""}`}
                               style={{
                                 borderLeft: `6px solid ${tg.ledColor || "transparent"}`,

@@ -45,6 +45,27 @@ export const scannerSlice = createSlice({
   reducers: {
     callReceived(state, action: PayloadAction<Call>) {
       const call = action.payload;
+
+      // Enrich call with labels from config
+      if (state.config) {
+        for (const sys of state.config.systems) {
+          if (sys.id === call.system) {
+            call.systemLabel = sys.label;
+            for (const tg of sys.talkgroups) {
+              if (tg.id === call.talkgroup) {
+                call.talkgroupLabel = tg.label;
+                call.talkgroupName = tg.name;
+                call.talkgroupTag = tg.tag;
+                call.talkgroupGroup = tg.group;
+                call.talkgroupLedColor = tg.ledColor;
+                break;
+              }
+            }
+            break;
+          }
+        }
+      }
+
       // Add to history (front), cap at MAX_HISTORY
       state.history = [call, ...state.history].slice(0, MAX_HISTORY);
 
@@ -58,7 +79,11 @@ export const scannerSlice = createSlice({
       }
     },
     setCurrentCall(state, action: PayloadAction<Call | null>) {
-      state.currentCall = action.payload;
+      const call = action.payload;
+      state.currentCall = call;
+      if (call) {
+        state.callQueue = state.callQueue.filter((c) => c.id !== call.id);
+      }
     },
     skipCall(state) {
       const next = state.callQueue.shift();
@@ -116,7 +141,12 @@ export const scannerSlice = createSlice({
         state.config.email = action.payload.email;
         state.config.version = action.payload.version;
       } else {
-        state.config = { systems: [], ...action.payload };
+        state.config = {
+          systems: [],
+          time12hFormat: false,
+          showListenersCount: false,
+          ...action.payload,
+        };
       }
     },
     toggleTG(state, action: PayloadAction<number>) {

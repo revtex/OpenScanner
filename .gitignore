@@ -12,6 +12,7 @@
 # Data & audio (dev)
 /data/
 /audio/
+*.m4a
 
 # SQLite DB files
 *.db
@@ -34,3 +35,4 @@ Thumbs.db
 /e2e/playwright-report/
 reference/
 backend/tmp/
+recordings/

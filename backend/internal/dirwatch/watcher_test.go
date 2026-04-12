@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/db"
@@ -368,6 +369,72 @@ func TestHandleFile_Integration_MissingSystemID_Rejected(t *testing.T) {
 	count, _ := queries.CountCalls(ctx)
 	if count != 0 {
 		t.Errorf("expected 0 calls, got %d", count)
+	}
+}
+
+// TestIngestCall_SDRTrunk_SystemLabelResolvesSystem verifies rdio-scanner-style
+// SDRTrunk behavior where System:<label> metadata can resolve the system when
+// numeric system ID is not present in the parsed call.
+func TestIngestCall_SDRTrunk_SystemLabelResolvesSystem(t *testing.T) {
+	ctx := context.Background()
+	_, queries := newWatcherTestDB(t)
+
+	for _, kv := range [][2]string{
+		{"autoPopulate", "true"},
+		{"audioConversion", "0"},
+		{"disableDuplicateDetection", "true"},
+	} {
+		if err := queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: kv[0], Value: kv[1]}); err != nil {
+			t.Fatalf("UpsertSetting %q: %v", kv[0], err)
+		}
+	}
+
+	// Existing system (as commonly configured from UI) is identified by label.
+	const systemLabel = "Ohio MARCS-IP - Lake County"
+	systemDBID, err := queries.CreateSystem(ctx, db.CreateSystemParams{
+		SystemID:     1,
+		Label:        systemLabel,
+		AutoPopulate: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateSystem: %v", err)
+	}
+
+	processor, _ := newWatcherProcessor(t)
+	watchDir := t.TempDir()
+	audioPath := filepath.Join(watchDir, "sdrtrunk_call.mp3")
+	if err := os.WriteFile(audioPath, fakeAudioData(), 0644); err != nil {
+		t.Fatalf("write audio: %v", err)
+	}
+
+	svc := &Service{queries: queries, processor: processor, hub: nil}
+
+	err = svc.ingestCall(ctx, db.Dirwatch{ID: 2, Directory: watchDir, Type: "sdr-trunk"}, &ParsedCall{
+		AudioFilePath: audioPath,
+		DateTime:      time.Unix(1700000000, 0).UTC(),
+		SystemID:      0,
+		SystemLabel:   systemLabel,
+		TalkgroupID:   27503,
+		Frequency:     855787500,
+	})
+	if err != nil {
+		t.Fatalf("ingestCall: %v", err)
+	}
+
+	count, err := queries.CountCalls(ctx)
+	if err != nil {
+		t.Fatalf("CountCalls: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 call, got %d", count)
+	}
+
+	talkgroups, err := queries.ListTalkgroupsBySystem(ctx, systemDBID)
+	if err != nil {
+		t.Fatalf("ListTalkgroupsBySystem: %v", err)
+	}
+	if len(talkgroups) != 1 || talkgroups[0].TalkgroupID != 27503 {
+		t.Fatalf("expected talkgroup 27503 to be auto-populated on resolved system")
 	}
 }
 

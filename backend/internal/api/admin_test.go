@@ -3,6 +3,7 @@ package api_test
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/openscanner/openscanner/internal/api"
+	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/ws"
@@ -30,9 +32,11 @@ func newAdminTestEngine(t *testing.T) (*gin.Engine, *db.Queries) {
 
 	router := gin.New()
 	rl := auth.NewRateLimiter(context.Background())
+	processor := audio.NewProcessor(t.TempDir(), nil)
 	api.RegisterRoutes(router, api.Deps{
 		Queries:     queries,
 		RateLimiter: rl,
+		Processor:   processor,
 		Hub:         hub,
 		SQLDB:       sqlDB,
 		Version:     "test",
@@ -134,6 +138,7 @@ func TestAdminEndpoints_NoJWT(t *testing.T) {
 		{http.MethodPut, "/api/admin/config"},
 		{http.MethodGet, "/api/admin/logs"},
 		{http.MethodGet, "/api/admin/export/config"},
+		{http.MethodGet, "/api/admin/tools/audio-missing"},
 		{http.MethodPost, "/api/admin/import/config"},
 		{http.MethodPost, "/api/admin/import/talkgroups"},
 		{http.MethodPost, "/api/admin/import/units"},
@@ -146,6 +151,116 @@ func TestAdminEndpoints_NoJWT(t *testing.T) {
 				t.Errorf("got %d, want 401", w.Code)
 			}
 		})
+	}
+}
+
+func TestGetMissingAudioCalls(t *testing.T) {
+	engine, queries := newAdminTestEngine(t)
+	_ = seedAdminUser(t, queries, "admin1", "password1234")
+	tok := adminToken(t, 1, "admin1")
+	hdrs := map[string]string{"Authorization": "Bearer " + tok}
+
+	sysID := seedSystem(t, queries, 1001, "System A")
+	_, err := queries.CreateCall(context.Background(), db.CreateCallParams{
+		AudioPath:   "missing/test.mp3",
+		AudioName:   "test.mp3",
+		AudioType:   "audio/mpeg",
+		DateTime:    time.Now().Unix(),
+		Frequency:   sql.NullInt64{Int64: 0, Valid: false},
+		Duration:    sql.NullInt64{Int64: 0, Valid: false},
+		Source:      sql.NullInt64{Int64: 0, Valid: false},
+		SystemID:    sysID,
+		TalkgroupID: sql.NullInt64{Int64: 0, Valid: false},
+	})
+	if err != nil {
+		t.Fatalf("CreateCall: %v", err)
+	}
+
+	w := doRequest(engine, http.MethodGet, "/api/admin/tools/audio-missing?limit=10", nil, hdrs)
+	if w.Code != http.StatusOK {
+		t.Fatalf("got %d, want 200 (body=%s)", w.Code, w.Body.String())
+	}
+
+	var resp struct {
+		Checked int `json:"checked"`
+		Missing []struct {
+			AudioPath string `json:"audioPath"`
+			Reason    string `json:"reason"`
+		} `json:"missing"`
+	}
+	decodeJSON(t, w, &resp)
+	if resp.Checked == 0 {
+		t.Fatalf("expected checked > 0")
+	}
+	if len(resp.Missing) == 0 {
+		t.Fatalf("expected at least one missing row")
+	}
+	if resp.Missing[0].AudioPath != "missing/test.mp3" {
+		t.Fatalf("unexpected audioPath: %q", resp.Missing[0].AudioPath)
+	}
+	if resp.Missing[0].Reason == "" {
+		t.Fatalf("expected non-empty reason")
+	}
+}
+
+func TestCleanupMissingAudioCalls(t *testing.T) {
+	engine, queries := newAdminTestEngine(t)
+	_ = seedAdminUser(t, queries, "admin1", "password1234")
+	tok := adminToken(t, 1, "admin1")
+	hdrs := map[string]string{"Authorization": "Bearer " + tok}
+
+	sysID := seedSystem(t, queries, 1001, "System A")
+	callID, err := queries.CreateCall(context.Background(), db.CreateCallParams{
+		AudioPath:   "missing/cleanup.mp3",
+		AudioName:   "cleanup.mp3",
+		AudioType:   "audio/mpeg",
+		DateTime:    time.Now().Unix(),
+		Frequency:   sql.NullInt64{Int64: 0, Valid: false},
+		Duration:    sql.NullInt64{Int64: 0, Valid: false},
+		Source:      sql.NullInt64{Int64: 0, Valid: false},
+		SystemID:    sysID,
+		TalkgroupID: sql.NullInt64{Int64: 0, Valid: false},
+	})
+	if err != nil {
+		t.Fatalf("CreateCall: %v", err)
+	}
+
+	body := jsonBody(t, map[string]any{
+		"confirm": true,
+		"callIds": []int64{callID},
+	})
+	w := doRequest(engine, http.MethodPost, "/api/admin/tools/audio-missing/cleanup", body, hdrs)
+	if w.Code != http.StatusOK {
+		t.Fatalf("got %d, want 200 (body=%s)", w.Code, w.Body.String())
+	}
+
+	var resp struct {
+		Requested int `json:"requested"`
+		Deleted   int `json:"deleted"`
+	}
+	decodeJSON(t, w, &resp)
+	if resp.Requested != 1 || resp.Deleted != 1 {
+		t.Fatalf("unexpected response: %+v", resp)
+	}
+
+	if _, err := queries.GetCall(context.Background(), callID); err == nil {
+		t.Fatalf("expected call to be deleted")
+	}
+}
+
+func TestCleanupMissingAudioCalls_RequiresConfirm(t *testing.T) {
+	engine, queries := newAdminTestEngine(t)
+	_ = seedAdminUser(t, queries, "admin1", "password1234")
+	tok := adminToken(t, 1, "admin1")
+	hdrs := map[string]string{"Authorization": "Bearer " + tok}
+
+	body := jsonBody(t, map[string]any{
+		"confirm": false,
+		"callIds": []int64{1},
+	})
+	w := doRequest(engine, http.MethodPost, "/api/admin/tools/audio-missing/cleanup", body, hdrs)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("got %d, want 400 (body=%s)", w.Code, w.Body.String())
 	}
 }
 
@@ -727,9 +842,13 @@ func TestAPIKeys_CRUD(t *testing.T) {
 	var created map[string]any
 	decodeJSON(t, w, &created)
 	keyID := int64(created["id"].(float64))
-	generatedKey, _ := created["key"].(string)
-	if generatedKey == "" {
-		t.Error("auto-generated key should not be empty")
+	createdKey, _ := created["createdKey"].(string)
+	if createdKey == "" {
+		t.Error("auto-generated createdKey should not be empty")
+	}
+	fingerprint, _ := created["fingerprint"].(string)
+	if fingerprint == "" {
+		t.Error("fingerprint should not be empty")
 	}
 
 	// List
@@ -745,7 +864,6 @@ func TestAPIKeys_CRUD(t *testing.T) {
 
 	// Update — disable the key.
 	updateBody := jsonBody(t, map[string]any{
-		"key":      generatedKey,
 		"disabled": 1,
 	})
 	w = doRequest(engine, http.MethodPut, fmt.Sprintf("/api/admin/apikeys/%d", keyID), updateBody, hdrs)
@@ -773,8 +891,11 @@ func TestAPIKeys_Create_ExplicitKey(t *testing.T) {
 	}
 	var created map[string]any
 	decodeJSON(t, w, &created)
-	if created["key"] != "my-explicit-key" {
-		t.Errorf("key = %v, want my-explicit-key", created["key"])
+	if created["createdKey"] != "my-explicit-key" {
+		t.Errorf("createdKey = %v, want my-explicit-key", created["createdKey"])
+	}
+	if created["fingerprint"] == nil || created["fingerprint"] == "" {
+		t.Error("fingerprint should not be empty")
 	}
 }
 

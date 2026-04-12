@@ -3,15 +3,20 @@ import type { Call } from "@/types";
 interface HistoryPanelProps {
   history: Call[];
   currentCallId: number | null;
+  time12hFormat: boolean;
 }
 
-export function HistoryPanel({ history, currentCallId }: HistoryPanelProps) {
+export function HistoryPanel({
+  history,
+  currentCallId,
+  time12hFormat,
+}: HistoryPanelProps) {
   const formatTime = (ts: number) => {
     const d = new Date(ts * 1000);
     return d.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
-      second: "2-digit",
+      hour12: time12hFormat,
     });
   };
 

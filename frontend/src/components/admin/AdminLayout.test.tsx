@@ -70,7 +70,7 @@ describe("AdminLayout", () => {
     expect(loginNav).toBeDefined();
   });
 
-  it("redirects to /login when role is listener", () => {
+  it("shows access denied when role is listener", () => {
     renderAdmin({
       auth: {
         token: "test-token",
@@ -80,9 +80,7 @@ describe("AdminLayout", () => {
         setupStatus: null,
       },
     } as Partial<RootState>);
-    const navs = screen.getAllByTestId("navigate");
-    const loginNav = navs.find((el) => el.getAttribute("data-to") === "/login");
-    expect(loginNav).toBeDefined();
+    expect(screen.getByText("Access Denied")).toBeInTheDocument();
   });
 
   it("renders sidebar nav items when authenticated", () => {

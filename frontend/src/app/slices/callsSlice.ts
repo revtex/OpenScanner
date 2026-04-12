@@ -5,6 +5,8 @@ import { api } from "@/app/api";
 
 export interface CallSearchResult {
   id: number;
+  audioName: string;
+  audioType: string;
   dateTime: number;
   frequency: number;
   duration: number;

@@ -23,6 +23,7 @@ import (
 
 const (
 	defaultCallRatePerMin = 60
+	maxCallRatePerMin     = 600
 	rateWindowDuration    = time.Minute
 )
 
@@ -128,6 +129,9 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		if r, err := strconv.Atoi(rStr); err == nil && r > 0 {
 			rateLimit = r
 		}
+	}
+	if rateLimit > maxCallRatePerMin {
+		rateLimit = maxCallRatePerMin
 	}
 	if !h.getLimiter(apiKeyID, rateLimit).allow() {
 		slog.Warn("call upload rate limit exceeded", "api_key_id", apiKeyID)
@@ -339,6 +343,9 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		PatchesJson:     patchesJSON,
 		SystemID:        system.ID,
 		TalkgroupID:     sql.NullInt64{Int64: talkgroup.ID, Valid: true},
+		Site:            sql.NullString{},
+		Channel:         sql.NullString{},
+		Decoder:         sql.NullString{},
 	})
 	if err != nil {
 		slog.Error("failed to insert call", "error", err)
@@ -373,18 +380,24 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		if err != nil {
 			slog.Error("failed to build CAL message", "error", err)
 		} else {
+			const maxBroadcastAudioBytes = 20 << 20 // 20 MiB
+			var audioBytes []byte
 			audioFullPath := filepath.Join(h.processor.BaseDir(), relPath)
 			if rel, pathErr := filepath.Rel(h.processor.BaseDir(), audioFullPath); pathErr != nil || strings.HasPrefix(rel, "..") {
 				slog.Error("audio path escapes base directory", "path", relPath)
+			} else if fi, statErr := os.Stat(audioFullPath); statErr != nil {
+				slog.Warn("failed to stat audio for WS broadcast", "path", rel, "error", statErr)
+			} else if fi.Size() > maxBroadcastAudioBytes {
+				slog.Warn("audio file too large for inline WS broadcast, sending metadata only",
+					"path", rel, "size_bytes", fi.Size(), "max_bytes", maxBroadcastAudioBytes)
+			} else if readBytes, readErr := os.ReadFile(audioFullPath); readErr != nil {
+				slog.Warn("failed to read audio for WS broadcast", "path", rel, "error", readErr)
 			} else {
-				audioBytes, readErr := os.ReadFile(audioFullPath)
-				if readErr != nil {
-					slog.Warn("failed to read audio for WS broadcast", "path", rel, "error", readErr)
-				}
-				h.hub.BroadcastCAL(calMsg, audioBytes, func(cl *ws.Client) bool {
-					return cl.CanReceive(system.ID, talkgroup.ID)
-				})
+				audioBytes = readBytes
 			}
+			h.hub.BroadcastCAL(calMsg, audioBytes, func(cl *ws.Client) bool {
+				return cl.CanReceive(system.ID, talkgroup.ID)
+			})
 		}
 	}
 
@@ -433,6 +446,8 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 // CallSearchResult is a single call in the search response.
 type CallSearchResult struct {
 	ID             int64  `json:"id"`
+	AudioName      string `json:"audioName"`
+	AudioType      string `json:"audioType"`
 	DateTime       int64  `json:"dateTime"`
 	SystemID       int64  `json:"systemId"`
 	SystemLabel    string `json:"systemLabel"`
@@ -445,8 +460,70 @@ type CallSearchResult struct {
 	Frequency      *int64 `json:"frequency,omitempty"`
 	Duration       *int64 `json:"duration,omitempty"`
 	Source         *int64 `json:"source,omitempty"`
+	Site           string `json:"site,omitempty"`
+	Channel        string `json:"channel,omitempty"`
+	Decoder        string `json:"decoder,omitempty"`
 	Transcript     string `json:"transcript,omitempty"`
 	Bookmarked     bool   `json:"bookmarked"`
+}
+
+// GetCallAudio handles GET /api/calls/:id/audio.
+func (h *CallHandler) GetCallAudio(c *gin.Context) {
+	ctx := c.Request.Context()
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid call id"})
+		return
+	}
+
+	call, err := h.queries.GetCall(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "call not found"})
+			return
+		}
+		slog.Error("failed to get call audio metadata", "id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	baseDir := h.processor.BaseDir()
+	relPath := filepath.Clean(call.AudioPath)
+	if strings.HasPrefix(relPath, "..") || filepath.IsAbs(relPath) {
+		slog.Warn("rejected unsafe audio path", "id", id, "path", call.AudioPath)
+		c.JSON(http.StatusNotFound, gin.H{"error": "audio not found"})
+		return
+	}
+
+	fullPath := filepath.Join(baseDir, relPath)
+	if rel, relErr := filepath.Rel(baseDir, fullPath); relErr != nil || strings.HasPrefix(rel, "..") {
+		slog.Warn("audio path escaped base dir", "id", id, "path", call.AudioPath)
+		c.JSON(http.StatusNotFound, gin.H{"error": "audio not found"})
+		return
+	}
+
+	if _, err := os.Stat(fullPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "audio file not found"})
+			return
+		}
+		slog.Error("failed to stat call audio file", "id", id, "path", fullPath, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	contentType := call.AudioType
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	filename := call.AudioName
+	if filename == "" {
+		filename = "call"
+	}
+
+	c.Header("Content-Disposition", "inline; filename="+strconv.Quote(filename))
+	c.Header("Content-Type", contentType)
+	c.File(fullPath)
 }
 
 // CallSearchResponse is the response for GET /api/calls.
@@ -588,9 +665,11 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 	results := make([]CallSearchResult, 0, len(calls))
 	for _, call := range calls {
 		r := CallSearchResult{
-			ID:       call.ID,
-			DateTime: call.DateTime,
-			SystemID: call.SystemID,
+			ID:        call.ID,
+			AudioName: call.AudioName,
+			AudioType: call.AudioType,
+			DateTime:  call.DateTime,
+			SystemID:  call.SystemID,
 		}
 
 		if call.Frequency.Valid {
@@ -599,8 +678,26 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 		if call.Duration.Valid {
 			r.Duration = &call.Duration.Int64
 		}
+		if call.Site.Valid {
+			r.Site = call.Site.String
+		}
+		if call.Channel.Valid {
+			r.Channel = call.Channel.String
+		}
+		if call.Decoder.Valid {
+			r.Decoder = call.Decoder.String
+		}
 		if call.Source.Valid {
 			r.Source = &call.Source.Int64
+		}
+		if call.Site.Valid {
+			r.Site = call.Site.String
+		}
+		if call.Channel.Valid {
+			r.Channel = call.Channel.String
+		}
+		if call.Decoder.Valid {
+			r.Decoder = call.Decoder.String
 		}
 
 		// Join system label (cached).

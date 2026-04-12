@@ -26,6 +26,7 @@ type Config struct {
 	SSLKey        string // TLS private key file (PEM)
 	SSLAutoCert   string // Domain for Let's Encrypt auto-cert
 	AdminPassword string // Reset first admin user's password on startup
+	Timezone      string // IANA timezone for recorder timestamps (default: TZ env or "UTC")
 	ConfigFile    string // Path to INI config file (default "openscanner.ini")
 	ConfigSave    bool   // Write current flags to INI file and exit
 	ShowVersion   bool   // Print version and exit
@@ -53,6 +54,7 @@ func Load() (*Config, error) {
 	flag.StringVar(&cfg.SSLKey, "ssl-key", "", "TLS private key file (PEM)")
 	flag.StringVar(&cfg.SSLAutoCert, "ssl-auto-cert", "", "Domain for Let's Encrypt auto-cert")
 	flag.StringVar(&cfg.AdminPassword, "admin-password", "", "Reset first admin user's password on startup")
+	flag.StringVar(&cfg.Timezone, "timezone", "", "IANA timezone for recorder timestamps (e.g. America/New_York)")
 	flag.StringVar(&cfg.ConfigFile, "config", "openscanner.ini", "Path to INI config file")
 	flag.BoolVar(&cfg.ConfigSave, "config-save", false, "Write current flags to INI file and exit")
 	flag.BoolVar(&cfg.ShowVersion, "version", false, "Print version and exit")
@@ -104,6 +106,9 @@ func loadINI(cfg *Config) {
 	if v := section.Key("ssl_auto_cert").String(); v != "" {
 		cfg.SSLAutoCert = v
 	}
+	if v := section.Key("timezone").String(); v != "" {
+		cfg.Timezone = v
+	}
 }
 
 // applyEnv applies environment variable overrides.
@@ -131,6 +136,11 @@ func applyEnv(cfg *Config) {
 	}
 	if v := os.Getenv("OPENSCANNER_ADMIN_PASSWORD"); v != "" {
 		cfg.AdminPassword = v
+	}
+	if v := os.Getenv("OPENSCANNER_TIMEZONE"); v != "" {
+		cfg.Timezone = v
+	} else if v := os.Getenv("TZ"); v != "" {
+		cfg.Timezone = v
 	}
 }
 
@@ -185,6 +195,13 @@ func reapplyPrecedence(cfg *Config, defaultBaseDir string) {
 			cfg.AdminPassword = v
 		}
 	}
+	if !explicitFlags["timezone"] {
+		if v := os.Getenv("OPENSCANNER_TIMEZONE"); v != "" {
+			cfg.Timezone = v
+		} else if v := os.Getenv("TZ"); v != "" {
+			cfg.Timezone = v
+		}
+	}
 }
 
 // SaveINI writes the current configuration to the INI file.
@@ -207,6 +224,9 @@ func (c *Config) SaveINI() error {
 	if c.SSLAutoCert != "" {
 		section.Key("ssl_auto_cert").SetValue(c.SSLAutoCert)
 	}
+	if c.Timezone != "" {
+		section.Key("timezone").SetValue(c.Timezone)
+	}
 
 	slog.Info("saving configuration", "file", c.ConfigFile)
 	return iniFile.SaveTo(c.ConfigFile)
@@ -214,6 +234,6 @@ func (c *Config) SaveINI() error {
 
 // String returns a safe string representation (no secrets).
 func (c *Config) String() string {
-	return fmt.Sprintf("listen=%s db-file=%s base-dir=%s ssl-listen=%s ssl-auto-cert=%s",
-		c.Listen, c.DBFile, c.BaseDir, c.SSLListen, c.SSLAutoCert)
+	return fmt.Sprintf("listen=%s db-file=%s base-dir=%s ssl-listen=%s ssl-auto-cert=%s timezone=%s",
+		c.Listen, c.DBFile, c.BaseDir, c.SSLListen, c.SSLAutoCert, c.Timezone)
 }

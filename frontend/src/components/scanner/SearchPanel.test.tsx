@@ -100,6 +100,8 @@ const testConfig: ScannerConfig = {
   branding: "TEST",
   email: "",
   version: "1.0",
+  time12hFormat: false,
+  showListenersCount: false,
 };
 
 function scannerState(

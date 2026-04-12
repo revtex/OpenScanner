@@ -11,7 +11,7 @@ interface AuthState {
 
 function loadPersistedAuth(): Pick<AuthState, "token" | "role" | "username"> {
   try {
-    const raw = localStorage.getItem("os_auth");
+    const raw = sessionStorage.getItem("os_auth");
     if (raw) {
       const parsed = JSON.parse(raw) as {
         token?: string;
@@ -60,7 +60,7 @@ export const authSlice = createSlice({
       state.username = action.payload.username;
       state.passwordNeedChange = action.payload.passwordNeedChange;
       try {
-        localStorage.setItem(
+        sessionStorage.setItem(
           "os_auth",
           JSON.stringify({
             token: action.payload.token,
@@ -78,7 +78,7 @@ export const authSlice = createSlice({
       state.username = null;
       state.passwordNeedChange = false;
       try {
-        localStorage.removeItem("os_auth");
+        sessionStorage.removeItem("os_auth");
       } catch {
         // ignore
       }

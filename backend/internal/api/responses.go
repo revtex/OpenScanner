@@ -342,3 +342,35 @@ func toSettingResponses(settings []db.Setting) []settingResponse {
 	}
 	return out
 }
+
+// ── Access ──
+
+type accessResponse struct {
+	ID          int64   `json:"id"`
+	Code        string  `json:"code"`
+	Ident       *string `json:"ident"`
+	Expiration  *int64  `json:"expiration"`
+	Limit       *int64  `json:"limit"`
+	SystemsJson *string `json:"systemsJson"`
+	Order       int64   `json:"order"`
+}
+
+func toAccessResponse(a db.Access) accessResponse {
+	return accessResponse{
+		ID:          a.ID,
+		Code:        a.Code,
+		Ident:       nullStr(a.Ident),
+		Expiration:  nullInt(a.Expiration),
+		Limit:       nullInt(a.Limit),
+		SystemsJson: nullStr(a.SystemsJson),
+		Order:       a.Order,
+	}
+}
+
+func toAccessResponses(accesses []db.Access) []accessResponse {
+	out := make([]accessResponse, len(accesses))
+	for i, a := range accesses {
+		out[i] = toAccessResponse(a)
+	}
+	return out
+}

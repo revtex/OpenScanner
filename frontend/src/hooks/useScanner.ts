@@ -33,7 +33,14 @@ export function useScanner() {
   const tgSelection = useAppSelector((s) => s.scanner.tgSelection);
   const callQueue = useAppSelector((s) => s.scanner.callQueue);
 
-  const doTogglePause = useCallback(() => dispatch(togglePause()), [dispatch]);
+  const doTogglePause = useCallback(() => {
+    dispatch(togglePause());
+    if (isPaused) {
+      audio.resume();
+    } else {
+      audio.pause();
+    }
+  }, [dispatch, isPaused, audio]);
   const doToggleLive = useCallback(() => dispatch(toggleLive()), [dispatch]);
   const doHoldSystem = useCallback(
     (id: number | null) => dispatch(holdSystem(id)),
