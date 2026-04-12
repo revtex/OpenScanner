@@ -132,7 +132,11 @@ func (h *Hub) BroadcastCAL(calMsg []byte, audioData []byte, filter func(*Client)
 // BroadcastCFG rebuilds the CFG message from the database and sends it to
 // all connected clients. Call this when systems or talkgroups are added or
 // modified so that connected scanners see updated names and labels.
+// Safe to call on a nil hub (no-op).
 func (h *Hub) BroadcastCFG(ctx context.Context) {
+	if h == nil {
+		return
+	}
 	cfgMsg, err := buildCFGMessage(ctx, h.queries)
 	if err != nil {
 		slog.Error("ws: failed to build CFG for broadcast", "error", err)
