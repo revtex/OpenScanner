@@ -20,7 +20,8 @@ lint:
 clean:
 	rm -f $(BINARY) server migrate
 	rm -rf tmp/
-	rm -f openscanner.db openscanner.db-wal openscanner.db-shm
+	rm -f ../data/openscanner.db ../data/openscanner.db-wal ../data/openscanner.db-shm
+	rm -rf ../data/recordings/
 
 migrate:
 	go run ./cmd/migrate up

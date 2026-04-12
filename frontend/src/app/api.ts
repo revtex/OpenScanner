@@ -6,7 +6,6 @@ import {
   type FetchBaseQueryError,
 } from "@reduxjs/toolkit/query/react";
 import type { SetupStatus } from "@/types";
-import { clearCredentials } from "@/app/slices/authSlice";
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: "/api",
@@ -27,7 +26,9 @@ const baseQueryWith401Redirect: BaseQueryFn<
 > = async (args, api, extraOptions) => {
   const result = await rawBaseQuery(args, api, extraOptions);
   if (result.error && result.error.status === 401) {
-    api.dispatch(clearCredentials());
+    // Dispatch clearCredentials by action type to avoid circular import
+    // (authSlice imports api, api cannot import authSlice).
+    api.dispatch({ type: "auth/clearCredentials" });
   }
   return result;
 };
