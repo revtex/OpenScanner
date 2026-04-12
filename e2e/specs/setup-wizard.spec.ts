@@ -3,7 +3,7 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('First-run setup wizard', () => {
-  test.todo('fresh DB redirects to /setup')
-  test.todo('completing wizard enables /admin login')
-  test.todo('setup endpoint is disabled after completion')
+  test.fixme('fresh DB redirects to /setup', async () => {})
+  test.fixme('completing wizard enables /admin login', async () => {})
+  test.fixme('setup endpoint is disabled after completion', async () => {})
 })
