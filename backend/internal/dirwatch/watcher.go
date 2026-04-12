@@ -639,8 +639,8 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 			// on disk; the client will fetch them via HTTP.
 			const maxBroadcastAudioBytes = 20 << 20 // 20 MiB
 			var audioBytes []byte
-			audioAbsPath := filepath.Join(s.processor.BaseDir(), relPath)
-			if rel, pathErr := filepath.Rel(s.processor.BaseDir(), audioAbsPath); pathErr != nil || strings.HasPrefix(rel, "..") {
+			audioAbsPath := filepath.Join(s.processor.RecordingsDir(), relPath)
+			if rel, pathErr := filepath.Rel(s.processor.RecordingsDir(), audioAbsPath); pathErr != nil || strings.HasPrefix(rel, "..") {
 				slog.Error("dirwatch: audio path escapes base directory", "path", relPath)
 			} else if fi, statErr := os.Stat(audioAbsPath); statErr != nil {
 				slog.Warn("dirwatch: failed to stat audio for WS broadcast",

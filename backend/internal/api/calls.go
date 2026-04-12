@@ -382,8 +382,8 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		} else {
 			const maxBroadcastAudioBytes = 20 << 20 // 20 MiB
 			var audioBytes []byte
-			audioFullPath := filepath.Join(h.processor.BaseDir(), relPath)
-			if rel, pathErr := filepath.Rel(h.processor.BaseDir(), audioFullPath); pathErr != nil || strings.HasPrefix(rel, "..") {
+			audioFullPath := filepath.Join(h.processor.RecordingsDir(), relPath)
+			if rel, pathErr := filepath.Rel(h.processor.RecordingsDir(), audioFullPath); pathErr != nil || strings.HasPrefix(rel, "..") {
 				slog.Error("audio path escapes base directory", "path", relPath)
 			} else if fi, statErr := os.Stat(audioFullPath); statErr != nil {
 				slog.Warn("failed to stat audio for WS broadcast", "path", rel, "error", statErr)
@@ -487,7 +487,7 @@ func (h *CallHandler) GetCallAudio(c *gin.Context) {
 		return
 	}
 
-	baseDir := h.processor.BaseDir()
+	recordingsDir := h.processor.RecordingsDir()
 	relPath := filepath.Clean(call.AudioPath)
 	if strings.HasPrefix(relPath, "..") || filepath.IsAbs(relPath) {
 		slog.Warn("rejected unsafe audio path", "id", id, "path", call.AudioPath)
@@ -495,9 +495,9 @@ func (h *CallHandler) GetCallAudio(c *gin.Context) {
 		return
 	}
 
-	fullPath := filepath.Join(baseDir, relPath)
-	if rel, relErr := filepath.Rel(baseDir, fullPath); relErr != nil || strings.HasPrefix(rel, "..") {
-		slog.Warn("audio path escaped base dir", "id", id, "path", call.AudioPath)
+	fullPath := filepath.Join(recordingsDir, relPath)
+	if rel, relErr := filepath.Rel(recordingsDir, fullPath); relErr != nil || strings.HasPrefix(rel, "..") {
+		slog.Warn("audio path escaped recordings dir", "id", id, "path", call.AudioPath)
 		c.JSON(http.StatusNotFound, gin.H{"error": "audio not found"})
 		return
 	}

@@ -21,12 +21,12 @@ type missingAudioCall struct {
 }
 
 type missingAudioResponse struct {
-	BaseDir    string             `json:"baseDir"`
-	Limit      int64              `json:"limit"`
-	Offset     int64              `json:"offset"`
-	TotalCalls int64              `json:"totalCalls"`
-	Checked    int                `json:"checked"`
-	Missing    []missingAudioCall `json:"missing"`
+	RecordingsDir string             `json:"recordingsDir"`
+	Limit         int64              `json:"limit"`
+	Offset        int64              `json:"offset"`
+	TotalCalls    int64              `json:"totalCalls"`
+	Checked       int                `json:"checked"`
+	Missing       []missingAudioCall `json:"missing"`
 }
 
 type cleanupMissingAudioRequest struct {
@@ -40,14 +40,14 @@ type cleanupMissingAudioResponse struct {
 	Skipped   []missingAudioCall `json:"skipped"`
 }
 
-func missingAudioReason(baseDir, audioPath string) string {
+func missingAudioReason(recordingsDir, audioPath string) string {
 	relPath := filepath.Clean(audioPath)
 	if relPath == "." || strings.HasPrefix(relPath, "..") || filepath.IsAbs(relPath) {
 		return "invalid relative path"
 	}
-	fullPath := filepath.Join(baseDir, relPath)
-	if rel, relErr := filepath.Rel(baseDir, fullPath); relErr != nil || strings.HasPrefix(rel, "..") {
-		return "path escapes base directory"
+	fullPath := filepath.Join(recordingsDir, relPath)
+	if rel, relErr := filepath.Rel(recordingsDir, fullPath); relErr != nil || strings.HasPrefix(rel, "..") {
+		return "path escapes recordings directory"
 	}
 	if st, statErr := os.Stat(fullPath); statErr != nil || st.IsDir() {
 		return "file not found"
@@ -57,7 +57,7 @@ func missingAudioReason(baseDir, audioPath string) string {
 
 // GetMissingAudioCalls handles GET /api/admin/tools/audio-missing.
 // It checks archived calls in a page window and returns entries whose audio
-// file does not exist under the configured base directory.
+// file does not exist under the configured recordings directory.
 func (h *AdminHandler) GetMissingAudioCalls(c *gin.Context) {
 	limit := int64(200)
 	if v := c.Query("limit"); v != "" {
@@ -103,13 +103,13 @@ func (h *AdminHandler) GetMissingAudioCalls(c *gin.Context) {
 	}
 
 	missing := make([]missingAudioCall, 0)
-	baseDir := h.baseDir
-	if strings.TrimSpace(baseDir) == "" {
-		baseDir = "."
+	recordingsDir := h.recordingsDir
+	if strings.TrimSpace(recordingsDir) == "" {
+		recordingsDir = "."
 	}
 
 	for _, call := range calls {
-		reason := missingAudioReason(baseDir, call.AudioPath)
+		reason := missingAudioReason(recordingsDir, call.AudioPath)
 		if reason != "" {
 			missing = append(missing, missingAudioCall{
 				ID:        call.ID,
@@ -122,12 +122,12 @@ func (h *AdminHandler) GetMissingAudioCalls(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, missingAudioResponse{
-		BaseDir:    baseDir,
-		Limit:      limit,
-		Offset:     offset,
-		TotalCalls: total,
-		Checked:    len(calls),
-		Missing:    missing,
+		RecordingsDir: recordingsDir,
+		Limit:         limit,
+		Offset:        offset,
+		TotalCalls:    total,
+		Checked:       len(calls),
+		Missing:       missing,
 	})
 }
 
@@ -153,9 +153,9 @@ func (h *AdminHandler) CleanupMissingAudioCalls(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	baseDir := h.baseDir
-	if strings.TrimSpace(baseDir) == "" {
-		baseDir = "."
+	recordingsDir := h.recordingsDir
+	if strings.TrimSpace(recordingsDir) == "" {
+		recordingsDir = "."
 	}
 
 	deleted := 0
@@ -166,7 +166,7 @@ func (h *AdminHandler) CleanupMissingAudioCalls(c *gin.Context) {
 			skipped = append(skipped, missingAudioCall{ID: callID, Reason: "call not found"})
 			continue
 		}
-		reason := missingAudioReason(baseDir, call.AudioPath)
+		reason := missingAudioReason(recordingsDir, call.AudioPath)
 		if reason == "" {
 			skipped = append(skipped, missingAudioCall{
 				ID:        call.ID,

@@ -12,7 +12,7 @@ OpenScanner is configured via CLI flags, environment variables, or an optional I
 | ------------------ | ---------------------------- | ----------------- | ----------------------------------------------------- |
 | `--listen`         | `OPENSCANNER_LISTEN`         | `:3000`           | HTTP listen address                                   |
 | `--db-file`        | `OPENSCANNER_DB_FILE`        | `openscanner.db`  | SQLite database file path                             |
-| `--base-dir`       | `OPENSCANNER_BASE_DIR`       | executable dir    | Base directory for data files                         |
+| `--recordings-dir` | `OPENSCANNER_RECORDINGS_DIR` | executable dir    | Directory for call audio recordings                   |
 | `--ssl-listen`     | `OPENSCANNER_SSL_LISTEN`     | —                 | HTTPS listen address                                  |
 | `--ssl-cert`       | `OPENSCANNER_SSL_CERT`       | —                 | TLS certificate file (PEM)                            |
 | `--ssl-key`        | `OPENSCANNER_SSL_KEY`        | —                 | TLS private key file (PEM)                            |
@@ -39,7 +39,7 @@ Multi-stage build: Go 1.25 + Node 22 build stages → Alpine 3.21 runtime with F
 
 ```bash
 docker build -t openscanner .
-docker run -p 3000:3000 -v ./data:/data -e OPENSCANNER_BASE_DIR=/data openscanner
+docker run -p 3000:3000 -v ./data:/data -e OPENSCANNER_RECORDINGS_DIR=/data openscanner
 ```
 
 ### docker-compose
@@ -53,7 +53,7 @@ services:
     volumes:
       - ./data:/data
     environment:
-      - OPENSCANNER_BASE_DIR=/data
+      - OPENSCANNER_RECORDINGS_DIR=/data
       - OPENSCANNER_LISTEN=0.0.0.0:3000
     restart: unless-stopped
 ```

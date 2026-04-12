@@ -29,12 +29,12 @@ var validRoles = map[string]bool{
 
 // AdminHandler handles admin CRUD endpoints.
 type AdminHandler struct {
-	queries  *db.Queries
-	hub      *ws.Hub
-	sqlDB    *sql.DB
-	dwReload DirwatchReloader
-	dsReload DownstreamReloader
-	baseDir  string
+	queries       *db.Queries
+	hub           *ws.Hub
+	sqlDB         *sql.DB
+	dwReload      DirwatchReloader
+	dsReload      DownstreamReloader
+	recordingsDir string
 }
 
 func isSHA256Hex(s string) bool {
@@ -52,12 +52,12 @@ func isSHA256Hex(s string) bool {
 }
 
 // NewAdminHandler constructs an AdminHandler.
-func NewAdminHandler(queries *db.Queries, hub *ws.Hub, sqlDB *sql.DB, dwReload DirwatchReloader, dsReload DownstreamReloader, baseDir ...string) *AdminHandler {
-	b := "."
-	if len(baseDir) > 0 && strings.TrimSpace(baseDir[0]) != "" {
-		b = baseDir[0]
+func NewAdminHandler(queries *db.Queries, hub *ws.Hub, sqlDB *sql.DB, dwReload DirwatchReloader, dsReload DownstreamReloader, recordingsDir ...string) *AdminHandler {
+	rd := "."
+	if len(recordingsDir) > 0 && strings.TrimSpace(recordingsDir[0]) != "" {
+		rd = recordingsDir[0]
 	}
-	return &AdminHandler{queries: queries, hub: hub, sqlDB: sqlDB, dwReload: dwReload, dsReload: dsReload, baseDir: b}
+	return &AdminHandler{queries: queries, hub: hub, sqlDB: sqlDB, dwReload: dwReload, dsReload: dsReload, recordingsDir: rd}
 }
 
 // parseID extracts and parses the :id path parameter.

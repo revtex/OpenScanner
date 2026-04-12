@@ -43,11 +43,11 @@ func newTestProcessor(t *testing.T) (*audio.Processor, string) {
 	return audio.NewProcessor(tmpDir, pool), tmpDir
 }
 
-// writeTestAudio writes a small audio file under the processor's base dir
+// writeTestAudio writes a small audio file under the processor's recordings dir
 // and returns the relative path.
-func writeTestAudio(t *testing.T, baseDir, relPath string) {
+func writeTestAudio(t *testing.T, recordingsDir, relPath string) {
 	t.Helper()
-	absPath := filepath.Join(baseDir, relPath)
+	absPath := filepath.Join(recordingsDir, relPath)
 	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
 		t.Fatalf("create audio dir: %v", err)
 	}

@@ -20,7 +20,7 @@ var Version = "0.1.0"
 type Config struct {
 	Listen        string // HTTP listen address (default ":3000")
 	DBFile        string // SQLite database file path (default "openscanner.db")
-	BaseDir       string // Base directory for all data files (default: executable dir)
+	RecordingsDir string // Directory for call audio recordings (default: executable dir)
 	SSLListen     string // HTTPS listen address
 	SSLCert       string // TLS certificate file (PEM)
 	SSLKey        string // TLS private key file (PEM)
@@ -38,17 +38,17 @@ type Config struct {
 func Load() (*Config, error) {
 	cfg := &Config{}
 
-	// Determine default BaseDir (directory of the running executable).
+	// Determine default RecordingsDir (directory of the running executable).
 	exePath, err := os.Executable()
 	if err != nil {
 		exePath = "."
 	}
-	defaultBaseDir := filepath.Dir(exePath)
+	defaultRecordingsDir := filepath.Dir(exePath)
 
 	// Define CLI flags.
 	flag.StringVar(&cfg.Listen, "listen", ":3000", "HTTP listen address")
 	flag.StringVar(&cfg.DBFile, "db-file", "openscanner.db", "SQLite database file path")
-	flag.StringVar(&cfg.BaseDir, "base-dir", defaultBaseDir, "Base directory for all data files")
+	flag.StringVar(&cfg.RecordingsDir, "recordings-dir", defaultRecordingsDir, "Directory for call audio recordings")
 	flag.StringVar(&cfg.SSLListen, "ssl-listen", "", "HTTPS listen address")
 	flag.StringVar(&cfg.SSLCert, "ssl-cert", "", "TLS certificate file (PEM)")
 	flag.StringVar(&cfg.SSLKey, "ssl-key", "", "TLS private key file (PEM)")
@@ -71,7 +71,7 @@ func Load() (*Config, error) {
 	// since we set defaults before Parse, and Parse overwrites only if flag is provided).
 	// However, flag package always sets the value, so we need to re-apply env and INI
 	// only for flags that were NOT explicitly set on the command line.
-	reapplyPrecedence(cfg, defaultBaseDir)
+	reapplyPrecedence(cfg, defaultRecordingsDir)
 
 	return cfg, nil
 }
@@ -91,8 +91,8 @@ func loadINI(cfg *Config) {
 	if v := section.Key("db_file").String(); v != "" {
 		cfg.DBFile = v
 	}
-	if v := section.Key("base_dir").String(); v != "" {
-		cfg.BaseDir = v
+	if v := section.Key("recordings_dir").String(); v != "" {
+		cfg.RecordingsDir = v
 	}
 	if v := section.Key("ssl_listen").String(); v != "" {
 		cfg.SSLListen = v
@@ -119,8 +119,8 @@ func applyEnv(cfg *Config) {
 	if v := os.Getenv("OPENSCANNER_DB_FILE"); v != "" {
 		cfg.DBFile = v
 	}
-	if v := os.Getenv("OPENSCANNER_BASE_DIR"); v != "" {
-		cfg.BaseDir = v
+	if v := os.Getenv("OPENSCANNER_RECORDINGS_DIR"); v != "" {
+		cfg.RecordingsDir = v
 	}
 	if v := os.Getenv("OPENSCANNER_SSL_LISTEN"); v != "" {
 		cfg.SSLListen = v
@@ -147,7 +147,7 @@ func applyEnv(cfg *Config) {
 // reapplyPrecedence ensures CLI flags > env vars > INI file > defaults.
 // The flag package sets all values to defaults then overwrites with CLI args.
 // We need to detect which flags were explicitly set on the command line.
-func reapplyPrecedence(cfg *Config, defaultBaseDir string) {
+func reapplyPrecedence(cfg *Config, defaultRecordingsDir string) {
 	explicitFlags := make(map[string]bool)
 	flag.Visit(func(f *flag.Flag) {
 		explicitFlags[f.Name] = true
@@ -165,9 +165,9 @@ func reapplyPrecedence(cfg *Config, defaultBaseDir string) {
 			cfg.DBFile = v
 		}
 	}
-	if !explicitFlags["base-dir"] {
-		if v := os.Getenv("OPENSCANNER_BASE_DIR"); v != "" {
-			cfg.BaseDir = v
+	if !explicitFlags["recordings-dir"] {
+		if v := os.Getenv("OPENSCANNER_RECORDINGS_DIR"); v != "" {
+			cfg.RecordingsDir = v
 		}
 	}
 	if !explicitFlags["ssl-listen"] {
@@ -211,7 +211,7 @@ func (c *Config) SaveINI() error {
 
 	section.Key("listen").SetValue(c.Listen)
 	section.Key("db_file").SetValue(c.DBFile)
-	section.Key("base_dir").SetValue(c.BaseDir)
+	section.Key("recordings_dir").SetValue(c.RecordingsDir)
 	if c.SSLListen != "" {
 		section.Key("ssl_listen").SetValue(c.SSLListen)
 	}
@@ -234,6 +234,6 @@ func (c *Config) SaveINI() error {
 
 // String returns a safe string representation (no secrets).
 func (c *Config) String() string {
-	return fmt.Sprintf("listen=%s db-file=%s base-dir=%s ssl-listen=%s ssl-auto-cert=%s timezone=%s",
-		c.Listen, c.DBFile, c.BaseDir, c.SSLListen, c.SSLAutoCert, c.Timezone)
+	return fmt.Sprintf("listen=%s db-file=%s recordings-dir=%s ssl-listen=%s ssl-auto-cert=%s timezone=%s",
+		c.Listen, c.DBFile, c.RecordingsDir, c.SSLListen, c.SSLAutoCert, c.Timezone)
 }

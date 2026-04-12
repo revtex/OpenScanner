@@ -71,7 +71,7 @@ func TestStore_PathSanitisation(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			proc, baseDir := newTestProcessor(t)
+			proc, recordingsDir := newTestProcessor(t)
 			fh := makeFileHeader(t, tc.filename, fakeWAV)
 
 			relPath, err := proc.Store(context.Background(), fh, audio.ConversionDisabled)
@@ -96,8 +96,8 @@ func TestStore_PathSanitisation(t *testing.T) {
 				t.Errorf("filepath.Base(relPath) = %q, want %q", got, tc.wantBase)
 			}
 
-			// File must actually exist on disk inside the base directory.
-			absPath := filepath.Join(baseDir, relPath)
+			// File must actually exist on disk inside the recordings directory.
+			absPath := filepath.Join(recordingsDir, relPath)
 			if _, statErr := os.Stat(absPath); statErr != nil {
 				t.Errorf("file not found at %s: %v", absPath, statErr)
 			}
@@ -108,7 +108,7 @@ func TestStore_PathSanitisation(t *testing.T) {
 // TestStore_ConversionDisabled verifies that with ConversionDisabled the file
 // is written to a dated subdirectory with its original extension preserved.
 func TestStore_ConversionDisabled(t *testing.T) {
-	proc, baseDir := newTestProcessor(t)
+	proc, recordingsDir := newTestProcessor(t)
 	content := []byte("RIFF\x24\x00\x00\x00WAVEfmt ")
 	fh := makeFileHeader(t, "recording.wav", content)
 
@@ -127,8 +127,8 @@ func TestStore_ConversionDisabled(t *testing.T) {
 		t.Errorf("extension = %q, want .wav", ext)
 	}
 
-	// File must exist at baseDir/relPath.
-	absPath := filepath.Join(baseDir, relPath)
+	// File must exist at recordingsDir/relPath.
+	absPath := filepath.Join(recordingsDir, relPath)
 	info, statErr := os.Stat(absPath)
 	if statErr != nil {
 		t.Fatalf("stored file not found at %s: %v", absPath, statErr)

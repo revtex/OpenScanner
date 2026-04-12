@@ -69,7 +69,7 @@ func main() {
 		"version", config.Version,
 		"listen", cfg.Listen,
 		"db_file", cfg.DBFile,
-		"base_dir", cfg.BaseDir,
+		"recordings_dir", cfg.RecordingsDir,
 	)
 
 	// Open database (runs migrations automatically).
@@ -102,10 +102,10 @@ func main() {
 	// Set up bounded FFmpeg worker pool and audio processor.
 	audio.CheckFFmpeg()
 	pool := audio.NewWorkerPool(ctx)
-	processor := audio.NewProcessor(cfg.BaseDir, pool)
+	processor := audio.NewProcessor(cfg.RecordingsDir, pool)
 
 	// Start background call pruner.
-	go audio.PruneLoop(ctx, queries, cfg.BaseDir)
+	go audio.PruneLoop(ctx, queries, cfg.RecordingsDir)
 
 	// Create and start WebSocket hub.
 	hub := ws.NewHub(queries, config.Version)

@@ -47,11 +47,11 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	authHandler := NewAuthHandler(deps.Queries, deps.RateLimiter)
 	callHandler := NewCallHandler(deps.Queries, deps.Processor, deps.Hub, deps.DownstreamNotifier)
 	bookmarkHandler := &BookmarkHandler{queries: deps.Queries}
-	baseDir := "."
+	recordingsDir := "."
 	if deps.Processor != nil {
-		baseDir = deps.Processor.BaseDir()
+		recordingsDir = deps.Processor.RecordingsDir()
 	}
-	adminHandler := NewAdminHandler(deps.Queries, deps.Hub, deps.SQLDB, deps.DirwatchReloader, deps.DownstreamReloader, baseDir)
+	adminHandler := NewAdminHandler(deps.Queries, deps.Hub, deps.SQLDB, deps.DirwatchReloader, deps.DownstreamReloader, recordingsDir)
 
 	// Global middleware applied to every request.
 	r.Use(middleware.RequestID())

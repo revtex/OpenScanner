@@ -703,20 +703,20 @@ CLI flags > environment variables > INI file > built-in defaults
 
 ### Settings
 
-| Flag               | Env Var                      | INI Key         | Default              | Description                                                         |
-| ------------------ | ---------------------------- | --------------- | -------------------- | ------------------------------------------------------------------- |
-| `--listen`         | `OPENSCANNER_LISTEN`         | `listen`        | `:3000`              | HTTP listen address                                                 |
-| `--db-file`        | `OPENSCANNER_DB_FILE`        | `db_file`       | `openscanner.db`     | SQLite database file path                                           |
-| `--base-dir`       | `OPENSCANNER_BASE_DIR`       | `base_dir`      | executable directory | Base directory for all data files                                   |
-| `--ssl-listen`     | `OPENSCANNER_SSL_LISTEN`     | `ssl_listen`    | —                    | HTTPS listen address                                                |
-| `--ssl-cert`       | `OPENSCANNER_SSL_CERT`       | `ssl_cert_file` | —                    | TLS certificate file (PEM)                                          |
-| `--ssl-key`        | `OPENSCANNER_SSL_KEY`        | `ssl_key_file`  | —                    | TLS private key file (PEM)                                          |
-| `--ssl-auto-cert`  | `OPENSCANNER_SSL_AUTO_CERT`  | `ssl_auto_cert` | —                    | Domain for Let's Encrypt auto-cert                                  |
-| `--admin-password` | `OPENSCANNER_ADMIN_PASSWORD` | —               | —                    | Reset first admin user's password on startup                        |
-| `--config`         | —                            | —               | `openscanner.ini`    | Path to INI config file                                             |
-| `--config-save`    | —                            | —               | —                    | Write current flags to INI file and exit                            |
-| `--version`        | —                            | —               | —                    | Print version and exit                                              |
-| `--service`        | —                            | —               | —                    | Service command: `install`, `uninstall`, `start`, `stop`, `restart` |
+| Flag               | Env Var                      | INI Key          | Default              | Description                                                         |
+| ------------------ | ---------------------------- | ---------------- | -------------------- | ------------------------------------------------------------------- |
+| `--listen`         | `OPENSCANNER_LISTEN`         | `listen`         | `:3000`              | HTTP listen address                                                 |
+| `--db-file`        | `OPENSCANNER_DB_FILE`        | `db_file`        | `openscanner.db`     | SQLite database file path                                           |
+| `--recordings-dir` | `OPENSCANNER_RECORDINGS_DIR` | `recordings_dir` | executable directory | Directory for call audio recordings                                 |
+| `--ssl-listen`     | `OPENSCANNER_SSL_LISTEN`     | `ssl_listen`     | —                    | HTTPS listen address                                                |
+| `--ssl-cert`       | `OPENSCANNER_SSL_CERT`       | `ssl_cert_file`  | —                    | TLS certificate file (PEM)                                          |
+| `--ssl-key`        | `OPENSCANNER_SSL_KEY`        | `ssl_key_file`   | —                    | TLS private key file (PEM)                                          |
+| `--ssl-auto-cert`  | `OPENSCANNER_SSL_AUTO_CERT`  | `ssl_auto_cert`  | —                    | Domain for Let's Encrypt auto-cert                                  |
+| `--admin-password` | `OPENSCANNER_ADMIN_PASSWORD` | —                | —                    | Reset first admin user's password on startup                        |
+| `--config`         | —                            | —                | `openscanner.ini`    | Path to INI config file                                             |
+| `--config-save`    | —                            | —                | —                    | Write current flags to INI file and exit                            |
+| `--version`        | —                            | —                | —                    | Print version and exit                                              |
+| `--service`        | —                            | —                | —                    | Service command: `install`, `uninstall`, `start`, `stop`, `restart` |
 
 ### System Service (Daemon)
 

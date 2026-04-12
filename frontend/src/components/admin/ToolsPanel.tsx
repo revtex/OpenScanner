@@ -127,7 +127,7 @@ export default function ToolsPanel() {
       }
 
       const combined: MissingAudioResponse = {
-        baseDir: lastResult?.baseDir ?? ".",
+        recordingsDir: lastResult?.recordingsDir ?? ".",
         limit: totalChecked,
         offset: 0,
         totalCalls: lastResult?.totalCalls ?? 0,
@@ -306,7 +306,7 @@ export default function ToolsPanel() {
             </button>
             {missingAudioResult && (
               <span className="text-sm text-base-content/70">
-                Base dir: {missingAudioResult.baseDir} | Checked:{" "}
+                Recordings dir: {missingAudioResult.recordingsDir} | Checked:{" "}
                 {missingAudioResult.checked} / {missingAudioResult.totalCalls} |
                 Missing: {missingAudioResult.missing.length}
               </span>

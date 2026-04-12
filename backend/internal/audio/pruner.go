@@ -15,7 +15,7 @@ import (
 )
 
 // PruneLoop runs pruneOldCalls on a 1-hour tick until ctx is cancelled.
-func PruneLoop(ctx context.Context, queries *db.Queries, baseDir string) {
+func PruneLoop(ctx context.Context, queries *db.Queries, recordingsDir string) {
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
 	for {
@@ -23,14 +23,14 @@ func PruneLoop(ctx context.Context, queries *db.Queries, baseDir string) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			pruneOldCalls(ctx, queries, baseDir)
+			pruneOldCalls(ctx, queries, recordingsDir)
 		}
 	}
 }
 
 // pruneOldCalls deletes audio files and call records older than pruneDays.
 // It processes rows in batches of up to 500 (limited by GetCallIDsOlderThan).
-func pruneOldCalls(ctx context.Context, queries *db.Queries, baseDir string) {
+func pruneOldCalls(ctx context.Context, queries *db.Queries, recordingsDir string) {
 	setting, err := queries.GetSetting(ctx, "pruneDays")
 	if err != nil {
 		slog.Error("failed to get pruneDays setting", "error", err)
@@ -53,12 +53,12 @@ func pruneOldCalls(ctx context.Context, queries *db.Queries, baseDir string) {
 			return
 		}
 
-		cleanBase := filepath.Clean(baseDir)
+		cleanBase := filepath.Clean(recordingsDir)
 		for _, row := range rows {
-			audioPath := filepath.Join(baseDir, row.AudioPath)
-			// Defense-in-depth: ensure resolved path stays within baseDir.
+			audioPath := filepath.Join(recordingsDir, row.AudioPath)
+			// Defense-in-depth: ensure resolved path stays within recordingsDir.
 			if !strings.HasPrefix(filepath.Clean(audioPath), cleanBase+string(filepath.Separator)) {
-				slog.Warn("pruner: audio path escapes baseDir, skipping file removal", "audio_path", row.AudioPath)
+				slog.Warn("pruner: audio path escapes recordingsDir, skipping file removal", "audio_path", row.AudioPath)
 			} else if err := os.Remove(audioPath); err != nil && !os.IsNotExist(err) {
 				slog.Warn("failed to remove audio file during prune", "error", err)
 			}

@@ -26,7 +26,7 @@ import (
 // CallEvent holds the data for a call that should be pushed downstream.
 type CallEvent struct {
 	CallID      int64
-	AudioPath   string // relative path under processor.BaseDir()
+	AudioPath   string // relative path under processor.RecordingsDir()
 	AudioName   string
 	AudioType   string
 	DateTime    int64 // unix timestamp
@@ -285,8 +285,8 @@ func (s *Service) pushWithRetry(ctx context.Context, ds db.Downstream, event Cal
 // pushCall performs a single HTTP multipart POST to the downstream's
 // /api/call-upload endpoint.
 func (s *Service) pushCall(ctx context.Context, ds db.Downstream, event CallEvent) error {
-	audioPath := filepath.Join(s.processor.BaseDir(), event.AudioPath)
-	if rel, err := filepath.Rel(s.processor.BaseDir(), audioPath); err != nil || strings.HasPrefix(rel, "..") {
+	audioPath := filepath.Join(s.processor.RecordingsDir(), event.AudioPath)
+	if rel, err := filepath.Rel(s.processor.RecordingsDir(), audioPath); err != nil || strings.HasPrefix(rel, "..") {
 		return fmt.Errorf("audio path escapes base directory: %s", event.AudioPath)
 	}
 	f, err := os.Open(audioPath)

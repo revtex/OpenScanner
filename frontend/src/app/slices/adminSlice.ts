@@ -65,7 +65,7 @@ export interface MissingAudioCall {
 }
 
 export interface MissingAudioResponse {
-  baseDir: string;
+  recordingsDir: string;
   limit: number;
   offset: number;
   totalCalls: number;

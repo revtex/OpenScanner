@@ -14,22 +14,22 @@ import (
 
 // Processor handles storing uploaded audio files and queuing FFmpeg conversion.
 type Processor struct {
-	baseDir string
-	pool    *WorkerPool
+	recordingsDir string
+	pool          *WorkerPool
 }
 
-// NewProcessor creates a Processor for the given base directory.
-func NewProcessor(baseDir string, pool *WorkerPool) *Processor {
-	return &Processor{baseDir: baseDir, pool: pool}
+// NewProcessor creates a Processor for the given recordings directory.
+func NewProcessor(recordingsDir string, pool *WorkerPool) *Processor {
+	return &Processor{recordingsDir: recordingsDir, pool: pool}
 }
 
-// BaseDir returns the base directory used for audio file storage.
-func (p *Processor) BaseDir() string {
-	return p.baseDir
+// RecordingsDir returns the directory used for audio file storage.
+func (p *Processor) RecordingsDir() string {
+	return p.recordingsDir
 }
 
-// Store saves the uploaded file to disk under baseDir/<YYYY>/<MM>/<DD>/<filename>
-// and returns the relative path (relative to baseDir).
+// Store saves the uploaded file to disk under recordingsDir/<YYYY>/<MM>/<DD>/<filename>
+// and returns the relative path (relative to recordingsDir).
 // SECURITY: sanitises the filename via filepath.Base — strips directory components,
 // rejects paths containing "..".
 // If conversion is enabled, submits an FFmpeg job, waits for completion, removes
@@ -41,7 +41,7 @@ func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode Co
 	}
 
 	now := time.Now().UTC()
-	dayDir := filepath.Join(p.baseDir, now.Format("2006"), now.Format("01"), now.Format("02"))
+	dayDir := filepath.Join(p.recordingsDir, now.Format("2006"), now.Format("01"), now.Format("02"))
 	if err := os.MkdirAll(dayDir, 0755); err != nil {
 		return "", fmt.Errorf("create audio dir: %w", err)
 	}
@@ -65,7 +65,7 @@ func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode Co
 	}
 	dst.Close()
 
-	relPath, err := filepath.Rel(p.baseDir, destPath)
+	relPath, err := filepath.Rel(p.recordingsDir, destPath)
 	if err != nil {
 		return "", fmt.Errorf("compute relative path: %w", err)
 	}
@@ -114,7 +114,7 @@ func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode Co
 		_ = err
 	}
 
-	relOut, err := filepath.Rel(p.baseDir, outPath)
+	relOut, err := filepath.Rel(p.recordingsDir, outPath)
 	if err != nil {
 		return "", fmt.Errorf("compute relative output path: %w", err)
 	}
@@ -134,7 +134,7 @@ func (p *Processor) StoreFile(ctx context.Context, srcPath string, mode Conversi
 	}
 
 	now := time.Now().UTC()
-	dayDir := filepath.Join(p.baseDir, now.Format("2006"), now.Format("01"), now.Format("02"))
+	dayDir := filepath.Join(p.recordingsDir, now.Format("2006"), now.Format("01"), now.Format("02"))
 	if err := os.MkdirAll(dayDir, 0755); err != nil {
 		return "", fmt.Errorf("create audio dir: %w", err)
 	}
@@ -144,7 +144,7 @@ func (p *Processor) StoreFile(ctx context.Context, srcPath string, mode Conversi
 		return "", fmt.Errorf("copy audio file: %w", err)
 	}
 
-	relPath, err := filepath.Rel(p.baseDir, destPath)
+	relPath, err := filepath.Rel(p.recordingsDir, destPath)
 	if err != nil {
 		return "", fmt.Errorf("compute relative path: %w", err)
 	}
@@ -187,7 +187,7 @@ func (p *Processor) StoreFile(ctx context.Context, srcPath string, mode Conversi
 		_ = err
 	}
 
-	relOut, err := filepath.Rel(p.baseDir, outPath)
+	relOut, err := filepath.Rel(p.recordingsDir, outPath)
 	if err != nil {
 		return "", fmt.Errorf("compute relative output path: %w", err)
 	}
