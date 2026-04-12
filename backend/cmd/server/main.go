@@ -197,8 +197,8 @@ func (p *program) run() {
 
 	// Create HTTP server.
 	srv := &http.Server{
-		Addr:    cfg.Listen,
-		Handler: router, // may be replaced below when SSL is enabled
+		Addr:              cfg.Listen,
+		Handler:           router, // may be replaced below when SSL is enabled
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      60 * time.Second,
