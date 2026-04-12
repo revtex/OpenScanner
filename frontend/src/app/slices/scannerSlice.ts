@@ -151,6 +151,7 @@ export const scannerSlice = createSlice({
           systems: [],
           time12hFormat: false,
           showListenersCount: false,
+          playbackGoesLive: false,
           ...action.payload,
         };
       }

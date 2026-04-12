@@ -1,11 +1,20 @@
 import { useEffect, useCallback, useState } from "react";
-import { useAppDispatch } from "@/app/store";
+import { useAppDispatch, useAppSelector } from "@/app/store";
 import { audioPlayer } from "@/services/audioPlayer";
 import { wsClient } from "@/services/wsClient";
-import { setCurrentCall, clearCurrentCall } from "@/app/slices/scannerSlice";
+import {
+  setCurrentCall,
+  clearCurrentCall,
+  toggleLive,
+} from "@/app/slices/scannerSlice";
 
 export function useAudioPlayer() {
   const dispatch = useAppDispatch();
+  const isLive = useAppSelector((s) => s.scanner.isLive);
+  const callQueue = useAppSelector((s) => s.scanner.callQueue);
+  const playbackGoesLive = useAppSelector(
+    (s) => s.scanner.config?.playbackGoesLive ?? false,
+  );
   const [volume, setVolumeState] = useState(() => audioPlayer.getVolume());
   const [playing, setPlaying] = useState(false);
 
@@ -24,6 +33,13 @@ export function useAudioPlayer() {
       audioPlayer.play(call, audioUrl);
     });
   }, [dispatch]);
+
+  // When playback ends and queue is empty, auto-switch to live if configured.
+  useEffect(() => {
+    if (!playing && callQueue.length === 0 && !isLive && playbackGoesLive) {
+      dispatch(toggleLive());
+    }
+  }, [playing, callQueue.length, isLive, playbackGoesLive, dispatch]);
 
   const skip = useCallback(() => {
     audioPlayer.skip();

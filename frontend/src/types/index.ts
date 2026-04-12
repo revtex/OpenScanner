@@ -54,6 +54,7 @@ export interface ScannerConfig {
   version?: string;
   time12hFormat: boolean;
   showListenersCount: boolean;
+  playbackGoesLive: boolean;
 }
 
 // WS message: JSON array [command, payload?, flags?]

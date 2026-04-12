@@ -482,6 +482,9 @@ func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *d
 	if s, err := queries.GetSetting(ctx, "showListenersCount"); err == nil {
 		cfgPayload["showListenersCount"] = s.Value == "true"
 	}
+	if s, err := queries.GetSetting(ctx, "playbackGoesLive"); err == nil {
+		cfgPayload["playbackGoesLive"] = s.Value == "true"
+	}
 
 	cfgMsg, err := NewCFGMessage(cfgPayload)
 	if err != nil {

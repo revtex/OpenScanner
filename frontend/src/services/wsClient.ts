@@ -146,6 +146,7 @@ class WsClient {
             version?: string;
             time12hFormat?: boolean | string;
             showListenersCount?: boolean | string;
+            playbackGoesLive?: boolean | string;
           };
           // CFG carries systems + display prefs. Branding/email/version
           // arrive separately via VER, so only override if CFG explicitly
@@ -161,6 +162,9 @@ class WsClient {
               showListenersCount:
                 cfg.showListenersCount === true ||
                 cfg.showListenersCount === "true",
+              playbackGoesLive:
+                cfg.playbackGoesLive === true ||
+                cfg.playbackGoesLive === "true",
             }),
           );
         }
