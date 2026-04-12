@@ -117,62 +117,29 @@ type listServerDirectoriesResponse struct {
 	Directories []serverDirectoryEntry `json:"directories"`
 }
 
-// allowedBrowseRoots are the top-level directories that the admin FS browser
-// is allowed to enumerate. This limits exposure if an admin account is
-// compromised (defence-in-depth — OWASP A01).
-var allowedBrowseRoots = []string{
-	"/home",
-	"/opt",
-	"/srv",
-	"/tmp",
-	"/var",
-	"/mnt",
-	"/media",
-}
-
-// isUnderAllowedRoot checks whether a cleaned absolute path falls under one of
-// the allowed browse roots.
-func isUnderAllowedRoot(clean string) bool {
-	for _, root := range allowedBrowseRoots {
-		if clean == root || strings.HasPrefix(clean, root+"/") {
-			return true
-		}
-	}
-	return false
+// hiddenTopLevelDirs are directories excluded from the root listing because
+// they are kernel/system virtual filesystems that are not useful for selecting
+// a recording source.
+var hiddenTopLevelDirs = map[string]bool{
+	"bin": true, "boot": true, "dev": true, "lib": true,
+	"lib32": true, "lib64": true, "libx32": true,
+	"proc": true, "run": true, "sbin": true, "sys": true,
+	"usr": true, "etc": true, "snap": true, "lost+found": true,
 }
 
 // ListServerDirectories handles GET /api/admin/fs/directories.
 // Returns immediate child directories for a given absolute server path.
-// Browsing is restricted to a set of safe directory roots.
+// This endpoint is admin-only (JWT-protected) so the admin can navigate
+// to wherever their recorder (SDR Trunk, trunk-recorder, etc.) writes files.
 func (h *AdminHandler) ListServerDirectories(c *gin.Context) {
 	path := c.Query("path")
 	if path == "" {
-		// Return the list of allowed roots that actually exist.
-		dirs := make([]serverDirectoryEntry, 0, len(allowedBrowseRoots))
-		for _, root := range allowedBrowseRoots {
-			if info, err := os.Stat(root); err == nil && info.IsDir() {
-				dirs = append(dirs, serverDirectoryEntry{
-					Name: filepath.Base(root),
-					Path: root,
-				})
-			}
-		}
-		c.JSON(http.StatusOK, listServerDirectoriesResponse{
-			Path:        "/",
-			Parent:      nil,
-			Directories: dirs,
-		})
-		return
+		path = "/"
 	}
 
 	clean := filepath.Clean(path)
 	if !filepath.IsAbs(clean) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "path must be absolute"})
-		return
-	}
-
-	if !isUnderAllowedRoot(clean) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "browsing this path is not allowed"})
 		return
 	}
 
@@ -201,9 +168,18 @@ func (h *AdminHandler) ListServerDirectories(c *gin.Context) {
 		if !e.IsDir() {
 			continue
 		}
+		name := e.Name()
+		// At root level, hide kernel/system virtual directories.
+		if clean == "/" && hiddenTopLevelDirs[name] {
+			continue
+		}
+		// Skip hidden directories (dotfiles).
+		if strings.HasPrefix(name, ".") {
+			continue
+		}
 		dirs = append(dirs, serverDirectoryEntry{
-			Name: e.Name(),
-			Path: filepath.Join(clean, e.Name()),
+			Name: name,
+			Path: filepath.Join(clean, name),
 		})
 	}
 	sort.Slice(dirs, func(i, j int) bool {
@@ -211,13 +187,9 @@ func (h *AdminHandler) ListServerDirectories(c *gin.Context) {
 	})
 
 	var parent *string
-	p := filepath.Dir(clean)
-	if isUnderAllowedRoot(p) {
+	if clean != "/" {
+		p := filepath.Dir(clean)
 		parent = &p
-	} else {
-		// Parent would be outside allowed roots — link back to the root listing.
-		root := "/"
-		parent = &root
 	}
 
 	c.JSON(http.StatusOK, listServerDirectoriesResponse{

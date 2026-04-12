@@ -129,6 +129,18 @@ func (h *Hub) BroadcastCAL(calMsg []byte, audioData []byte, filter func(*Client)
 	}
 }
 
+// BroadcastCFG rebuilds the CFG message from the database and sends it to
+// all connected clients. Call this when systems or talkgroups are added or
+// modified so that connected scanners see updated names and labels.
+func (h *Hub) BroadcastCFG(ctx context.Context) {
+	cfgMsg, err := buildCFGMessage(ctx, h.queries)
+	if err != nil {
+		slog.Error("ws: failed to build CFG for broadcast", "error", err)
+		return
+	}
+	h.Broadcast(cfgMsg, nil)
+}
+
 // ClientCount returns the number of non-admin (listener) clients.
 func (h *Hub) ClientCount() int {
 	h.mu.RLock()

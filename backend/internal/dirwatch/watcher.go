@@ -399,6 +399,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 			}
 			slog.Info("dirwatch: auto-populated system", "system_id", parsed.SystemID, "db_id", newID)
 			system = db.System{ID: newID, SystemID: parsed.SystemID, Label: label, AutoPopulate: 1}
+			s.hub.BroadcastCFG(ctx)
 		}
 	} else {
 		label := strings.TrimSpace(parsed.SystemLabel)
@@ -432,6 +433,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 			}
 			slog.Info("dirwatch: auto-populated system from label", "system_label", label, "system_id", nextSystemID, "db_id", newID)
 			system = db.System{ID: newID, SystemID: nextSystemID, Label: label, AutoPopulate: 1}
+			s.hub.BroadcastCFG(ctx)
 		}
 		parsed.SystemID = system.SystemID
 	}
@@ -470,6 +472,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 		slog.Info("dirwatch: auto-populated talkgroup",
 			"talkgroup_id", parsed.TalkgroupID, "db_id", newID)
 		talkgroup = db.Talkgroup{ID: newID, SystemID: system.ID, TalkgroupID: parsed.TalkgroupID, Name: tgName}
+		s.hub.BroadcastCFG(ctx)
 	} else if !talkgroup.Name.Valid && parsed.TalkgroupTitle != "" {
 		// Existing talkgroup has no name — backfill from audio metadata.
 		talkgroup.Name = sql.NullString{String: parsed.TalkgroupTitle, Valid: true}
@@ -489,6 +492,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 		} else {
 			slog.Info("dirwatch: backfilled talkgroup name from audio metadata",
 				"talkgroup_id", talkgroup.TalkgroupID, "name", parsed.TalkgroupTitle)
+			s.hub.BroadcastCFG(ctx)
 		}
 	}
 

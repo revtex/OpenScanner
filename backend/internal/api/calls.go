@@ -203,6 +203,10 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		patchesJSON = sql.NullString{String: v, Valid: true}
 	}
 
+	// Optional talkgroup metadata for auto-populate / backfill.
+	talkgroupLabel := c.PostForm("talkgroupLabel")
+	talkgroupTag := c.PostForm("talkgroupTag")
+
 	ctx := c.Request.Context()
 	autoPopulate := h.getSettingValue(c, "autoPopulate") == "true"
 
@@ -231,6 +235,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		}
 		slog.Info("auto-populated system", "system_id", systemIDRaw, "db_id", newID)
 		system = db.System{ID: newID, SystemID: systemIDRaw, Label: label, AutoPopulate: 1}
+		h.hub.BroadcastCFG(ctx)
 	}
 
 	// Blacklist check: reject calls to blacklisted talkgroups.
@@ -256,9 +261,18 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "talkgroup not found"})
 			return
 		}
+		var tgLabel, tgName sql.NullString
+		if talkgroupLabel != "" {
+			tgLabel = sql.NullString{String: talkgroupLabel, Valid: true}
+		}
+		if talkgroupTag != "" {
+			tgName = sql.NullString{String: talkgroupTag, Valid: true}
+		}
 		newID, cerr := h.queries.CreateTalkgroup(ctx, db.CreateTalkgroupParams{
 			SystemID:    system.ID,
 			TalkgroupID: talkgroupIDRaw,
+			Label:       tgLabel,
+			Name:        tgName,
 		})
 		if cerr != nil {
 			slog.Error("failed to auto-create talkgroup", "talkgroup_id", talkgroupIDRaw, "error", cerr)
@@ -266,7 +280,32 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			return
 		}
 		slog.Info("auto-populated talkgroup", "talkgroup_id", talkgroupIDRaw, "db_id", newID)
-		talkgroup = db.Talkgroup{ID: newID, SystemID: system.ID, TalkgroupID: talkgroupIDRaw}
+		talkgroup = db.Talkgroup{ID: newID, SystemID: system.ID, TalkgroupID: talkgroupIDRaw, Label: tgLabel, Name: tgName}
+		h.hub.BroadcastCFG(ctx)
+	} else if !talkgroup.Name.Valid && talkgroupTag != "" {
+		// Existing talkgroup has no name — backfill from upload metadata.
+		talkgroup.Name = sql.NullString{String: talkgroupTag, Valid: true}
+		if !talkgroup.Label.Valid && talkgroupLabel != "" {
+			talkgroup.Label = sql.NullString{String: talkgroupLabel, Valid: true}
+		}
+		if uerr := h.queries.UpdateTalkgroup(ctx, db.UpdateTalkgroupParams{
+			ID:          talkgroup.ID,
+			TalkgroupID: talkgroup.TalkgroupID,
+			Label:       talkgroup.Label,
+			Name:        talkgroup.Name,
+			Frequency:   talkgroup.Frequency,
+			Led:         talkgroup.Led,
+			GroupID:     talkgroup.GroupID,
+			TagID:       talkgroup.TagID,
+			Order:       talkgroup.Order,
+		}); uerr != nil {
+			slog.Warn("failed to backfill talkgroup name from upload",
+				"talkgroup_id", talkgroup.TalkgroupID, "error", uerr)
+		} else {
+			slog.Info("backfilled talkgroup name from upload",
+				"talkgroup_id", talkgroup.TalkgroupID, "name", talkgroupTag)
+			h.hub.BroadcastCFG(ctx)
+		}
 	}
 
 	// Duplicate detection (system.ID and talkgroup.ID are the FK values in calls).

@@ -403,7 +403,16 @@ func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *d
 		return err
 	}
 
-	// Build CFG message with systems and talkgroups.
+	cfgMsg, err := buildCFGMessage(ctx, queries)
+	if err != nil {
+		return err
+	}
+	return conn.Write(ctx, websocket.MessageText, cfgMsg)
+}
+
+// buildCFGMessage constructs the CFG WebSocket message from the current
+// database state (systems, talkgroups, groups, tags, settings).
+func buildCFGMessage(ctx context.Context, queries *db.Queries) ([]byte, error) {
 	// Resolve group and tag labels first so talkgroups carry string labels,
 	// matching the TalkgroupConfig type expected by the frontend.
 	groups, _ := queries.ListGroups(ctx)
@@ -420,7 +429,7 @@ func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *d
 
 	systems, err := queries.ListSystems(ctx)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return err
+		return nil, err
 	}
 	type tgCfg struct {
 		ID          int64  `json:"id"`
@@ -443,7 +452,7 @@ func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *d
 		sc := sysCfg{ID: s.ID, SystemID: s.SystemID, Label: s.Label, Talkgroups: []tgCfg{}}
 		tgs, err := queries.ListTalkgroupsBySystem(ctx, s.ID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return err
+			return nil, err
 		}
 		for _, tg := range tgs {
 			t := tgCfg{ID: tg.ID, TalkgroupID: tg.TalkgroupID}
@@ -486,9 +495,5 @@ func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *d
 		cfgPayload["playbackGoesLive"] = s.Value == "true"
 	}
 
-	cfgMsg, err := NewCFGMessage(cfgPayload)
-	if err != nil {
-		return err
-	}
-	return conn.Write(ctx, websocket.MessageText, cfgMsg)
+	return NewCFGMessage(cfgPayload)
 }
