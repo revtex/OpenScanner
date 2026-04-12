@@ -34,7 +34,7 @@ const AUDIO_CONVERSION_MODES: Record<string, string> = {
   "3": "Loudnorm",
 };
 
-const KEYPAD_BEEPS = ["uniden", "whistler"] as const;
+const KEYPAD_BEEPS = ["disabled", "uniden", "whistler"] as const;
 
 const TRANSCRIPTION_MODELS = ["tiny", "base", "small", "medium", "large"];
 
@@ -157,7 +157,8 @@ const DESCRIPTIONS: Record<string, string> = {
   pruneDays:
     "Automatically delete calls older than this many days. Set to 0 to disable.",
   dimmerDelay: "Milliseconds of inactivity before the screen dims on mobile.",
-  keypadBeeps: "Audio feedback style when pressing buttons.",
+  keypadBeeps:
+    "Audio feedback style when pressing buttons. Disabled turns off beeps.",
 };
 
 function isBooleanKey(key: string): boolean {

@@ -12,13 +12,13 @@ interface ToneSpec {
 
 // Uniden-style: short high-pitched beep
 const unidenTones: ToneSpec[] = [
-  { frequency: 1200, duration: 0.05, type: "square", gain: 0.15 },
+  { frequency: 1200, duration: 0.08, type: "square", gain: 0.25 },
 ];
 
 // Whistler-style: two-tone chirp
 const whistlerTones: ToneSpec[] = [
-  { frequency: 800, duration: 0.04, type: "sine", gain: 0.18 },
-  { frequency: 1400, duration: 0.04, type: "sine", gain: 0.18 },
+  { frequency: 800, duration: 0.06, type: "sine", gain: 0.3 },
+  { frequency: 1400, duration: 0.06, type: "sine", gain: 0.3 },
 ];
 
 const styleTones: Record<BeepStyle, ToneSpec[]> = {
@@ -39,27 +39,41 @@ function getContext(): AudioContext {
 }
 
 export function playBeep(style: string): void {
-  if (!style || !(style in styleTones)) return;
+  if (!style || style === "disabled" || !(style in styleTones)) return;
 
   const ctx = getContext();
-  const tones = styleTones[style as BeepStyle];
-  let offset = 0;
 
-  for (const tone of tones) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+  // AudioContext may be suspended until a user gesture resumes it.
+  // We must wait for it to be running before scheduling oscillators.
+  const schedule = () => {
+    const tones = styleTones[style as BeepStyle];
+    let offset = 0;
 
-    osc.type = tone.type;
-    osc.frequency.value = tone.frequency;
-    gain.gain.value = tone.gain;
+    for (const tone of tones) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+      osc.type = tone.type;
+      osc.frequency.value = tone.frequency;
+      gain.gain.value = tone.gain;
 
-    const start = ctx.currentTime + offset;
-    osc.start(start);
-    osc.stop(start + tone.duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
 
-    offset += tone.duration;
+      const start = ctx.currentTime + offset;
+      osc.start(start);
+      osc.stop(start + tone.duration);
+
+      offset += tone.duration;
+    }
+  };
+
+  if (ctx.state === "suspended") {
+    ctx
+      .resume()
+      .then(schedule)
+      .catch(() => {});
+  } else {
+    schedule();
   }
 }
