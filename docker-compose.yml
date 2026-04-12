@@ -1,8 +1,7 @@
-version: "3.9"
-
 services:
   openscanner:
-    build: .
+    image: ghcr.io/revtex/openscanner:main
+    # build: .  # uncomment to build locally instead
     ports:
       - "3000:3000"
     volumes:
