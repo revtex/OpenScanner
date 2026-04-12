@@ -94,6 +94,7 @@ const twoGroupConfig: ScannerConfig = {
   version: "1.0",
   time12hFormat: false,
   showListenersCount: false,
+  playbackGoesLive: false,
 };
 
 function scannerState(

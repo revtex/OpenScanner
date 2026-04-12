@@ -84,6 +84,7 @@ describe("LEDPanel", () => {
       version: "1.0",
       time12hFormat: false,
       showListenersCount: false,
+      playbackGoesLive: false,
     };
     renderLED({
       scanner: {
@@ -112,6 +113,7 @@ describe("LEDPanel", () => {
       version: "1.0",
       time12hFormat: false,
       showListenersCount: false,
+      playbackGoesLive: false,
     };
     renderLED({
       scanner: {

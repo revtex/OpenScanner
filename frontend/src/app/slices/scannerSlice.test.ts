@@ -221,6 +221,7 @@ describe("scannerSlice", () => {
       version: "1.0",
       time12hFormat: false,
       showListenersCount: false,
+      playbackGoesLive: false,
     };
 
     it("enables all talkgroups", () => {
