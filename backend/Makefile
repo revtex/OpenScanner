@@ -4,9 +4,10 @@
 
 BINARY=openscanner
 CMD=./cmd/server
+OUTPUT?=$(BINARY)
 
 build:
-	go build -o $(BINARY) $(CMD)
+	go build -o $(OUTPUT) $(CMD)
 
 dev:
 	air

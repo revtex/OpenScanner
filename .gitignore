@@ -3,11 +3,15 @@
 /backend/server
 /backend/migrate
 /backend/vendor/
+/build/
+
+# Embedded frontend dist (build artifact)
+/backend/internal/static/dist/*
+!/backend/internal/static/dist/.gitkeep
 
 # Node
 /frontend/node_modules/
 /frontend/dist/
-/e2e/node_modules/
 
 # Data & audio (dev)
 /data/

@@ -31,7 +31,6 @@ export function useScanner() {
   const listenerCount = useAppSelector((s) => s.scanner.listenerCount);
   const config = useAppSelector((s) => s.scanner.config);
   const tgSelection = useAppSelector((s) => s.scanner.tgSelection);
-  const callQueue = useAppSelector((s) => s.scanner.callQueue);
 
   const doTogglePause = useCallback(() => {
     dispatch(togglePause());
@@ -80,7 +79,6 @@ export function useScanner() {
     // Scanner state
     currentCall,
     history,
-    callQueue,
     isLive,
     isPaused,
     heldSystem,

@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   scannerSlice,
   callReceived,
-  skipCall,
+  setCurrentCall,
+  clearCurrentCall,
   togglePause,
   toggleLive,
   holdSystem,
@@ -36,51 +37,46 @@ function makeCall(overrides: Partial<Call> = {}): Call {
 
 describe("scannerSlice", () => {
   describe("callReceived", () => {
-    it("sets currentCall when queue is empty", () => {
+    it("enriches call but does not set currentCall", () => {
       const state = reducer(undefined, callReceived(makeCall({ id: 1 })));
-      expect(state.currentCall?.id).toBe(1);
-      expect(state.callQueue).toHaveLength(0);
+      expect(state.currentCall).toBeNull();
     });
 
-    it("queues call when currentCall already exists", () => {
-      let state = reducer(undefined, callReceived(makeCall({ id: 1 })));
-      state = reducer(state, callReceived(makeCall({ id: 2 })));
-      expect(state.currentCall?.id).toBe(1);
-      expect(state.callQueue).toHaveLength(1);
-      expect(state.callQueue[0].id).toBe(2);
-    });
-
-    it("adds to history (front)", () => {
+    it("does not add to history on receive", () => {
       const state = reducer(undefined, callReceived(makeCall({ id: 10 })));
-      expect(state.history[0].id).toBe(10);
+      expect(state.history).toHaveLength(0);
+    });
+  });
+
+  describe("setCurrentCall / clearCurrentCall", () => {
+    it("moves previous call to history when setting new call", () => {
+      let state = reducer(undefined, { type: "init" });
+      state = reducer(state, setCurrentCall(makeCall({ id: 1 })));
+      state = reducer(state, setCurrentCall(makeCall({ id: 2 })));
+      expect(state.currentCall?.id).toBe(2);
+      expect(state.history).toHaveLength(1);
+      expect(state.history[0].id).toBe(1);
+    });
+
+    it("moves previous call to history when clearing", () => {
+      let state = reducer(undefined, { type: "init" });
+      state = reducer(state, setCurrentCall(makeCall({ id: 1 })));
+      state = reducer(state, clearCurrentCall());
+      expect(state.currentCall).toBeNull();
+      expect(state.history).toHaveLength(1);
+      expect(state.history[0].id).toBe(1);
     });
 
     it("caps history at 5 items", () => {
       let state = reducer(undefined, { type: "init" });
       for (let i = 1; i <= 7; i++) {
-        state = reducer(state, callReceived(makeCall({ id: i })));
+        state = reducer(state, setCurrentCall(makeCall({ id: i })));
       }
+      // 6 calls finished (1-6 were replaced), #7 is current
       expect(state.history).toHaveLength(5);
       // Most recent first
-      expect(state.history[0].id).toBe(7);
-      expect(state.history[4].id).toBe(3);
-    });
-  });
-
-  describe("skipCall", () => {
-    it("advances to next call in queue", () => {
-      let state = reducer(undefined, callReceived(makeCall({ id: 1 })));
-      state = reducer(state, callReceived(makeCall({ id: 2 })));
-      state = reducer(state, callReceived(makeCall({ id: 3 })));
-      state = reducer(state, skipCall());
-      expect(state.currentCall?.id).toBe(2);
-      expect(state.callQueue).toHaveLength(1);
-    });
-
-    it("sets currentCall to null when queue is empty", () => {
-      let state = reducer(undefined, callReceived(makeCall({ id: 1 })));
-      state = reducer(state, skipCall());
-      expect(state.currentCall).toBeNull();
+      expect(state.history[0].id).toBe(6);
+      expect(state.history[4].id).toBe(2);
     });
   });
 
@@ -248,7 +244,7 @@ describe("scannerSlice", () => {
 
   describe("transcriptReceived", () => {
     it("updates transcript on currentCall", () => {
-      let state = reducer(undefined, callReceived(makeCall({ id: 1 })));
+      let state = reducer(undefined, setCurrentCall(makeCall({ id: 1 })));
       state = reducer(
         state,
         transcriptReceived({ callId: 1, text: "hello world" }),
@@ -257,7 +253,8 @@ describe("scannerSlice", () => {
     });
 
     it("updates transcript in history", () => {
-      let state = reducer(undefined, callReceived(makeCall({ id: 1 })));
+      let state = reducer(undefined, setCurrentCall(makeCall({ id: 1 })));
+      state = reducer(state, clearCurrentCall());
       state = reducer(
         state,
         transcriptReceived({ callId: 1, text: "transcript text" }),
@@ -265,18 +262,8 @@ describe("scannerSlice", () => {
       expect(state.history[0].transcript).toBe("transcript text");
     });
 
-    it("updates transcript in callQueue", () => {
-      let state = reducer(undefined, callReceived(makeCall({ id: 1 })));
-      state = reducer(state, callReceived(makeCall({ id: 2 })));
-      state = reducer(
-        state,
-        transcriptReceived({ callId: 2, text: "queued transcript" }),
-      );
-      expect(state.callQueue[0].transcript).toBe("queued transcript");
-    });
-
     it("does not fail if callId not found", () => {
-      let state = reducer(undefined, callReceived(makeCall({ id: 1 })));
+      let state = reducer(undefined, setCurrentCall(makeCall({ id: 1 })));
       state = reducer(state, transcriptReceived({ callId: 999, text: "nope" }));
       expect(state.currentCall?.transcript).toBeUndefined();
     });

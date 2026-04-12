@@ -91,7 +91,7 @@ export default function Scanner() {
         currentCall={scanner.currentCall}
         history={scanner.history}
         listenerCount={scanner.listenerCount}
-        queueCount={scanner.callQueue.length}
+        queueCount={scanner.pendingCount}
         avoidList={scanner.avoidList}
         time12hFormat={scanner.config?.time12hFormat ?? false}
         showListenersCount={scanner.config?.showListenersCount ?? false}

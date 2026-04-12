@@ -107,7 +107,6 @@ function scannerState(
     heldSystem: null,
     heldTG: null,
     avoidList: [],
-    callQueue: [],
     currentCall: null,
     history: [],
     listenerCount: 0,

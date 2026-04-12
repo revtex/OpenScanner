@@ -126,11 +126,27 @@ func (p *program) run() {
 	}
 	slog.SetDefault(slog.New(handler))
 
-	slog.Info("starting OpenScanner",
-		"version", config.Version,
-		"listen", cfg.Listen,
-		"db_file", cfg.DBFile,
-		"recordings_dir", cfg.RecordingsDir,
+	// Print a human-readable startup banner.
+	listenURL := cfg.Listen
+	if listenURL[0] == ':' {
+		listenURL = "0.0.0.0" + listenURL
+	}
+	scheme := "http"
+	if cfg.SSLCert != "" || cfg.SSLAutoCert != "" {
+		scheme = "https"
+	}
+	fmt.Fprintf(os.Stdout, "\n"+
+		"  ┌───────────────────────────────────┐\n"+
+		"  │       O P E N S C A N N E R       │\n"+
+		"  └───────────────────────────────────┘\n"+
+		"  Version:     %s\n"+
+		"  URL:         %s\n"+
+		"  Database:    %s\n"+
+		"  Recordings:  %s\n\n",
+		config.Version,
+		scheme+"://"+listenURL,
+		cfg.DBFile,
+		cfg.RecordingsDir,
 	)
 
 	// Startup checks: verify external tool availability.

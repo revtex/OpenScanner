@@ -11,12 +11,12 @@ import {
 export function useAudioPlayer() {
   const dispatch = useAppDispatch();
   const isLive = useAppSelector((s) => s.scanner.isLive);
-  const callQueue = useAppSelector((s) => s.scanner.callQueue);
   const playbackGoesLive = useAppSelector(
     (s) => s.scanner.config?.playbackGoesLive ?? false,
   );
   const [volume, setVolumeState] = useState(() => audioPlayer.getVolume());
   const [playing, setPlaying] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     audioPlayer.setOnCallStart((call) => {
@@ -29,6 +29,10 @@ export function useAudioPlayer() {
       setPlaying(false);
     });
 
+    audioPlayer.setOnQueueChange((length) => {
+      setPendingCount(length);
+    });
+
     wsClient.onAudioReceived((call, audioUrl) => {
       audioPlayer.play(call, audioUrl);
     });
@@ -36,10 +40,10 @@ export function useAudioPlayer() {
 
   // When playback ends and queue is empty, auto-switch to live if configured.
   useEffect(() => {
-    if (!playing && callQueue.length === 0 && !isLive && playbackGoesLive) {
+    if (!playing && pendingCount === 0 && !isLive && playbackGoesLive) {
       dispatch(toggleLive());
     }
-  }, [playing, callQueue.length, isLive, playbackGoesLive, dispatch]);
+  }, [playing, pendingCount, isLive, playbackGoesLive, dispatch]);
 
   const skip = useCallback(() => {
     audioPlayer.skip();
@@ -76,6 +80,7 @@ export function useAudioPlayer() {
     setVolume,
     volume,
     isPlaying: playing,
+    pendingCount,
     download,
   };
 }

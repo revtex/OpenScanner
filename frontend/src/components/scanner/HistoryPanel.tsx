@@ -39,8 +39,8 @@ export function HistoryPanel({
         >
           <span className="truncate">{formatTime(call.dateTime)}</span>
           <span className="truncate">{call.systemLabel ?? ""}</span>
-          <span className="truncate">{call.talkgroupLabel ?? ""}</span>
           <span className="truncate">{call.talkgroupName ?? ""}</span>
+          <span className="truncate">{call.talkgroupLabel ?? ""}</span>
         </div>
       ))}
     </div>

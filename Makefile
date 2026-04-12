@@ -4,6 +4,8 @@
 .PHONY: all build dev test lint clean migrate generate
 
 EMBED_DIR=backend/internal/static/dist
+BUILD_DIR=build
+BACKEND_BINARY=$(BUILD_DIR)/openscanner
 
 all: build
 
@@ -11,7 +13,8 @@ build:
 	$(MAKE) -C frontend build
 	rm -rf $(EMBED_DIR)/*
 	cp -r frontend/dist/. $(EMBED_DIR)/
-	$(MAKE) -C backend build
+	mkdir -p $(BUILD_DIR)
+	$(MAKE) -C backend build OUTPUT=../$(BACKEND_BINARY)
 
 dev:
 	$(MAKE) -C backend dev & \
@@ -38,4 +41,5 @@ generate:
 clean:
 	$(MAKE) -C backend clean
 	$(MAKE) -C frontend clean
+	rm -rf $(BUILD_DIR)
 	cd $(EMBED_DIR) && find . -not -name '.gitkeep' -not -name '.' -delete 2>/dev/null || true

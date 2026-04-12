@@ -16,6 +16,7 @@ class AudioPlayer {
   private currentItem: QueueItem | null = null;
   private callStartCb: ((call: Call) => void) | null = null;
   private callEndCb: (() => void) | null = null;
+  private queueChangeCb: ((length: number) => void) | null = null;
 
   constructor() {
     this.audio = new Audio();
@@ -37,6 +38,7 @@ class AudioPlayer {
       this.startPlayback(item);
     } else {
       this.queue.push(item);
+      this.queueChangeCb?.(this.queue.length);
       this.preloadNext();
     }
   }
@@ -104,11 +106,16 @@ class AudioPlayer {
     this.callEndCb = cb;
   }
 
+  setOnQueueChange(cb: (length: number) => void): void {
+    this.queueChangeCb = cb;
+  }
+
   clearQueue(): void {
     for (const item of this.queue) {
       this.cleanup(item.audioUrl);
     }
     this.queue = [];
+    this.queueChangeCb?.(0);
     if (this.currentItem) {
       this.audio.pause();
       this.cleanup(this.currentItem.audioUrl);
@@ -153,6 +160,7 @@ class AudioPlayer {
 
   private playNext(): void {
     const next = this.queue.shift();
+    this.queueChangeCb?.(this.queue.length);
     if (next) {
       this.startPlayback(next);
     } else {

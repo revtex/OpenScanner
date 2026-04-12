@@ -7,7 +7,6 @@ import type {
 } from "@/types";
 
 const MAX_HISTORY = 5;
-const MAX_QUEUE = 50;
 
 interface ScannerState {
   isLive: boolean;
@@ -15,7 +14,6 @@ interface ScannerState {
   heldSystem: number | null;
   heldTG: number | null;
   avoidList: AvoidEntry[];
-  callQueue: Call[];
   currentCall: Call | null;
   history: Call[];
   listenerCount: number;
@@ -30,7 +28,6 @@ const initialState: ScannerState = {
   heldSystem: null,
   heldTG: null,
   avoidList: [],
-  callQueue: [],
   currentCall: null,
   history: [],
   listenerCount: 0,
@@ -65,31 +62,25 @@ export const scannerSlice = createSlice({
           }
         }
       }
-
-      // Add to history (front), cap at MAX_HISTORY
-      state.history = [call, ...state.history].slice(0, MAX_HISTORY);
-
-      if (!state.currentCall) {
-        state.currentCall = call;
-      } else {
-        state.callQueue.push(call);
-        if (state.callQueue.length > MAX_QUEUE) {
-          state.callQueue = state.callQueue.slice(-MAX_QUEUE);
-        }
-      }
     },
     setCurrentCall(state, action: PayloadAction<Call | null>) {
-      const call = action.payload;
-      state.currentCall = call;
-      if (call) {
-        state.callQueue = state.callQueue.filter((c) => c.id !== call.id);
+      // Move the previous call into history
+      if (state.currentCall) {
+        state.history = [state.currentCall, ...state.history].slice(
+          0,
+          MAX_HISTORY,
+        );
       }
-    },
-    skipCall(state) {
-      const next = state.callQueue.shift();
-      state.currentCall = next ?? null;
+      state.currentCall = action.payload;
     },
     clearCurrentCall(state) {
+      // Move the finished call into history
+      if (state.currentCall) {
+        state.history = [state.currentCall, ...state.history].slice(
+          0,
+          MAX_HISTORY,
+        );
+      }
       state.currentCall = null;
     },
     togglePause(state) {
@@ -204,10 +195,6 @@ export const scannerSlice = createSlice({
       if (histItem) {
         histItem.transcript = text;
       }
-      const queueItem = state.callQueue.find((c) => c.id === callId);
-      if (queueItem) {
-        queueItem.transcript = text;
-      }
     },
   },
 });
@@ -215,7 +202,6 @@ export const scannerSlice = createSlice({
 export const {
   callReceived,
   setCurrentCall,
-  skipCall,
   clearCurrentCall,
   togglePause,
   toggleLive,
