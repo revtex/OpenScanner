@@ -19,6 +19,9 @@ export interface CallSearchResult {
   talkgroupTag: string;
   talkgroupGroup: string;
   talkgroupLed: string;
+  site?: string;
+  channel?: string;
+  decoder?: string;
   transcript: string;
   bookmarked: boolean;
 }
