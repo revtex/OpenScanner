@@ -37,20 +37,6 @@ type AdminHandler struct {
 	recordingsDir string
 }
 
-func isSHA256Hex(s string) bool {
-	if len(s) != 64 {
-		return false
-	}
-	for i := 0; i < len(s); i++ {
-		ch := s[i]
-		if (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') {
-			continue
-		}
-		return false
-	}
-	return true
-}
-
 // NewAdminHandler constructs an AdminHandler.
 func NewAdminHandler(queries *db.Queries, hub *ws.Hub, sqlDB *sql.DB, dwReload DirwatchReloader, dsReload DownstreamReloader, recordingsDir ...string) *AdminHandler {
 	rd := "."
@@ -1120,57 +1106,6 @@ func (h *AdminHandler) ReorderAPIKeys(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})
-}
-
-// MigrateAPIKeysHashing handles POST /api/admin/apikeys/migrate-hash.
-// It hashes legacy plaintext API keys in place and returns the migrated count.
-func (h *AdminHandler) MigrateAPIKeysHashing(c *gin.Context) {
-	ctx := c.Request.Context()
-	keys, err := h.queries.ListAPIKeys(ctx)
-	if err != nil {
-		slog.Error("failed to list API keys for migration", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to migrate API keys"})
-		return
-	}
-
-	tx, err := h.sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		slog.Error("failed to begin API key migration transaction", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to migrate API keys"})
-		return
-	}
-	defer tx.Rollback() //nolint:errcheck
-
-	qtx := h.queries.WithTx(tx)
-	migrated := 0
-	for _, k := range keys {
-		if isSHA256Hex(k.Key) {
-			continue
-		}
-
-		err := qtx.UpdateAPIKey(ctx, db.UpdateAPIKeyParams{
-			ID:          k.ID,
-			Key:         auth.HashAPIKey(k.Key),
-			Ident:       k.Ident,
-			Disabled:    k.Disabled,
-			SystemsJson: k.SystemsJson,
-			Order:       k.Order,
-		})
-		if err != nil {
-			slog.Error("failed to hash API key", "id", k.ID, "error", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to migrate API keys"})
-			return
-		}
-		migrated++
-	}
-
-	if err := tx.Commit(); err != nil {
-		slog.Error("failed to commit API key migration transaction", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to migrate API keys"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"migrated": migrated})
 }
 
 // DeleteAPIKey handles DELETE /api/admin/apikeys/:id.

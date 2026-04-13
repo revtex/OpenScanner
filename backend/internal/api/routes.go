@@ -147,7 +147,6 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		// API Keys
 		admin.GET("/apikeys", adminHandler.ListAPIKeys)
 		admin.POST("/apikeys", adminHandler.CreateAPIKey)
-		admin.POST("/apikeys/migrate-hash", adminHandler.MigrateAPIKeysHashing)
 		admin.PUT("/apikeys/reorder", adminHandler.ReorderAPIKeys)
 		admin.PUT("/apikeys/:id", adminHandler.UpdateAPIKey)
 		admin.DELETE("/apikeys/:id", adminHandler.DeleteAPIKey)

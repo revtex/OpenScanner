@@ -347,13 +347,6 @@ const adminApi = api.injectEndpoints({
       query: (id) => ({ url: `/admin/apikeys/${id}`, method: "DELETE" }),
       invalidatesTags: ["ApiKeys"],
     }),
-    migrateApiKeysHashing: builder.mutation<{ migrated: number }, void>({
-      query: () => ({
-        url: "/admin/apikeys/migrate-hash",
-        method: "POST",
-      }),
-      invalidatesTags: ["ApiKeys"],
-    }),
 
     // ── Dirwatches ──
     listServerDirectories: builder.query<
@@ -620,7 +613,6 @@ export const {
   useUpdateApiKeyMutation,
   useReorderApiKeysMutation,
   useDeleteApiKeyMutation,
-  useMigrateApiKeysHashingMutation,
   // Dirwatches
   useLazyListServerDirectoriesQuery,
   useListDirwatchesQuery,

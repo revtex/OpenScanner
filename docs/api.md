@@ -544,8 +544,8 @@ Reorders systems by updating the `order` column. Runs in a single transaction.
 ```json
 {
   "systems": [
-    {"id": 1, "order": 0},
-    {"id": 2, "order": 1}
+    { "id": 1, "order": 0 },
+    { "id": 2, "order": 1 }
   ]
 }
 ```
@@ -659,8 +659,8 @@ Reorders API keys by updating the `order` column. Runs in a single transaction.
 ```json
 {
   "apiKeys": [
-    {"id": 1, "order": 0},
-    {"id": 2, "order": 1}
+    { "id": 1, "order": 0 },
+    { "id": 2, "order": 1 }
   ]
 }
 ```
@@ -672,16 +672,6 @@ Reorders API keys by updating the `order` column. Runs in a single transaction.
 ```
 
 **Error responses:** `400` (empty array or invalid body), `404` (API key not found).
-
-#### `POST /api/admin/apikeys/migrate-hash`
-
-Migrates legacy plaintext API keys to SHA-256 hashes. Keys already in hex-encoded SHA-256 format are skipped.
-
-**Response `200`:**
-
-```json
-{ "migrated": 3 }
-```
 
 ---
 
@@ -706,8 +696,8 @@ Lists directories on the server filesystem. Used by the Dirwatches panel to brow
   "path": "/mnt/recordings",
   "parent": "/mnt",
   "directories": [
-    {"name": "system1", "path": "/mnt/recordings/system1"},
-    {"name": "system2", "path": "/mnt/recordings/system2"}
+    { "name": "system1", "path": "/mnt/recordings/system1" },
+    { "name": "system2", "path": "/mnt/recordings/system2" }
   ]
 }
 ```
@@ -803,10 +793,10 @@ Scans a page of archived calls and returns entries whose audio file does not exi
 
 **Query Parameters:**
 
-| Param    | Type  | Default | Description                    |
-| -------- | ----- | ------- | ------------------------------ |
-| `limit`  | int   | `200`   | Calls to check per page (max 1000) |
-| `offset` | int   | `0`     | Offset into calls list         |
+| Param    | Type | Default | Description                        |
+| -------- | ---- | ------- | ---------------------------------- |
+| `limit`  | int  | `200`   | Calls to check per page (max 1000) |
+| `offset` | int  | `0`     | Offset into calls list             |
 
 **Response `200`:**
 
