@@ -208,10 +208,11 @@ func (q *Queries) GetCall(ctx context.Context, id int64) (GetCallRow, error) {
 }
 
 const getCallIDsOlderThan = `-- name: GetCallIDsOlderThan :many
-SELECT id, audio_path
-FROM calls
-WHERE date_time < ?
-ORDER BY date_time ASC
+SELECT c.id, c.audio_path
+FROM calls c
+LEFT JOIN bookmarks b ON b.call_id = c.id
+WHERE c.date_time < ? AND b.id IS NULL
+ORDER BY c.date_time ASC
 LIMIT 500
 `
 

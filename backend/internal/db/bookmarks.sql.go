@@ -124,6 +124,89 @@ func (q *Queries) ListBookmarkCallIDsByUser(ctx context.Context, userID sql.Null
 	return items, nil
 }
 
+const listBookmarkCallsByUser = `-- name: ListBookmarkCallsByUser :many
+SELECT
+    c.id, c.audio_path, c.audio_name, c.audio_type, c.date_time, c.frequency, c.duration, c.source, c.sources_json, c.frequencies_json, c.patches_json, c.system_id, c.talkgroup_id, c.site, c.channel, c.decoder,
+    s.label AS system_label,
+    t.label AS talkgroup_label,
+    t.name  AS talkgroup_name,
+    t.led   AS talkgroup_led
+FROM bookmarks b
+JOIN calls c ON c.id = b.call_id
+LEFT JOIN systems s ON s.id = c.system_id
+LEFT JOIN talkgroups t ON t.id = c.talkgroup_id
+WHERE b.user_id = ?
+ORDER BY b.created_at DESC
+LIMIT 100
+`
+
+type ListBookmarkCallsByUserRow struct {
+	ID              int64          `db:"id" json:"id"`
+	AudioPath       string         `db:"audio_path" json:"audio_path"`
+	AudioName       string         `db:"audio_name" json:"audio_name"`
+	AudioType       string         `db:"audio_type" json:"audio_type"`
+	DateTime        int64          `db:"date_time" json:"date_time"`
+	Frequency       sql.NullInt64  `db:"frequency" json:"frequency"`
+	Duration        sql.NullInt64  `db:"duration" json:"duration"`
+	Source          sql.NullInt64  `db:"source" json:"source"`
+	SourcesJson     sql.NullString `db:"sources_json" json:"sources_json"`
+	FrequenciesJson sql.NullString `db:"frequencies_json" json:"frequencies_json"`
+	PatchesJson     sql.NullString `db:"patches_json" json:"patches_json"`
+	SystemID        int64          `db:"system_id" json:"system_id"`
+	TalkgroupID     sql.NullInt64  `db:"talkgroup_id" json:"talkgroup_id"`
+	Site            sql.NullString `db:"site" json:"site"`
+	Channel         sql.NullString `db:"channel" json:"channel"`
+	Decoder         sql.NullString `db:"decoder" json:"decoder"`
+	SystemLabel     sql.NullString `db:"system_label" json:"system_label"`
+	TalkgroupLabel  sql.NullString `db:"talkgroup_label" json:"talkgroup_label"`
+	TalkgroupName   sql.NullString `db:"talkgroup_name" json:"talkgroup_name"`
+	TalkgroupLed    sql.NullString `db:"talkgroup_led" json:"talkgroup_led"`
+}
+
+func (q *Queries) ListBookmarkCallsByUser(ctx context.Context, userID sql.NullInt64) ([]ListBookmarkCallsByUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, listBookmarkCallsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBookmarkCallsByUserRow{}
+	for rows.Next() {
+		var i ListBookmarkCallsByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AudioPath,
+			&i.AudioName,
+			&i.AudioType,
+			&i.DateTime,
+			&i.Frequency,
+			&i.Duration,
+			&i.Source,
+			&i.SourcesJson,
+			&i.FrequenciesJson,
+			&i.PatchesJson,
+			&i.SystemID,
+			&i.TalkgroupID,
+			&i.Site,
+			&i.Channel,
+			&i.Decoder,
+			&i.SystemLabel,
+			&i.TalkgroupLabel,
+			&i.TalkgroupName,
+			&i.TalkgroupLed,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBookmarksBySession = `-- name: ListBookmarksBySession :many
 SELECT id, call_id, user_id, session_id, created_at FROM bookmarks WHERE session_id = ? ORDER BY created_at DESC
 `

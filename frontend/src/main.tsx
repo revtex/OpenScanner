@@ -9,6 +9,7 @@ const Scanner = lazy(() => import("@/pages/Scanner"));
 const Login = lazy(() => import("@/pages/Login"));
 const Setup = lazy(() => import("@/pages/Setup"));
 const Admin = lazy(() => import("@/pages/Admin"));
+const SharedCall = lazy(() => import("@/pages/SharedCall"));
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/setup" element={<Setup />} />
           <Route path="/admin/*" element={<Admin />} />
+          <Route path="/call/:id" element={<SharedCall />} />
         </Routes>
       </Suspense>
     </div>

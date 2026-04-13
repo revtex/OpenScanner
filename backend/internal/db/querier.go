@@ -49,11 +49,15 @@ type Querier interface {
 	DeleteWebhook(ctx context.Context, id int64) error
 	GetAPIKey(ctx context.Context, id int64) (ApiKey, error)
 	GetAPIKeyByKey(ctx context.Context, key string) (ApiKey, error)
+	// Returns aggregate stats: today's calls, this week's calls, total calls.
+	GetActivityStats(ctx context.Context, arg GetActivityStatsParams) (GetActivityStatsRow, error)
 	GetAppState(ctx context.Context) (AppState, error)
 	GetBookmark(ctx context.Context, id int64) (Bookmark, error)
 	GetBookmarkByCallAndUser(ctx context.Context, arg GetBookmarkByCallAndUserParams) (Bookmark, error)
 	GetCall(ctx context.Context, id int64) (GetCallRow, error)
 	GetCallIDsOlderThan(ctx context.Context, dateTime int64) ([]GetCallIDsOlderThanRow, error)
+	// Returns call count per hour for the last 24 hours (24 rows, one per hour bucket).
+	GetCallsPerHour(ctx context.Context, dateTime int64) ([]GetCallsPerHourRow, error)
 	GetDirwatch(ctx context.Context, id int64) (Dirwatch, error)
 	GetDownstream(ctx context.Context, id int64) (Downstream, error)
 	GetGroup(ctx context.Context, id int64) (Group, error)
@@ -65,6 +69,8 @@ type Querier interface {
 	GetTag(ctx context.Context, id int64) (Tag, error)
 	GetTalkgroup(ctx context.Context, id int64) (Talkgroup, error)
 	GetTalkgroupBySystemAndTGID(ctx context.Context, arg GetTalkgroupBySystemAndTGIDParams) (Talkgroup, error)
+	// Returns top N busiest talkgroups (by call count) in a time range.
+	GetTopTalkgroups(ctx context.Context, arg GetTopTalkgroupsParams) ([]GetTopTalkgroupsRow, error)
 	GetTranscription(ctx context.Context, id int64) (Transcription, error)
 	GetTranscriptionByCallID(ctx context.Context, callID int64) (Transcription, error)
 	GetUnit(ctx context.Context, id int64) (Unit, error)
@@ -82,6 +88,7 @@ type Querier interface {
 	ListAllTalkgroups(ctx context.Context) ([]Talkgroup, error)
 	ListAllUnits(ctx context.Context) ([]Unit, error)
 	ListBookmarkCallIDsByUser(ctx context.Context, userID sql.NullInt64) ([]int64, error)
+	ListBookmarkCallsByUser(ctx context.Context, userID sql.NullInt64) ([]ListBookmarkCallsByUserRow, error)
 	ListBookmarksBySession(ctx context.Context, sessionID sql.NullString) ([]Bookmark, error)
 	ListBookmarksByUser(ctx context.Context, userID sql.NullInt64) ([]Bookmark, error)
 	ListCalls(ctx context.Context, arg ListCallsParams) ([]Call, error)

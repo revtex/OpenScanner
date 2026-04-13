@@ -77,3 +77,46 @@ func (h *BookmarkHandler) GetBookmarkIDs(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"callIds": callIDs})
 }
+
+// GetBookmarkCalls handles GET /api/bookmarks/calls — returns bookmarked calls with full metadata.
+func (h *BookmarkHandler) GetBookmarkCalls(c *gin.Context) {
+	uid, _ := c.Get("userID")
+	userID := uid.(int64)
+
+	rows, err := h.queries.ListBookmarkCallsByUser(c.Request.Context(), sql.NullInt64{Int64: userID, Valid: true})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list bookmarked calls"})
+		return
+	}
+
+	results := make([]CallSearchResult, 0, len(rows))
+	for _, row := range rows {
+		r := CallSearchResult{
+			ID:        row.ID,
+			AudioName: row.AudioName,
+			AudioType: row.AudioType,
+			DateTime:  row.DateTime,
+			SystemID:  row.SystemID,
+		}
+		if row.Frequency.Valid {
+			r.Frequency = &row.Frequency.Int64
+		}
+		if row.Duration.Valid {
+			r.Duration = &row.Duration.Int64
+		}
+		if row.Source.Valid {
+			r.Source = &row.Source.Int64
+		}
+		if row.TalkgroupID.Valid {
+			r.TalkgroupID = row.TalkgroupID.Int64
+		}
+		r.SystemLabel = row.SystemLabel.String
+		r.TalkgroupLabel = row.TalkgroupLabel.String
+		r.TalkgroupName = row.TalkgroupName.String
+		r.TalkgroupLed = row.TalkgroupLed.String
+		r.Bookmarked = true
+		results = append(results, r)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"calls": results})
+}

@@ -86,12 +86,14 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	// Call search — public access with optional auth for bookmarks.
 	api.GET("/calls", middleware.OptionalJWTAuth(), callHandler.GetCalls)
 	api.GET("/calls/:id/audio", middleware.OptionalJWTAuth(), callHandler.GetCallAudio)
+	api.GET("/calls/:id/share", callHandler.GetCallShare)
 
 	// Bookmarks — JWT required.
 	bookmarks := api.Group("/bookmarks")
 	bookmarks.Use(middleware.JWTAuth())
 	{
 		bookmarks.GET("", bookmarkHandler.GetBookmarkIDs)
+		bookmarks.GET("/calls", bookmarkHandler.GetBookmarkCalls)
 		bookmarks.POST("", bookmarkHandler.PostToggleBookmark)
 	}
 
@@ -184,6 +186,11 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 
 		// Logs
 		admin.GET("/logs", adminHandler.GetLogs)
+
+		// Activity
+		admin.GET("/activity/stats", adminHandler.GetActivityStats)
+		admin.GET("/activity/chart", adminHandler.GetActivityChart)
+		admin.GET("/activity/top-talkgroups", adminHandler.GetTopTalkgroups)
 	}
 
 	// WebSocket endpoints.

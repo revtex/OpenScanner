@@ -6,11 +6,13 @@ import { setSetupStatus, selectToken } from "@/app/slices/authSlice";
 import { expireAvoids } from "@/app/slices/scannerSlice";
 import { useScanner } from "@/hooks/useScanner";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { Star } from "lucide-react";
 import { LEDPanel } from "@/components/scanner/LEDPanel";
 import { DisplayPanel } from "@/components/scanner/DisplayPanel";
 import { ControlToolbar } from "@/components/scanner/ControlToolbar";
 import SelectTGPanel from "@/components/scanner/SelectTGPanel";
 import SearchPanel from "@/components/scanner/SearchPanel";
+import BookmarksPanel from "@/components/scanner/BookmarksPanel";
 
 export default function Scanner() {
   const navigate = useNavigate();
@@ -22,6 +24,7 @@ export default function Scanner() {
 
   const [selectTGOpen, setSelectTGOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
 
   const handleToggleSelectTG = useCallback(() => {
     setSelectTGOpen((prev) => !prev);
@@ -126,6 +129,19 @@ export default function Scanner() {
         onClose={() => setSelectTGOpen(false)}
       />
       <SearchPanel isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+      <BookmarksPanel
+        isOpen={bookmarksOpen}
+        onClose={() => setBookmarksOpen(false)}
+      />
+      {!!token && (
+        <button
+          onClick={() => setBookmarksOpen((prev) => !prev)}
+          className="fixed bottom-4 right-4 btn btn-circle btn-primary shadow-lg"
+          aria-label="Open bookmarks"
+        >
+          <Star className="w-5 h-5" />
+        </button>
+      )}
     </div>
   );
 }

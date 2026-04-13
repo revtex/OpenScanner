@@ -26,6 +26,17 @@ Each admin panel includes a help description paragraph below its heading explain
 
 ## Admin Panels
 
+### Activity Dashboard
+
+The Activity Dashboard is the first item in the admin sidebar navigation. It provides a real-time overview of system activity:
+
+- **Stat cards** — Calls today, calls this week, total calls, active listeners, server uptime
+- **24-hour activity chart** — Hourly call volume bar chart covering the last 24 hours
+- **Top 10 talkgroups table** — Most active talkgroups by call count in the last 24 hours
+- **Auto-refresh** — All data refreshes automatically every 30 seconds
+
+The dashboard is only available when the `activityDashboard` setting is enabled in Options.
+
 ### Users
 
 Manage user accounts. Each row shows username, role badge (`admin` / `listener`), disabled status, expiration date, and connection limit.
@@ -102,6 +113,14 @@ Utility operations for import, export, and account management.
 - **JSON Export** — Download full application config as JSON
 - **JSON Import** — Upload a JSON config file (transactional; duplicates skipped)
 - **Missing Audio Audit** — Scan all systems for call records whose audio files are missing from disk; delete orphaned rows
+
+### Shareable Links
+
+When the `shareableLinks` setting is enabled in Options, each call gets a public URL at `/call/:id` that can be shared with anyone. The share page shows call metadata, an audio player, and any transcript.
+
+### Bookmarks
+
+Users can bookmark calls via the star icon on call cards. The bookmarks panel (accessible via the star button in the scanner) shows all bookmarked calls. Bookmarked calls are protected from automatic pruning.
 
 ### Webhooks
 

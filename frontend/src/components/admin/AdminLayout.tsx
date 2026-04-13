@@ -12,6 +12,7 @@ import {
   useNavigationGuard,
 } from "@/components/admin/NavigationGuardContext";
 import {
+  Activity,
   Users,
   Radio,
   FolderTree,
@@ -42,8 +43,10 @@ import OptionsPanel from "@/components/admin/OptionsPanel";
 import LogsPanel from "@/components/admin/LogsPanel";
 import ToolsPanel from "@/components/admin/ToolsPanel";
 import WebhooksPanel from "@/components/admin/WebhooksPanel";
+import ActivityPanel from "@/components/admin/ActivityPanel";
 
 const navItems = [
+  { to: "/admin/activity", label: "Activity", icon: Activity },
   { to: "/admin/users", label: "Users", icon: Users },
   { to: "/admin/systems", label: "Systems", icon: Radio },
   { to: "/admin/groups", label: "Groups & Tags", icon: FolderTree },
@@ -182,6 +185,7 @@ export default function AdminLayout() {
 
           <main className="flex-1 p-6 max-w-[1200px] w-full mx-auto">
             <Routes>
+              <Route path="activity" element={<ActivityPanel />} />
               <Route path="users" element={<UsersPanel />} />
               <Route path="systems" element={<SystemsPanel />} />
               <Route path="groups" element={<GroupsTagsPanel />} />
@@ -192,7 +196,7 @@ export default function AdminLayout() {
               <Route path="logs" element={<LogsPanel />} />
               <Route path="tools" element={<ToolsPanel />} />
               <Route path="webhooks" element={<WebhooksPanel />} />
-              <Route path="*" element={<Navigate to="users" replace />} />
+              <Route path="*" element={<Navigate to="activity" replace />} />
             </Routes>
           </main>
         </div>

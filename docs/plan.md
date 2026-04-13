@@ -1872,7 +1872,7 @@ All extended features are **configurable** — disabled by default (except keybo
 
 ---
 
-### Phase 16 — Shareable Links, Bookmarks & Activity Dashboard
+### Phase 16 — Shareable Links, Bookmarks & Activity Dashboard ✅ COMPLETE
 
 **Goal:** Share calls publicly, bookmark for later, view activity stats.
 

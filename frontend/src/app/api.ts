@@ -80,6 +80,30 @@ export const api = createApi({
       }),
       invalidatesTags: ["Bookmarks"],
     }),
+    getBookmarkCalls: builder.query<
+      {
+        calls: {
+          id: number;
+          audioName: string;
+          audioType: string;
+          dateTime: number;
+          systemId: number;
+          talkgroupId: number;
+          systemLabel: string;
+          talkgroupLabel: string;
+          talkgroupName: string;
+          talkgroupLed: string;
+          frequency?: number;
+          duration?: number;
+          source?: number;
+          bookmarked: boolean;
+        }[];
+      },
+      void
+    >({
+      query: () => "/bookmarks/calls",
+      providesTags: ["Bookmarks"],
+    }),
   }),
 });
 
@@ -88,4 +112,5 @@ export const {
   usePostSetupMutation,
   useGetBookmarkIDsQuery,
   useToggleBookmarkMutation,
+  useGetBookmarkCallsQuery,
 } = api;
