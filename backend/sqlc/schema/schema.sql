@@ -168,13 +168,3 @@ CREATE TABLE IF NOT EXISTS transcriptions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_transcriptions_text ON transcriptions(text);
-
-CREATE TABLE IF NOT EXISTS accesses (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    code         TEXT    NOT NULL,
-    ident        TEXT,
-    expiration   INTEGER,
-    "limit"      INTEGER,
-    systems_json TEXT,
-    "order"      INTEGER NOT NULL DEFAULT 0
-);

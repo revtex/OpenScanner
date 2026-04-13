@@ -59,7 +59,7 @@ graph TD
 ### Implemented
 
 - **backend/cmd/server** — Application entry point; loads config, opens DB, runs migrations, seeds defaults, starts Gin HTTP server with timeouts (`ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, `IdleTimeout`); graceful shutdown via `signal.NotifyContext` + error channel
-- **backend/internal/api** — Gin route handlers: health check (`GET /api/health`), first-run setup (`GET /api/setup/status`, `POST /api/setup`), auth (`POST /api/auth/login`, `POST /api/auth/logout`, `PUT /api/auth/password`, `GET /api/auth/me`), bookmarks (`GET /api/bookmarks`, `POST /api/bookmarks` — JWT required), admin CRUD (full CRUD for users, systems, talkgroups, units, groups, tags, apikeys, dirwatches, downstreams, webhooks, accesses), admin config (`GET/PUT /api/admin/config`), admin logs (`GET /api/admin/logs`), CSV import (`POST /api/admin/import/talkgroups`, `POST /api/admin/import/units`), JSON config export/import (`GET /api/admin/export/config`, `POST /api/admin/import/config`), system/apikey reorder (`PUT /api/admin/systems/reorder`, `PUT /api/admin/apikeys/reorder`), API key migration (`POST /api/admin/apikeys/migrate-hash`), directory listing (`GET /api/admin/fs/directories`), missing audio tools (`GET /api/admin/tools/audio-missing`, `POST /api/admin/tools/audio-missing/cleanup`); response DTOs use pointer fields (`*string`/`*int64`) for proper JSON serialization of nullable values; API keys are stored hashed (SHA-256) and returned as truncated fingerprints
+- **backend/internal/api** — Gin route handlers: health check (`GET /api/health`), first-run setup (`GET /api/setup/status`, `POST /api/setup`), auth (`POST /api/auth/login`, `POST /api/auth/logout`, `PUT /api/auth/password`, `GET /api/auth/me`), bookmarks (`GET /api/bookmarks`, `POST /api/bookmarks` — JWT required), admin CRUD (full CRUD for users, systems, talkgroups, units, groups, tags, apikeys, dirwatches, downstreams, webhooks), admin config (`GET/PUT /api/admin/config`), admin logs (`GET /api/admin/logs`), CSV import (`POST /api/admin/import/talkgroups`, `POST /api/admin/import/units`), JSON config export/import (`GET /api/admin/export/config`, `POST /api/admin/import/config`), system/apikey reorder (`PUT /api/admin/systems/reorder`, `PUT /api/admin/apikeys/reorder`), API key migration (`POST /api/admin/apikeys/migrate-hash`), directory listing (`GET /api/admin/fs/directories`), missing audio tools (`GET /api/admin/tools/audio-missing`, `POST /api/admin/tools/audio-missing/cleanup`); response DTOs use pointer fields (`*string`/`*int64`) for proper JSON serialization of nullable values; API keys are stored hashed (SHA-256) and returned as truncated fingerprints
 - **backend/internal/auth** — JWT HS256 (32-byte random secret, 24h expiry, UUID v4 JTI); bcrypt cost 12; `TokenTracker` with max-5 tokens per user (oldest evicted); `RateLimiter` (3 failures → 10-min lockout per IP); timing-safe login with `DummyHash`
 - **backend/internal/config** — Server startup configuration (CLI flags, env vars, optional INI file); precedence: CLI > env > INI > defaults
 - **backend/internal/middleware** — Gin middleware: `RequestID` (UUID v4), `Logger` (structured slog), `CORS` (same-origin with localhost dev exception), `JWTAuth` (validates token + checks revocation), `OptionalJWTAuth` (extracts JWT if present but allows unauthenticated access for public endpoints), `RequireAdmin` (role-based 403), `APIKeyAuth` (header or query param), `RateLimit` (429 on lockout), `MaxBodySize` (request body size limiter)
@@ -177,7 +177,7 @@ Scanner.tsx (lazy-loaded page)
 
 #### Tests
 
-- 147 unit tests across 10 test files: `scannerSlice.test.ts` (29), `LEDPanel.test.tsx` (11), `ControlToolbar.test.tsx` (24), `Login.test.tsx` (7), `Setup.test.tsx` (4), `AdminLayout.test.tsx` (4), `api.test.ts` (1), `callsSlice.test.ts` (33), `SearchPanel.test.tsx` (14), `SelectTGPanel.test.tsx` (20) (Vitest + React Testing Library)
+- 145 unit tests across 10 test files: `scannerSlice.test.ts` (29), `LEDPanel.test.tsx` (11), `ControlToolbar.test.tsx` (24), `Login.test.tsx` (7), `Setup.test.tsx` (4), `AdminLayout.test.tsx` (4), `api.test.ts` (1), `callsSlice.test.ts` (31), `SearchPanel.test.tsx` (14), `SelectTGPanel.test.tsx` (20) (Vitest + React Testing Library)
 
 ### Frontend — Admin Dashboard (Phase 11)
 
@@ -189,10 +189,10 @@ Scanner.tsx (lazy-loaded page)
 
 #### State Management
 
-- **frontend/src/app/slices/adminSlice.ts** — RTK Query endpoints for all admin CRUD operations (Users, Systems, Talkgroups, Units, Groups, Tags, ApiKeys, Dirwatches, Downstreams, Webhooks, Accesses, Config, Logs, Import/Export, Password, API key hash migration, server directory listing, missing audio tools); tag-based cache invalidation
+- **frontend/src/app/slices/adminSlice.ts** — RTK Query endpoints for all admin CRUD operations (Users, Systems, Talkgroups, Units, Groups, Tags, ApiKeys, Dirwatches, Downstreams, Webhooks, Config, Logs, Import/Export, Password, API key hash migration, server directory listing, missing audio tools); tag-based cache invalidation
 - **frontend/src/app/slices/authSlice.ts** — Added `selectToken`, `selectRole`, `selectUsername` selectors
 - **frontend/src/app/api.ts** — Extended `tagTypes` for admin cache invalidation
-- **frontend/src/types/index.ts** — 16 admin types (`AdminUser`, `AdminSystem`, `AdminTalkgroup`, `AdminUnit`, `AdminGroup`, `AdminTag`, `AdminApiKey`, `AdminApiKeyCreateResponse`, `AdminDirwatch`, `AdminDownstream`, `AdminWebhook`, `AdminAccess`, `AdminSetting`, `AdminLog`, `ChangePasswordRequest`, `CreateUserPayload`, `UpdateUserPayload`)
+- **frontend/src/types/index.ts** — 15 admin types (`AdminUser`, `AdminSystem`, `AdminTalkgroup`, `AdminUnit`, `AdminGroup`, `AdminTag`, `AdminApiKey`, `AdminApiKeyCreateResponse`, `AdminDirwatch`, `AdminDownstream`, `AdminWebhook`, `AdminSetting`, `AdminLog`, `ChangePasswordRequest`, `CreateUserPayload`, `UpdateUserPayload`)
 
 #### Admin Panels
 
@@ -222,7 +222,7 @@ Scanner.tsx (lazy-loaded page)
 #### Tests
 
 - 15 admin-related tests: `Login.test.tsx` (7), `Setup.test.tsx` (4), `AdminLayout.test.tsx` (4)
-- Total: 147 tests (10 test files)
+- Total: 145 tests (10 test files)
 
 ### Frontend — Stubs (not yet implemented)
 

@@ -199,16 +199,6 @@ export interface AdminWebhook {
   order: number;
 }
 
-export interface AdminAccess {
-  id: number;
-  code: string;
-  ident: string | null;
-  expiration: number | null;
-  limit: number | null;
-  systemsJson: string | null;
-  order: number;
-}
-
 export interface AdminSetting {
   key: string;
   value: string;

@@ -8,7 +8,6 @@ import type {
   AdminTag,
   AdminApiKey,
   AdminApiKeyCreateResponse,
-  AdminAccess,
   AdminDirwatch,
   AdminDownstream,
   AdminWebhook,
@@ -493,42 +492,6 @@ const adminApi = api.injectEndpoints({
       invalidatesTags: ["Webhooks"],
     }),
 
-    // ── Accesses ──
-    listAccesses: builder.query<AdminAccess[], void>({
-      query: () => "/admin/accesses",
-      providesTags: ["Accesses"],
-    }),
-    createAccess: builder.mutation<AdminAccess, CreatePayload<AdminAccess>>({
-      query: (body) => ({ url: "/admin/accesses", method: "POST", body }),
-      invalidatesTags: ["Accesses"],
-    }),
-    updateAccess: builder.mutation<AdminAccess, UpdatePayload<AdminAccess>>({
-      query: ({ id, ...body }) => ({
-        url: `/admin/accesses/${id}`,
-        method: "PUT",
-        body,
-      }),
-      async onQueryStarted({ id, ...body }, { dispatch, queryFulfilled }) {
-        const patch = dispatch(
-          adminApi.util.updateQueryData("listAccesses", undefined, (draft) => {
-            const acc = draft.find((a) => a.id === id);
-            if (!acc) return;
-            Object.assign(acc, body);
-          }),
-        );
-        try {
-          await queryFulfilled;
-        } catch {
-          patch.undo();
-        }
-      },
-      invalidatesTags: ["Accesses"],
-    }),
-    deleteAccess: builder.mutation<void, number>({
-      query: (id) => ({ url: `/admin/accesses/${id}`, method: "DELETE" }),
-      invalidatesTags: ["Accesses"],
-    }),
-
     // ── Config (Settings) ──
     getConfig: builder.query<AdminSetting[], void>({
       query: () => "/admin/config",
@@ -674,11 +637,6 @@ export const {
   useCreateWebhookMutation,
   useUpdateWebhookMutation,
   useDeleteWebhookMutation,
-  // Accesses
-  useListAccessesQuery,
-  useCreateAccessMutation,
-  useUpdateAccessMutation,
-  useDeleteAccessMutation,
   // Config
   useGetConfigQuery,
   useUpdateConfigMutation,

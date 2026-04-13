@@ -46,7 +46,6 @@ export const api = createApi({
     "Dirwatches",
     "Downstreams",
     "Webhooks",
-    "Accesses",
     "Config",
     "Logs",
     "Bookmarks",

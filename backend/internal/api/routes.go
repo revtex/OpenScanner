@@ -171,12 +171,6 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		admin.PUT("/webhooks/:id", adminHandler.UpdateWebhook)
 		admin.DELETE("/webhooks/:id", adminHandler.DeleteWebhook)
 
-		// Accesses
-		admin.GET("/accesses", adminHandler.ListAccesses)
-		admin.POST("/accesses", adminHandler.CreateAccess)
-		admin.PUT("/accesses/:id", adminHandler.UpdateAccess)
-		admin.DELETE("/accesses/:id", adminHandler.DeleteAccess)
-
 		// Config
 		admin.GET("/config", adminHandler.GetConfig)
 		admin.PUT("/config", adminHandler.PutConfig)
