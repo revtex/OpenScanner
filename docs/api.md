@@ -275,10 +275,10 @@ Alias for the above — accepts identical fields for Trunk Recorder compatibilit
 | `systemId`       | int string   | yes      | System decimal (radio system ID)                |
 | `talkgroupId`    | int string   | yes      | Talkgroup decimal                               |
 | `dateTime`       | int64 string | yes      | Unix timestamp (seconds)                        |
-| `systemLabel`    | string       | no       | System name — used when `autoPopulate=true`     |
-| `talkgroupGroup` | string       | no       | Talkgroup group — used when `autoPopulate=true` |
-| `talkgroupLabel` | string       | no       | Talkgroup label — used when `autoPopulate=true` |
-| `talkgroupTag`   | string       | no       | Talkgroup tag                                   |
+| `systemLabel`    | string       | no       | Accepted for compatibility; currently ignored by ingest |
+| `talkgroupGroup` | string       | no       | Accepted for compatibility; currently ignored by ingest |
+| `talkgroupLabel` | string       | no       | Talkgroup label — used when auto-populating a new talkgroup |
+| `talkgroupTag`   | string       | no       | Used as talkgroup name when auto-populating/backfilling |
 | `frequency`      | int string   | no       | Primary frequency in Hz                         |
 | `duration`       | int string   | no       | Duration in seconds                             |
 | `source`         | int string   | no       | Primary source unit ID                          |
@@ -302,7 +302,7 @@ Alias for the above — accepts identical fields for Trunk Recorder compatibilit
 
 | Code  | Reason                                                                                |
 | ----- | ------------------------------------------------------------------------------------- |
-| `400` | Missing `audio`, `systemId`, `talkgroupId`, or `dateTime`; unparseable integer fields |
+| `400` | Missing `audio`, `systemId`, `talkgroupId`, or `dateTime`; invalid required integer fields |
 | `401` | Missing or invalid `X-API-Key`                                                        |
 | `429` | Rate limit exceeded (60 req/min per API key by default)                               |
 | `500` | Storage or DB error                                                                   |
@@ -440,16 +440,16 @@ Returns all settings as a JSON array of key/value objects.
 
 Updates one or more settings. Only known setting keys are accepted (allowlist-validated). Broadcasts a `CFG` WebSocket message to all connected clients after update.
 
-**Request:**
+**Request:** array of key/value pairs
 
 ```json
-{
-  "publicAccess": "true",
-  "maxClients": "500"
-}
+[
+  {"key": "publicAccess", "value": "true"},
+  {"key": "maxClients", "value": "500"}
+]
 ```
 
-**Allowed setting keys:** `activityDashboard`, `afsSystems`, `apiKeyCallRate`, `audioConversion`, `autoPopulate`, `branding`, `darkMode`, `dimmerDelay`, `disableDuplicateDetection`, `duplicateDetectionTimeFrame`, `email`, `keyboardShortcuts`, `keypadBeeps`, `maxClients`, `playbackGoesLive`, `pruneDays`, `publicAccess`, `pushNotifications`, `searchPatchedTalkgroups`, `shareableLinks`, `showListenersCount`, `sortTalkgroups`, `tagsToggle`, `time12hFormat`, `transcriptionBinary`, `transcriptionEnabled`, `transcriptionLanguage`, `transcriptionModel`, `vapidPrivateKey`, `vapidPublicKey`.
+**Allowed setting keys:** `activityDashboard`, `afsSystems`, `apiKeyCallRate`, `audioConversion`, `autoPopulate`, `branding`, `darkMode`, `dimmerDelay`, `disableDuplicateDetection`, `duplicateDetectionTimeFrame`, `email`, `keyboardShortcuts`, `keypadBeeps`, `maxClients`, `playbackGoesLive`, `pruneDays`, `publicAccess`, `pushNotifications`, `searchPatchedTalkgroups`, `shareableLinks`, `showListenersCount`, `sortTalkgroups`, `tagsToggle`, `time12hFormat`, `transcriptionBinary`, `transcriptionEnabled`, `transcriptionLanguage`, `transcriptionModel`, `vapidPrivateKey`, `vapidPublicKey`, `webhooksEnabled`.
 
 **Response `200`:**
 
@@ -479,7 +479,7 @@ Creates a new user.
   "password": "securepass123",
   "role": "listener",
   "disabled": 0,
-  "systems_json": null,
+  "systemsJson": null,
   "expiration": null,
   "limit": null
 }
@@ -505,7 +505,7 @@ Updates a user (does not change password — use `PUT /api/auth/password` for th
   "username": "updatedname",
   "role": "admin",
   "disabled": 0,
-  "systems_json": null,
+  "systemsJson": null,
   "expiration": null,
   "limit": null
 }
@@ -527,9 +527,9 @@ Returns all systems.
 
 #### `POST /api/admin/systems`
 
-**Request:** `CreateSystemParams` fields: `system_id` (int, unique), `label`, `auto_populate`, `blacklists_json`, `led`, `order`.
+**Request:** JSON fields: `systemId` (int, unique), `label`, `autoPopulate`, `blacklistsJson`, `led`, `order`.
 
-**Error `409`:** `system_id` already exists.
+**Error `409`:** `systemId` already exists.
 
 #### `PUT /api/admin/systems/:id`
 
@@ -568,9 +568,9 @@ Returns all talkgroups across all systems.
 
 #### `POST /api/admin/talkgroups`
 
-**Request:** `CreateTalkgroupParams` fields: `system_id`, `talkgroup_id`, `label`, `name`, `frequency`, `led`, `group_id`, `tag_id`, `order`.
+**Request:** JSON fields: `systemId`, `talkgroupId`, `label`, `name`, `frequency`, `led`, `groupId`, `tagId`, `order`.
 
-**Error `409`:** Talkgroup already exists (unique constraint on `system_id` + `talkgroup_id`).
+**Error `409`:** Talkgroup already exists (unique constraint on `systemId` + `talkgroupId`).
 
 #### `PUT /api/admin/talkgroups/:id`
 
@@ -586,7 +586,7 @@ Returns all units across all systems.
 
 #### `POST /api/admin/units`
 
-**Request:** `CreateUnitParams` fields: `system_id`, `unit_id`, `label`, `order`.
+**Request:** JSON fields: `systemId`, `unitId`, `label`, `order`.
 
 **Error `409`:** Unit already exists.
 
@@ -642,7 +642,7 @@ Returns all units across all systems.
 
 #### `POST /api/admin/apikeys`
 
-**Request:** `CreateAPIKeyParams` fields: `key` (auto-generated UUID v4 if empty), `ident`, `disabled`, `systems_json`, `order`.
+**Request:** JSON fields: `key` (auto-generated UUID v4 if empty), `ident`, `disabled`, `systemsJson`, `order`.
 
 **Error `409`:** Key already exists.
 
@@ -718,7 +718,7 @@ Lists directories on the server filesystem. Used by the Dirwatches panel to brow
 
 #### `POST /api/admin/dirwatches`
 
-**Request:** `CreateDirwatchParams` fields: `directory` (required, 422 if empty), `type`, `mask`, `extension`, `frequency`, `delay`, `delete_after`, `use_polling`, `disabled`, `system_id`, `talkgroup_id`, `order`.
+**Request:** JSON fields: `directory` (required, 422 if empty), `type`, `mask`, `extension`, `frequency`, `delay`, `deleteAfter`, `usePolling`, `disabled`, `systemId`, `talkgroupId`, `order`.
 
 #### `PUT /api/admin/dirwatches/:id`
 
@@ -734,7 +734,7 @@ Lists directories on the server filesystem. Used by the Dirwatches panel to brow
 
 #### `POST /api/admin/downstreams`
 
-**Request:** `CreateDownstreamParams` fields: `url` (required, 422 if empty), `api_key`, `systems_json`, `disabled`, `order`.
+**Request:** JSON fields: `url` (required, 422 if empty), `apiKey`, `systemsJson`, `disabled`, `order`.
 
 #### `PUT /api/admin/downstreams/:id`
 
@@ -748,7 +748,7 @@ Lists directories on the server filesystem. Used by the Dirwatches panel to brow
 
 #### `POST /api/admin/webhooks`
 
-**Request:** `CreateWebhookParams` fields: `url` (required, 422 if empty), `type`, `secret`, `systems_json`, `disabled`, `order`.
+**Request:** JSON fields: `url` (required, 422 if empty), `type`, `secret`, `systemsJson`, `disabled`, `order`.
 
 #### `PUT /api/admin/webhooks/:id`
 
@@ -774,7 +774,7 @@ Returns server log entries, optionally filtered by time range and level.
 
 ```json
 [
-  {"id": 1, "date_time": 1712345678, "level": "info", "message": "server started"},
+  {"id": 1, "dateTime": 1712345678, "level": "info", "message": "server started"},
   ...
 ]
 ```
