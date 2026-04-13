@@ -208,14 +208,14 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		// Shared Links
 		admin.GET("/shared-links", adminHandler.GetSharedLinks)
 		admin.DELETE("/shared-links/:id", adminHandler.DeleteSharedLinkAdmin)
+
+		// Swagger API documentation — admin-only.
+		admin.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
 	// WebSocket endpoints.
 	r.GET("/ws", gin.WrapF(ws.HandleListenerWS(deps.Hub, deps.Queries)))
 	r.GET("/api/admin/ws", gin.WrapF(ws.HandleAdminWS(deps.Hub, deps.Queries)))
-
-	// Swagger API documentation.
-	r.GET("/api/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Serve embedded frontend (SPA mode).
 	serveFrontend(r)
