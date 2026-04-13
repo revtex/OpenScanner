@@ -28,7 +28,7 @@ OpenScanner is configured via CLI flags, environment variables, or an optional I
 | `--ssl-cert`       | `OPENSCANNER_SSL_CERT`       | `ssl_cert_file`  | —                 | TLS certificate file (PEM)                            |
 | `--ssl-key`        | `OPENSCANNER_SSL_KEY`        | `ssl_key_file`   | —                 | TLS private key file (PEM)                            |
 | `--ssl-auto-cert`  | `OPENSCANNER_SSL_AUTO_CERT`  | `ssl_auto_cert`  | —                 | Domain for Let's Encrypt auto-cert                    |
-| `--timezone`       | `OPENSCANNER_TIMEZONE`, `TZ` | `timezone`       | UTC               | IANA timezone for recorder timestamps                 |
+| `--timezone`       | `OPENSCANNER_TIMEZONE`, `TZ` | `timezone`       | system local time | IANA timezone for recorder timestamps                 |
 | `--admin-password` | `OPENSCANNER_ADMIN_PASSWORD` | —                | —                 | Reset admin password on startup                       |
 | `--config`         | —                            | —                | `openscanner.ini` | Path to INI config file                               |
 | `--config-save`    | —                            | —                | —                 | Write current flags to INI and exit                   |
@@ -71,7 +71,7 @@ Requirements: Go 1.25+, Node 22+, pnpm, FFmpeg (runtime only).
 git clone https://github.com/revtex/openscanner.git
 cd openscanner
 make build
-# Binary: backend/tmp/openscanner  (or backend/openscanner depending on backend Makefile)
+# Binary: build/openscanner
 ```
 
 `make build` does:
@@ -148,7 +148,7 @@ docker compose logs -f
 
 ```bash
 # 1. Copy binary and create data directories
-sudo cp openscanner /usr/local/bin/openscanner
+sudo cp build/openscanner /usr/local/bin/openscanner
 sudo chmod +x /usr/local/bin/openscanner
 sudo mkdir -p /var/lib/openscanner/recordings
 
@@ -245,7 +245,7 @@ sudo ./openscanner \
 
 - Binds port 443 (requires root or `CAP_NET_BIND_SERVICE`)
 - Automatically obtains and renews a certificate via ACME HTTP-01 challenge
-- Certificate is cached on disk next to the binary
+- Certificate cache is stored in `autocert-cache/` under the process working directory
 
 ---
 
@@ -337,12 +337,14 @@ curl http://localhost:3000/api/health
 
 ### What to look for in logs
 
-On a successful start you should see (via `slog` JSON or text output):
+On a successful start you should see startup output including:
 
 ```
-INFO  database migrated  path=/data/openscanner.db
-INFO  seeded default settings
-INFO  listening  addr=0.0.0.0:3000
+Version:     <version>
+URL:         http://<listen-address>
+Database:    <db-file>
+Recordings:  <recordings-dir>
+INFO  HTTP server listening  addr=<listen-address>
 ```
 
 On first run, navigate to `http://<host>:3000` — you will be redirected to the **Setup Wizard** (`/setup`) to configure the admin account and initial settings.
