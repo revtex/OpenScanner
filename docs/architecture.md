@@ -1,10 +1,12 @@
 # OpenScanner — Architecture
 
-> **Implementation status:** Phases 1–11 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest, WebSocket Hub, Admin CRUD APIs, DirWatch Service, Downstream Pusher, Frontend Scanner UI, Frontend TG Selection & Search Panels, Frontend Admin Dashboard) are complete. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
+> **Implementation status:** Phases 1–11 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest, WebSocket Hub, Admin CRUD APIs, DirWatch Service, Downstream Pusher, Frontend Scanner UI, Frontend TG Selection & Search Panels, Frontend Admin Dashboard) are complete, plus Phase 12 (CLI, Daemon, SSL, Docker & Deployment) and Phase 15 (Keyboard Shortcuts & Theme Toggle). Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
 
 ## Overview
 
-OpenScanner is a modern web-based radio call manager inspired by rdio-scanner. It uses a Go backend (Gin + SQLite) with a React frontend (TypeScript + Tailwind CSS 4 + DaisyUI 5), connected via WebSocket for real-time call streaming.
+OpenScanner is a modern web-based radio call manager inspired by rdio-scanner. It uses a Go backend (Gin + SQLite) with a React frontend (TypeScript + Tailwind CSS 4.2.2 + DaisyUI 5.5.19), connected via WebSocket for real-time call streaming.
+
+**Frontend styling:** Tailwind CSS 4 (4.2.2) uses CSS-first configuration — `@import "tailwindcss"` and `@plugin "daisyui"` directives in `index.css`, with the `@tailwindcss/vite` Vite plugin. There is no `tailwind.config.ts` or `postcss.config.js`. Custom themes (`openscanner-dark`, `openscanner-light`) are defined via `@plugin "daisyui/theme"` blocks in `index.css`. Icons are provided by `lucide-react`.
 
 ## System Diagram
 
@@ -57,16 +59,17 @@ graph TD
 ### Implemented
 
 - **backend/cmd/server** — Application entry point; loads config, opens DB, runs migrations, seeds defaults, starts Gin HTTP server with timeouts (`ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, `IdleTimeout`); graceful shutdown via `signal.NotifyContext` + error channel
-- **backend/internal/api** — Gin route handlers: health check (`GET /api/health`), first-run setup (`GET /api/setup/status`, `POST /api/setup`), auth (`POST /api/auth/login`, `POST /api/auth/logout`, `PUT /api/auth/password`, `GET /api/auth/me`), admin CRUD (full CRUD for users, systems, talkgroups, units, groups, tags, apikeys, dirwatches, downstreams, webhooks), admin config (`GET/PUT /api/admin/config`), admin logs (`GET /api/admin/logs`), CSV import (`POST /api/admin/import/talkgroups`, `POST /api/admin/import/units`), JSON config export/import (`GET /api/admin/export/config`, `POST /api/admin/import/config`); response DTOs use pointer fields (`*string`/`*int64`) for proper JSON serialization of nullable values
+- **backend/internal/api** — Gin route handlers: health check (`GET /api/health`), first-run setup (`GET /api/setup/status`, `POST /api/setup`), auth (`POST /api/auth/login`, `POST /api/auth/logout`, `PUT /api/auth/password`, `GET /api/auth/me`), bookmarks (`GET /api/bookmarks`, `POST /api/bookmarks` — JWT required), admin CRUD (full CRUD for users, systems, talkgroups, units, groups, tags, apikeys, dirwatches, downstreams, webhooks, accesses), admin config (`GET/PUT /api/admin/config`), admin logs (`GET /api/admin/logs`), CSV import (`POST /api/admin/import/talkgroups`, `POST /api/admin/import/units`), JSON config export/import (`GET /api/admin/export/config`, `POST /api/admin/import/config`), system/apikey reorder (`PUT /api/admin/systems/reorder`, `PUT /api/admin/apikeys/reorder`), API key migration (`POST /api/admin/apikeys/migrate-hash`), directory listing (`GET /api/admin/fs/directories`), missing audio tools (`GET /api/admin/tools/audio-missing`, `POST /api/admin/tools/audio-missing/cleanup`); response DTOs use pointer fields (`*string`/`*int64`) for proper JSON serialization of nullable values; API keys are stored hashed (SHA-256) and returned as truncated fingerprints
 - **backend/internal/auth** — JWT HS256 (32-byte random secret, 24h expiry, UUID v4 JTI); bcrypt cost 12; `TokenTracker` with max-5 tokens per user (oldest evicted); `RateLimiter` (3 failures → 10-min lockout per IP); timing-safe login with `DummyHash`
 - **backend/internal/config** — Server startup configuration (CLI flags, env vars, optional INI file); precedence: CLI > env > INI > defaults
-- **backend/internal/middleware** — Gin middleware: `RequestID` (UUID v4), `Logger` (structured slog), `JWTAuth` (validates token + checks revocation), `OptionalJWTAuth` (extracts JWT if present but allows unauthenticated access for public endpoints), `RequireAdmin` (role-based 403), `APIKeyAuth` (header or query param), `RateLimit` (429 on lockout)
-- **backend/internal/seed** — First-run database seeding: 1 `app_state` row, 30 settings, 6 groups (Air/EMS/Fire/Interop/Law/Unknown), 9 tags; all idempotent (`INSERT OR IGNORE`) in a single transaction
-- **backend/internal/db** — SQLite WAL mode, embedded migrations (19 migrations, 17 tables — migration 019 drops the legacy `accesses` table), `SetMaxOpenConns(1)`; sqlc-generated type-safe query layer
+- **backend/internal/middleware** — Gin middleware: `RequestID` (UUID v4), `Logger` (structured slog), `CORS` (same-origin with localhost dev exception), `JWTAuth` (validates token + checks revocation), `OptionalJWTAuth` (extracts JWT if present but allows unauthenticated access for public endpoints), `RequireAdmin` (role-based 403), `APIKeyAuth` (header or query param), `RateLimit` (429 on lockout), `MaxBodySize` (request body size limiter)
+- **backend/internal/seed** — First-run database seeding: 1 `app_state` row, 31 settings, 8 groups (Air/Common/EMS/Fire/Interop/Law/Public Works/Unknown), 21 tags (ATC, Corrections, Emergency Ops, EMS Dispatch/Tac/Talk, Fire Dispatch/Tac/Talk, Hospital, Interop, Law Dispatch/Tac/Talk, Public Works, Schools, Security, Service, Transportation, Untagged, Utilities); all idempotent (`INSERT OR IGNORE`) in a single transaction
+- **backend/internal/db** — SQLite WAL mode, embedded migrations (21 migration files, including 3 separate 019-prefix migrations: `019_add_call_metadata.sql` adds `site`/`channel`/`decoder` columns to calls, `019_add_password_need_change.sql` adds `password_need_change` to users, `019_drop_accesses.sql` drops the legacy accesses table), `SetMaxOpenConns(1)`; sqlc-generated type-safe query layer
 
 - **backend/internal/audio** — FFmpeg audio conversion pipeline: `Processor.Store` writes uploaded multipart file to `{audioDir}/{YYYY}/{MM}/{DD}/`, submits a `ConversionJob` to the bounded `WorkerPool` (`runtime.NumCPU()` goroutines), waits for completion, then returns the relative `.m4a` path; `IsDuplicate` queries the last call per system+talkgroup within the configured time window; `PruneLoop` runs on a 1-hour ticker deleting old calls and audio files in 500-row batches
 - **backend/internal/api/calls.go** — `PostCallUpload` handler: validates API key (via `APIKeyAuth` middleware), applies per-API-key sliding-window rate limiter (default 60 req/min), parses multipart fields, resolves or auto-populates system+talkgroup, runs duplicate check, stores audio via `Processor.Store`, inserts call DB record, broadcasts `CAL` + binary audio to WS hub, returns `{"id": <callID>}`; also registered as `POST /api/trunk-recorder-call-upload`
 - **backend/internal/api/calls.go** — `GetCalls` handler: paginated call archive search via `GET /api/calls`; supports filtering by `system_id`, `talkgroup_id`, `date_from`, `date_to` with `page`/`limit` pagination and `sort` direction (asc/desc); uses `OptionalJWTAuth` middleware (returns bookmark status when JWT is present); returns `{"calls": [...], "total": N}`
+- **backend/internal/api/calls.go** — `GetCallAudio` handler: streams call audio files via `GET /api/calls/:id/audio`; uses `OptionalJWTAuth` middleware; reads audio from the recordings directory with path traversal protection
 
 - **backend/internal/ws** — Real-time WebSocket hub for call streaming and client management:
   - **hub.go** — `Hub` struct runs a single-goroutine event loop processing `register`, `unregister`, and `broadcast` channels; non-blocking sends (slow clients dropped); `BroadcastCAL()` sends text + binary frames atomically per client (mutex-protected); `debounceLSC()` limits listener-count broadcasts to max 1 per 3 seconds via `time.AfterFunc`; graceful shutdown via context cancellation + `closeAll()`
@@ -98,10 +101,21 @@ graph TD
 #### State Management
 
 - **frontend/src/app/store.ts** — Redux store combining `scannerSlice`, `authSlice`, and RTK Query `api` reducers
-- **frontend/src/app/slices/scannerSlice.ts** — Full scanner state with 18 reducers: `callReceived`, `skipCall`, `togglePause`, `toggleLive`, `holdSystem`, `holdTG`, `addAvoid`, `removeAvoid`, `toggleTG`, `setBranding`, `transcriptReceived`, queue management, and history tracking
+- **frontend/src/app/slices/scannerSlice.ts** — Full scanner state with 17 reducers: `callReceived`, `setCurrentCall`, `clearCurrentCall`, `togglePause`, `toggleLive`, `holdSystem`, `holdTG`, `addAvoid`, `removeAvoid`, `clearAvoids`, `setListenerCount`, `setConnectionStatus`, `setConfig`, `toggleTG`, `restoreTGSelection`, `setAllTGs`, `expireAvoids`; queue management, and history tracking
 - **frontend/src/app/slices/authSlice.ts** — Auth state: `setCredentials` (JWT + user), `clearCredentials`, `setSetupStatus`; token stored in `localStorage` (key `os_auth`) for persistence across browser tabs/windows
 - **frontend/src/app/slices/callsSlice.ts** — Search filter state: system, talkgroup, group, tag, date range, sort direction; drives SearchPanel query params
 - **frontend/src/app/api.ts** — RTK Query base API with `getSetupStatus`, `postSetup`, `postLogin` endpoints; `getCalls` query for paginated call archive search; base query wraps `fetchBaseQuery` with a global 401 interceptor that dispatches `clearCredentials()` on any unauthorized response
+
+#### CSS & Theming
+
+- **frontend/src/index.css** — CSS-first Tailwind 4 config:
+  - `@import "tailwindcss"` — loads Tailwind base/components/utilities
+  - `@plugin "daisyui" { themes: false; }` — loads DaisyUI with built-in themes disabled
+  - `@plugin "daisyui/theme"` blocks define two custom themes: `openscanner-dark` (default, green primary `#00e676`, dark base) and `openscanner-light` (green primary `#2e7d32`, light base)
+  - `@utility` directives for `led-branding`, `led-indicator`, `history-row`
+  - `.lcd-display` component class — Nokia-style LCD look: green background `#bbc8c0`, dark foreground `#1e2a24`, 3px border, inset bevel shadow, repeating scanline `::after` overlay
+  - `.brightness-slider` — 100px inline slider styled to match LCD aesthetic
+  - No `tailwind.config.ts` or `postcss.config.js` — Tailwind 4 uses CSS-first configuration exclusively
 
 #### WebSocket Client
 
@@ -118,25 +132,34 @@ graph TD
   - Bounded call queue (max 50) with preloading of the next queued call
   - Download support and `clearQueue` for memory leak prevention
 
+- **frontend/src/services/beepPlayer.ts** — Scanner keypad beep generator:
+  - Uses Web Audio API `OscillatorNode` to synthesize beep tones (no WAV files)
+  - Two styles: `uniden` (short high-pitched square wave) and `whistler` (two-tone sine chirp)
+  - Controlled by `keypadBeeps` setting (`uniden`, `whistler`, or `disabled`)
+
 #### Hooks
 
 - **useWebSocket** — WS lifecycle tied to auth state (connect/disconnect on login/logout)
 - **useAudioPlayer** — Wires audio player callbacks (play, end, error) to Redux actions
-- **useTheme** — Dark/light theme toggle with `localStorage` persistence
+- **useTheme** — Dark/light theme toggle with `localStorage` persistence (switches between `openscanner-dark` and `openscanner-light` DaisyUI themes)
 - **useScanner** — Composite hook combining WebSocket, audio player, and scanner state
+- **useKeyboardShortcuts** — Global keyboard shortcuts (Space, S, R, D, L, B, etc.)
 
 #### Components
 
 ```
 Scanner.tsx (lazy-loaded page)
 ├── LEDPanel          — Branding text + theme toggle + colored LED (green=live, orange=paused, pulse=idle)
-├── DisplayPanel      — 8-row monospace display with clock; fullscreen modal on double-click
-├── TranscriptPanel   — Collapsible transcript display (below DisplayPanel)
-├── HistoryPanel      — Last 5 calls table
+├── DisplayPanel      — Nokia-style LCD display (.lcd-display CSS class: green background #bbc8c0, scanlines, bevel shadow)
+│   │                   8-row monospace display with clock; fullscreen modal on double-click
+│   ├── BookmarkButton   — Star toggle on current call (wired to backend bookmarks API)
+│   ├── Share button     — Share2 icon, copies call permalink to clipboard
+│   ├── Brightness slider — Sun icon toggle, inline horizontal slider (20–120%), persisted to localStorage, default 50%
+│   ├── TranscriptPanel  — Collapsible transcript display
+│   └── HistoryPanel     — Last 5 calls table (hard-capped at 5 rows, full dedup across all entries)
 ├── ControlToolbar    — Two-row icon toolbar
-│   ├── Row 1: play/pause, skip, replay, LIVE toggle, volume slider
-│   └── Row 2: HOLD (system/TG), AVOID, download
-├── BookmarkButton    — Star toggle on current call
+│   ├── Row 1: play/pause, skip, replay, volume slider (range range-xs range-primary), download, bookmark
+│   └── Row 2: LIVE toggle, HOLD (system/TG), AVOID, SELECT, SEARCH, overflow menu (fullscreen, keyboard shortcuts)
 ├── SelectTGPanel     — Slide-out panel for talkgroup selection (tri-state group toggles, per-system TG toggles, avoid countdown; state persisted to localStorage)
 └── SearchPanel       — Slide-out panel for call archive search (RTK Query paginated results via GET /api/calls, filters by system/TG/group/tag/date, play/download per row)
 ```
@@ -154,7 +177,7 @@ Scanner.tsx (lazy-loaded page)
 
 #### Tests
 
-- 61 unit tests across `scannerSlice.test.ts`, `LEDPanel.test.tsx`, and `ControlToolbar.test.tsx` (Vitest + React Testing Library)
+- 147 unit tests across 10 test files: `scannerSlice.test.ts` (29), `LEDPanel.test.tsx` (11), `ControlToolbar.test.tsx` (24), `Login.test.tsx` (7), `Setup.test.tsx` (4), `AdminLayout.test.tsx` (4), `api.test.ts` (1), `callsSlice.test.ts` (33), `SearchPanel.test.tsx` (14), `SelectTGPanel.test.tsx` (20) (Vitest + React Testing Library)
 
 ### Frontend — Admin Dashboard (Phase 11)
 
@@ -166,10 +189,10 @@ Scanner.tsx (lazy-loaded page)
 
 #### State Management
 
-- **frontend/src/app/slices/adminSlice.ts** — RTK Query endpoints for all admin CRUD operations (Users, Systems, Talkgroups, Units, Groups, Tags, ApiKeys, Dirwatches, Downstreams, Webhooks, Config, Logs, Import/Export, Password); tag-based cache invalidation
+- **frontend/src/app/slices/adminSlice.ts** — RTK Query endpoints for all admin CRUD operations (Users, Systems, Talkgroups, Units, Groups, Tags, ApiKeys, Dirwatches, Downstreams, Webhooks, Accesses, Config, Logs, Import/Export, Password, API key hash migration, server directory listing, missing audio tools); tag-based cache invalidation
 - **frontend/src/app/slices/authSlice.ts** — Added `selectToken`, `selectRole`, `selectUsername` selectors
 - **frontend/src/app/api.ts** — Extended `tagTypes` for admin cache invalidation
-- **frontend/src/types/index.ts** — 15 admin types (`AdminUser`, `AdminSystem`, `AdminTalkgroup`, `AdminUnit`, `AdminGroup`, `AdminTag`, `AdminApiKey`, `AdminDirwatch`, `AdminDownstream`, `AdminWebhook`, `AdminSetting`, `AdminLog`, `ChangePasswordRequest`, `CreateUserPayload`, `UpdateUserPayload`)
+- **frontend/src/types/index.ts** — 16 admin types (`AdminUser`, `AdminSystem`, `AdminTalkgroup`, `AdminUnit`, `AdminGroup`, `AdminTag`, `AdminApiKey`, `AdminApiKeyCreateResponse`, `AdminDirwatch`, `AdminDownstream`, `AdminWebhook`, `AdminAccess`, `AdminSetting`, `AdminLog`, `ChangePasswordRequest`, `CreateUserPayload`, `UpdateUserPayload`)
 
 #### Admin Panels
 
@@ -183,18 +206,23 @@ Scanner.tsx (lazy-loaded page)
 | `DirWatchPanel`    | Directory watches CRUD with type dropdown                                                                  |
 | `DownstreamsPanel` | Downstream servers CRUD                                                                                    |
 | `LogsPanel`        | Virtualized log viewer (`@tanstack/react-virtual`) with date/level filters                                 |
-| `ToolsPanel`       | CSV import, JSON export/import, password change                                                            |
+| `ToolsPanel`       | CSV import (`talkgroups`/`units`), JSON config export/import, password change, missing-audio audit/cleanup |
 | `WebhooksPanel`    | Webhooks CRUD with type badges                                                                             |
 
 #### Dependencies
 
 - `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` — Drag-to-reorder in SystemsPanel and ApiKeysPanel
 - `@tanstack/react-virtual` — Virtualized scrolling in SystemsPanel (nested talkgroups) and LogsPanel
+- `lucide-react` — Icon library used across all scanner and admin components
+
+#### Navigation Guard
+
+- **frontend/src/components/admin/NavigationGuardContext.tsx** — Context provider that wraps the admin layout; warns users about unsaved changes before navigating away from a panel with uncommitted edits
 
 #### Tests
 
-- 13 new tests across `Login.test.tsx` (5), `Setup.test.tsx` (4), `AdminLayout.test.tsx` (4)
-- Total: 143 tests (9 test files)
+- 15 admin-related tests: `Login.test.tsx` (7), `Setup.test.tsx` (4), `AdminLayout.test.tsx` (4)
+- Total: 147 tests (10 test files)
 
 ### Frontend — Stubs (not yet implemented)
 

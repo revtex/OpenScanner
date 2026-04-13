@@ -194,6 +194,55 @@ Paginated call archive search with filtering. Uses `OptionalJWTAuth` middleware 
 
 ---
 
+### Bookmarks
+
+#### `GET /api/bookmarks`
+
+Returns call IDs bookmarked by the authenticated user. Requires `Authorization: Bearer <token>`.
+
+**Response `200`:**
+
+```json
+{
+  "callIds": [12345, 12346, 12400]
+}
+```
+
+Returns `{"callIds": []}` if the user has no bookmarks.
+
+#### `POST /api/bookmarks`
+
+Toggles a bookmark on a call for the authenticated user. If the bookmark exists, it is deleted; if it doesn't, it is created. Requires `Authorization: Bearer <token>`.
+
+**Request:**
+
+```json
+{
+  "callId": 12345
+}
+```
+
+**Response `200` — bookmarked:**
+
+```json
+{
+  "bookmarked": true,
+  "id": 42
+}
+```
+
+**Response `200` — unbookmarked:**
+
+```json
+{
+  "bookmarked": false
+}
+```
+
+**Error responses:** `400` (invalid body), `401` (no JWT), `500` (server error).
+
+---
+
 ### Call Upload
 
 Both endpoints are handled by the same `PostCallUpload` handler. Requires `X-API-Key` header authentication.

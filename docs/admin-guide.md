@@ -99,11 +99,12 @@ Utility operations for import, export, and account management.
 - **CSV Import** — Upload talkgroup or unit CSV files with system selector
 - **JSON Export** — Download full application config as JSON
 - **JSON Import** — Upload a JSON config file (transactional; duplicates skipped)
+- **Missing Audio Audit** — Scan all systems for call records whose audio files are missing from disk; delete orphaned rows
 - **Change Password** — Change your own admin password
 
 ### Webhooks
 
-Configure webhook endpoints for event notifications.
+Configure webhook endpoints for event notifications. This panel is accessible at `/admin/webhooks` (not shown in the sidebar navigation).
 
 - **Fields** — URL, webhook type (generic / discord), enabled toggle
 - **Type badges** — Visual indicator for webhook type

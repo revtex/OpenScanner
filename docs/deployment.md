@@ -6,7 +6,7 @@ OpenScanner ships as a **single self-contained binary** that embeds the entire R
 
 - The React SPA (embedded via `go:embed`)
 - REST API at `/api/`
-- WebSocket hub at `/api/ws`
+- WebSocket hub at `/ws`
 - Call audio files from the recordings directory
 
 Runtime dependencies: **FFmpeg** (audio conversion) and **SQLite** (via `modernc.org/sqlite`, no CGO required).
