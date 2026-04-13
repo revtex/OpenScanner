@@ -18,6 +18,9 @@ WHERE
     AND (sqlc.narg('talkgroup_id') IS NULL OR c.talkgroup_id = sqlc.narg('talkgroup_id'))
     AND (sqlc.narg('date_from')    IS NULL OR c.date_time    >= sqlc.narg('date_from'))
     AND (sqlc.narg('date_to')      IS NULL OR c.date_time    <= sqlc.narg('date_to'))
+    AND (sqlc.narg('bookmark_user_id') IS NULL OR EXISTS (
+        SELECT 1 FROM bookmarks b WHERE b.call_id = c.id AND b.user_id = sqlc.narg('bookmark_user_id')
+    ))
 ORDER BY c.date_time DESC
 LIMIT  sqlc.narg('page_size')
 OFFSET sqlc.narg('page_offset');
@@ -30,6 +33,9 @@ WHERE
     AND (sqlc.narg('talkgroup_id') IS NULL OR c.talkgroup_id = sqlc.narg('talkgroup_id'))
     AND (sqlc.narg('date_from')    IS NULL OR c.date_time    >= sqlc.narg('date_from'))
     AND (sqlc.narg('date_to')      IS NULL OR c.date_time    <= sqlc.narg('date_to'))
+    AND (sqlc.narg('bookmark_user_id') IS NULL OR EXISTS (
+        SELECT 1 FROM bookmarks b WHERE b.call_id = c.id AND b.user_id = sqlc.narg('bookmark_user_id')
+    ))
 ORDER BY c.date_time ASC
 LIMIT  sqlc.narg('page_size')
 OFFSET sqlc.narg('page_offset');
@@ -41,7 +47,10 @@ WHERE
     (sqlc.narg('system_id')    IS NULL OR c.system_id    = sqlc.narg('system_id'))
     AND (sqlc.narg('talkgroup_id') IS NULL OR c.talkgroup_id = sqlc.narg('talkgroup_id'))
     AND (sqlc.narg('date_from')    IS NULL OR c.date_time    >= sqlc.narg('date_from'))
-    AND (sqlc.narg('date_to')      IS NULL OR c.date_time    <= sqlc.narg('date_to'));
+    AND (sqlc.narg('date_to')      IS NULL OR c.date_time    <= sqlc.narg('date_to'))
+    AND (sqlc.narg('bookmark_user_id') IS NULL OR EXISTS (
+        SELECT 1 FROM bookmarks b WHERE b.call_id = c.id AND b.user_id = sqlc.narg('bookmark_user_id')
+    ));
 
 -- name: CreateCall :one
 INSERT INTO calls (

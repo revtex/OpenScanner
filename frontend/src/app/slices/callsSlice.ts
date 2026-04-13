@@ -39,6 +39,7 @@ export interface CallSearchParams {
   page?: number;
   limit?: number;
   sort?: "asc" | "desc";
+  bookmarkedOnly?: boolean;
 }
 
 // --- RTK Query endpoint ---
@@ -56,6 +57,7 @@ const callsApi = api.injectEndpoints({
           page: params.page,
           limit: params.limit,
           sort: params.sort,
+          bookmarked_only: params.bookmarkedOnly ? "true" : undefined,
         },
       }),
     }),

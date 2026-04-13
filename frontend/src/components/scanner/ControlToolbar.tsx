@@ -379,11 +379,6 @@ export function ControlToolbar({
             className="dropdown-content menu p-2 shadow bg-base-200 rounded-box w-52 z-50"
           >
             <li>
-              <button>
-                <Star className="w-4 h-4" /> Saved Calls
-              </button>
-            </li>
-            <li>
               <button onClick={toggleFullscreen}>
                 {isFullscreen ? (
                   <Minimize className="w-4 h-4" />

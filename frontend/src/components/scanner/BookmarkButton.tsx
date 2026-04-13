@@ -11,7 +11,7 @@ export function BookmarkButton({
 }: BookmarkButtonProps) {
   return (
     <button
-      className={`btn btn-circle btn-ghost btn-xs ${isBookmarked ? "text-warning" : "opacity-50"}`}
+      className={`btn btn-circle btn-ghost btn-xs ${isBookmarked ? "text-warning opacity-50 hover:opacity-50" : "opacity-50 hover:opacity-50"}`}
       onClick={onToggle}
       aria-label={isBookmarked ? "Remove bookmark" : "Add bookmark"}
     >

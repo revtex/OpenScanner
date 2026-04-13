@@ -77,7 +77,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
 
   // Build query params
   const queryParams = useMemo(() => {
-    const params: Record<string, number | string | undefined> = {
+    const params: Record<string, number | string | boolean | undefined> = {
       systemId: filters.systemId,
       talkgroupId: filters.talkgroupId,
       page: filters.page,
@@ -92,6 +92,9 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       params.dateTo = Math.floor(
         new Date(filters.dateTo + "T23:59:59").getTime() / 1000,
       );
+    }
+    if (filters.bookmarkedOnly) {
+      params.bookmarkedOnly = true;
     }
     return params;
   }, [filters]);

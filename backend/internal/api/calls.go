@@ -676,12 +676,23 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 
 	offset := (page - 1) * limit
 
+	// Resolve bookmarked_only filter: requires authenticated user.
+	var bookmarkUserID interface{}
+	if c.Query("bookmarked_only") == "true" {
+		if userIDVal, exists := c.Get("userID"); exists {
+			if uid, ok := userIDVal.(int64); ok {
+				bookmarkUserID = uid
+			}
+		}
+	}
+
 	// Count total matching calls.
 	total, err := h.queries.CountCallsFiltered(ctx, db.CountCallsFilteredParams{
-		SystemID:    systemID,
-		TalkgroupID: talkgroupID,
-		DateFrom:    dateFrom,
-		DateTo:      dateTo,
+		SystemID:       systemID,
+		TalkgroupID:    talkgroupID,
+		DateFrom:       dateFrom,
+		DateTo:         dateTo,
+		BookmarkUserID: bookmarkUserID,
 	})
 	if err != nil {
 		slog.Error("failed to count calls", "error", err)
@@ -692,12 +703,13 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 	// Fetch calls page.
 	var calls []db.Call
 	listParams := db.ListCallsParams{
-		SystemID:    systemID,
-		TalkgroupID: talkgroupID,
-		DateFrom:    dateFrom,
-		DateTo:      dateTo,
-		PageOffset:  sql.NullInt64{Int64: offset, Valid: true},
-		PageSize:    sql.NullInt64{Int64: limit, Valid: true},
+		SystemID:       systemID,
+		TalkgroupID:    talkgroupID,
+		DateFrom:       dateFrom,
+		DateTo:         dateTo,
+		BookmarkUserID: bookmarkUserID,
+		PageOffset:     sql.NullInt64{Int64: offset, Valid: true},
+		PageSize:       sql.NullInt64{Int64: limit, Valid: true},
 	}
 	if sortOrder == "asc" {
 		calls, err = h.queries.ListCallsAsc(ctx, db.ListCallsAscParams(listParams))
