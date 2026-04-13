@@ -39,6 +39,9 @@ interface BookmarkCall {
   frequency?: number;
   duration?: number;
   source?: number;
+  site?: string;
+  channel?: string;
+  decoder?: string;
   bookmarked: boolean;
 }
 
@@ -55,6 +58,9 @@ function bookmarkCallToCall(bc: BookmarkCall): Call {
     frequency: bc.frequency,
     duration: bc.duration,
     source: bc.source,
+    site: bc.site,
+    channel: bc.channel,
+    decoder: bc.decoder,
     systemLabel: bc.systemLabel,
     talkgroupLabel: bc.talkgroupLabel,
     talkgroupName: bc.talkgroupName,

@@ -114,6 +114,15 @@ func (h *BookmarkHandler) GetBookmarkCalls(c *gin.Context) {
 		r.TalkgroupLabel = row.TalkgroupLabel.String
 		r.TalkgroupName = row.TalkgroupName.String
 		r.TalkgroupLed = row.TalkgroupLed.String
+		if row.Site.Valid {
+			r.Site = row.Site.String
+		}
+		if row.Channel.Valid {
+			r.Channel = row.Channel.String
+		}
+		if row.Decoder.Valid {
+			r.Decoder = row.Decoder.String
+		}
 		r.Bookmarked = true
 		results = append(results, r)
 	}
