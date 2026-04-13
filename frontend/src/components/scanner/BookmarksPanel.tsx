@@ -84,14 +84,57 @@ export default function BookmarksPanel({
 
   const bookmarkedCalls = bookmarkData?.calls ?? [];
 
-  const handlePlay = (bc: BookmarkCall) => {
-    const call = bookmarkCallToCall(bc);
-    const audioUrl = `/api/calls/${bc.id}/audio`;
-    audioPlayer.play(call, audioUrl);
+  const handlePlay = async (bc: BookmarkCall) => {
+    try {
+      const headers: HeadersInit = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const resp = await fetch(`/api/calls/${bc.id}/audio`, { headers });
+      if (!resp.ok) {
+        console.error("failed to load bookmark audio", bc.id, resp.status);
+        return;
+      }
+
+      const blob = await resp.blob();
+      const audioUrl = URL.createObjectURL(blob);
+      const call = bookmarkCallToCall(bc);
+      audioPlayer.play(call, audioUrl);
+    } catch (err) {
+      console.error("failed to play bookmark", bc.id, err);
+    }
   };
 
   const handleUnbookmark = (callId: number) => {
     toggleBookmark(callId);
+  };
+
+  const handleDownload = async (bc: BookmarkCall) => {
+    try {
+      const headers: HeadersInit = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const resp = await fetch(`/api/calls/${bc.id}/audio`, { headers });
+      if (!resp.ok) {
+        console.error("failed to download bookmark audio", bc.id, resp.status);
+        return;
+      }
+
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = bc.audioName || `call-${bc.id}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("failed to download bookmark", bc.id, err);
+    }
   };
 
   return (
@@ -152,14 +195,13 @@ export default function BookmarksPanel({
               >
                 <Play className="w-3.5 h-3.5" />
               </button>
-              <a
-                href={`/api/calls/${call.id}/audio`}
-                download
+              <button
+                onClick={() => handleDownload(call)}
                 className="btn btn-ghost btn-xs btn-square"
                 aria-label="Download call"
               >
                 <Download className="w-3.5 h-3.5" />
-              </a>
+              </button>
               <button
                 onClick={() => handleUnbookmark(call.id)}
                 className="btn btn-ghost btn-xs btn-square text-warning"

@@ -20,7 +20,7 @@ import SharedCall from "@/pages/SharedCall";
 
 describe("SharedCall", () => {
   it("shows loading spinner when fetching", () => {
-    mockUseParams.mockReturnValue({ id: "42" });
+    mockUseParams.mockReturnValue({ token: "abc-123-def" });
     mockUseGetSharedCallQuery.mockReturnValue({
       data: undefined,
       isLoading: true,
@@ -32,7 +32,7 @@ describe("SharedCall", () => {
   });
 
   it('shows "Call not found" when error', () => {
-    mockUseParams.mockReturnValue({ id: "42" });
+    mockUseParams.mockReturnValue({ token: "abc-123-def" });
     mockUseGetSharedCallQuery.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -44,10 +44,10 @@ describe("SharedCall", () => {
   });
 
   it("shows call details when data loaded", () => {
-    mockUseParams.mockReturnValue({ id: "42" });
+    mockUseParams.mockReturnValue({ token: "abc-123-def" });
     mockUseGetSharedCallQuery.mockReturnValue({
       data: {
-        id: 42,
+        token: "abc-123-def",
         dateTime: 1700000000,
         systemLabel: "Test System",
         talkgroupLabel: "TG Alpha",
@@ -55,7 +55,7 @@ describe("SharedCall", () => {
         frequency: 851_000_000,
         duration: 5000,
         source: 123,
-        audioUrl: "/api/calls/42/audio",
+        audioUrl: "/api/shared/abc-123-def/audio",
       },
       isLoading: false,
       isError: false,
@@ -69,7 +69,7 @@ describe("SharedCall", () => {
   });
 
   it('shows "Call not found" when no data and not loading', () => {
-    mockUseParams.mockReturnValue({ id: "999" });
+    mockUseParams.mockReturnValue({ token: "nonexistent-token" });
     mockUseGetSharedCallQuery.mockReturnValue({
       data: undefined,
       isLoading: false,

@@ -97,6 +97,7 @@ export default function Scanner() {
         avoidList={scanner.avoidList}
         time12hFormat={scanner.config?.time12hFormat ?? false}
         showListenersCount={scanner.config?.showListenersCount ?? false}
+        shareableLinks={scanner.config?.shareableLinks ?? false}
         isAuthenticated={!!token}
       />
       <ControlToolbar

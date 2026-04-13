@@ -101,6 +101,14 @@ type Setting struct {
 	Value string `db:"value" json:"value"`
 }
 
+type SharedLink struct {
+	ID        int64  `db:"id" json:"id"`
+	CallID    int64  `db:"call_id" json:"call_id"`
+	UserID    int64  `db:"user_id" json:"user_id"`
+	Token     string `db:"token" json:"token"`
+	CreatedAt int64  `db:"created_at" json:"created_at"`
+}
+
 type System struct {
 	ID             int64          `db:"id" json:"id"`
 	SystemID       int64          `db:"system_id" json:"system_id"`

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Share2, Sun } from "lucide-react";
 import { BookmarkButton } from "@/components/scanner/BookmarkButton";
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
+import { useShareCallMutation } from "@/app/slices/shareSlice";
 import { HistoryPanel } from "@/components/scanner/HistoryPanel";
 import { TranscriptPanel } from "@/components/scanner/TranscriptPanel";
 import type { Call } from "@/types";
@@ -14,6 +15,7 @@ interface DisplayPanelProps {
   avoidList: { talkgroupId: number }[];
   time12hFormat: boolean;
   showListenersCount: boolean;
+  shareableLinks: boolean;
   isAuthenticated: boolean;
 }
 
@@ -59,6 +61,7 @@ export function DisplayPanel({
   avoidList,
   time12hFormat,
   showListenersCount,
+  shareableLinks,
   isAuthenticated,
 }: DisplayPanelProps) {
   const clock = useClock();
@@ -78,19 +81,27 @@ export function DisplayPanel({
     skip: !isAuthenticated,
   });
   const [toggleBookmark] = useToggleBookmarkMutation();
+  const [shareCall] = useShareCallMutation();
   const bookmarkedCallIds = bookmarkData?.callIds ?? [];
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const handleDoubleClick = useCallback(() => {
     setFullscreen((prev) => !prev);
   }, []);
 
-  const handleShare = useCallback(() => {
+  const handleShare = useCallback(async () => {
     if (!currentCall) return;
-    const url = `${window.location.origin}/call/${currentCall.id}`;
-    void navigator.clipboard.writeText(url).catch(() => {
-      // Clipboard API may not be available in insecure contexts
-    });
-  }, [currentCall]);
+    try {
+      const result = await shareCall(currentCall.id).unwrap();
+      const url = `${window.location.origin}${result.url}`;
+      await navigator.clipboard.writeText(url);
+      setToastMessage("Link copied to clipboard");
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch {
+      setToastMessage("Failed to share call");
+      setTimeout(() => setToastMessage(null), 3000);
+    }
+  }, [currentCall, shareCall]);
 
   const handleToggleBookmark = useCallback(
     (callId: number) => {
@@ -184,13 +195,15 @@ export function DisplayPanel({
                 isBookmarked={bookmarkedCallIds.includes(currentCall.id)}
                 onToggle={() => handleToggleBookmark(currentCall.id)}
               />
-              <button
-                className="btn btn-ghost btn-xs btn-circle opacity-50 hover:opacity-50"
-                onClick={handleShare}
-                aria-label="Share call"
-              >
-                <Share2 className="w-4 h-4" />
-              </button>
+              {shareableLinks && (
+                <button
+                  className="btn btn-ghost btn-xs btn-circle opacity-50 hover:opacity-50"
+                  onClick={handleShare}
+                  aria-label="Share call"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
             <div className="flex gap-1">
               {isAvoided && (
@@ -295,6 +308,15 @@ export function DisplayPanel({
             <button onClick={handleDoubleClick}>close</button>
           </form>
         </dialog>
+      )}
+
+      {/* Toast notification */}
+      {toastMessage && (
+        <div className="toast toast-end toast-bottom z-50">
+          <div className="alert alert-info">
+            <span>{toastMessage}</span>
+          </div>
+        </div>
       )}
     </>
   );

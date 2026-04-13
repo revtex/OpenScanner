@@ -20,6 +20,7 @@ type Querier interface {
 	CreateGroup(ctx context.Context, label string) (int64, error)
 	CreateLog(ctx context.Context, arg CreateLogParams) error
 	CreatePushSubscription(ctx context.Context, arg CreatePushSubscriptionParams) (int64, error)
+	CreateSharedLink(ctx context.Context, arg CreateSharedLinkParams) (SharedLink, error)
 	CreateSystem(ctx context.Context, arg CreateSystemParams) (int64, error)
 	CreateTag(ctx context.Context, label string) (int64, error)
 	CreateTalkgroup(ctx context.Context, arg CreateTalkgroupParams) (int64, error)
@@ -38,6 +39,8 @@ type Querier interface {
 	DeletePushSubscription(ctx context.Context, id int64) error
 	DeletePushSubscriptionByEndpoint(ctx context.Context, endpoint string) error
 	DeleteSetting(ctx context.Context, key string) error
+	DeleteSharedLink(ctx context.Context, id int64) error
+	DeleteSharedLinkByCallID(ctx context.Context, callID int64) error
 	DeleteSystem(ctx context.Context, id int64) error
 	DeleteTag(ctx context.Context, id int64) error
 	DeleteTalkgroup(ctx context.Context, id int64) error
@@ -63,6 +66,8 @@ type Querier interface {
 	GetGroup(ctx context.Context, id int64) (Group, error)
 	GetPushSubscription(ctx context.Context, id int64) (PushSubscription, error)
 	GetSetting(ctx context.Context, key string) (Setting, error)
+	GetSharedLinkByCallID(ctx context.Context, callID int64) (SharedLink, error)
+	GetSharedLinkByToken(ctx context.Context, token string) (GetSharedLinkByTokenRow, error)
 	GetSystem(ctx context.Context, id int64) (System, error)
 	GetSystemByLabel(ctx context.Context, label string) (System, error)
 	GetSystemBySystemID(ctx context.Context, systemID int64) (System, error)
@@ -101,6 +106,7 @@ type Querier interface {
 	ListLogsByDateRangeAndLevel(ctx context.Context, arg ListLogsByDateRangeAndLevelParams) ([]Log, error)
 	ListPushSubscriptionsByUser(ctx context.Context, userID sql.NullInt64) ([]PushSubscription, error)
 	ListSettings(ctx context.Context) ([]Setting, error)
+	ListSharedLinks(ctx context.Context) ([]ListSharedLinksRow, error)
 	ListSystems(ctx context.Context) ([]System, error)
 	ListTags(ctx context.Context) ([]Tag, error)
 	ListTalkgroupsBySystem(ctx context.Context, systemID int64) ([]Talkgroup, error)

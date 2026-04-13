@@ -48,7 +48,7 @@ openscanner/                     ← monorepo root
 │   │   │   ├── calls.go         ← call upload handlers
 │   │   │   ├── health.go        ← GET /api/health readiness probe
 │   │   │   ├── setup.go         ← first-run setup endpoints
-│   │   │   ├── share.go         ← public call share endpoint (/call/:id)
+│   │   │   ├── share.go         ← shareable call link endpoints (/api/shared/:token, /api/calls/:id/share)
 │   │   │   └── webhooks.go      ← webhook delivery + CRUD handlers
 │   │   ├── ws/                  ← WebSocket hub
 │   │   │   ├── hub.go           ← hub: register/unregister/broadcast
@@ -133,7 +133,7 @@ openscanner/                     ← monorepo root
 │   │   │   ├── Admin.tsx        ← admin dashboard page
 │   │   │   ├── Login.tsx        ← login page (username + password)
 │   │   │   ├── Setup.tsx        ← first-run wizard page
-│   │   │   └── SharedCall.tsx   ← public shareable call player page (/call/:id)
+│   │   │   └── SharedCall.tsx   ← public shareable call player page (/call/:token)
 │   │   ├── components/
 │   │   │   ├── ui/              ← shared UI components
 │   │   │   ├── scanner/
@@ -298,7 +298,7 @@ Every app option is a key/value pair here.
 | `playbackGoesLive`            | `false`   | When `true`, finishing archive playback automatically switches back to LIVE mode                      |
 | `searchPatchedTalkgroups`     | `false`   |                                                                                                       |
 | `publicAccess`                | `false`   | When `true`, scanner is open to everyone — no login required                                          |
-| `shareableLinks`              | `false`   | When `true`, public call share URLs are enabled (`/call/:id`)                                         |
+| `shareableLinks`              | `false`   | When `true`, authenticated users can create shareable call links with UUID tokens (`/call/:token`)    |
 | `keyboardShortcuts`           | `true`    | When `true`, keyboard shortcuts are enabled on scanner page                                           |
 | `darkMode`                    | `true`    | `true` = dark theme, `false` = light theme; persisted per-instance in localStorage too                |
 | `pushNotifications`           | `false`   | When `true`, browser push notification subscriptions are accepted                                     |
@@ -580,10 +580,14 @@ All resources support `GET` (list), `POST` (create), `PUT /:id` (update), `DELET
 
 ### Shareable Call Links (when `shareableLinks` enabled)
 
-| Method | Path                   | Auth | Description                                              |
-| ------ | ---------------------- | ---- | -------------------------------------------------------- |
-| GET    | `/api/calls/:id/share` | —    | Returns call metadata + audio stream for public playback |
-| GET    | `/call/:id`            | —    | Serves `SharedCall.tsx` page (frontend route, not API)   |
+| Method | Path                       | Auth | Description                                                     |
+| ------ | -------------------------- | ---- | --------------------------------------------------------------- |
+| POST   | `/api/calls/:id/share`     | JWT  | Creates a shareable link, returns UUID token + URL (idempotent) |
+| GET    | `/api/calls/:id/share`     | JWT  | Returns share status for a call                                 |
+| DELETE | `/api/calls/:id/share`     | JWT  | Removes the shareable link                                      |
+| GET    | `/api/shared/:token`       | —    | Returns call metadata via UUID token (public)                   |
+| GET    | `/api/shared/:token/audio` | —    | Streams call audio via UUID token (public)                      |
+| GET    | `/call/:token`             | —    | Serves `SharedCall.tsx` page (frontend route, not API)          |
 
 ### Bookmarks
 
@@ -1128,7 +1132,7 @@ DaisyUI `modal` overlay triggered by pressing `?` on the scanner page. Only show
 
 ### Shared Call Page (`SharedCall.tsx`)
 
-Public page at `/call/:id` — no authentication required. Only accessible when `shareableLinks` setting is enabled; returns 404 otherwise.
+Public page at `/call/:token` — no authentication required. Token-based access via `shared_links` table; returns 404 if token is invalid or `shareableLinks` setting is disabled.
 
 ```
 ┌──────────────────────────────────────────┐
@@ -1354,12 +1358,13 @@ All extended features are **configurable** — disabled by default (except keybo
 ### Shareable Call Links
 
 - **Setting:** `shareableLinks` (default: `false`)
-- When enabled, each call gets a public URL: `/call/<id>`
+- When enabled, authenticated users can create shareable links with UUID tokens: `/call/<token>`
 - `SharedCall.tsx` page renders a minimal embedded player: call metadata (system, TG, date, time, duration) + audio `<audio>` element + DOWNLOAD button
-- Backend endpoint `GET /api/calls/:id/share` returns call metadata and streams audio; returns 404 if `shareableLinks` is disabled or call doesn't exist
-- No authentication required — the URL is the share token
+- Backend endpoints: `POST /api/calls/:id/share` (creates share, returns token + URL), `GET /api/shared/:token` (fetches metadata), `GET /api/shared/:token/audio` (streams audio), `DELETE /api/calls/:id/share` (removes share)
+- Shares stored in `shared_links` table with UUID tokens, linked to creating user
+- Shared calls are excluded from automatic pruning
 - Share button appears on call history rows and search results when enabled
-- Metadata includes OpenGraph tags for link previews (Discord, Slack, Twitter embeds)
+- Admin can manage all shared links via Shared Links panel and `GET/DELETE /api/admin/shared-links`
 
 ### Keyboard Shortcuts
 
@@ -1876,9 +1881,9 @@ All extended features are **configurable** — disabled by default (except keybo
 
 **Goal:** Share calls publicly, bookmark for later, view activity stats.
 
-1. `internal/api/share.go` — `GET /api/calls/:id/share` returns call metadata + streams audio file; returns 404 if `shareableLinks` disabled; includes OpenGraph `<meta>` tags in response headers for link previews
-2. `src/pages/SharedCall.tsx` — minimal public page: call info card (system, TG, date, time, duration, transcript if available) + `<audio>` player + download button; no scanner chrome
-3. Share button on history rows and search results — copies `/call/<id>` URL to clipboard; only visible when `shareableLinks` is enabled
+1. `internal/api/share.go` — Handles `POST /api/calls/:id/share` (creates `shared_links` record, returns UUID token + URL), `GET /api/calls/:id/share` (share status for JWT user), `DELETE /api/calls/:id/share` (removes share), plus public `GET /api/shared/:token` and `GET /api/shared/:token/audio` endpoints
+2. `src/pages/SharedCall.tsx` — minimal public page at `/call/:token`: call info card (system, TG, date, time, duration, transcript if available) + `<audio>` player + download button; no scanner chrome
+3. Share button on history rows and search results — creates/fetches shareable link and copies `/call/<token>` URL to clipboard; only visible when `shareableLinks` is enabled
 4. `bookmarks` migration + sqlc queries: `CreateBookmark`, `DeleteBookmark`, `ListBookmarksByUser`, `ListBookmarksBySession`, `IsBookmarked`
 5. `src/components/scanner/BookmarkButton.tsx` — star icon; toggles bookmark via `POST/DELETE /api/bookmarks`; public listeners use sessionId
 6. `src/components/scanner/BookmarksPanel.tsx` — slide-out panel listing saved calls with play/download/unbookmark
@@ -1955,43 +1960,43 @@ All extended features are **configurable** — disabled by default (except keybo
 
 Each phase is complete when all of the following pass:
 
-| #   | Check                                                                                                                                                |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `go test ./...` from `backend/` — all tests green                                                                                                    |
-| 2   | `pnpm test -- --run` from `frontend/` — all Vitest tests green                                                                                       |
-| 3   | `pnpm playwright test` from `e2e/` — all E2E tests green                                                                                             |
-| 4   | `POST /api/call-upload` with valid `X-API-Key` → 200; connected WS client receives `CAL` within 500ms                                                |
-| 5   | Fresh SQLite DB → `GET /api/setup/status` → `{needsSetup: true}`                                                                                     |
-| 6   | After `POST /api/setup` with `{username, password}` → admin user created; `GET /api/setup/status` → `{needsSetup: false}`; `/setup` page returns 403 |
-| 7   | Admin wrong password 3× → next attempt returns 429 for 10 minutes                                                                                    |
-| 8   | `PUT /api/admin/config` → all connected admin WS clients receive `CFG` event                                                                         |
-| 9   | Drop Trunk Recorder file into DirWatch directory → call appears in scanner within polling delay                                                      |
-| 10  | Configure a downstream → upload a call → downstream instance DB contains the call                                                                    |
-| 11  | CLI `login` → `config-get` → exports valid JSON; `config-set` → imports it back                                                                      |
-| 12  | `--service install` registers system service on Linux/macOS/Windows                                                                                  |
-| 13  | `docker build -t openscanner .` succeeds; `docker run -p 3000:3000 openscanner` → app at `:3000`                                                     |
-| 14  | After server restart, all settings from SQLite persist (spot-check `pruneDays`, custom TG labels)                                                    |
-| 15  | Swagger UI reachable at `/api/docs` and renders all endpoints                                                                                        |
-| 16  | `GET /api/health` returns `{status: "ok"}` — Docker HEALTHCHECK passes                                                                               |
-| 17  | `PRAGMA journal_mode` returns `wal` after DB connection open                                                                                         |
-| 18  | All log output is structured JSON (slog) with request IDs                                                                                            |
-| 19  | Single Go binary serves frontend (no external `dist/` folder needed)                                                                                 |
-| 20  | Service Worker caches app shell; repeat loads work offline (static assets only)                                                                      |
-| 21  | Admin panels with 1000+ rows render smoothly (virtual scrolling)                                                                                     |
-| 22  | `make dev` starts both Go (air) and Vite dev servers with hot reload                                                                                 |
-| 23  | Listener user JWT cannot access `/api/admin/*` routes (returns 403)                                                                                  |
-| 24  | Admin can create/disable/delete listener users; disabled user cannot log in                                                                          |
-| 25  | Public access mode allows unauthenticated scanner listening; admin routes remain protected                                                           |
-| 26  | Keyboard shortcuts: `Space` pauses, `S` skips, `?` opens help modal; disabled in input fields                                                        |
-| 27  | Theme toggle switches between dark and light; persists in localStorage after reload                                                                  |
-| 28  | Share URL (`/call/:id`) renders public player with audio + metadata when `shareableLinks` enabled; returns 404 when disabled                         |
-| 29  | Bookmark a call → call appears in Bookmarks panel; bookmarked calls survive auto-pruning                                                             |
-| 30  | Webhook delivery: upload call → Discord channel receives embed within 5s (when `webhooksEnabled`)                                                    |
-| 31  | Push notification: subscribe to TG → upload matching call → browser notification received                                                            |
-| 32  | Transcription: upload call with `transcriptionEnabled` + binary present → transcript appears within 60s; searchable via transcript text              |
-| 33  | GPU Docker image builds and Whisper uses CUDA when `--gpus` flag passed                                                                              |
-| 34  | Activity dashboard shows correct calls/hour sparkline and top TGs                                                                                    |
-| 35  | All extended features gracefully degrade when disabled (no errors, UI elements hidden)                                                               |
+| #   | Check                                                                                                                                                    |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `go test ./...` from `backend/` — all tests green                                                                                                        |
+| 2   | `pnpm test -- --run` from `frontend/` — all Vitest tests green                                                                                           |
+| 3   | `pnpm playwright test` from `e2e/` — all E2E tests green                                                                                                 |
+| 4   | `POST /api/call-upload` with valid `X-API-Key` → 200; connected WS client receives `CAL` within 500ms                                                    |
+| 5   | Fresh SQLite DB → `GET /api/setup/status` → `{needsSetup: true}`                                                                                         |
+| 6   | After `POST /api/setup` with `{username, password}` → admin user created; `GET /api/setup/status` → `{needsSetup: false}`; `/setup` page returns 403     |
+| 7   | Admin wrong password 3× → next attempt returns 429 for 10 minutes                                                                                        |
+| 8   | `PUT /api/admin/config` → all connected admin WS clients receive `CFG` event                                                                             |
+| 9   | Drop Trunk Recorder file into DirWatch directory → call appears in scanner within polling delay                                                          |
+| 10  | Configure a downstream → upload a call → downstream instance DB contains the call                                                                        |
+| 11  | CLI `login` → `config-get` → exports valid JSON; `config-set` → imports it back                                                                          |
+| 12  | `--service install` registers system service on Linux/macOS/Windows                                                                                      |
+| 13  | `docker build -t openscanner .` succeeds; `docker run -p 3000:3000 openscanner` → app at `:3000`                                                         |
+| 14  | After server restart, all settings from SQLite persist (spot-check `pruneDays`, custom TG labels)                                                        |
+| 15  | Swagger UI reachable at `/api/docs` and renders all endpoints                                                                                            |
+| 16  | `GET /api/health` returns `{status: "ok"}` — Docker HEALTHCHECK passes                                                                                   |
+| 17  | `PRAGMA journal_mode` returns `wal` after DB connection open                                                                                             |
+| 18  | All log output is structured JSON (slog) with request IDs                                                                                                |
+| 19  | Single Go binary serves frontend (no external `dist/` folder needed)                                                                                     |
+| 20  | Service Worker caches app shell; repeat loads work offline (static assets only)                                                                          |
+| 21  | Admin panels with 1000+ rows render smoothly (virtual scrolling)                                                                                         |
+| 22  | `make dev` starts both Go (air) and Vite dev servers with hot reload                                                                                     |
+| 23  | Listener user JWT cannot access `/api/admin/*` routes (returns 403)                                                                                      |
+| 24  | Admin can create/disable/delete listener users; disabled user cannot log in                                                                              |
+| 25  | Public access mode allows unauthenticated scanner listening; admin routes remain protected                                                               |
+| 26  | Keyboard shortcuts: `Space` pauses, `S` skips, `?` opens help modal; disabled in input fields                                                            |
+| 27  | Theme toggle switches between dark and light; persists in localStorage after reload                                                                      |
+| 28  | Share URL (`/call/:token`) renders public player with audio + metadata when `shareableLinks` enabled; returns 404 when token invalid or setting disabled |
+| 29  | Bookmark a call → call appears in Bookmarks panel; bookmarked calls survive auto-pruning                                                                 |
+| 30  | Webhook delivery: upload call → Discord channel receives embed within 5s (when `webhooksEnabled`)                                                        |
+| 31  | Push notification: subscribe to TG → upload matching call → browser notification received                                                                |
+| 32  | Transcription: upload call with `transcriptionEnabled` + binary present → transcript appears within 60s; searchable via transcript text                  |
+| 33  | GPU Docker image builds and Whisper uses CUDA when `--gpus` flag passed                                                                                  |
+| 34  | Activity dashboard shows correct calls/hour sparkline and top TGs                                                                                        |
+| 35  | All extended features gracefully degrade when disabled (no errors, UI elements hidden)                                                                   |
 
 ---
 

@@ -194,21 +194,52 @@ Paginated call archive search with filtering. Uses `OptionalJWTAuth` middleware 
 
 #### `GET /api/calls/:id/audio`
 
-Streams the audio file for a specific call. Uses `OptionalJWTAuth` middleware. Path traversal protection ensures audio paths cannot escape the recordings directory.
+Streams the audio file for a specific call. Uses `OptionalJWTAuth` middleware. Requires a valid JWT **or** `publicAccess=true`; returns `401` for unauthenticated requests on non-public servers. Anonymous users should use `/api/shared/:token/audio` for shared calls instead.
 
 **Response `200`:** Audio file with appropriate `Content-Type` header and `Content-Disposition: inline`.
 
-**Error responses:** `400` (invalid call ID), `404` (call not found or audio file missing), `500` (server error).
+**Error responses:** `400` (invalid call ID), `401` (authentication required), `404` (call not found or audio file missing), `500` (server error).
+
+#### `POST /api/calls/:id/share`
+
+Creates a shareable link for a call. Requires `Authorization: Bearer <token>`. Only works when the `shareableLinks` setting is enabled. Returns the existing share token if the call is already shared (idempotent).
+
+**Response `201` / `200`:**
+
+```json
+{
+  "token": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "url": "/call/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+```
+
+**Error responses:** `400` (invalid ID), `401` (unauthenticated), `403` (sharing disabled), `404` (call not found).
+
+#### `DELETE /api/calls/:id/share`
+
+Removes the shareable link for a call. Requires `Authorization: Bearer <token>`. Only the user who created the share or an admin can delete it.
+
+**Response `200`:** `{"shared": false}`
+
+**Error responses:** `400` (invalid ID), `403` (permission denied), `404` (not shared).
 
 #### `GET /api/calls/:id/share`
 
-Returns call metadata for public sharing. Unauthenticated — no JWT required. Only works when the `shareableLinks` setting is enabled; returns `404` when disabled.
+Returns the share status for a call. Requires `Authorization: Bearer <token>`.
+
+**Response `200`:** `{"token": "...", "shared": true}`
+
+**Error responses:** `404` (not shared or shareable links disabled).
+
+#### `GET /api/shared/:token`
+
+Returns call metadata for a shared call via its UUID token. **No authentication required.** The frontend `/call/:token` page uses this endpoint.
 
 **Response `200`:**
 
 ```json
 {
-  "id": 12345,
+  "token": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "dateTime": 1700000000,
   "systemLabel": "System A",
   "talkgroupLabel": "TG 100",
@@ -217,11 +248,19 @@ Returns call metadata for public sharing. Unauthenticated — no JWT required. O
   "duration": 15,
   "source": 1234,
   "transcript": "Optional transcript text",
-  "audioUrl": "/api/calls/12345/audio"
+  "audioUrl": "/api/shared/a1b2c3d4-e5f6-7890-abcd-ef1234567890/audio"
 }
 ```
 
-**Error responses:** `400` (invalid ID), `404` (not found or shareable links disabled).
+**Error responses:** `404` (invalid token or call deleted).
+
+#### `GET /api/shared/:token/audio`
+
+Streams the audio file for a shared call via its UUID token. **No authentication required.** Path traversal protection applies.
+
+**Response `200`:** Audio file with appropriate `Content-Type` header.
+
+**Error responses:** `404` (invalid token or audio file missing).
 
 ---
 

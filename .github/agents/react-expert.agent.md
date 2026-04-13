@@ -5,9 +5,11 @@ applyTo: "frontend/**"
 ---
 
 ## Role
+
 You are an expert React/TypeScript frontend developer working on OpenScanner — a modern radio call manager with a scanner-style dark UI.
 
 ## Tech Stack
+
 - React 18 with TypeScript strict mode
 - Vite as the build tool
 - DaisyUI components (Tailwind CSS component library)
@@ -34,12 +36,13 @@ Full visual specification with ASCII wireframes, color palette, component mappin
 - **Side panels** — SelectTG slides from right, Search slides from left, Bookmarks slides from right
 - **Admin dashboard** — sidebar (icons on `md`, icons+labels on `lg`, drawer on `sm`) + content area (max-width 1200px)
 - **Login/Setup** — centered DaisyUI card (max-width 400px) on `base-100` background
-- **Shared call page** — standalone card at `/call/:id` with audio player, transcript, download
+- **Shared call page** — standalone card at `/call/:token` with audio player, transcript, download
 - **Responsive** — `sm` (< 640px), `md` (640–1023px), `lg` (≥ 1024px)
 - Control toolbar uses DaisyUI `btn`, `btn-circle`, `dropdown`, `tooltip`, `range` — no custom beveled/hardware-style buttons
 - Admin UI uses DaisyUI: `table table-zebra`, `card`, `modal`, `toast`, `input input-bordered`, `btn`, `badge`, `toggle`, `menu`, `stats`
 
 ## Conventions
+
 - All components are function components with TypeScript props interfaces
 - Use `@/` path alias for imports from `src/`
 - DaisyUI components are used via Tailwind CSS classes — no generated component files
@@ -52,6 +55,7 @@ Full visual specification with ASCII wireframes, color palette, component mappin
 - `?id=` URL param enables multi-instance TG selection (stored separately in localStorage)
 
 ## Key Behaviours
+
 - On app load: call `GET /api/setup/status`; if `needsSetup=true` redirect to `/setup`; `publicAccess` flag determines auth behavior
 - Login: `POST /api/auth/login` with username + password; JWT stored in memory; role determines route access
 - RBAC: admin role → full dashboard access; listener role → scanner UI only; non-admin users are rejected from admin routes
@@ -65,7 +69,7 @@ Full visual specification with ASCII wireframes, color palette, component mappin
 - Keyboard shortcuts: `useKeyboardShortcuts.ts` hook; disabled in input fields and when `keyboardShortcuts` setting is false
 - Theme toggle: `useTheme.ts` hook; reads server `darkMode` default, user overrides in localStorage; sets `data-theme` on `<html>`
 - Bookmarks: star icon on calls; authenticated users persist to DB, public listeners use localStorage + sessionId
-- Shareable links: share button copies `/call/<id>` URL; `SharedCall.tsx` page renders minimal public player
+- Shareable links: share button creates token and copies `/call/<token>` URL; `SharedCall.tsx` page renders minimal public player
 - Transcripts: `TranscriptPanel.tsx` shows transcript below display; `TRN` WS event updates live; search panel supports transcript text search
 - Push notifications: request permission, subscribe to TGs; Service Worker handles push events in `sw.ts`
 - Admin panels with large lists (1000+ rows) use `@tanstack/react-virtual` for smooth scrolling

@@ -116,7 +116,7 @@ Utility operations for import, export, and account management.
 
 ### Shareable Links
 
-When the `shareableLinks` setting is enabled in Options, each call gets a public URL at `/call/:id` that can be shared with anyone. The share page shows call metadata, an audio player, and any transcript.
+When the `shareableLinks` setting is enabled in Options, authenticated users can make individual calls shareable via the share button. This generates a unique UUID token URL at `/call/:token` that can be shared with anyone. The share page shows call metadata, an audio player, and any transcript. Shared calls are excluded from automatic pruning. Admins can manage all shared links from the **Shared Links** panel in the admin sidebar.
 
 ### Bookmarks
 

@@ -27,7 +27,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/setup" element={<Setup />} />
           <Route path="/admin/*" element={<Admin />} />
-          <Route path="/call/:id" element={<SharedCall />} />
+          <Route path="/call/:token" element={<SharedCall />} />
         </Routes>
       </Suspense>
     </div>

@@ -106,7 +106,8 @@ SELECT EXISTS(
 SELECT c.id, c.audio_path
 FROM calls c
 LEFT JOIN bookmarks b ON b.call_id = c.id
-WHERE c.date_time < ? AND b.id IS NULL
+LEFT JOIN shared_links sl ON sl.call_id = c.id
+WHERE c.date_time < ? AND b.id IS NULL AND sl.id IS NULL
 ORDER BY c.date_time ASC
 LIMIT 500;
 

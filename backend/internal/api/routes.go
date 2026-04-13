@@ -86,7 +86,15 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	// Call search — public access with optional auth for bookmarks.
 	api.GET("/calls", middleware.OptionalJWTAuth(), callHandler.GetCalls)
 	api.GET("/calls/:id/audio", middleware.OptionalJWTAuth(), callHandler.GetCallAudio)
-	api.GET("/calls/:id/share", callHandler.GetCallShare)
+
+	// Shared calls — token-based public access (no auth required).
+	api.GET("/shared/:token", callHandler.GetSharedCallByToken)
+	api.GET("/shared/:token/audio", callHandler.GetSharedCallAudio)
+
+	// Share management — JWT required.
+	api.POST("/calls/:id/share", middleware.JWTAuth(), callHandler.PostShareCall)
+	api.DELETE("/calls/:id/share", middleware.JWTAuth(), callHandler.DeleteShareCall)
+	api.GET("/calls/:id/share", middleware.JWTAuth(), callHandler.GetCallShare)
 
 	// Bookmarks — JWT required.
 	bookmarks := api.Group("/bookmarks")
@@ -191,6 +199,10 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		admin.GET("/activity/stats", adminHandler.GetActivityStats)
 		admin.GET("/activity/chart", adminHandler.GetActivityChart)
 		admin.GET("/activity/top-talkgroups", adminHandler.GetTopTalkgroups)
+
+		// Shared Links
+		admin.GET("/shared-links", adminHandler.GetSharedLinks)
+		admin.DELETE("/shared-links/:id", adminHandler.DeleteSharedLinkAdmin)
 	}
 
 	// WebSocket endpoints.

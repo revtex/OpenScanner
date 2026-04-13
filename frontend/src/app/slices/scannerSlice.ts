@@ -149,6 +149,7 @@ export const scannerSlice = createSlice({
           time12hFormat: false,
           showListenersCount: false,
           playbackGoesLive: false,
+          shareableLinks: false,
           keypadBeeps: "",
           ...action.payload,
         };

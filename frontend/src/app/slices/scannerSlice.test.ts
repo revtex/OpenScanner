@@ -219,6 +219,7 @@ describe("scannerSlice", () => {
       showListenersCount: false,
       playbackGoesLive: false,
       keypadBeeps: "uniden",
+      shareableLinks: false,
     };
 
     it("enables all talkgroups", () => {

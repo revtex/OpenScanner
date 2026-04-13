@@ -18,14 +18,13 @@ function formatDate(unix: number): string {
 }
 
 export default function SharedCall() {
-  const { id } = useParams<{ id: string }>();
-  const callId = Number(id);
+  const { token } = useParams<{ token: string }>();
   const {
     data: call,
     isLoading,
     isError,
-  } = useGetSharedCallQuery(callId, {
-    skip: !id || isNaN(callId) || callId <= 0,
+  } = useGetSharedCallQuery(token ?? "", {
+    skip: !token,
   });
 
   if (isLoading) {

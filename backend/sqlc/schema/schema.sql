@@ -168,3 +168,13 @@ CREATE TABLE IF NOT EXISTS transcriptions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_transcriptions_text ON transcriptions(text);
+
+CREATE TABLE IF NOT EXISTS shared_links (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    call_id    INTEGER NOT NULL UNIQUE REFERENCES calls(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token      TEXT    UNIQUE NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_shared_links_token ON shared_links(token);

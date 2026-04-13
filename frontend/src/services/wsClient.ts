@@ -147,6 +147,7 @@ class WsClient {
             time12hFormat?: boolean | string;
             showListenersCount?: boolean | string;
             playbackGoesLive?: boolean | string;
+            shareableLinks?: boolean | string;
             keypadBeeps?: string;
           };
           // CFG carries systems + display prefs. Branding/email/version
@@ -166,6 +167,8 @@ class WsClient {
               playbackGoesLive:
                 cfg.playbackGoesLive === true ||
                 cfg.playbackGoesLive === "true",
+              shareableLinks:
+                cfg.shareableLinks === true || cfg.shareableLinks === "true",
               keypadBeeps: cfg.keypadBeeps ?? "",
             }),
           );

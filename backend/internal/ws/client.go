@@ -497,6 +497,9 @@ func buildCFGMessage(ctx context.Context, queries *db.Queries) ([]byte, error) {
 	if s, err := queries.GetSetting(ctx, "keypadBeeps"); err == nil {
 		cfgPayload["keypadBeeps"] = s.Value
 	}
+	if s, err := queries.GetSetting(ctx, "shareableLinks"); err == nil {
+		cfgPayload["shareableLinks"] = s.Value == "true"
+	}
 
 	return NewCFGMessage(cfgPayload)
 }

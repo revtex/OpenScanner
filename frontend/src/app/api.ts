@@ -50,6 +50,7 @@ export const api = createApi({
     "Logs",
     "Bookmarks",
     "Setup",
+    "SharedLinks",
   ],
   baseQuery: baseQueryWith401Redirect,
   endpoints: (builder) => ({
