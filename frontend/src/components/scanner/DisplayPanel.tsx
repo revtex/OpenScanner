@@ -176,10 +176,36 @@ export function DisplayPanel({
           </div>
         </>
       ) : (
-        /* Idle state */
+        /* Idle state — same row structure to keep constant height */
         <>
-          <div className="text-2xl font-bold text-center py-4 opacity-30">
+          {/* Row 3: system label, tag */}
+          <div className="flex justify-between invisible">
+            <span>&nbsp;</span>
+          </div>
+
+          {/* Row 4: TG group/label, call time */}
+          <div className="flex justify-between invisible">
+            <span>&nbsp;</span>
+          </div>
+
+          {/* Row 5: TG name — large */}
+          <div className="text-2xl font-bold text-center py-1 opacity-30">
             OPENSCANNER
+          </div>
+
+          {/* Row 6: frequency, TGID */}
+          <div className="flex justify-between invisible">
+            <span>&nbsp;</span>
+          </div>
+
+          {/* Row 7: site/decoder, unit ID */}
+          <div className="flex justify-between invisible">
+            <span>&nbsp;</span>
+          </div>
+
+          {/* Row 8: bookmark, share, flags */}
+          <div className="flex items-center justify-between invisible">
+            <span>&nbsp;</span>
           </div>
         </>
       )}
@@ -198,10 +224,7 @@ export function DisplayPanel({
 
   return (
     <>
-      <div
-        className="bg-base-200 rounded-lg shadow-inner"
-        onDoubleClick={handleDoubleClick}
-      >
+      <div className="lcd-display rounded-lg" onDoubleClick={handleDoubleClick}>
         {displayContent}
       </div>
 
@@ -209,7 +232,7 @@ export function DisplayPanel({
       {fullscreen && (
         <dialog className="modal modal-open" onClick={handleDoubleClick}>
           <div
-            className="modal-box max-w-3xl bg-base-200"
+            className="modal-box max-w-3xl lcd-display"
             onClick={(e) => e.stopPropagation()}
           >
             {displayContent}

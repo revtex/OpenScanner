@@ -64,8 +64,8 @@ export const scannerSlice = createSlice({
       }
     },
     setCurrentCall(state, action: PayloadAction<Call | null>) {
-      // Move the previous call into history
-      if (state.currentCall) {
+      // Move the previous call into history (skip if already there)
+      if (state.currentCall && state.history[0]?.id !== state.currentCall.id) {
         state.history = [state.currentCall, ...state.history].slice(
           0,
           MAX_HISTORY,
@@ -74,8 +74,8 @@ export const scannerSlice = createSlice({
       state.currentCall = action.payload;
     },
     clearCurrentCall(state) {
-      // Move the finished call into history
-      if (state.currentCall) {
+      // Move the finished call into history (skip if already there)
+      if (state.currentCall && state.history[0]?.id !== state.currentCall.id) {
         state.history = [state.currentCall, ...state.history].slice(
           0,
           MAX_HISTORY,

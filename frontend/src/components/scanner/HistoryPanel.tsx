@@ -21,7 +21,7 @@ export function HistoryPanel({
   };
 
   return (
-    <div className="mt-2 border-t border-base-content/20 pt-1">
+    <div className="mt-2 border-t border-current/20 pt-1 min-h-[120px]">
       {/* Header */}
       <div className="grid grid-cols-[10%_25%_25%_40%] text-xs opacity-40 px-1">
         <span>Time</span>
@@ -33,7 +33,7 @@ export function HistoryPanel({
       {history.map((call) => (
         <div
           key={call.id}
-          className={`grid grid-cols-[10%_25%_25%_40%] px-1 border-b border-base-content/20 last:border-b-0 history-row ${
+          className={`grid grid-cols-[10%_25%_25%_40%] px-1 border-b border-current/20 last:border-b-0 history-row ${
             call.id === currentCallId ? "font-bold" : ""
           }`}
         >
