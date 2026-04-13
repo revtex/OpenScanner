@@ -10,12 +10,6 @@ interface BookmarksPanelProps {
   onClose: () => void;
 }
 
-function formatDuration(secs: number): string {
-  const minutes = Math.floor(secs / 60);
-  const seconds = secs % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-}
-
 function formatDate(unix: number): string {
   return new Date(unix * 1000).toLocaleString(undefined, {
     month: "short",
@@ -138,99 +132,104 @@ export default function BookmarksPanel({
   };
 
   return (
-    <div
-      className={`fixed inset-y-0 right-0 z-50 w-80 max-w-full bg-base-200 shadow-xl transform transition-transform duration-300 ${
-        isOpen ? "translate-x-0" : "translate-x-full"
-      }`}
-    >
-      <div className="flex items-center justify-between p-4 border-b border-base-300">
-        <h2 className="text-lg font-bold">Bookmarks</h2>
-        <button
+    <>
+      {/* Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50"
           onClick={onClose}
-          className="btn btn-ghost btn-sm btn-square"
-          aria-label="Close bookmarks"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+          aria-hidden
+        />
+      )}
 
-      <div className="overflow-y-auto h-[calc(100%-4rem)]">
-        {isLoading && (
-          <div className="flex justify-center p-8">
-            <span className="loading loading-spinner loading-md" />
-          </div>
-        )}
-
-        {!isLoading && bookmarkedCalls.length === 0 && (
-          <div className="flex flex-col items-center justify-center p-8 text-base-content/50">
-            <Star className="w-10 h-10 mb-2" />
-            <p className="text-sm">No bookmarked calls</p>
-          </div>
-        )}
-
-        {bookmarkedCalls.map((call) => (
-          <div
-            key={call.id}
-            className="flex items-start gap-2 px-3 py-2 border-b border-base-300 hover:bg-base-300/50"
+      <div
+        className={`fixed inset-y-0 right-0 z-50 w-full sm:w-[500px] max-w-full bg-base-100 shadow-xl transform transition-transform duration-300 ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-base-300">
+          <h2 className="text-lg font-bold">Bookmarks</h2>
+          <button
+            onClick={onClose}
+            className="btn btn-ghost btn-sm btn-square"
+            aria-label="Close bookmarks"
           >
-            <div className="flex-1 min-w-0">
-              {/* Row 1: talkgroup name */}
-              <div className="text-xs font-medium truncate">
-                {call.talkgroupName || call.talkgroupLabel}
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto h-[calc(100%-4rem)]">
+          {isLoading && (
+            <div className="flex justify-center p-8">
+              <span className="loading loading-spinner loading-md" />
+            </div>
+          )}
+
+          {!isLoading && bookmarkedCalls.length === 0 && (
+            <div className="flex flex-col items-center justify-center p-8 text-base-content/50">
+              <Star className="w-10 h-10 mb-2" />
+              <p className="text-sm">No bookmarked calls</p>
+            </div>
+          )}
+
+          {bookmarkedCalls.map((call) => (
+            <div
+              key={call.id}
+              className="flex items-start gap-2 px-3 py-2 border-b border-base-300 hover:bg-base-200"
+            >
+              <div className="flex-1 min-w-0">
+                {/* Row 1: talkgroup name */}
+                <div className="text-xs font-medium truncate">
+                  {call.talkgroupName || call.talkgroupLabel}
+                </div>
+                {/* Row 2: system */}
+                <div className="text-[11px] text-base-content/60 truncate">
+                  {call.systemLabel}
+                </div>
+                {/* Row 3: freq, UID, TGID */}
+                <div className="flex items-center gap-2 text-[11px] text-base-content/40">
+                  {call.frequency != null && call.frequency > 0 && (
+                    <span>{(call.frequency / 1e6).toFixed(4)} MHz</span>
+                  )}
+                  {call.source != null && call.source > 0 && (
+                    <span>UID: {call.source}</span>
+                  )}
+                  <span className="shrink-0">TGID: {call.talkgroupId}</span>
+                </div>
               </div>
-              {/* Row 2: system · tag · date/time */}
-              <div className="flex items-center gap-1 text-[11px] text-base-content/60">
-                <span className="truncate">{call.systemLabel}</span>
-                {call.talkgroupLabel && call.talkgroupName && (
-                  <>
-                    <span>·</span>
-                    <span className="truncate">{call.talkgroupLabel}</span>
-                  </>
-                )}
-                <span className="ml-auto shrink-0">
+              {/* Date/time + action buttons */}
+              <div className="flex shrink-0 flex-col items-end gap-0.5">
+                <span className="text-[11px] text-base-content/60">
                   {formatDate(call.dateTime)}
                 </span>
-              </div>
-              {/* Row 3: duration, frequency, source */}
-              <div className="flex items-center gap-2 text-[11px] text-base-content/40">
-                {call.duration != null && call.duration > 0 && (
-                  <span>{formatDuration(call.duration)}</span>
-                )}
-                {call.frequency != null && call.frequency > 0 && (
-                  <span>{(call.frequency / 1e6).toFixed(4)} MHz</span>
-                )}
-                {call.source != null && call.source > 0 && (
-                  <span>UID: {call.source}</span>
-                )}
-                <span className="shrink-0">TGID: {call.talkgroupId}</span>
+                <div className="flex items-center gap-0.5">
+                  <button
+                    onClick={() => handlePlay(call)}
+                    className="btn btn-ghost btn-xs btn-square"
+                    aria-label="Play call"
+                  >
+                    <Play className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => handleDownload(call)}
+                    className="btn btn-ghost btn-xs btn-square"
+                    aria-label="Download call"
+                  >
+                    <Download className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => handleUnbookmark(call.id)}
+                    className="btn btn-ghost btn-xs btn-square text-warning"
+                    aria-label="Remove bookmark"
+                  >
+                    <Star className="w-3 h-3 fill-current" />
+                  </button>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-0.5 mt-1">
-              <button
-                onClick={() => handlePlay(call)}
-                className="btn btn-ghost btn-xs btn-square"
-                aria-label="Play call"
-              >
-                <Play className="w-3 h-3" />
-              </button>
-              <button
-                onClick={() => handleDownload(call)}
-                className="btn btn-ghost btn-xs btn-square"
-                aria-label="Download call"
-              >
-                <Download className="w-3 h-3" />
-              </button>
-              <button
-                onClick={() => handleUnbookmark(call.id)}
-                className="btn btn-ghost btn-xs btn-square text-warning"
-                aria-label="Remove bookmark"
-              >
-                <Star className="w-3 h-3 fill-current" />
-              </button>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

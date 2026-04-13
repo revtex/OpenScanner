@@ -22,10 +22,11 @@ import {
   setSort,
   setPage,
   setBookmarkedOnly,
-  setDownloadMode,
   setTranscript,
   resetFilters,
 } from "@/app/slices/callsSlice";
+import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
+import { selectToken } from "@/app/slices/authSlice";
 import { audioPlayer } from "@/services/audioPlayer";
 import type { Call } from "@/types";
 
@@ -44,19 +45,18 @@ function formatDate(unix: number): string {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-function formatDuration(secs: number): string {
-  if (!secs) return "";
-  if (secs < 60) return `${secs}s`;
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return s > 0 ? `${m}m${s}s` : `${m}m`;
-}
-
 export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const dispatch = useAppDispatch();
   const filters = useAppSelector((s) => s.calls);
   const config = useAppSelector((s) => s.scanner.config);
-  const token = useAppSelector((s) => s.auth.token);
+  const token = useAppSelector(selectToken);
+  const isAuthenticated = !!token;
+
+  const { data: bookmarkData } = useGetBookmarkIDsQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+  const [toggleBookmark] = useToggleBookmarkMutation();
+  const bookmarkedCallIds = bookmarkData?.callIds ?? [];
   const parentRef = useRef<HTMLDivElement>(null);
 
   const systems = useMemo(() => config?.systems ?? [], [config]);
@@ -159,16 +159,6 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
 
         const blob = await resp.blob();
         const audioUrl = URL.createObjectURL(blob);
-        if (filters.downloadMode) {
-          const a = document.createElement("a");
-          a.href = audioUrl;
-          a.download = call.audioName || `call-${call.id}.mp3`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(audioUrl);
-          return;
-        }
 
         const playCall: Call = {
           id: call.id,
@@ -198,7 +188,37 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
         console.error("failed to play call", call.id, err);
       }
     },
-    [filters.downloadMode, token],
+    [token],
+  );
+
+  const handleDownload = useCallback(
+    async (call: CallSearchResult) => {
+      try {
+        const headers: HeadersInit = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+
+        const resp = await fetch(`/api/calls/${call.id}/audio`, { headers });
+        if (!resp.ok) {
+          console.error("failed to download call audio", call.id, resp.status);
+          return;
+        }
+
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = call.audioName || `call-${call.id}.mp3`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("failed to download call", call.id, err);
+      }
+    },
+    [token],
   );
 
   return (
@@ -255,51 +275,21 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                   key={call.id}
                   data-index={virtualRow.index}
                   ref={virtualizer.measureElement}
-                  className="absolute left-0 flex w-full cursor-pointer items-start gap-2 border-b border-base-300 px-3 py-1.5 hover:bg-base-200"
+                  className="absolute left-0 flex w-full items-start gap-2 border-b border-base-300 px-3 py-2 hover:bg-base-200"
                   style={{ top: virtualRow.start }}
-                  onClick={() => void handleRowClick(call)}
                 >
-                  {/* Play/Download icon */}
-                  <span className="mt-1 shrink-0 text-primary">
-                    {filters.downloadMode ? (
-                      <Download size={14} />
-                    ) : (
-                      <Play size={14} />
-                    )}
-                  </span>
-
-                  {/* Call details — two rows */}
+                  {/* Call details */}
                   <div className="min-w-0 flex-1">
-                    {/* Row 1: talkgroup name, bookmark */}
-                    <div className="flex items-center gap-1">
-                      <span className="truncate text-xs font-medium">
-                        {call.talkgroupName || call.talkgroupLabel}
-                      </span>
-                      {call.bookmarked && (
-                        <Star
-                          size={11}
-                          className="shrink-0 fill-warning text-warning"
-                        />
-                      )}
+                    {/* Row 1: talkgroup name */}
+                    <div className="text-xs font-medium truncate">
+                      {call.talkgroupName || call.talkgroupLabel}
                     </div>
-                    {/* Row 2: system, tag, date/time */}
-                    <div className="flex items-center gap-1 text-[11px] text-base-content/60">
-                      <span className="truncate">{call.systemLabel}</span>
-                      {call.talkgroupTag && (
-                        <>
-                          <span>·</span>
-                          <span className="shrink-0">{call.talkgroupTag}</span>
-                        </>
-                      )}
-                      <span className="ml-auto shrink-0">
-                        {formatDate(call.dateTime)} {formatTime(call.dateTime)}
-                      </span>
+                    {/* Row 2: system */}
+                    <div className="text-[11px] text-base-content/60 truncate">
+                      {call.systemLabel}
                     </div>
-                    {/* Row 3: duration, frequency, source */}
+                    {/* Row 3: freq, UID, TGID */}
                     <div className="flex items-center gap-2 text-[11px] text-base-content/40">
-                      {call.duration > 0 && (
-                        <span>{formatDuration(call.duration)}</span>
-                      )}
                       {call.frequency > 0 && (
                         <span>{(call.frequency / 1e6).toFixed(4)} MHz</span>
                       )}
@@ -309,13 +299,60 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                       )}
                     </div>
                   </div>
+                  {/* Date/time + action buttons */}
+                  <div className="flex shrink-0 flex-col items-end gap-0.5">
+                    <span className="text-[11px] text-base-content/60">
+                      {formatDate(call.dateTime)} {formatTime(call.dateTime)}
+                    </span>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        onClick={() => void handleRowClick(call)}
+                        className="btn btn-ghost btn-xs btn-square"
+                        aria-label="Play call"
+                      >
+                        <Play className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDownload(call);
+                        }}
+                        className="btn btn-ghost btn-xs btn-square"
+                        aria-label="Download call"
+                      >
+                        <Download className="w-3 h-3" />
+                      </button>
+                      {isAuthenticated && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void toggleBookmark(call.id);
+                          }}
+                          className={`btn btn-ghost btn-xs btn-square ${
+                            bookmarkedCallIds.includes(call.id)
+                              ? "text-warning"
+                              : ""
+                          }`}
+                          aria-label="Toggle bookmark"
+                        >
+                          <Star
+                            className={`w-3 h-3 ${
+                              bookmarkedCallIds.includes(call.id)
+                                ? "fill-current"
+                                : ""
+                            }`}
+                          />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Paginator + Download mode */}
+        {/* Paginator */}
         <div className="border-t border-base-300 px-4 py-2">
           <div className="flex items-center justify-between">
             <div className="join">
@@ -340,16 +377,6 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               </button>
             </div>
           </div>
-
-          <label className="mt-2 flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              className="toggle toggle-primary toggle-sm"
-              checked={filters.downloadMode}
-              onChange={(e) => dispatch(setDownloadMode(e.target.checked))}
-            />
-            <span className="text-sm">Download mode</span>
-          </label>
         </div>
 
         {/* Filters section */}
