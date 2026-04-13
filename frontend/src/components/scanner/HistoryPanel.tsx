@@ -17,23 +17,31 @@ export function HistoryPanel({ history, time12hFormat }: HistoryPanelProps) {
 
   return (
     <div className="mt-2 border-t border-current/20 pt-1 min-h-[120px]">
-      {/* Header */}
-      <div className="grid grid-cols-[10%_25%_25%_40%] text-xs opacity-40 px-1 gap-x-2">
-        <span>Time</span>
-        <span>System</span>
-        <span>Talkgroup</span>
-        <span>Name</span>
-      </div>
       {/* Rows */}
       {history.slice(0, 5).map((call) => (
         <div
           key={call.id}
-          className="grid grid-cols-[10%_25%_25%_40%] px-1 gap-x-2 border-b border-current/20 last:border-b-0 history-row"
+          className="px-1 py-0.5 border-b border-current/10 last:border-b-0 history-row"
         >
-          <span className="truncate">{formatTime(call.dateTime)}</span>
-          <span className="truncate">{call.systemLabel ?? ""}</span>
-          <span className="truncate">{call.talkgroupName ?? ""}</span>
-          <span className="truncate">{call.talkgroupLabel ?? ""}</span>
+          {/* Line 1: talkgroup name + time */}
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-xs">
+              {call.talkgroupName || call.talkgroupLabel || ""}
+            </span>
+            <span className="shrink-0 text-xs opacity-60">
+              {formatTime(call.dateTime)}
+            </span>
+          </div>
+          {/* Line 2: system · talkgroup label */}
+          <div className="flex items-center gap-1 text-[10px] opacity-40">
+            <span className="truncate">{call.systemLabel ?? ""}</span>
+            {call.talkgroupLabel && call.talkgroupName && (
+              <>
+                <span>·</span>
+                <span className="truncate">{call.talkgroupLabel}</span>
+              </>
+            )}
+          </div>
         </div>
       ))}
     </div>

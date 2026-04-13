@@ -39,6 +39,19 @@ function formatTime(unix: number): string {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function formatDate(unix: number): string {
+  const d = new Date(unix * 1000);
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function formatDuration(secs: number): string {
+  if (!secs) return "";
+  if (secs < 60) return `${secs}s`;
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return s > 0 ? `${m}m${s}s` : `${m}m`;
+}
+
 export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const dispatch = useAppDispatch();
   const filters = useAppSelector((s) => s.calls);
@@ -111,7 +124,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const virtualizer = useVirtualizer({
     count: calls.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 44,
+    estimateSize: () => 62,
     overscan: 5,
   });
 
@@ -242,41 +255,60 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                   key={call.id}
                   data-index={virtualRow.index}
                   ref={virtualizer.measureElement}
-                  className="absolute left-0 flex w-full cursor-pointer items-center gap-2 border-b border-base-300 px-4 py-2 hover:bg-base-200"
+                  className="absolute left-0 flex w-full cursor-pointer items-start gap-2 border-b border-base-300 px-3 py-1.5 hover:bg-base-200"
                   style={{ top: virtualRow.start }}
                   onClick={() => void handleRowClick(call)}
                 >
-                  {/* Play/Stop/Download icon */}
-                  <span className="text-primary">
+                  {/* Play/Download icon */}
+                  <span className="mt-1 shrink-0 text-primary">
                     {filters.downloadMode ? (
-                      <Download size={16} />
+                      <Download size={14} />
                     ) : (
-                      <Play size={16} />
+                      <Play size={14} />
                     )}
                   </span>
 
-                  {/* Time */}
-                  <span className="w-14 shrink-0 font-mono text-sm">
-                    {formatTime(call.dateTime)}
-                  </span>
-
-                  {/* System label */}
-                  <span className="w-20 shrink-0 truncate text-xs text-base-content/70">
-                    {call.systemLabel}
-                  </span>
-
-                  {/* Talkgroup name */}
-                  <span className="flex-1 truncate text-sm">
-                    {call.talkgroupName || call.talkgroupLabel}
-                  </span>
-
-                  {/* Bookmark indicator */}
-                  {call.bookmarked && (
-                    <Star
-                      size={14}
-                      className="shrink-0 fill-warning text-warning"
-                    />
-                  )}
+                  {/* Call details — two rows */}
+                  <div className="min-w-0 flex-1">
+                    {/* Row 1: talkgroup name, bookmark */}
+                    <div className="flex items-center gap-1">
+                      <span className="truncate text-xs font-medium">
+                        {call.talkgroupName || call.talkgroupLabel}
+                      </span>
+                      {call.bookmarked && (
+                        <Star
+                          size={11}
+                          className="shrink-0 fill-warning text-warning"
+                        />
+                      )}
+                    </div>
+                    {/* Row 2: system, tag, date/time */}
+                    <div className="flex items-center gap-1 text-[11px] text-base-content/60">
+                      <span className="truncate">{call.systemLabel}</span>
+                      {call.talkgroupTag && (
+                        <>
+                          <span>·</span>
+                          <span className="shrink-0">{call.talkgroupTag}</span>
+                        </>
+                      )}
+                      <span className="ml-auto shrink-0">
+                        {formatDate(call.dateTime)} {formatTime(call.dateTime)}
+                      </span>
+                    </div>
+                    {/* Row 3: duration, frequency, source */}
+                    <div className="flex items-center gap-2 text-[11px] text-base-content/40">
+                      {call.duration > 0 && (
+                        <span>{formatDuration(call.duration)}</span>
+                      )}
+                      {call.frequency > 0 && (
+                        <span>{(call.frequency / 1e6).toFixed(4)} MHz</span>
+                      )}
+                      {call.source > 0 && <span>UID: {call.source}</span>}
+                      {call.talkgroupId > 0 && (
+                        <span>TGID: {call.talkgroupId}</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}
