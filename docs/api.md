@@ -269,22 +269,22 @@ Alias for the above — accepts identical fields for Trunk Recorder compatibilit
 
 **Request: `multipart/form-data`**
 
-| Field            | Type         | Required | Description                                     |
-| ---------------- | ------------ | -------- | ----------------------------------------------- |
-| `audio`          | file         | yes      | Audio file (WAV, MP3, AAC, M4A, OGG, Opus, …)   |
-| `systemId`       | int string   | yes      | System decimal (radio system ID)                |
-| `talkgroupId`    | int string   | yes      | Talkgroup decimal                               |
-| `dateTime`       | int64 string | yes      | Unix timestamp (seconds)                        |
-| `systemLabel`    | string       | no       | Accepted for compatibility; currently ignored by ingest |
-| `talkgroupGroup` | string       | no       | Accepted for compatibility; currently ignored by ingest |
+| Field            | Type         | Required | Description                                                 |
+| ---------------- | ------------ | -------- | ----------------------------------------------------------- |
+| `audio`          | file         | yes      | Audio file (WAV, MP3, AAC, M4A, OGG, Opus, …)               |
+| `systemId`       | int string   | yes      | System decimal (radio system ID)                            |
+| `talkgroupId`    | int string   | yes      | Talkgroup decimal                                           |
+| `dateTime`       | int64 string | yes      | Unix timestamp (seconds)                                    |
+| `systemLabel`    | string       | no       | Accepted for compatibility; currently ignored by ingest     |
+| `talkgroupGroup` | string       | no       | Accepted for compatibility; currently ignored by ingest     |
 | `talkgroupLabel` | string       | no       | Talkgroup label — used when auto-populating a new talkgroup |
-| `talkgroupTag`   | string       | no       | Used as talkgroup name when auto-populating/backfilling |
-| `frequency`      | int string   | no       | Primary frequency in Hz                         |
-| `duration`       | int string   | no       | Duration in seconds                             |
-| `source`         | int string   | no       | Primary source unit ID                          |
-| `frequencies`    | string       | no       | JSON array of frequency objects                 |
-| `sources`        | string       | no       | JSON array of source unit objects               |
-| `patches`        | string       | no       | JSON array of patched talkgroup IDs             |
+| `talkgroupTag`   | string       | no       | Used as talkgroup name when auto-populating/backfilling     |
+| `frequency`      | int string   | no       | Primary frequency in Hz                                     |
+| `duration`       | int string   | no       | Duration in seconds                                         |
+| `source`         | int string   | no       | Primary source unit ID                                      |
+| `frequencies`    | string       | no       | JSON array of frequency objects                             |
+| `sources`        | string       | no       | JSON array of source unit objects                           |
+| `patches`        | string       | no       | JSON array of patched talkgroup IDs                         |
 
 **Response `200` — call accepted:**
 
@@ -300,14 +300,14 @@ Alias for the above — accepts identical fields for Trunk Recorder compatibilit
 
 **Error responses:**
 
-| Code  | Reason                                                                                |
-| ----- | ------------------------------------------------------------------------------------- |
+| Code  | Reason                                                                                     |
+| ----- | ------------------------------------------------------------------------------------------ |
 | `400` | Missing `audio`, `systemId`, `talkgroupId`, or `dateTime`; invalid required integer fields |
-| `401` | Missing or invalid `X-API-Key`                                                        |
-| `429` | Rate limit exceeded (60 req/min per API key by default)                               |
-| `500` | Storage or DB error                                                                   |
+| `401` | Missing or invalid `X-API-Key`                                                             |
+| `429` | Rate limit exceeded (60 req/min per API key by default)                                    |
+| `500` | Storage or DB error                                                                        |
 
-**Auto-populate behaviour:** When `autoPopulate=true` (default), an unknown `systemId` or `talkgroupId` is automatically created in the database using the supplied label/group/tag fields. When `autoPopulate=false`, unknown identifiers return `400`.
+**Auto-populate behaviour:** When `autoPopulate=true` (default), an unknown `systemId` or `talkgroupId` is automatically created in the database. New talkgroups use `talkgroupLabel` (label) and `talkgroupTag` (name) when provided; `systemLabel` and `talkgroupGroup` are ignored. When `autoPopulate=false`, unknown identifiers return `400`.
 
 **Audio storage:** Files are written to `{audioDir}/{YYYY}/{MM}/{DD}/{filename}`. The conversion mode is controlled by the `audioConversion` setting:
 
@@ -320,7 +320,7 @@ Alias for the above — accepts identical fields for Trunk Recorder compatibilit
 
 Conversion is performed asynchronously via a bounded FFmpeg worker pool (`runtime.NumCPU()` workers). `Store` blocks until conversion completes before inserting the DB record.
 
-**Duplicate detection:** Controlled by the `disableDuplicateDetection` and `duplicateDetectionTimeFrame` settings. If the last call for the same system+talkgroup falls within the time window (default 500 ms), the upload is rejected with `{"message": "duplicate"}` (HTTP 200).
+**Duplicate detection:** Controlled by the `disableDuplicateDetection` and `duplicateDetectionTimeFrame` settings. If the last call for the same system+talkgroup falls within the time window (default 2000 ms), the upload is rejected with `{"message": "duplicate"}` (HTTP 200).
 
 ---
 
@@ -444,8 +444,8 @@ Updates one or more settings. Only known setting keys are accepted (allowlist-va
 
 ```json
 [
-  {"key": "publicAccess", "value": "true"},
-  {"key": "maxClients", "value": "500"}
+  { "key": "publicAccess", "value": "true" },
+  { "key": "maxClients", "value": "500" }
 ]
 ```
 
