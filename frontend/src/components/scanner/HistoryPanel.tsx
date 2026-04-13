@@ -16,7 +16,7 @@ export function HistoryPanel({ history, time12hFormat }: HistoryPanelProps) {
   };
 
   return (
-    <div className="mt-2 border-t border-current/20 pt-1 min-h-[120px]">
+    <div className="mt-2 border-t border-current/20 pt-1 flex-1 overflow-hidden">
       {/* Rows */}
       {history.slice(0, 5).map((call) => (
         <div
@@ -32,13 +32,27 @@ export function HistoryPanel({ history, time12hFormat }: HistoryPanelProps) {
               {formatTime(call.dateTime)}
             </span>
           </div>
-          {/* Line 2: system · talkgroup label */}
+          {/* Line 2: system · UID · TGID · freq MHz */}
           <div className="flex items-center gap-1 text-[10px] opacity-40">
             <span className="truncate">{call.systemLabel ?? ""}</span>
-            {call.talkgroupLabel && call.talkgroupName && (
+            {call.source != null && call.source > 0 && (
               <>
                 <span>·</span>
-                <span className="truncate">{call.talkgroupLabel}</span>
+                <span className="shrink-0">UID:{call.source}</span>
+              </>
+            )}
+            {call.talkgroupId > 0 && (
+              <>
+                <span>·</span>
+                <span className="shrink-0">TGID:{call.talkgroupId}</span>
+              </>
+            )}
+            {call.frequency != null && call.frequency > 0 && (
+              <>
+                <span>·</span>
+                <span className="shrink-0">
+                  {(call.frequency / 1e6).toFixed(4)} MHz
+                </span>
               </>
             )}
           </div>

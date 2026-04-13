@@ -28,9 +28,11 @@ SELECT call_id FROM bookmarks WHERE user_id = ? ORDER BY created_at DESC;
 SELECT
     c.*,
     s.label AS system_label,
+    s.system_id AS system_radio_id,
     t.label AS talkgroup_label,
     t.name  AS talkgroup_name,
-    t.led   AS talkgroup_led
+    t.led   AS talkgroup_led,
+    t.talkgroup_id AS talkgroup_radio_id
 FROM bookmarks b
 JOIN calls c ON c.id = b.call_id
 LEFT JOIN systems s ON s.id = c.system_id

@@ -96,7 +96,9 @@ func (h *BookmarkHandler) GetBookmarkCalls(c *gin.Context) {
 			AudioName: row.AudioName,
 			AudioType: row.AudioType,
 			DateTime:  row.DateTime,
-			SystemID:  row.SystemID,
+		}
+		if row.SystemRadioID.Valid {
+			r.SystemID = row.SystemRadioID.Int64
 		}
 		if row.Frequency.Valid {
 			r.Frequency = &row.Frequency.Int64
@@ -107,8 +109,8 @@ func (h *BookmarkHandler) GetBookmarkCalls(c *gin.Context) {
 		if row.Source.Valid {
 			r.Source = &row.Source.Int64
 		}
-		if row.TalkgroupID.Valid {
-			r.TalkgroupID = row.TalkgroupID.Int64
+		if row.TalkgroupRadioID.Valid {
+			r.TalkgroupID = row.TalkgroupRadioID.Int64
 		}
 		r.SystemLabel = row.SystemLabel.String
 		r.TalkgroupLabel = row.TalkgroupLabel.String

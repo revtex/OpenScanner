@@ -790,12 +790,12 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 			}
 		}
 		if ok || systemCache[call.SystemID].ID != 0 {
+			r.SystemID = sys.SystemID
 			r.SystemLabel = sys.Label
 		}
 
 		// Join talkgroup details (cached).
 		if call.TalkgroupID.Valid {
-			r.TalkgroupID = call.TalkgroupID.Int64
 			tg, ok := tgCache[call.TalkgroupID.Int64]
 			if !ok {
 				var terr error
@@ -805,6 +805,7 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 				}
 			}
 			if ok || tgCache[call.TalkgroupID.Int64].ID != 0 {
+				r.TalkgroupID = tg.TalkgroupID
 				if tg.Label.Valid {
 					r.TalkgroupLabel = tg.Label.String
 				}

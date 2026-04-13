@@ -111,7 +111,7 @@ export function DisplayPanel({
     : false;
 
   const displayContent = (
-    <div className="font-mono text-sm leading-5 p-3 min-h-[200px]">
+    <div className="font-mono text-sm leading-5 p-3 h-[420px] flex flex-col">
       {/* Row 1: clock, listeners, queue */}
       <div className="flex justify-between">
         <span>{formatClock(clock, time12hFormat)}</span>
