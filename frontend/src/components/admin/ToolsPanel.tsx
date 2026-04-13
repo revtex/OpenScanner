@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, Download } from "lucide-react";
+import { Upload, Download, ExternalLink } from "lucide-react";
 import {
   useImportTalkgroupsMutation,
   useImportUnitsMutation,
@@ -341,6 +341,30 @@ export default function ToolsPanel() {
               )}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* API Documentation */}
+      <div className="card bg-base-200 mb-4">
+        <div className="card-body">
+          <h2 className="card-title text-base">
+            <ExternalLink className="w-4 h-4" /> API Documentation
+          </h2>
+          <p className="text-sm text-base-content/70">
+            Browse the interactive Swagger UI to explore and test all API
+            endpoints.
+          </p>
+          <div>
+            <a
+              href="/api/admin/docs/index.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary btn-sm"
+            >
+              Open Swagger UI
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          </div>
         </div>
       </div>
 
