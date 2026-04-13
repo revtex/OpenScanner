@@ -96,7 +96,10 @@ openscanner/                     ← monorepo root
 │   │   ├── 016_create_webhooks.sql
 │   │   ├── 017_create_push_subscriptions.sql
 │   │   ├── 018_create_transcriptions.sql
-│   │   └── 019_drop_accesses.sql
+│   │   ├── 019_drop_accesses.sql
+│   ├── 020_create_shared_links.sql
+│   └── 021_create_shared_links.sql
+│   └── 021_add_call_error_spike.sql
 │   └── sqlc/
 │       ├── sqlc.yaml
 │       └── queries/             ← one .sql file per table
@@ -127,7 +130,8 @@ openscanner/                     ← monorepo root
 │   │   │       ├── scannerSlice.ts  ← live feed, hold, avoid, queue, TG selection
 │   │   │       ├── authSlice.ts     ← JWT token, user profile (id, username, role), setup state
 │   │   │       ├── adminSlice.ts    ← admin CRUD data + config
-│   │   │       └── callsSlice.ts    ← archived calls search state
+│   │   │       ├── callsSlice.ts    ← archived calls search state + filters
+│   │       └── shareSlice.ts    ← shareable call link mutations
 │   │   ├── pages/
 │   │   │   ├── Scanner.tsx      ← main scanner UI page
 │   │   │   ├── Admin.tsx        ← admin dashboard page
@@ -138,13 +142,13 @@ openscanner/                     ← monorepo root
 │   │   │   ├── ui/              ← shared UI components
 │   │   │   ├── scanner/
 │   │   │   │   ├── LEDPanel.tsx         ← green/orange/blink LED states
-│   │   │   │   ├── DisplayPanel.tsx     ← 6-line info display
+│   │   │   │   ├── DisplayPanel.tsx     ← 8-row info display (clock, system, TG, name, freq/TGID, site/UID, E/S badges, bookmark/share)
 │   │   │   │   ├── ControlToolbar.tsx   ← Two-row icon toolbar (playback + mode toggles)
-│   │   │   │   ├── HistoryPanel.tsx     ← last 5 calls, double-click full-screen
+│   │   │   │   ├── HistoryPanel.tsx     ← last 5 calls (TG name + time, system · UID · TGID · freq · E/S)
 │   │   │   │   ├── SelectTGPanel.tsx    ← TG selection slide-out panel
-│   │   │   │   ├── SearchPanel.tsx      ← archive search slide-out panel
+│   │   │   │   ├── SearchPanel.tsx      ← archive search slide-out panel (per-row play/download/bookmark, E/S)
 │   │   │   │   ├── BookmarkButton.tsx   ← star/flag toggle on current call
-│   │   │   │   ├── BookmarksPanel.tsx   ← slide-out saved calls list
+│   │   │   │   ├── BookmarksPanel.tsx   ← slide-out saved calls list (per-row play/download/unbookmark, E/S)
 │   │   │   │   ├── WaveformVisualizer.tsx ← audio waveform (Web Audio AnalyserNode)
 │   │   │   │   ├── TranscriptPanel.tsx  ← call transcript display (below display)
 │   │   │   │   └── KeyboardShortcuts.tsx ← shortcut handler + help modal
@@ -386,6 +390,11 @@ Audio file is stored on the filesystem. Only the relative path is in the DB.
 | `patches_json`     | TEXT                     | JSON array of patched TG IDs                        |
 | `system_id`        | INTEGER FK → systems     | CASCADE DELETE                                      |
 | `talkgroup_id`     | INTEGER FK → talkgroups  | SET NULL                                            |
+| `site`             | TEXT                     | receiver site name (added in migration 019)         |
+| `channel`          | TEXT                     | channel identifier (added in migration 019)         |
+| `decoder`          | TEXT                     | decoder type, e.g. "P25 Phase 1" (migr1)            |
+| `spike_count`      | INTEGER                  | P25 spike count (added in migration 021)            |
+| `spike_count`      | INTEGER                  | P25 spike count (added in migration 021)            |
 
 **Index:** `CREATE INDEX idx_calls_datetime_system_tg ON calls(date_time, system_id, talkgroup_id)`
 
@@ -501,6 +510,20 @@ Speech-to-text results for calls.
 | `created_at`  | INTEGER                  | Unix epoch seconds     |
 
 **Index:** `CREATE INDEX idx_transcriptions_text ON transcriptions(text)` (for full-text search)
+
+### `shared_links`
+
+Shareable call links with UUID tokens for public access.
+
+| Column       | Type                     | Notes                   |
+| ------------ | ------------------------ | ----------------------- |
+| `id`         | INTEGER PK AUTOINCREMENT |                         |
+| `call_id`    | INTEGER FK → calls       | CASCADE DELETE; UNIQUE  |
+| `user_id`    | INTEGER FK → users       | CASCADE DELETE          |
+| `token`      | TEXT UNIQUE              | UUID v4 share token     |
+| `created_at` | INTEGER                  | Unix epoch seconds      |
+
+**Index:** `CREATE INDEX idx_shared_links_token ON shared_links(token)`
 
 ---
 

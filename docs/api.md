@@ -178,6 +178,10 @@ Paginated call archive search with filtering. Uses `OptionalJWTAuth` middleware 
       "talkgroupTag": "Dispatch",
       "talkgroupGroup": "Fire",
       "talkgroupLed": "#ff0000",
+      "site": "Site A",
+      "decoder": "P25 Phase 1",
+      "errorCount": 2,
+      "spikeCount": 5,
       "transcript": "Engine 5 respond to...",
       "bookmarked": true
     }
@@ -333,6 +337,8 @@ Returns bookmarked calls with full metadata. Requires `Authorization: Bearer <to
       "frequency": 851000000,
       "duration": 15,
       "source": 1234,
+      "errorCount": 0,
+      "spikeCount": 3,
       "bookmarked": true
     }
   ]
@@ -377,6 +383,11 @@ Alias for the above — accepts identical fields for Trunk Recorder compatibilit
 | `frequencies`    | string       | no       | JSON array of frequency objects                             |
 | `sources`        | string       | no       | JSON array of source unit objects                           |
 | `patches`        | string       | no       | JSON array of patched talkgroup IDs                         |
+| `site`           | string       | no       | Receiver site name                                          |
+| `channel`        | string       | no       | Channel identifier                                          |
+| `decoder`        | string       | no       | Decoder type (e.g. "P25 Phase 1")                           |
+| `errorCount`     | int string   | no       | P25 error count                                             |
+| `spikeCount`     | int string   | no       | P25 spike count                                             |
 
 **Response `200` — call accepted:**
 
@@ -462,7 +473,7 @@ Upgrades to a WebSocket connection for admin dashboard events.
 
 | Command | Direction       | Payload                                             | Description                                                                                                                                                                                                      |
 | ------- | --------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CAL`   | Server → Client | `{systemId, talkgroupId, ...}` + binary audio frame | New call data. Text frame with call metadata is followed immediately by a binary frame containing the audio file bytes. The two frames are sent atomically per client (mutex-protected to prevent interleaving). |
+| `CAL`   | Server → Client | `{systemId, talkgroupId, frequency?, duration?, source?, site?, decoder?, errorCount?, spikeCount?, ...}` + binary audio frame | New call data. Text frame with call metadata is followed immediately by a binary frame containing the audio file bytes. The two frames are sent atomically per client (mutex-protected to prevent interleaving). |
 | `CFG`   | Server → Client | `{systems, talkgroups, groups, tags, ...}`          | Full config payload. Sent on connect (listener only) and when admin updates config.                                                                                                                              |
 | `VER`   | Server → Client | `{"version", "branding", "email"}`                  | Server version and branding. Sent on connect (listener only).                                                                                                                                                    |
 | `LSC`   | Server → Client | `<count>` (integer)                                 | Active listener count. Broadcast on connect/disconnect, debounced to max 1 per 3 seconds.                                                                                                                        |

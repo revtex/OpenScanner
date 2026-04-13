@@ -64,10 +64,10 @@ graph TD
 - **backend/internal/config** — Server startup configuration (CLI flags, env vars, optional INI file); precedence: CLI > env > INI > defaults
 - **backend/internal/middleware** — Gin middleware: `RequestID` (UUID v4), `Logger` (structured slog), `CORS` (same-origin with localhost dev exception), `JWTAuth` (validates token + checks revocation), `OptionalJWTAuth` (extracts JWT if present but allows unauthenticated access for public endpoints), `RequireAdmin` (role-based 403), `APIKeyAuth` (header or query param), `RateLimit` (429 on lockout), `MaxBodySize` (request body size limiter)
 - **backend/internal/seed** — First-run database seeding: 1 `app_state` row, 31 settings, 8 groups (Air/Common/EMS/Fire/Interop/Law/Public Works/Unknown), 21 tags (ATC, Corrections, Emergency Ops, EMS Dispatch/Tac/Talk, Fire Dispatch/Tac/Talk, Hospital, Interop, Law Dispatch/Tac/Talk, Public Works, Schools, Security, Service, Transportation, Untagged, Utilities); all idempotent (`INSERT OR IGNORE`) in a single transaction
-- **backend/internal/db** — SQLite WAL mode, embedded migrations (21 migration files, including 3 separate 019-prefix migrations: `019_add_call_metadata.sql` adds `site`/`channel`/`decoder` columns to calls, `019_add_password_need_change.sql` adds `password_need_change` to users, `019_drop_accesses.sql` drops the legacy accesses table), `SetMaxOpenConns(1)`; sqlc-generated type-safe query layer
+- **backend/internal/db** — SQLite WAL mode, embedded migrations (23 migration files, including 3 separate 019-prefix migrations: `019_add_call_metadata.sql` adds `site`/`channel`/`decoder` columns to calls, `019_add_password_need_change.sql` adds `password_need_change` to users, `019_drop_accesses.sql` drops the legacy accesses table; `020_create_shared_links.sql` creates shareable call links table; `021_create_shared_links.sql` creates shareable call links table; `021_add_call_error_spike.sql` adds `error_count`/`spike_count` to calls), `SetMaxOpenConns(1)`; sqlc-generated type-safe query layer
 
 - **backend/internal/audio** — FFmpeg audio conversion pipeline: `Processor.Store` writes uploaded multipart file to `{audioDir}/{YYYY}/{MM}/{DD}/`, submits a `ConversionJob` to the bounded `WorkerPool` (`runtime.NumCPU()` goroutines), waits for completion, then returns the relative `.m4a` path; `IsDuplicate` queries the last call per system+talkgroup within the configured time window; `PruneLoop` runs on a 1-hour ticker deleting old calls and audio files in 500-row batches
-- **backend/internal/api/calls.go** — `PostCallUpload` handler: validates API key (via `APIKeyAuth` middleware), applies per-API-key sliding-window rate limiter (default 60 req/min), parses multipart fields, resolves or auto-populates system+talkgroup, runs duplicate check, stores audio via `Processor.Store`, inserts call DB record, broadcasts `CAL` + binary audio to WS hub, returns `{"id": <callID>}`; also registered as `POST /api/trunk-recorder-call-upload`
+- **backend/internal/api/calls.go** — `PostCallUpload` handler: validates API key (via `APIKeyAuth` middleware), applies per-API-key sliding-window rate limiter (default 60 req/min), parses multipart fields (including optional `errorCount`/`spikeCount` for P25 signal quality metrics), resolves or auto-populates system+talkgroup, runs duplicate check, stores audio via `Processor.Store`, inserts call DB record, broadcasts `CAL` + binary audio to WS hub, returns `{"id": <callID>}`; also registered as `POST /api/trunk-recorder-call-upload`
 - **backend/internal/api/calls.go** — `GetCalls` handler: paginated call archive search via `GET /api/calls`; supports filtering by `system_id`, `talkgroup_id`, `date_from`, `date_to` with `page`/`limit` pagination and `sort` direction (asc/desc); uses `OptionalJWTAuth` middleware (returns bookmark status when JWT is present); returns `{"calls": [...], "total": N}`
 - **backend/internal/api/calls.go** — `GetCallAudio` handler: streams call audio files via `GET /api/calls/:id/audio`; uses `OptionalJWTAuth` middleware; requires valid JWT or `publicAccess=true` (returns 401 otherwise); reads audio from the recordings directory with path traversal protection
 - **backend/internal/api/share.go** — Shareable call link handlers: `POST /api/calls/:id/share` (create share, returns UUID token + URL), `GET /api/calls/:id/share` (share status, JWT required), `DELETE /api/calls/:id/share` (remove share), `GET /api/shared/:token` (public metadata), `GET /api/shared/:token/audio` (public audio stream); shares stored in `shared_links` table with UUID tokens
@@ -105,7 +105,8 @@ graph TD
 - **frontend/src/app/store.ts** — Redux store combining `scannerSlice`, `authSlice`, and RTK Query `api` reducers
 - **frontend/src/app/slices/scannerSlice.ts** — Full scanner state with 17 reducers: `callReceived`, `setCurrentCall`, `clearCurrentCall`, `togglePause`, `toggleLive`, `holdSystem`, `holdTG`, `addAvoid`, `removeAvoid`, `clearAvoids`, `setListenerCount`, `setConnectionStatus`, `setConfig`, `toggleTG`, `restoreTGSelection`, `setAllTGs`, `expireAvoids`; queue management, and history tracking
 - **frontend/src/app/slices/authSlice.ts** — Auth state: `setCredentials` (JWT + user), `clearCredentials`, `setSetupStatus`; token stored in `localStorage` (key `os_auth`) for persistence across browser tabs/windows
-- **frontend/src/app/slices/callsSlice.ts** — Search filter state: system, talkgroup, group, tag, date range, sort direction; drives SearchPanel query params
+- **frontend/src/app/slices/callsSlice.ts** — Search filter state: system, talkgroup, group, tag, date range, sort direction, bookmarked-only; drives SearchPanel query params
+- **frontend/src/app/slices/shareSlice.ts** — RTK Query mutation for creating shareable call links
 - **frontend/src/app/api.ts** — RTK Query base API with `getSetupStatus`, `postSetup`, `postLogin` endpoints; `getCalls` query for paginated call archive search; base query wraps `fetchBaseQuery` with a global 401 interceptor that dispatches `clearCredentials()` on any unauthorized response
 
 #### CSS & Theming
@@ -153,17 +154,17 @@ graph TD
 Scanner.tsx (lazy-loaded page)
 ├── LEDPanel          — Branding text + theme toggle + colored LED (green=live, orange=paused, pulse=idle)
 ├── DisplayPanel      — Nokia-style LCD display (.lcd-display CSS class: green background #bbc8c0, scanlines, bevel shadow)
-│   │                   8-row monospace display with clock; fullscreen modal on double-click
+│   │                   8-row monospace display with clock
 │   ├── BookmarkButton   — Star toggle on current call (wired to backend bookmarks API)
 │   ├── Share button     — Share2 icon, copies call permalink to clipboard
 │   ├── Brightness slider — Sun icon toggle, inline horizontal slider (20–120%), persisted to localStorage, default 50%
 │   ├── TranscriptPanel  — Collapsible transcript display
-│   └── HistoryPanel     — Last 5 calls table (hard-capped at 5 rows, full dedup across all entries)
+│   └── HistoryPanel     — Last 5 calls (TG name + time, system · UID · TGID · freq MHz · E/S when non-zero)
 ├── ControlToolbar    — Two-row icon toolbar
 │   ├── Row 1: play/pause, skip, replay, volume slider (range range-xs range-primary), download, bookmark
 │   └── Row 2: LIVE toggle, HOLD (system/TG), AVOID, SELECT, SEARCH, overflow menu (fullscreen, keyboard shortcuts)
 ├── SelectTGPanel     — Slide-out panel for talkgroup selection (tri-state group toggles, per-system TG toggles, avoid countdown; state persisted to localStorage)
-└── SearchPanel       — Slide-out panel for call archive search (RTK Query paginated results via GET /api/calls, filters by system/TG/group/tag/date, play/download per row)
+└── SearchPanel       — Slide-out panel for call archive search (RTK Query paginated results via GET /api/calls, filters by system/TG/group/tag/date, per-row play/download/bookmark buttons, E/S display)
 ```
 
 #### Pages
