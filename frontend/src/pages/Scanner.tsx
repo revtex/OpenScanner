@@ -6,7 +6,6 @@ import { setSetupStatus, selectToken } from "@/app/slices/authSlice";
 import { expireAvoids } from "@/app/slices/scannerSlice";
 import { useScanner } from "@/hooks/useScanner";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { Star } from "lucide-react";
 import { LEDPanel } from "@/components/scanner/LEDPanel";
 import { DisplayPanel } from "@/components/scanner/DisplayPanel";
 import { ControlToolbar } from "@/components/scanner/ControlToolbar";
@@ -122,6 +121,7 @@ export default function Scanner() {
         onClearAvoids={scanner.clearAvoids}
         onToggleSelectTG={handleToggleSelectTG}
         onToggleSearch={handleToggleSearch}
+        onToggleBookmarks={token ? () => setBookmarksOpen((prev) => !prev) : undefined}
         keypadBeeps={scanner.config?.keypadBeeps}
       />
       <SelectTGPanel
@@ -133,15 +133,6 @@ export default function Scanner() {
         isOpen={bookmarksOpen}
         onClose={() => setBookmarksOpen(false)}
       />
-      {!!token && (
-        <button
-          onClick={() => setBookmarksOpen((prev) => !prev)}
-          className="fixed bottom-4 right-4 btn btn-circle btn-primary shadow-lg"
-          aria-label="Open bookmarks"
-        >
-          <Star className="w-5 h-5" />
-        </button>
-      )}
     </div>
   );
 }

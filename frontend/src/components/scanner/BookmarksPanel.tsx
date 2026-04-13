@@ -1,7 +1,7 @@
 import { useGetBookmarkCallsQuery, useToggleBookmarkMutation } from "@/app/api";
-import { useAppDispatch, useAppSelector } from "@/app/store";
-import { callReceived, setCurrentCall } from "@/app/slices/scannerSlice";
+import { useAppSelector } from "@/app/store";
 import { selectToken } from "@/app/slices/authSlice";
+import { audioPlayer } from "@/services/audioPlayer";
 import { X, Play, Download, Star } from "lucide-react";
 import type { Call } from "@/types";
 
@@ -67,7 +67,6 @@ export default function BookmarksPanel({
   isOpen,
   onClose,
 }: BookmarksPanelProps) {
-  const dispatch = useAppDispatch();
   const token = useAppSelector(selectToken);
 
   const { data: bookmarkData, isLoading } = useGetBookmarkCallsQuery(
@@ -81,8 +80,8 @@ export default function BookmarksPanel({
 
   const handlePlay = (bc: BookmarkCall) => {
     const call = bookmarkCallToCall(bc);
-    dispatch(callReceived(call));
-    dispatch(setCurrentCall(call));
+    const audioUrl = `/api/calls/${bc.id}/audio`;
+    audioPlayer.play(call, audioUrl);
   };
 
   const handleUnbookmark = (callId: number) => {

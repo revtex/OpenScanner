@@ -43,6 +43,7 @@ interface ControlToolbarProps {
   onClearAvoids: () => void;
   onToggleSelectTG: () => void;
   onToggleSearch: () => void;
+  onToggleBookmarks?: () => void;
   keypadBeeps?: string;
 }
 
@@ -68,6 +69,7 @@ export function ControlToolbar({
   onClearAvoids,
   onToggleSelectTG,
   onToggleSearch,
+  onToggleBookmarks,
   keypadBeeps,
 }: ControlToolbarProps) {
   const beep = useCallback(() => {
@@ -224,15 +226,21 @@ export function ControlToolbar({
           </button>
         </div>
 
-        {/* Bookmark placeholder — uses Star icon, toggle not wired to backend yet */}
-        <div className="tooltip tooltip-bottom" data-tip="Bookmark (B)">
-          <button
-            className="btn btn-circle btn-ghost w-9 h-9"
-            aria-label="Bookmark"
-          >
-            <Star className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Bookmarks panel toggle */}
+        {onToggleBookmarks && (
+          <div className="tooltip tooltip-bottom" data-tip="Bookmarks (B)">
+            <button
+              className="btn btn-circle btn-ghost w-9 h-9"
+              onClick={() => {
+                beep();
+                onToggleBookmarks();
+              }}
+              aria-label="Bookmarks"
+            >
+              <Star className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Row 2 — Mode Toggles */}

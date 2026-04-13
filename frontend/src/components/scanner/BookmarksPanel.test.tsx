@@ -11,21 +11,17 @@ vi.mock("@/app/api", () => ({
   useToggleBookmarkMutation: () => mockToggleBookmarkMutation(),
 }));
 
-vi.mock("@/app/slices/scannerSlice", () => ({
-  callReceived: vi.fn((v) => ({ type: "scanner/callReceived", payload: v })),
-  setCurrentCall: vi.fn((v) => ({
-    type: "scanner/setCurrentCall",
-    payload: v,
-  })),
+vi.mock("@/services/audioPlayer", () => ({
+  audioPlayer: {
+    play: vi.fn(),
+  },
 }));
 
 vi.mock("@/app/slices/authSlice", () => ({
   selectToken: () => "fake-token",
 }));
 
-const mockDispatch = vi.fn();
 vi.mock("@/app/store", () => ({
-  useAppDispatch: () => mockDispatch,
   useAppSelector: (selector: (state: unknown) => unknown) => selector({}),
 }));
 
