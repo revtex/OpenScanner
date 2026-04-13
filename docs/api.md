@@ -675,8 +675,6 @@ Reorders API keys by updating the `order` column. Runs in a single transaction.
 
 ---
 
----
-
 ### Server Directory Browser
 
 #### `GET /api/admin/fs/directories`

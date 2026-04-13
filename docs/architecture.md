@@ -189,7 +189,7 @@ Scanner.tsx (lazy-loaded page)
 
 #### State Management
 
-- **frontend/src/app/slices/adminSlice.ts** — RTK Query endpoints for all admin CRUD operations (Users, Systems, Talkgroups, Units, Groups, Tags, ApiKeys, Dirwatches, Downstreams, Webhooks, Config, Logs, Import/Export, Password, API key hash migration, server directory listing, missing audio tools); tag-based cache invalidation
+- **frontend/src/app/slices/adminSlice.ts** — RTK Query endpoints for all admin CRUD operations (Users, Systems, Talkgroups, Units, Groups, Tags, ApiKeys, Dirwatches, Downstreams, Webhooks, Config, Logs, Import/Export, Password, server directory listing, missing audio tools); tag-based cache invalidation
 - **frontend/src/app/slices/authSlice.ts** — Added `selectToken`, `selectRole`, `selectUsername` selectors
 - **frontend/src/app/api.ts** — Extended `tagTypes` for admin cache invalidation
 - **frontend/src/types/index.ts** — 15 admin types (`AdminUser`, `AdminSystem`, `AdminTalkgroup`, `AdminUnit`, `AdminGroup`, `AdminTag`, `AdminApiKey`, `AdminApiKeyCreateResponse`, `AdminDirwatch`, `AdminDownstream`, `AdminWebhook`, `AdminSetting`, `AdminLog`, `ChangePasswordRequest`, `CreateUserPayload`, `UpdateUserPayload`)
@@ -226,4 +226,4 @@ Scanner.tsx (lazy-loaded page)
 
 ### Frontend — Stubs (not yet implemented)
 
-- **frontend/src/pages/SharedCall.tsx** — Public shareable call player (placeholder)
+- No frontend stub files are currently tracked in the repository for phases 1–12.
