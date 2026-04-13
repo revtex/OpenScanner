@@ -1,64 +1,117 @@
 # OpenScanner
 
-A modern reimplementation of [rdio-scanner](https://github.com/chuot/rdio-scanner) built with Go + React.
+OpenScanner is a web-based radio call manager for monitoring, searching, and administering scanner traffic in real time.
 
-## Stack
+It is a modern reimplementation of [rdio-scanner](https://github.com/chuot/rdio-scanner), built as a single Go application with an embedded React frontend.
 
-- **Backend:** Go 1.25, Gin, coder/websocket, modernc.org/sqlite, sqlc, kardianos/service, log/slog, go:embed
-- **Frontend:** React 18, TypeScript, Vite, DaisyUI, Tailwind CSS, Redux Toolkit, RTK Query, @tanstack/react-virtual
-- **Database:** SQLite (WAL mode — config & metadata stored in DB)
-- **Server config:** CLI flags, environment variables, or optional INI file (precedence: flags > env > INI > defaults)
-- **Audio:** Filesystem storage, FFmpeg for conversion (4 modes), bounded worker pool
-- **Deployment:** Single binary (frontend embedded via go:embed), Docker, or system service
-- **Dev tooling:** `air` (Go hot-reload) + Vite proxy
+## Why OpenScanner
+
+- Real-time live scanner feed over WebSocket
+- Historical call archive with fast filtering
+- Built-in admin dashboard for systems, talkgroups, users, API keys, and tools
+- Flexible ingest options: HTTP uploader and directory watch
+- Simple operations model: SQLite + filesystem, no external database required
+- Easy deployment: one binary or Docker
+
+## What It Does
+
+OpenScanner is designed to sit between your recorder(s) and your listeners:
+
+1. Ingests calls from recorder uploads or watched directories
+2. Processes audio with configurable FFmpeg modes
+3. Stores metadata in SQLite and audio on disk
+4. Streams live calls to browser clients
+5. Provides an admin UI for configuration and operations
+
+## Key Features
+
+- Live scanner interface with queue/history behavior and playback controls
+- Call archive search by system, talkgroup, date range, and sort direction
+- Role-based auth with admin and listener permissions
+- Admin CRUD for users, systems, talkgroups, units, groups, tags, API keys, dirwatches, downstreams, and webhooks
+- Tools for CSV import, full JSON config import/export, and missing-audio cleanup
+- Configurable public access mode for listener endpoint behavior
+- Built-in health endpoint for orchestration checks
 
 ## Quick Start
 
-### Development
+### Option 1: Docker Compose
 
 ```bash
-make dev    # Starts Go backend (air hot-reload) + Vite dev server
+docker compose up -d
 ```
 
-### Build
+Then open http://localhost:3000.
+
+### Option 2: Build and Run Locally
 
 ```bash
-make build  # Builds Go binary + frontend production bundle
+make build
+./build/openscanner --listen 0.0.0.0:3000 --db-file ./data/openscanner.db --recordings-dir ./data/recordings
 ```
 
-### Test
+Then open http://localhost:3000.
 
-```bash
-make test   # Runs Go tests + Vitest frontend tests
-```
+On first run, complete the setup flow at /setup to create your admin account.
 
-## Project Status
+## Recorder Integration
 
-- [x] **Phase 1** — Foundation & Scaffolding
-- [x] **Phase 2** — Database Schema & Seeding
-- [x] **Phase 3** — Backend Auth, RBAC & Setup
-- [x] **Phase 4** — Backend Call Ingest
-- [x] **Phase 5** — WebSocket Hub
-- [x] **Phase 6** — Admin CRUD APIs
-- [x] **Phase 7** — DirWatch Service
-- [x] **Phase 8** — Downstream Pusher
-- [x] **Phase 9** — Frontend Scanner UI
-- [x] **Phase 10** — Frontend TG Selection & Search Panels
-- [x] **Phase 11** — Frontend Admin Dashboard
-- [x] **Phase 12** — CLI, Daemon, SSL, Docker & Deployment
-- [ ] **Phase 13** — Testing
-- [ ] **Phase 14** — Documentation
-- [ ] **Phase 15** — Keyboard Shortcuts & Theme Toggle
-- [ ] **Phase 16** — Shareable Links, Bookmarks & Activity Dashboard
-- [ ] **Phase 17** — Push Notifications & Webhook Integration
-- [ ] **Phase 18** — Call Transcription
+OpenScanner supports both:
 
-See [docs/plan.md](docs/plan.md) for the full implementation plan.
+- HTTP upload endpoints for recorder integrations
+- DirWatch ingestion for recorders that write files locally
+
+See [docs/recorder-integration.md](docs/recorder-integration.md) for recorder-specific setup and examples.
+
+## Admin Dashboard
+
+The admin UI is available at /admin and includes:
+
+- User and role management
+- Radio system, talkgroup, and unit management
+- API key management for recorder uploads
+- DirWatch and downstream configuration
+- Settings, logs, and maintenance tools
+
+See [docs/admin-guide.md](docs/admin-guide.md) for a full walkthrough.
+
+## Deployment
+
+Supported deployment styles:
+
+- Docker and Docker Compose
+- Single binary on Linux/macOS/Windows
+- Service mode via operating system service manager
+- Optional TLS via cert files or auto-cert mode
+
+See [docs/deployment.md](docs/deployment.md) for production deployment guidance.
 
 ## Documentation
 
-- [Architecture](docs/architecture.md) — System diagram & component descriptions
-- [API Reference](docs/api.md) — Endpoint documentation
-- [Admin Guide](docs/admin-guide.md) — UI walkthrough
-- [Deployment](docs/deployment.md) — Docker, bare metal, reverse proxy
-- [Recorder Integration](docs/recorder-integration.md) — Per-recorder setup
+- [docs/architecture.md](docs/architecture.md): System architecture and data flow
+- [docs/api.md](docs/api.md): Full API reference
+- [docs/admin-guide.md](docs/admin-guide.md): Admin dashboard usage
+- [docs/deployment.md](docs/deployment.md): Deployment and operations
+- [docs/recorder-integration.md](docs/recorder-integration.md): Recorder setup and DirWatch
+- [docs/plan.md](docs/plan.md): Implementation roadmap and project phases
+
+## Development
+
+```bash
+make dev
+make build
+make test
+make lint
+```
+
+## Tech Stack
+
+- Backend: Go, Gin, WebSocket, SQLite, sqlc
+- Frontend: React, TypeScript, Vite, Tailwind CSS, DaisyUI, Redux Toolkit
+- Storage: SQLite metadata + filesystem audio
+
+## Project Status
+
+Phases 1 through 12 are complete, including core ingestion, streaming, admin dashboard, and deployment paths.
+
+For detailed phase tracking, see [docs/plan.md](docs/plan.md).
