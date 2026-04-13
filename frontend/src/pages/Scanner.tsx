@@ -121,7 +121,9 @@ export default function Scanner() {
         onClearAvoids={scanner.clearAvoids}
         onToggleSelectTG={handleToggleSelectTG}
         onToggleSearch={handleToggleSearch}
-        onToggleBookmarks={token ? () => setBookmarksOpen((prev) => !prev) : undefined}
+        onToggleBookmarks={
+          token ? () => setBookmarksOpen((prev) => !prev) : undefined
+        }
         keypadBeeps={scanner.config?.keypadBeeps}
       />
       <SelectTGPanel

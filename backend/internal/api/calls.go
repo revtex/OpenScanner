@@ -203,6 +203,18 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		patchesJSON = sql.NullString{String: v, Valid: true}
 	}
 
+	// Optional call metadata fields.
+	var siteCol, channelCol, decoderCol sql.NullString
+	if v := c.PostForm("site"); v != "" {
+		siteCol = sql.NullString{String: v, Valid: true}
+	}
+	if v := c.PostForm("channel"); v != "" {
+		channelCol = sql.NullString{String: v, Valid: true}
+	}
+	if v := c.PostForm("decoder"); v != "" {
+		decoderCol = sql.NullString{String: v, Valid: true}
+	}
+
 	// Optional talkgroup metadata for auto-populate / backfill.
 	talkgroupLabel := c.PostForm("talkgroupLabel")
 	talkgroupTag := c.PostForm("talkgroupTag")
@@ -382,9 +394,9 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		PatchesJson:     patchesJSON,
 		SystemID:        system.ID,
 		TalkgroupID:     sql.NullInt64{Int64: talkgroup.ID, Valid: true},
-		Site:            sql.NullString{},
-		Channel:         sql.NullString{},
-		Decoder:         sql.NullString{},
+		Site:            siteCol,
+		Channel:         channelCol,
+		Decoder:         decoderCol,
 	})
 	if err != nil {
 		slog.Error("failed to insert call", "error", err)
@@ -414,6 +426,15 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		}
 		if source.Valid {
 			calPayload["source"] = source.Int64
+		}
+		if siteCol.Valid {
+			calPayload["site"] = siteCol.String
+		}
+		if channelCol.Valid {
+			calPayload["channel"] = channelCol.String
+		}
+		if decoderCol.Valid {
+			calPayload["decoder"] = decoderCol.String
 		}
 		calMsg, err := ws.NewCALMessage(calPayload)
 		if err != nil {
