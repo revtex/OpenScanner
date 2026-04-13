@@ -209,8 +209,20 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		admin.GET("/shared-links", adminHandler.GetSharedLinks)
 		admin.DELETE("/shared-links/:id", adminHandler.DeleteSharedLinkAdmin)
 
-		// Swagger API documentation — admin-only.
-		admin.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+		// Swagger: issue a short-lived HTTP-only cookie so Swagger UI
+		// can be opened in a new browser tab without exposing the JWT.
+		admin.POST("/docs/session", func(c *gin.Context) {
+			auth.SetSwaggerCookie(c)
+			c.JSON(200, gin.H{"ok": true})
+		})
+	}
+
+	// Swagger API documentation — protected by the HTTP-only cookie
+	// set via POST /api/admin/docs/session above.
+	swaggerDocs := api.Group("/admin/docs")
+	swaggerDocs.Use(middleware.SwaggerCookieAuth())
+	{
+		swaggerDocs.GET("/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
 	// WebSocket endpoints.

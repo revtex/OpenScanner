@@ -9,8 +9,13 @@ import {
   useCleanupMissingAudioCallsMutation,
   type MissingAudioResponse,
 } from "@/app/slices/adminSlice";
+import { selectToken } from "@/app/slices/authSlice";
+import { useAppSelector } from "@/app/store";
+
+const SWAGGER_URL = "/api/admin/docs/index.html";
 
 export default function ToolsPanel() {
+  const token = useAppSelector(selectToken);
   const [importTalkgroups] = useImportTalkgroupsMutation();
   const [importUnits] = useImportUnitsMutation();
   const [triggerExport] = useLazyExportConfigQuery();
@@ -352,18 +357,36 @@ export default function ToolsPanel() {
           </h2>
           <p className="text-sm text-base-content/70">
             Browse the interactive Swagger UI to explore and test all API
-            endpoints.
+            endpoints. Use the token below to authorize requests via the
+            padlock icon in Swagger UI.
           </p>
-          <div>
-            <a
-              href="/api/admin/docs/index.html"
-              target="_blank"
-              rel="noopener noreferrer"
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
               className="btn btn-primary btn-sm"
+              onClick={async () => {
+                const res = await fetch("/api/admin/docs/session", {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                if (res.ok) {
+                  window.open(SWAGGER_URL, "_blank", "noopener");
+                }
+              }}
             >
               Open Swagger UI
               <ExternalLink className="w-4 h-4" />
-            </a>
+            </button>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                if (token) {
+                  navigator.clipboard.writeText(token);
+                  showToast("Bearer token copied to clipboard", "success");
+                }
+              }}
+            >
+              Copy Bearer Token
+            </button>
           </div>
         </div>
       </div>

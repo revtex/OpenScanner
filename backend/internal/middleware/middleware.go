@@ -236,3 +236,17 @@ func MaxBodySize(maxBytes int64) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// SwaggerCookieAuth validates the short-lived HTTP-only cookie set by
+// POST /api/admin/docs/session. Used to protect the Swagger UI route
+// without exposing JWTs in URLs.
+func SwaggerCookieAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cookie, err := c.Cookie(auth.SwaggerCookieName)
+		if err != nil || !auth.ValidateSwaggerCookie(cookie) {
+			c.AbortWithStatusJSON(401, gin.H{"error": "swagger session expired, please reopen from admin panel"})
+			return
+		}
+		c.Next()
+	}
+}
