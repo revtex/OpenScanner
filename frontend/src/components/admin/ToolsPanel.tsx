@@ -358,7 +358,8 @@ export default function ToolsPanel() {
           <p className="text-sm text-base-content/70">
             Browse the interactive Swagger UI to explore and test all API
             endpoints. Use the token below to authorize requests via the
-            padlock icon in Swagger UI.
+            padlock icon in Swagger UI. Your docs session expires after 1
+            hour — click "Open Swagger UI" again to refresh it.
           </p>
           <div className="flex items-center gap-2 flex-wrap">
             <button

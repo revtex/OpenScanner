@@ -228,7 +228,7 @@ func SetSwaggerCookie(c interface {
 	SetSameSite(http.SameSite)
 	SetCookie(name, value string, maxAge int, path, domain string, secure, httpOnly bool)
 }) {
-	const maxAge = 300 // 5 minutes
+	const maxAge = 3600 // 1 hour
 	expiry := time.Now().Add(time.Duration(maxAge) * time.Second).Unix()
 	payload := fmt.Sprintf("swagger:%d", expiry)
 	mac := hmac.New(sha256.New, JWTSecret)
