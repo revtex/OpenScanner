@@ -24,7 +24,7 @@ OpenScanner is a modern reimplementation of [rdio-scanner](https://github.com/ch
 | Logging            | log/slog (structured, levelled)                                  |
 | Deployment         | go:embed frontend into single Go binary                          |
 | Frontend framework | React 18 + TypeScript (strict) + Vite                            |
-| UI components      | DaisyUI + Tailwind CSS (dark/light themes)                       |
+| UI components      | Tailwind CSS 4 + DaisyUI 5 (dark/light themes)                   |
 | State management   | Redux Toolkit + RTK Query                                        |
 | Virtual scrolling  | @tanstack/react-virtual (long admin lists)                       |
 | PWA                | Service Worker (app-shell cache + push notifications) + manifest |

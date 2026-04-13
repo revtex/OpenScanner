@@ -192,7 +192,7 @@ export default function ToolsPanel() {
               ref={tgFileRef}
               type="file"
               accept=".csv"
-              className="file-input file-input-bordered file-input-sm"
+              className="file-input file-input-sm"
             />
             <button
               className="btn btn-primary btn-sm"
@@ -215,7 +215,7 @@ export default function ToolsPanel() {
               ref={unitFileRef}
               type="file"
               accept=".csv"
-              className="file-input file-input-bordered file-input-sm"
+              className="file-input file-input-sm"
             />
             <button
               className="btn btn-primary btn-sm"
@@ -252,7 +252,7 @@ export default function ToolsPanel() {
               ref={configFileRef}
               type="file"
               accept=".json"
-              className="file-input file-input-bordered file-input-sm"
+              className="file-input file-input-sm"
             />
             <button
               className="btn btn-primary btn-sm"
@@ -284,14 +284,14 @@ export default function ToolsPanel() {
                   : "Scanning..."
                 : "Scan Missing Audio"}
             </button>
-            <label className="label cursor-pointer gap-2">
+            <label className="flex items-center cursor-pointer gap-2">
               <input
                 type="checkbox"
                 className="checkbox checkbox-sm"
                 checked={confirmMissingCleanup}
                 onChange={(e) => setConfirmMissingCleanup(e.target.checked)}
               />
-              <span className="label-text">Confirm delete missing rows</span>
+              <span className="text-sm">Confirm delete missing rows</span>
             </label>
             <button
               className="btn btn-error"

@@ -262,40 +262,34 @@ export default function UsersPanel() {
             {editingId != null ? "Edit User" : "Create User"}
           </h3>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Username</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Username</span>
               <input
                 type="text"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={form.username}
                 onChange={(e) => updateField("username", e.target.value)}
                 required
               />
             </label>
 
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">
-                  Password{editingId != null ? " (leave blank to keep)" : ""}
-                </span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">
+                Password{editingId != null ? " (leave blank to keep)" : ""}
+              </span>
               <input
                 type="password"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={form.password}
                 onChange={(e) => updateField("password", e.target.value)}
                 required={editingId == null}
               />
             </label>
 
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Role</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Role</span>
               <select
-                className="select select-bordered w-full"
+                className="select w-full"
                 value={form.role}
                 disabled={editingId === 1}
                 onChange={(e) =>
@@ -306,61 +300,49 @@ export default function UsersPanel() {
                 <option value="admin">Admin</option>
               </select>
               {editingId === 1 && (
-                <div className="label">
-                  <span className="label-text-alt text-warning">
-                    Role is locked for the primary admin
-                  </span>
-                </div>
+                <span className="text-xs opacity-60 text-warning">
+                  Role is locked for the primary admin
+                </span>
               )}
             </label>
 
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Expiration</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Expiration</span>
               <input
                 type="date"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={form.expiration}
                 disabled={editingId === 1}
                 onChange={(e) => updateField("expiration", e.target.value)}
               />
               {editingId === 1 && (
-                <div className="label">
-                  <span className="label-text-alt text-warning">
-                    Expiration is locked for the primary admin
-                  </span>
-                </div>
+                <span className="text-xs opacity-60 text-warning">
+                  Expiration is locked for the primary admin
+                </span>
               )}
             </label>
 
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Concurrent Limit</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Concurrent Limit</span>
               <input
                 type="number"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={form.limit}
                 disabled={editingId === 1}
                 onChange={(e) => updateField("limit", e.target.value)}
                 min={0}
               />
               {editingId === 1 && (
-                <div className="label">
-                  <span className="label-text-alt text-warning">
-                    Concurrent limit is locked for the primary admin
-                  </span>
-                </div>
+                <span className="text-xs opacity-60 text-warning">
+                  Concurrent limit is locked for the primary admin
+                </span>
               )}
             </label>
 
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Systems JSON</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Systems JSON</span>
               <textarea
-                className="textarea textarea-bordered w-full"
+                className="textarea w-full"
                 rows={3}
                 value={form.systemsJson}
                 onChange={(e) => updateField("systemsJson", e.target.value)}

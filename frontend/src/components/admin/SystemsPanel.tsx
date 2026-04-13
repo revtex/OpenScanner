@@ -771,13 +771,11 @@ export default function SystemsPanel() {
             {editingSysId != null ? "Edit System" : "Create System"}
           </h3>
           <form onSubmit={handleSystemSubmit} className="flex flex-col gap-3">
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">System ID</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">System ID</span>
               <input
                 type="number"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={sysForm.systemId}
                 onChange={(e) =>
                   setSysForm((p) => ({ ...p, systemId: e.target.value }))
@@ -785,13 +783,11 @@ export default function SystemsPanel() {
                 required
               />
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Label</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Label</span>
               <input
                 type="text"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={sysForm.label}
                 onChange={(e) =>
                   setSysForm((p) => ({ ...p, label: e.target.value }))
@@ -799,15 +795,13 @@ export default function SystemsPanel() {
                 required
               />
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">LED Color</span>
-                <span className="label-text-alt text-base-content/60">
-                  Indicator color when playing audio from this system
-                </span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">LED Color</span>
+              <span className="text-xs text-base-content/60">
+                Indicator color when playing audio from this system
+              </span>
               <select
-                className="select select-bordered w-full"
+                className="select w-full"
                 value={sysForm.led}
                 onChange={(e) =>
                   setSysForm((p) => ({ ...p, led: e.target.value }))
@@ -821,16 +815,14 @@ export default function SystemsPanel() {
                 ))}
               </select>
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Blacklists</span>
-                <span className="label-text-alt text-base-content/60">
-                  Comma-separated talkgroup IDs to exclude when auto-populate is
-                  on
-                </span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Blacklists</span>
+              <span className="text-xs text-base-content/60">
+                Comma-separated talkgroup IDs to exclude when auto-populate is
+                on
+              </span>
               <textarea
-                className="textarea textarea-bordered w-full"
+                className="textarea w-full"
                 rows={2}
                 placeholder="e.g. 1234,5678"
                 value={sysForm.blacklists}
@@ -867,13 +859,11 @@ export default function SystemsPanel() {
             {editingTgId != null ? "Edit Talkgroup" : "Add Talkgroup"}
           </h3>
           <form onSubmit={handleTgSubmit} className="flex flex-col gap-3">
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Talkgroup ID</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Talkgroup ID</span>
               <input
                 type="number"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={tgForm.talkgroupId}
                 onChange={(e) =>
                   setTgForm((p) => ({ ...p, talkgroupId: e.target.value }))
@@ -881,38 +871,32 @@ export default function SystemsPanel() {
                 required
               />
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Label</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Label</span>
               <input
                 type="text"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={tgForm.label}
                 onChange={(e) =>
                   setTgForm((p) => ({ ...p, label: e.target.value }))
                 }
               />
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Name</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Name</span>
               <input
                 type="text"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={tgForm.name}
                 onChange={(e) =>
                   setTgForm((p) => ({ ...p, name: e.target.value }))
                 }
               />
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Group</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Group</span>
               <select
-                className="select select-bordered w-full"
+                className="select w-full"
                 value={tgForm.groupId}
                 onChange={(e) =>
                   setTgForm((p) => ({ ...p, groupId: e.target.value }))
@@ -926,12 +910,10 @@ export default function SystemsPanel() {
                 ))}
               </select>
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Tag</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Tag</span>
               <select
-                className="select select-bordered w-full"
+                className="select w-full"
                 value={tgForm.tagId}
                 onChange={(e) =>
                   setTgForm((p) => ({ ...p, tagId: e.target.value }))
@@ -945,15 +927,13 @@ export default function SystemsPanel() {
                 ))}
               </select>
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">LED Color</span>
-                <span className="label-text-alt text-base-content/60">
-                  Overrides system color
-                </span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">LED Color</span>
+              <span className="text-xs text-base-content/60">
+                Overrides system color
+              </span>
               <select
-                className="select select-bordered w-full"
+                className="select w-full"
                 value={tgForm.led}
                 onChange={(e) =>
                   setTgForm((p) => ({ ...p, led: e.target.value }))
@@ -967,16 +947,14 @@ export default function SystemsPanel() {
                 ))}
               </select>
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Frequency (Hz)</span>
-                <span className="label-text-alt text-base-content/60">
-                  Display-only fake frequency
-                </span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Frequency (Hz)</span>
+              <span className="text-xs text-base-content/60">
+                Display-only fake frequency
+              </span>
               <input
                 type="number"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={tgForm.frequency}
                 min={0}
                 placeholder="e.g. 155325000"
@@ -1013,13 +991,11 @@ export default function SystemsPanel() {
             {editingUnitId != null ? "Edit Unit" : "Add Unit"}
           </h3>
           <form onSubmit={handleUnitSubmit} className="flex flex-col gap-3">
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Unit ID</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Unit ID</span>
               <input
                 type="number"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={unitForm.unitId}
                 onChange={(e) =>
                   setUnitForm((p) => ({ ...p, unitId: e.target.value }))
@@ -1027,13 +1003,11 @@ export default function SystemsPanel() {
                 required
               />
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Label</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Label</span>
               <input
                 type="text"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={unitForm.label}
                 onChange={(e) =>
                   setUnitForm((p) => ({ ...p, label: e.target.value }))

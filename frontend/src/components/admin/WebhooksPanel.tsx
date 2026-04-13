@@ -215,24 +215,20 @@ export default function WebhooksPanel() {
             {editingId != null ? "Edit Webhook" : "Create Webhook"}
           </h3>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">URL</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">URL</span>
               <input
                 type="url"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
                 required
               />
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Type</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Type</span>
               <select
-                className="select select-bordered w-full"
+                className="select w-full"
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value })}
               >
@@ -240,13 +236,11 @@ export default function WebhooksPanel() {
                 <option value="discord">discord</option>
               </select>
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Secret (optional)</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Secret (optional)</span>
               <input
                 type="password"
-                className="input input-bordered w-full"
+                className="input w-full"
                 placeholder={
                   editingId != null ? "Leave blank to keep current" : ""
                 }
@@ -254,12 +248,10 @@ export default function WebhooksPanel() {
                 onChange={(e) => setForm({ ...form, secret: e.target.value })}
               />
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Systems JSON (optional)</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Systems JSON (optional)</span>
               <textarea
-                className="textarea textarea-bordered w-full"
+                className="textarea w-full"
                 value={form.systemsJson}
                 onChange={(e) =>
                   setForm({ ...form, systemsJson: e.target.value })
@@ -268,8 +260,8 @@ export default function WebhooksPanel() {
                 rows={2}
               />
             </label>
-            <div className="form-control">
-              <label className="label cursor-pointer justify-start gap-3">
+            <div className="flex flex-col">
+              <label className="flex items-center cursor-pointer justify-start gap-3">
                 <input
                   type="checkbox"
                   className="toggle toggle-primary"
@@ -278,7 +270,7 @@ export default function WebhooksPanel() {
                     setForm({ ...form, disabled: e.target.checked ? 1 : 0 })
                   }
                 />
-                <span className="label-text">Disabled</span>
+                <span className="text-sm">Disabled</span>
               </label>
             </div>
             <div className="modal-action">

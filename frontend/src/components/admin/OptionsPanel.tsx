@@ -257,8 +257,8 @@ export default function OptionsPanel() {
 
     if (isBooleanKey(key)) {
       return (
-        <div className="form-control">
-          <label className="label cursor-pointer justify-start gap-4">
+        <div className="flex flex-col">
+          <label className="flex items-center cursor-pointer justify-start gap-4">
             <input
               type="checkbox"
               className="toggle toggle-primary"
@@ -268,7 +268,7 @@ export default function OptionsPanel() {
               }
             />
             <div>
-              <span className="label-text font-medium">
+              <span className="text-sm font-medium">
                 {LABELS[key] ?? key}
               </span>
               {DESCRIPTIONS[key] && (
@@ -283,8 +283,8 @@ export default function OptionsPanel() {
     }
 
     const label = (
-      <div className="label pb-0">
-        <span className="label-text font-medium">{LABELS[key] ?? key}</span>
+      <div className="pb-0">
+        <span className="text-sm font-medium">{LABELS[key] ?? key}</span>
       </div>
     );
     const description = DESCRIPTIONS[key] ? (
@@ -293,11 +293,11 @@ export default function OptionsPanel() {
 
     if (key === "audioConversion") {
       return (
-        <div className="form-control">
+        <div className="flex flex-col">
           {label}
           {description}
           <select
-            className="select select-bordered w-full max-w-xs"
+            className="select w-full max-w-xs"
             value={value}
             onChange={(e) => updateSetting(key, e.target.value)}
           >
@@ -313,11 +313,11 @@ export default function OptionsPanel() {
 
     if (key === "keypadBeeps") {
       return (
-        <div className="form-control">
+        <div className="flex flex-col">
           {label}
           {description}
           <select
-            className="select select-bordered w-full max-w-xs"
+            className="select w-full max-w-xs"
             value={value}
             onChange={(e) => updateSetting(key, e.target.value)}
           >
@@ -333,11 +333,11 @@ export default function OptionsPanel() {
 
     if (key === "transcriptionModel") {
       return (
-        <div className="form-control">
+        <div className="flex flex-col">
           {label}
           {description}
           <select
-            className="select select-bordered w-full max-w-xs"
+            className="select w-full max-w-xs"
             value={value}
             onChange={(e) => updateSetting(key, e.target.value)}
           >
@@ -358,12 +358,12 @@ export default function OptionsPanel() {
       key === "duplicateDetectionTimeFrame"
     ) {
       return (
-        <div className="form-control">
+        <div className="flex flex-col">
           {label}
           {description}
           <input
             type="number"
-            className="input input-bordered w-full max-w-xs"
+            className="input w-full max-w-xs"
             value={value}
             min={0}
             onChange={(e) => updateSetting(key, e.target.value)}
@@ -374,11 +374,11 @@ export default function OptionsPanel() {
 
     if (key === "afsSystems") {
       return (
-        <div className="form-control">
+        <div className="flex flex-col">
           {label}
           {description}
           <textarea
-            className="textarea textarea-bordered w-full max-w-xs"
+            className="textarea w-full max-w-xs"
             value={value}
             placeholder="e.g. 1,2,5"
             rows={2}
@@ -390,12 +390,12 @@ export default function OptionsPanel() {
 
     // Default: text input
     return (
-      <div className="form-control">
+      <div className="flex flex-col">
         {label}
         {description}
         <input
           type="text"
-          className="input input-bordered w-full max-w-xs"
+          className="input w-full max-w-xs"
           value={value}
           onChange={(e) => updateSetting(key, e.target.value)}
         />
