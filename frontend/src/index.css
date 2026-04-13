@@ -117,6 +117,15 @@
   .lcd-display .btn {
     color: var(--lcd-fg);
   }
+
+  /* Horizontal brightness slider — LCD-integrated style */
+  .brightness-slider {
+    width: 100px;
+    height: 6px;
+    accent-color: var(--lcd-fg, #1e2a24);
+    cursor: pointer;
+    opacity: 0.6;
+  }
 }
 
 /* Restore cursor: pointer on buttons (TW4 changed default to cursor: default) */

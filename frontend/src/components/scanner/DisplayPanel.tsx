@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Share2 } from "lucide-react";
+import { Share2, Sun } from "lucide-react";
 import { BookmarkButton } from "@/components/scanner/BookmarkButton";
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { HistoryPanel } from "@/components/scanner/HistoryPanel";
@@ -63,6 +63,16 @@ export function DisplayPanel({
 }: DisplayPanelProps) {
   const clock = useClock();
   const [fullscreen, setFullscreen] = useState(false);
+  const [brightness, setBrightness] = useState(() => {
+    const saved = localStorage.getItem("lcd-brightness");
+    return saved ? Number(saved) : 50;
+  });
+  const [showBrightness, setShowBrightness] = useState(false);
+
+  const handleBrightness = useCallback((val: number) => {
+    setBrightness(val);
+    localStorage.setItem("lcd-brightness", String(val));
+  }, []);
 
   const { data: bookmarkData } = useGetBookmarkIDsQuery(undefined, {
     skip: !isAuthenticated,
@@ -149,12 +159,33 @@ export function DisplayPanel({
           {/* Row 8: bookmark, share, flags */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
+              <div className="relative flex items-center">
+                <button
+                  className="btn btn-ghost btn-xs btn-circle opacity-50 hover:opacity-50"
+                  onClick={() => setShowBrightness((p) => !p)}
+                  onDoubleClick={(e) => e.stopPropagation()}
+                  aria-label="Adjust brightness"
+                >
+                  <Sun className="w-4 h-4" />
+                </button>
+                {showBrightness && (
+                  <input
+                    type="range"
+                    min={20}
+                    max={120}
+                    value={brightness}
+                    onChange={(e) => handleBrightness(Number(e.target.value))}
+                    className="brightness-slider ml-1"
+                    aria-label="Display brightness"
+                  />
+                )}
+              </div>
               <BookmarkButton
                 isBookmarked={bookmarkedCallIds.includes(currentCall.id)}
                 onToggle={() => handleToggleBookmark(currentCall.id)}
               />
               <button
-                className="btn btn-ghost btn-xs btn-circle opacity-50 hover:opacity-100"
+                className="btn btn-ghost btn-xs btn-circle opacity-50 hover:opacity-50"
                 onClick={handleShare}
                 aria-label="Share call"
               >
@@ -204,7 +235,30 @@ export function DisplayPanel({
           </div>
 
           {/* Row 8: bookmark, share, flags */}
-          <div className="flex items-center justify-between invisible">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <div className="relative flex items-center">
+                <button
+                  className="btn btn-ghost btn-xs btn-circle opacity-50 hover:opacity-50"
+                  onClick={() => setShowBrightness((p) => !p)}
+                  onDoubleClick={(e) => e.stopPropagation()}
+                  aria-label="Adjust brightness"
+                >
+                  <Sun className="w-4 h-4" />
+                </button>
+                {showBrightness && (
+                  <input
+                    type="range"
+                    min={20}
+                    max={120}
+                    value={brightness}
+                    onChange={(e) => handleBrightness(Number(e.target.value))}
+                    className="brightness-slider ml-1"
+                    aria-label="Display brightness"
+                  />
+                )}
+              </div>
+            </div>
             <span>&nbsp;</span>
           </div>
         </>
@@ -214,17 +268,17 @@ export function DisplayPanel({
       <TranscriptPanel call={currentCall} />
 
       {/* History */}
-      <HistoryPanel
-        history={history}
-        currentCallId={currentCall?.id ?? null}
-        time12hFormat={time12hFormat}
-      />
+      <HistoryPanel history={history} time12hFormat={time12hFormat} />
     </div>
   );
 
   return (
     <>
-      <div className="lcd-display rounded-lg" onDoubleClick={handleDoubleClick}>
+      <div
+        className="lcd-display rounded-lg"
+        style={{ filter: `brightness(${brightness / 100})` }}
+        onDoubleClick={handleDoubleClick}
+      >
         {displayContent}
       </div>
 
