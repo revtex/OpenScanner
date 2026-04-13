@@ -85,10 +85,9 @@ class AudioPlayer {
     if (!this.currentItem) return;
     const a = document.createElement("a");
     a.href = this.currentItem.audioUrl;
-    const ext = this.currentItem.call.audioType?.includes("wav")
-      ? "wav"
-      : "mp3";
-    a.download = `${this.currentItem.call.audioName || "call"}.${ext}`;
+    const name = this.currentItem.call.audioName || "call";
+    // audioName typically already includes the extension (e.g. "call.m4a")
+    a.download = /\.\w+$/.test(name) ? name : `${name}.mp3`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
