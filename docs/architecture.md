@@ -1,6 +1,6 @@
 # OpenScanner — Architecture
 
-> **Implementation status:** Phases 1–11 (Foundation, Database Schema, Backend Auth/RBAC/Setup, Call Ingest, WebSocket Hub, Admin CRUD APIs, DirWatch Service, Downstream Pusher, Frontend Scanner UI, Frontend TG Selection & Search Panels, Frontend Admin Dashboard) are complete, plus Phase 12 (CLI, Daemon, SSL, Docker & Deployment) and Phase 15 (Keyboard Shortcuts & Theme Toggle). Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
+> **Implementation status:** Phases 1–12 are complete (Foundation through CLI/Daemon/SSL/Docker/Deployment). Phases 13+ remain planned and are documented for future work. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
 
 ## Overview
 

@@ -1473,6 +1473,8 @@ All extended features are **configurable** — disabled by default (except keybo
 
 ## Implementation Phases
 
+> **Current status:** Phases 1–12 are complete. Phases 13–18 are planned roadmap items.
+
 ### Phase 1 — Foundation & Scaffolding ✅ COMPLETE
 
 **Goal:** All tooling set up; `make build` and `make test` run without errors.
@@ -1741,7 +1743,9 @@ All extended features are **configurable** — disabled by default (except keybo
 
 ---
 
-### Phase 12 — CLI, Daemon, SSL, Docker & Deployment
+### Phase 12 — CLI, Daemon, SSL, Docker & Deployment ✅ COMPLETE
+
+**Status: COMPLETE**
 
 **Goal:** Production-ready binary with CLI management, system service support, Docker image; HTTPS support; single-file deployment via `go:embed`.
 
