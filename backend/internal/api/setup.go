@@ -29,9 +29,15 @@ type setupStatusResponse struct {
 	PublicAccess bool `json:"publicAccess"`
 }
 
-// GetSetupStatus handles GET /api/setup/status.
-// Returns whether initial setup is needed and whether public access is active.
-// This endpoint is always unauthenticated.
+// GetSetupStatus godoc
+//
+//	@Summary		Get setup status
+//	@Description	Returns whether initial setup is needed and whether public access is active. Always unauthenticated.
+//	@Tags			Setup
+//	@Produce		json
+//	@Success		200	{object}	setupStatusResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Router			/setup/status [get]
 func (h *SetupHandler) GetSetupStatus(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -61,9 +67,19 @@ type setupRequest struct {
 	Password string `json:"password"`
 }
 
-// PostSetup handles POST /api/setup.
-// Creates the initial admin user and marks setup as complete.
-// Returns 409 if setup is already done, 400 for invalid input.
+// PostSetup godoc
+//
+//	@Summary		Complete initial setup
+//	@Description	Creates the initial admin user and marks setup as complete. Returns 409 if setup is already done, 400 for invalid input.
+//	@Tags			Setup
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body	setupRequest	true	"Admin credentials"
+//	@Success		200	{object}	object{ok=bool}
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		409	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Router			/setup [post]
 func (h *SetupHandler) PostSetup(c *gin.Context) {
 	// Serialise concurrent setup requests to prevent TOCTOU race (OWASP A01).
 	h.mu.Lock()

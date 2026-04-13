@@ -53,6 +53,15 @@ type configExport struct {
 }
 
 // ExportConfig handles GET /api/admin/export/config.
+//
+// @Summary      Export full configuration
+// @Description  Returns the entire server configuration as a JSON download. Sensitive fields (API key hashes, downstream API keys, webhook secrets) are excluded.
+// @Tags         Admin
+// @Produce      json
+// @Success      200  {object}  configExport
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/export/config [get]
 func (h *AdminHandler) ExportConfig(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -189,6 +198,18 @@ type configImport struct {
 }
 
 // ImportConfig handles POST /api/admin/import/config.
+//
+// @Summary      Import full configuration
+// @Description  Imports settings, groups, tags, systems, talkgroups, units, API keys, dirwatches, downstreams, and webhooks from a JSON body. Existing records are upserted or skipped on conflict.
+// @Tags         Admin
+// @Accept       json
+// @Produce      json
+// @Param        config  body  configImport  true  "Configuration data to import"
+// @Success      200  {object}  object  "ok: true"
+// @Failure      400  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/import/config [post]
 func (h *AdminHandler) ImportConfig(c *gin.Context) {
 	ctx := c.Request.Context()
 

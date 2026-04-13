@@ -117,6 +117,16 @@ var hiddenTopLevelDirs = map[string]bool{
 // Returns immediate child directories for a given absolute server path.
 // This endpoint is admin-only (JWT-protected) so the admin can navigate
 // to wherever their recorder (SDR Trunk, trunk-recorder, etc.) writes files.
+//
+// @Summary  List server directories
+// @Description  Returns immediate child directories for a given absolute server path.
+// @Tags     Admin
+// @Produce  json
+// @Param    path  query  string  false  "Absolute directory path"  default(/)
+// @Success  200  {object}  listServerDirectoriesResponse
+// @Failure  422  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/fs/directories [get]
 func (h *AdminHandler) ListServerDirectories(c *gin.Context) {
 	path := c.Query("path")
 	if path == "" {
@@ -186,6 +196,15 @@ func (h *AdminHandler) ListServerDirectories(c *gin.Context) {
 }
 
 // ListUsers handles GET /api/admin/users.
+//
+// @Summary  List users
+// @Description  Returns all users.
+// @Tags     Admin
+// @Produce  json
+// @Success  200  {array}   userResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/users [get]
 func (h *AdminHandler) ListUsers(c *gin.Context) {
 	users, err := h.queries.ListUsers(c.Request.Context())
 	if err != nil {
@@ -197,6 +216,20 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 }
 
 // CreateUser handles POST /api/admin/users.
+//
+// @Summary  Create a user
+// @Description  Creates a new user account.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    body  body      createUserRequest  true  "User to create"
+// @Success  201   {object}  userResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  422   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/users [post]
 func (h *AdminHandler) CreateUser(c *gin.Context) {
 	var req createUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -261,6 +294,22 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 }
 
 // UpdateUser handles PUT /api/admin/users/:id.
+//
+// @Summary  Update a user
+// @Description  Updates an existing user by ID.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    id    path      int                true  "User ID"
+// @Param    body  body      updateUserRequest  true  "User fields to update"
+// @Success  200   {object}  userResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  404   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  422   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/users/{id} [put]
 func (h *AdminHandler) UpdateUser(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -334,6 +383,19 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 }
 
 // DeleteUser handles DELETE /api/admin/users/:id.
+//
+// @Summary  Delete a user
+// @Description  Deletes a user by ID. Cannot delete your own account or the primary admin.
+// @Tags     Admin
+// @Produce  json
+// @Param    id   path      int  true  "User ID"
+// @Success  200  {object}  object{ok=bool}
+// @Failure  400  {object}  ErrorResponse
+// @Failure  403  {object}  ErrorResponse
+// @Failure  404  {object}  ErrorResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/users/{id} [delete]
 func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -368,6 +430,15 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 // ---------- Systems ----------
 
 // ListSystems handles GET /api/admin/systems.
+//
+// @Summary  List systems
+// @Description  Returns all systems.
+// @Tags     Admin
+// @Produce  json
+// @Success  200  {array}   systemResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/systems [get]
 func (h *AdminHandler) ListSystems(c *gin.Context) {
 	systems, err := h.queries.ListSystems(c.Request.Context())
 	if err != nil {
@@ -379,6 +450,19 @@ func (h *AdminHandler) ListSystems(c *gin.Context) {
 }
 
 // CreateSystem handles POST /api/admin/systems.
+//
+// @Summary  Create a system
+// @Description  Creates a new radio system.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    body  body      createSystemRequest  true  "System to create"
+// @Success  201   {object}  systemResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/systems [post]
 func (h *AdminHandler) CreateSystem(c *gin.Context) {
 	var req createSystemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -407,6 +491,21 @@ func (h *AdminHandler) CreateSystem(c *gin.Context) {
 }
 
 // UpdateSystem handles PUT /api/admin/systems/:id.
+//
+// @Summary  Update a system
+// @Description  Updates an existing system by ID.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    id    path      int                  true  "System ID"
+// @Param    body  body      updateSystemRequest  true  "System fields to update"
+// @Success  200   {object}  systemResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  404   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/systems/{id} [put]
 func (h *AdminHandler) UpdateSystem(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -446,6 +545,19 @@ func (h *AdminHandler) UpdateSystem(c *gin.Context) {
 
 // ReorderSystems handles PUT /api/admin/systems/reorder.
 // Applies all order updates in one transaction to avoid many per-row updates.
+//
+// @Summary  Reorder systems
+// @Description  Updates the display order of multiple systems in a single transaction.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    body  body      reorderSystemsRequest  true  "Systems with new order values"
+// @Success  200   {object}  object{ok=bool}
+// @Failure  400   {object}  ErrorResponse
+// @Failure  404   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/systems/reorder [put]
 func (h *AdminHandler) ReorderSystems(c *gin.Context) {
 	var req reorderSystemsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -505,6 +617,18 @@ func (h *AdminHandler) ReorderSystems(c *gin.Context) {
 }
 
 // DeleteSystem handles DELETE /api/admin/systems/:id.
+//
+// @Summary  Delete a system
+// @Description  Deletes a system by ID.
+// @Tags     Admin
+// @Produce  json
+// @Param    id   path      int  true  "System ID"
+// @Success  200  {object}  object{ok=bool}
+// @Failure  400  {object}  ErrorResponse
+// @Failure  404  {object}  ErrorResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/systems/{id} [delete]
 func (h *AdminHandler) DeleteSystem(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -527,6 +651,15 @@ func (h *AdminHandler) DeleteSystem(c *gin.Context) {
 // ---------- Talkgroups ----------
 
 // ListTalkgroups handles GET /api/admin/talkgroups.
+//
+// @Summary  List talkgroups
+// @Description  Returns all talkgroups.
+// @Tags     Admin
+// @Produce  json
+// @Success  200  {array}   talkgroupResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/talkgroups [get]
 func (h *AdminHandler) ListTalkgroups(c *gin.Context) {
 	talkgroups, err := h.queries.ListAllTalkgroups(c.Request.Context())
 	if err != nil {
@@ -538,6 +671,19 @@ func (h *AdminHandler) ListTalkgroups(c *gin.Context) {
 }
 
 // CreateTalkgroup handles POST /api/admin/talkgroups.
+//
+// @Summary  Create a talkgroup
+// @Description  Creates a new talkgroup.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    body  body      createTalkgroupRequest  true  "Talkgroup to create"
+// @Success  201   {object}  talkgroupResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/talkgroups [post]
 func (h *AdminHandler) CreateTalkgroup(c *gin.Context) {
 	var req createTalkgroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -566,6 +712,21 @@ func (h *AdminHandler) CreateTalkgroup(c *gin.Context) {
 }
 
 // UpdateTalkgroup handles PUT /api/admin/talkgroups/:id.
+//
+// @Summary  Update a talkgroup
+// @Description  Updates an existing talkgroup by ID.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    id    path      int                     true  "Talkgroup ID"
+// @Param    body  body      updateTalkgroupRequest  true  "Talkgroup fields to update"
+// @Success  200   {object}  talkgroupResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  404   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/talkgroups/{id} [put]
 func (h *AdminHandler) UpdateTalkgroup(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -604,6 +765,18 @@ func (h *AdminHandler) UpdateTalkgroup(c *gin.Context) {
 }
 
 // DeleteTalkgroup handles DELETE /api/admin/talkgroups/:id.
+//
+// @Summary  Delete a talkgroup
+// @Description  Deletes a talkgroup by ID.
+// @Tags     Admin
+// @Produce  json
+// @Param    id   path      int  true  "Talkgroup ID"
+// @Success  200  {object}  object{ok=bool}
+// @Failure  400  {object}  ErrorResponse
+// @Failure  404  {object}  ErrorResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/talkgroups/{id} [delete]
 func (h *AdminHandler) DeleteTalkgroup(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -626,6 +799,15 @@ func (h *AdminHandler) DeleteTalkgroup(c *gin.Context) {
 // ---------- Units ----------
 
 // ListUnits handles GET /api/admin/units.
+//
+// @Summary  List units
+// @Description  Returns all units.
+// @Tags     Admin
+// @Produce  json
+// @Success  200  {array}   unitResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/units [get]
 func (h *AdminHandler) ListUnits(c *gin.Context) {
 	units, err := h.queries.ListAllUnits(c.Request.Context())
 	if err != nil {
@@ -637,6 +819,19 @@ func (h *AdminHandler) ListUnits(c *gin.Context) {
 }
 
 // CreateUnit handles POST /api/admin/units.
+//
+// @Summary  Create a unit
+// @Description  Creates a new unit.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    body  body      createUnitRequest  true  "Unit to create"
+// @Success  201   {object}  unitResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/units [post]
 func (h *AdminHandler) CreateUnit(c *gin.Context) {
 	var req createUnitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -665,6 +860,21 @@ func (h *AdminHandler) CreateUnit(c *gin.Context) {
 }
 
 // UpdateUnit handles PUT /api/admin/units/:id.
+//
+// @Summary  Update a unit
+// @Description  Updates an existing unit by ID.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    id    path      int                true  "Unit ID"
+// @Param    body  body      updateUnitRequest  true  "Unit fields to update"
+// @Success  200   {object}  unitResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  404   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/units/{id} [put]
 func (h *AdminHandler) UpdateUnit(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -703,6 +913,18 @@ func (h *AdminHandler) UpdateUnit(c *gin.Context) {
 }
 
 // DeleteUnit handles DELETE /api/admin/units/:id.
+//
+// @Summary  Delete a unit
+// @Description  Deletes a unit by ID.
+// @Tags     Admin
+// @Produce  json
+// @Param    id   path      int  true  "Unit ID"
+// @Success  200  {object}  object{ok=bool}
+// @Failure  400  {object}  ErrorResponse
+// @Failure  404  {object}  ErrorResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/units/{id} [delete]
 func (h *AdminHandler) DeleteUnit(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -729,6 +951,15 @@ type groupRequest struct {
 }
 
 // ListGroups handles GET /api/admin/groups.
+//
+// @Summary  List groups
+// @Description  Returns all groups.
+// @Tags     Admin
+// @Produce  json
+// @Success  200  {array}   db.Group
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/groups [get]
 func (h *AdminHandler) ListGroups(c *gin.Context) {
 	groups, err := h.queries.ListGroups(c.Request.Context())
 	if err != nil {
@@ -740,6 +971,20 @@ func (h *AdminHandler) ListGroups(c *gin.Context) {
 }
 
 // CreateGroup handles POST /api/admin/groups.
+//
+// @Summary  Create a group
+// @Description  Creates a new group.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    body  body      groupRequest  true  "Group to create"
+// @Success  201   {object}  db.Group
+// @Failure  400   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  422   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/groups [post]
 func (h *AdminHandler) CreateGroup(c *gin.Context) {
 	var req groupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -772,6 +1017,22 @@ func (h *AdminHandler) CreateGroup(c *gin.Context) {
 }
 
 // UpdateGroup handles PUT /api/admin/groups/:id.
+//
+// @Summary  Update a group
+// @Description  Updates an existing group by ID.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    id    path      int           true  "Group ID"
+// @Param    body  body      groupRequest  true  "Group fields to update"
+// @Success  200   {object}  db.Group
+// @Failure  400   {object}  ErrorResponse
+// @Failure  404   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  422   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/groups/{id} [put]
 func (h *AdminHandler) UpdateGroup(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -814,6 +1075,18 @@ func (h *AdminHandler) UpdateGroup(c *gin.Context) {
 }
 
 // DeleteGroup handles DELETE /api/admin/groups/:id.
+//
+// @Summary  Delete a group
+// @Description  Deletes a group by ID.
+// @Tags     Admin
+// @Produce  json
+// @Param    id   path      int  true  "Group ID"
+// @Success  200  {object}  object{ok=bool}
+// @Failure  400  {object}  ErrorResponse
+// @Failure  404  {object}  ErrorResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/groups/{id} [delete]
 func (h *AdminHandler) DeleteGroup(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -840,6 +1113,15 @@ type tagRequest struct {
 }
 
 // ListTags handles GET /api/admin/tags.
+//
+// @Summary  List tags
+// @Description  Returns all tags.
+// @Tags     Admin
+// @Produce  json
+// @Success  200  {array}   db.Tag
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/tags [get]
 func (h *AdminHandler) ListTags(c *gin.Context) {
 	tags, err := h.queries.ListTags(c.Request.Context())
 	if err != nil {
@@ -851,6 +1133,20 @@ func (h *AdminHandler) ListTags(c *gin.Context) {
 }
 
 // CreateTag handles POST /api/admin/tags.
+//
+// @Summary  Create a tag
+// @Description  Creates a new tag.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    body  body      tagRequest  true  "Tag to create"
+// @Success  201   {object}  db.Tag
+// @Failure  400   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  422   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/tags [post]
 func (h *AdminHandler) CreateTag(c *gin.Context) {
 	var req tagRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -883,6 +1179,22 @@ func (h *AdminHandler) CreateTag(c *gin.Context) {
 }
 
 // UpdateTag handles PUT /api/admin/tags/:id.
+//
+// @Summary  Update a tag
+// @Description  Updates an existing tag by ID.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    id    path      int         true  "Tag ID"
+// @Param    body  body      tagRequest  true  "Tag fields to update"
+// @Success  200   {object}  db.Tag
+// @Failure  400   {object}  ErrorResponse
+// @Failure  404   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  422   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/tags/{id} [put]
 func (h *AdminHandler) UpdateTag(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -925,6 +1237,18 @@ func (h *AdminHandler) UpdateTag(c *gin.Context) {
 }
 
 // DeleteTag handles DELETE /api/admin/tags/:id.
+//
+// @Summary  Delete a tag
+// @Description  Deletes a tag by ID.
+// @Tags     Admin
+// @Produce  json
+// @Param    id   path      int  true  "Tag ID"
+// @Success  200  {object}  object{ok=bool}
+// @Failure  400  {object}  ErrorResponse
+// @Failure  404  {object}  ErrorResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/tags/{id} [delete]
 func (h *AdminHandler) DeleteTag(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -947,6 +1271,15 @@ func (h *AdminHandler) DeleteTag(c *gin.Context) {
 // ---------- API Keys ----------
 
 // ListAPIKeys handles GET /api/admin/apikeys.
+//
+// @Summary  List API keys
+// @Description  Returns all API keys.
+// @Tags     Admin
+// @Produce  json
+// @Success  200  {array}   apiKeyResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/apikeys [get]
 func (h *AdminHandler) ListAPIKeys(c *gin.Context) {
 	keys, err := h.queries.ListAPIKeys(c.Request.Context())
 	if err != nil {
@@ -958,6 +1291,19 @@ func (h *AdminHandler) ListAPIKeys(c *gin.Context) {
 }
 
 // CreateAPIKey handles POST /api/admin/apikeys.
+//
+// @Summary  Create an API key
+// @Description  Creates a new API key and returns the plain-text key once.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    body  body      createAPIKeyRequest  true  "API key to create"
+// @Success  201   {object}  apiKeyCreateResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/apikeys [post]
 func (h *AdminHandler) CreateAPIKey(c *gin.Context) {
 	var req createAPIKeyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -994,6 +1340,21 @@ func (h *AdminHandler) CreateAPIKey(c *gin.Context) {
 }
 
 // UpdateAPIKey handles PUT /api/admin/apikeys/:id.
+//
+// @Summary  Update an API key
+// @Description  Updates an existing API key by ID.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    id    path      int                  true  "API key ID"
+// @Param    body  body      updateAPIKeyRequest  true  "API key fields to update"
+// @Success  200   {object}  apiKeyResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  404   {object}  ErrorResponse
+// @Failure  409   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/apikeys/{id} [put]
 func (h *AdminHandler) UpdateAPIKey(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -1051,6 +1412,19 @@ func (h *AdminHandler) UpdateAPIKey(c *gin.Context) {
 
 // ReorderAPIKeys handles PUT /api/admin/apikeys/reorder.
 // Applies all order updates in one transaction.
+//
+// @Summary  Reorder API keys
+// @Description  Updates the display order of multiple API keys in one transaction.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    body  body      reorderAPIKeysRequest  true  "API key order updates"
+// @Success  200   {object}  object{ok=bool}
+// @Failure  400   {object}  ErrorResponse
+// @Failure  404   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/apikeys/reorder [put]
 func (h *AdminHandler) ReorderAPIKeys(c *gin.Context) {
 	var req reorderAPIKeysRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -1109,6 +1483,18 @@ func (h *AdminHandler) ReorderAPIKeys(c *gin.Context) {
 }
 
 // DeleteAPIKey handles DELETE /api/admin/apikeys/:id.
+//
+// @Summary  Delete an API key
+// @Description  Deletes an API key by ID.
+// @Tags     Admin
+// @Produce  json
+// @Param    id   path      int  true  "API key ID"
+// @Success  200  {object}  object{ok=bool}
+// @Failure  400  {object}  ErrorResponse
+// @Failure  404  {object}  ErrorResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/apikeys/{id} [delete]
 func (h *AdminHandler) DeleteAPIKey(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -1131,6 +1517,15 @@ func (h *AdminHandler) DeleteAPIKey(c *gin.Context) {
 // ---------- Dirwatches ----------
 
 // ListDirwatches handles GET /api/admin/dirwatches.
+//
+// @Summary  List directory watches
+// @Description  Returns all directory watches.
+// @Tags     Admin
+// @Produce  json
+// @Success  200  {array}   dirwatchResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/dirwatches [get]
 func (h *AdminHandler) ListDirwatches(c *gin.Context) {
 	dirwatches, err := h.queries.ListDirwatches(c.Request.Context())
 	if err != nil {
@@ -1142,6 +1537,19 @@ func (h *AdminHandler) ListDirwatches(c *gin.Context) {
 }
 
 // CreateDirwatch handles POST /api/admin/dirwatches.
+//
+// @Summary  Create a directory watch
+// @Description  Creates a new directory watch.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    body  body      createDirwatchRequest  true  "Dirwatch to create"
+// @Success  201   {object}  dirwatchResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  422   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/dirwatches [post]
 func (h *AdminHandler) CreateDirwatch(c *gin.Context) {
 	var req createDirwatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -1185,6 +1593,21 @@ func (h *AdminHandler) CreateDirwatch(c *gin.Context) {
 }
 
 // UpdateDirwatch handles PUT /api/admin/dirwatches/:id.
+//
+// @Summary  Update a directory watch
+// @Description  Updates an existing directory watch by ID.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    id    path      int                    true  "Dirwatch ID"
+// @Param    body  body      updateDirwatchRequest  true  "Dirwatch fields to update"
+// @Success  200   {object}  dirwatchResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  404   {object}  ErrorResponse
+// @Failure  422   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/dirwatches/{id} [put]
 func (h *AdminHandler) UpdateDirwatch(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -1238,6 +1661,18 @@ func (h *AdminHandler) UpdateDirwatch(c *gin.Context) {
 }
 
 // DeleteDirwatch handles DELETE /api/admin/dirwatches/:id.
+//
+// @Summary  Delete a directory watch
+// @Description  Deletes a directory watch by ID.
+// @Tags     Admin
+// @Produce  json
+// @Param    id   path      int  true  "Dirwatch ID"
+// @Success  200  {object}  object{ok=bool}
+// @Failure  400  {object}  ErrorResponse
+// @Failure  404  {object}  ErrorResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/dirwatches/{id} [delete]
 func (h *AdminHandler) DeleteDirwatch(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -1264,6 +1699,15 @@ func (h *AdminHandler) DeleteDirwatch(c *gin.Context) {
 // ---------- Downstreams ----------
 
 // ListDownstreams handles GET /api/admin/downstreams.
+//
+// @Summary  List downstreams
+// @Description  Returns all downstream push targets.
+// @Tags     Admin
+// @Produce  json
+// @Success  200  {array}   downstreamResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/downstreams [get]
 func (h *AdminHandler) ListDownstreams(c *gin.Context) {
 	downstreams, err := h.queries.ListDownstreams(c.Request.Context())
 	if err != nil {
@@ -1275,6 +1719,19 @@ func (h *AdminHandler) ListDownstreams(c *gin.Context) {
 }
 
 // CreateDownstream handles POST /api/admin/downstreams.
+//
+// @Summary  Create a downstream
+// @Description  Creates a new downstream push target.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    body  body      createDownstreamRequest  true  "Downstream to create"
+// @Success  201   {object}  downstreamResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  422   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/downstreams [post]
 func (h *AdminHandler) CreateDownstream(c *gin.Context) {
 	var req createDownstreamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -1311,6 +1768,21 @@ func (h *AdminHandler) CreateDownstream(c *gin.Context) {
 }
 
 // UpdateDownstream handles PUT /api/admin/downstreams/:id.
+//
+// @Summary  Update a downstream
+// @Description  Updates an existing downstream push target by ID.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    id    path      int                      true  "Downstream ID"
+// @Param    body  body      updateDownstreamRequest  true  "Downstream fields to update"
+// @Success  200   {object}  downstreamResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  404   {object}  ErrorResponse
+// @Failure  422   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/downstreams/{id} [put]
 func (h *AdminHandler) UpdateDownstream(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -1353,6 +1825,18 @@ func (h *AdminHandler) UpdateDownstream(c *gin.Context) {
 }
 
 // DeleteDownstream handles DELETE /api/admin/downstreams/:id.
+//
+// @Summary  Delete a downstream
+// @Description  Deletes a downstream push target by ID.
+// @Tags     Admin
+// @Produce  json
+// @Param    id   path      int  true  "Downstream ID"
+// @Success  200  {object}  object{ok=bool}
+// @Failure  400  {object}  ErrorResponse
+// @Failure  404  {object}  ErrorResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/downstreams/{id} [delete]
 func (h *AdminHandler) DeleteDownstream(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -1379,6 +1863,15 @@ func (h *AdminHandler) DeleteDownstream(c *gin.Context) {
 // ---------- Webhooks ----------
 
 // ListWebhooks handles GET /api/admin/webhooks.
+//
+// @Summary  List webhooks
+// @Description  Returns all webhooks.
+// @Tags     Admin
+// @Produce  json
+// @Success  200  {array}   webhookResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/webhooks [get]
 func (h *AdminHandler) ListWebhooks(c *gin.Context) {
 	webhooks, err := h.queries.ListWebhooks(c.Request.Context())
 	if err != nil {
@@ -1390,6 +1883,19 @@ func (h *AdminHandler) ListWebhooks(c *gin.Context) {
 }
 
 // CreateWebhook handles POST /api/admin/webhooks.
+//
+// @Summary  Create a webhook
+// @Description  Creates a new webhook.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    body  body      createWebhookRequest  true  "Webhook to create"
+// @Success  201   {object}  webhookResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  422   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/webhooks [post]
 func (h *AdminHandler) CreateWebhook(c *gin.Context) {
 	var req createWebhookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -1422,6 +1928,21 @@ func (h *AdminHandler) CreateWebhook(c *gin.Context) {
 }
 
 // UpdateWebhook handles PUT /api/admin/webhooks/:id.
+//
+// @Summary  Update a webhook
+// @Description  Updates an existing webhook by ID.
+// @Tags     Admin
+// @Accept   json
+// @Produce  json
+// @Param    id    path      int                   true  "Webhook ID"
+// @Param    body  body      updateWebhookRequest  true  "Webhook fields to update"
+// @Success  200   {object}  webhookResponse
+// @Failure  400   {object}  ErrorResponse
+// @Failure  404   {object}  ErrorResponse
+// @Failure  422   {object}  ErrorResponse
+// @Failure  500   {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/webhooks/{id} [put]
 func (h *AdminHandler) UpdateWebhook(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -1460,6 +1981,18 @@ func (h *AdminHandler) UpdateWebhook(c *gin.Context) {
 }
 
 // DeleteWebhook handles DELETE /api/admin/webhooks/:id.
+//
+// @Summary  Delete a webhook
+// @Description  Deletes a webhook by ID.
+// @Tags     Admin
+// @Produce  json
+// @Param    id   path      int  true  "Webhook ID"
+// @Success  200  {object}  object{ok=bool}
+// @Failure  400  {object}  ErrorResponse
+// @Failure  404  {object}  ErrorResponse
+// @Failure  500  {object}  ErrorResponse
+// @Security BearerAuth
+// @Router   /admin/webhooks/{id} [delete]
 func (h *AdminHandler) DeleteWebhook(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {

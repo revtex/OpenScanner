@@ -21,6 +21,15 @@ type ActivityStatsResponse struct {
 }
 
 // GetActivityStats handles GET /api/admin/activity/stats.
+//
+// @Summary      Get activity statistics
+// @Description  Returns call counts (today, this week, total), active listeners, and server uptime.
+// @Tags         Admin
+// @Produce      json
+// @Success      200  {object}  ActivityStatsResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/activity/stats [get]
 func (h *AdminHandler) GetActivityStats(c *gin.Context) {
 	ctx := c.Request.Context()
 	now := time.Now()
@@ -67,6 +76,15 @@ type ActivityChartResponse struct {
 }
 
 // GetActivityChart handles GET /api/admin/activity/chart.
+//
+// @Summary      Get activity chart data
+// @Description  Returns call counts bucketed by hour for the last 24 hours.
+// @Tags         Admin
+// @Produce      json
+// @Success      200  {object}  ActivityChartResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/activity/chart [get]
 func (h *AdminHandler) GetActivityChart(c *gin.Context) {
 	ctx := c.Request.Context()
 	cutoff := time.Now().Add(-24 * time.Hour).Unix()
@@ -100,6 +118,15 @@ type TopTalkgroupsResponse struct {
 }
 
 // GetTopTalkgroups handles GET /api/admin/activity/top-talkgroups.
+//
+// @Summary      Get top talkgroups
+// @Description  Returns the top 10 talkgroups by call count over the last 24 hours.
+// @Tags         Admin
+// @Produce      json
+// @Success      200  {object}  TopTalkgroupsResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/activity/top-talkgroups [get]
 func (h *AdminHandler) GetTopTalkgroups(c *gin.Context) {
 	ctx := c.Request.Context()
 	cutoff := time.Now().Add(-24 * time.Hour).Unix()

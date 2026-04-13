@@ -9,6 +9,11 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	_ "github.com/openscanner/openscanner/docs" // swagger generated docs
+
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
@@ -208,6 +213,9 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	// WebSocket endpoints.
 	r.GET("/ws", gin.WrapF(ws.HandleListenerWS(deps.Hub, deps.Queries)))
 	r.GET("/api/admin/ws", gin.WrapF(ws.HandleAdminWS(deps.Hub, deps.Queries)))
+
+	// Swagger API documentation.
+	r.GET("/api/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Serve embedded frontend (SPA mode).
 	serveFrontend(r)

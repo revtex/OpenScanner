@@ -7,6 +7,11 @@ import (
 	"github.com/openscanner/openscanner/internal/db"
 )
 
+// ErrorResponse is the standard JSON error envelope used by all endpoints.
+type ErrorResponse struct {
+	Error string `json:"error" example:"descriptive error message"`
+}
+
 // nullStr unwraps sql.NullString to *string for clean JSON serialisation.
 func nullStr(n sql.NullString) *string {
 	if !n.Valid {

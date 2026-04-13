@@ -110,6 +110,39 @@ func (h *CallHandler) getSettingValue(c *gin.Context, key string) string {
 }
 
 // PostCallUpload handles POST /api/call-upload and /api/trunk-recorder-call-upload.
+//
+//	@Summary		Upload a call recording
+//	@Description	Ingest a radio call with audio and metadata. Requires a valid API key.
+//	@Tags			Upload
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Security		APIKeyAuth
+//	@Param			audio			formData	file	true	"Audio file"
+//	@Param			dateTime		formData	int		true	"Unix timestamp of the call"
+//	@Param			systemId		formData	int		true	"Radio system ID"
+//	@Param			talkgroupId		formData	int		true	"Talkgroup ID"
+//	@Param			source			formData	int		false	"Source unit ID"
+//	@Param			frequency		formData	int		false	"Frequency in Hz"
+//	@Param			duration		formData	number	false	"Call duration in seconds"
+//	@Param			talkgroupLabel	formData	string	false	"Talkgroup label for auto-populate"
+//	@Param			talkgroupTag	formData	string	false	"Talkgroup tag name"
+//	@Param			talkgroupGroup	formData	string	false	"Talkgroup group name"
+//	@Param			talkgroupName	formData	string	false	"Talkgroup display name"
+//	@Param			systemLabel		formData	string	false	"System label"
+//	@Param			patches			formData	string	false	"JSON array of patched talkgroup IDs"
+//	@Param			audioName		formData	string	false	"Original audio file name"
+//	@Param			audioType		formData	string	false	"Audio MIME type"
+//	@Param			site			formData	string	false	"Site identifier"
+//	@Param			channel			formData	string	false	"Channel identifier"
+//	@Param			decoder			formData	string	false	"Decoder software name"
+//	@Param			errorCount		formData	int		false	"Decoding error count"
+//	@Param			spikeCount		formData	int		false	"Signal spike count"
+//	@Success		200	{object}	object{id=int64}			"Call ingested successfully"
+//	@Failure		400	{object}	ErrorResponse			"Bad request"
+//	@Failure		401	{object}	ErrorResponse			"API key required"
+//	@Failure		429	{object}	ErrorResponse			"Rate limit exceeded"
+//	@Failure		500	{object}	ErrorResponse			"Internal server error"
+//	@Router			/call-upload [post]
 func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	// Retrieve API key ID injected by APIKeyAuth middleware.
 	apiKeyIDVal, exists := c.Get("apiKeyID")
@@ -550,6 +583,19 @@ type CallSearchResult struct {
 }
 
 // GetCallAudio handles GET /api/calls/:id/audio.
+//
+//	@Summary		Get call audio file
+//	@Description	Stream the audio file for a specific call. Requires authentication or public access mode.
+//	@Tags			Calls
+//	@Produce		application/octet-stream
+//	@Security		BearerAuth
+//	@Param			id	path	int	true	"Call ID"
+//	@Success		200	{file}	binary			"Audio file"
+//	@Failure		400	{object}	ErrorResponse	"Invalid call ID"
+//	@Failure		401	{object}	ErrorResponse	"Authentication required"
+//	@Failure		404	{object}	ErrorResponse	"Call or audio not found"
+//	@Failure		500	{object}	ErrorResponse	"Internal server error"
+//	@Router			/calls/{id}/audio [get]
 func (h *CallHandler) GetCallAudio(c *gin.Context) {
 	ctx := c.Request.Context()
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -623,6 +669,25 @@ type CallSearchResponse struct {
 }
 
 // GetCalls handles GET /api/calls — paginated call archive search.
+//
+//	@Summary		Search calls
+//	@Description	Paginated search of the call archive with optional filters.
+//	@Tags			Calls
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			system_id		query	int		false	"Filter by system DB ID"
+//	@Param			talkgroup_id	query	int		false	"Filter by talkgroup DB ID"
+//	@Param			date_from		query	int		false	"Unix timestamp lower bound"
+//	@Param			date_to			query	int		false	"Unix timestamp upper bound"
+//	@Param			sort			query	string	false	"Sort order: asc or desc"	Enums(asc, desc)	default(desc)
+//	@Param			page			query	int		false	"Page number (1-based)"		default(1)
+//	@Param			limit			query	int		false	"Results per page (max 100)"	default(25)
+//	@Param			bookmarked_only	query	bool	false	"Show only bookmarked calls"
+//	@Param			transcript		query	string	false	"Filter by transcript text"
+//	@Success		200	{object}	CallSearchResponse	"Paginated call results"
+//	@Failure		400	{object}	ErrorResponse		"Invalid query parameter"
+//	@Failure		500	{object}	ErrorResponse		"Internal server error"
+//	@Router			/calls [get]
 func (h *CallHandler) GetCalls(c *gin.Context) {
 	ctx := c.Request.Context()
 
