@@ -45,7 +45,7 @@ make test   # Runs Go tests + Vitest frontend tests
 - [x] **Phase 9** — Frontend Scanner UI
 - [x] **Phase 10** — Frontend TG Selection & Search Panels
 - [x] **Phase 11** — Frontend Admin Dashboard
-- [ ] **Phase 12** — CLI, Daemon, SSL, Docker & Deployment
+- [x] **Phase 12** — CLI, Daemon, SSL, Docker & Deployment
 - [ ] **Phase 13** — Testing
 - [ ] **Phase 14** — Documentation
 - [ ] **Phase 15** — Keyboard Shortcuts & Theme Toggle
