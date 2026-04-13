@@ -102,7 +102,7 @@ export default function Login() {
               <input
                 type="password"
                 placeholder="New password"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 minLength={8}
@@ -111,7 +111,7 @@ export default function Login() {
               <input
                 type="password"
                 placeholder="Confirm password"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 minLength={8}
@@ -138,7 +138,7 @@ export default function Login() {
             <input
               type="text"
               placeholder="Username"
-              className="input input-bordered w-full"
+              className="input w-full"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
@@ -147,7 +147,7 @@ export default function Login() {
             <input
               type="password"
               placeholder="Password"
-              className="input input-bordered w-full"
+              className="input w-full"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"

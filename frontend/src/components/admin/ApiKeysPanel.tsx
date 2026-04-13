@@ -270,13 +270,11 @@ export default function ApiKeysPanel() {
             {editingId != null ? "Edit API Key" : "Create API Key"}
           </h3>
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Identifier</span>
-              </label>
+            <div className="flex flex-col">
+              <span className="text-sm">Identifier</span>
               <input
                 type="text"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={form.ident}
                 onChange={(e) => updateField("ident", e.target.value)}
                 placeholder="Optional description"
@@ -284,20 +282,21 @@ export default function ApiKeysPanel() {
             </div>
 
             {systems && systems.length > 0 && (
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Systems (none = all)</span>
-                </label>
+              <div className="flex flex-col">
+                <span className="text-sm">Systems (none = all)</span>
                 <div className="flex flex-wrap gap-2">
                   {systems.map((sys) => (
-                    <label key={sys.id} className="label cursor-pointer gap-2">
+                    <label
+                      key={sys.id}
+                      className="flex items-center cursor-pointer gap-2"
+                    >
                       <input
                         type="checkbox"
                         className="checkbox checkbox-sm"
                         checked={selectedSystems.includes(sys.id)}
                         onChange={() => toggleSystem(sys.id)}
                       />
-                      <span className="label-text text-sm">{sys.label}</span>
+                      <span className="text-sm">{sys.label}</span>
                     </label>
                   ))}
                 </div>
@@ -335,7 +334,7 @@ export default function ApiKeysPanel() {
           <div className="mt-4 flex items-center gap-2">
             <input
               type="text"
-              className="input input-bordered w-full font-mono text-sm"
+              className="input w-full font-mono text-sm"
               value={createdKey ?? ""}
               readOnly
             />

@@ -272,26 +272,22 @@ export function LEDPanel() {
           >
             <h3 className="font-bold text-lg mb-4">Change Password</h3>
             <form onSubmit={handleChangePassword} className="space-y-3">
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text">Current Password</span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-sm">Current Password</span>
                 <input
                   type="password"
-                  className="input input-bordered w-full"
+                  className="input w-full"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   required
                   autoComplete="current-password"
                 />
               </label>
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text">New Password</span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-sm">New Password</span>
                 <input
                   type="password"
-                  className="input input-bordered w-full"
+                  className="input w-full"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
@@ -299,13 +295,11 @@ export function LEDPanel() {
                   autoComplete="new-password"
                 />
               </label>
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text">Confirm New Password</span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-sm">Confirm New Password</span>
                 <input
                   type="password"
-                  className="input input-bordered w-full"
+                  className="input w-full"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required

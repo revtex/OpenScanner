@@ -340,12 +340,10 @@ export default function DirWatchPanel() {
           </h3>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             {/* Always-shown fields */}
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Type</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Type</span>
               <select
-                className="select select-bordered w-full"
+                className="select w-full"
                 value={form.type}
                 onChange={(e) =>
                   setForm({
@@ -363,14 +361,12 @@ export default function DirWatchPanel() {
                 ))}
               </select>
             </label>
-            <label className="form-control w-full">
-              <div className="label">
-                <span className="label-text">Directory</span>
-              </div>
+            <label className="flex flex-col w-full">
+              <span className="text-sm">Directory</span>
               <div className="join w-full">
                 <input
                   type="text"
-                  className="input input-bordered join-item w-full font-mono text-sm"
+                  className="input join-item w-full font-mono text-sm"
                   value={form.directory}
                   onChange={(e) =>
                     setForm({ ...form, directory: e.target.value })
@@ -386,25 +382,21 @@ export default function DirWatchPanel() {
                   Browse
                 </button>
               </div>
-              <div className="label">
-                <span className="label-text-alt text-base-content/60">
-                  Browse uses server directories and returns full paths.
-                </span>
-              </div>
+              <span className="text-xs text-base-content/60">
+                Browse uses server directories and returns full paths.
+              </span>
             </label>
 
             {/* Extension — shown for default, dsdplus, trunk-recorder */}
             {["default", "dsdplus", "trunk-recorder"].includes(form.type) && (
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text">Extension</span>
-                  <span className="label-text-alt text-base-content/60">
-                    e.g. mp3, wav — without the dot
-                  </span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-sm">Extension</span>
+                <span className="text-xs text-base-content/60">
+                  e.g. mp3, wav — without the dot
+                </span>
                 <input
                   type="text"
-                  className="input input-bordered w-full"
+                  className="input w-full"
                   value={form.extension}
                   placeholder="mp3"
                   onChange={(e) =>
@@ -416,15 +408,13 @@ export default function DirWatchPanel() {
 
             {/* System dropdown — shown for default and dsdplus */}
             {["default", "dsdplus"].includes(form.type) && (
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text">System</span>
-                  <span className="label-text-alt text-base-content/60">
-                    Override: send all files to this system
-                  </span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-sm">System</span>
+                <span className="text-xs text-base-content/60">
+                  Override: send all files to this system
+                </span>
                 <select
-                  className="select select-bordered w-full"
+                  className="select w-full"
                   value={form.systemId}
                   onChange={(e) =>
                     setForm({
@@ -449,15 +439,13 @@ export default function DirWatchPanel() {
 
             {/* Talkgroup dropdown — shown for default and dsdplus, only when a system is selected */}
             {["default", "dsdplus"].includes(form.type) && form.systemId && (
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text">Talkgroup</span>
-                  <span className="label-text-alt text-base-content/60">
-                    Override: send all files to this talkgroup
-                  </span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-sm">Talkgroup</span>
+                <span className="text-xs text-base-content/60">
+                  Override: send all files to this talkgroup
+                </span>
                 <select
-                  className="select select-bordered w-full"
+                  className="select w-full"
                   value={form.talkgroupId}
                   onChange={(e) =>
                     setForm({ ...form, talkgroupId: e.target.value })
@@ -475,13 +463,11 @@ export default function DirWatchPanel() {
 
             {/* Mask — shown for default only */}
             {form.type === "default" && (
-              <div className="form-control w-full">
-                <label className="label">
-                  <span className="label-text">Mask</span>
-                </label>
+              <div className="flex flex-col w-full">
+                <span className="text-sm">Mask</span>
                 <input
                   type="text"
-                  className="input input-bordered w-full font-mono text-sm"
+                  className="input w-full font-mono text-sm"
                   value={form.mask}
                   placeholder="e.g. site_#TG_#DATE_#TIME_#HZ"
                   onChange={(e) => setForm({ ...form, mask: e.target.value })}
@@ -499,16 +485,14 @@ export default function DirWatchPanel() {
 
             {/* Frequency — shown for default only */}
             {form.type === "default" && (
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text">Frequency (Hz)</span>
-                  <span className="label-text-alt text-base-content/60">
-                    Display-only fake frequency
-                  </span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-sm">Frequency (Hz)</span>
+                <span className="text-xs text-base-content/60">
+                  Display-only fake frequency
+                </span>
                 <input
                   type="number"
-                  className="input input-bordered w-full"
+                  className="input w-full"
                   value={form.frequency}
                   min={0}
                   placeholder="e.g. 155325000"
@@ -521,16 +505,14 @@ export default function DirWatchPanel() {
 
             {/* Delay — shown for default only */}
             {form.type === "default" && (
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text">Delay (ms)</span>
-                  <span className="label-text-alt text-base-content/60">
-                    Min 2000 — wait before ingesting file
-                  </span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-sm">Delay (ms)</span>
+                <span className="text-xs text-base-content/60">
+                  Min 2000 — wait before ingesting file
+                </span>
                 <input
                   type="number"
-                  className="input input-bordered w-full"
+                  className="input w-full"
                   value={form.delay}
                   min={2000}
                   step={100}
@@ -542,8 +524,8 @@ export default function DirWatchPanel() {
 
             {/* Toggles */}
             <div className="divider my-1" />
-            <div className="form-control">
-              <label className="label cursor-pointer justify-start gap-3">
+            <div className="flex flex-col">
+              <label className="flex items-center cursor-pointer justify-start gap-3">
                 <input
                   type="checkbox"
                   className="toggle toggle-primary"
@@ -553,15 +535,15 @@ export default function DirWatchPanel() {
                   }
                 />
                 <div>
-                  <span className="label-text">Delete after import</span>
+                  <span className="text-sm">Delete after import</span>
                   <p className="text-xs text-base-content/60">
                     Remove audio file from disk after ingestion
                   </p>
                 </div>
               </label>
             </div>
-            <div className="form-control">
-              <label className="label cursor-pointer justify-start gap-3">
+            <div className="flex flex-col">
+              <label className="flex items-center cursor-pointer justify-start gap-3">
                 <input
                   type="checkbox"
                   className="toggle toggle-primary"
@@ -571,15 +553,15 @@ export default function DirWatchPanel() {
                   }
                 />
                 <div>
-                  <span className="label-text">Use polling</span>
+                  <span className="text-sm">Use polling</span>
                   <p className="text-xs text-base-content/60">
                     Use filesystem polling instead of inotify (for NFS/CIFS)
                   </p>
                 </div>
               </label>
             </div>
-            <div className="form-control">
-              <label className="label cursor-pointer justify-start gap-3">
+            <div className="flex flex-col">
+              <label className="flex items-center cursor-pointer justify-start gap-3">
                 <input
                   type="checkbox"
                   className="toggle toggle-primary"
@@ -588,7 +570,7 @@ export default function DirWatchPanel() {
                     setForm({ ...form, disabled: e.target.checked ? 1 : 0 })
                   }
                 />
-                <span className="label-text">Disabled</span>
+                <span className="text-sm">Disabled</span>
               </label>
             </div>
 
@@ -619,7 +601,7 @@ export default function DirWatchPanel() {
           <div className="join w-full mb-3">
             <input
               type="text"
-              className="input input-bordered join-item w-full font-mono text-sm"
+              className="input join-item w-full font-mono text-sm"
               value={directoryJumpInput}
               onChange={(e) => setDirectoryJumpInput(e.target.value)}
               placeholder="/absolute/path"

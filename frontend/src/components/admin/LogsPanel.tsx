@@ -64,12 +64,10 @@ export default function LogsPanel() {
         <div className="card-body">
           {/* Filter bar */}
           <div className="flex flex-wrap items-end gap-3 mb-4">
-            <label className="form-control">
-              <div className="label">
-                <span className="label-text">Level</span>
-              </div>
+            <label className="flex flex-col">
+              <span className="text-sm">Level</span>
               <select
-                className="select select-bordered select-sm"
+                className="select select-sm"
                 value={level}
                 onChange={(e) => setLevel(e.target.value)}
               >
@@ -80,24 +78,20 @@ export default function LogsPanel() {
                 ))}
               </select>
             </label>
-            <label className="form-control">
-              <div className="label">
-                <span className="label-text">From</span>
-              </div>
+            <label className="flex flex-col">
+              <span className="text-sm">From</span>
               <input
                 type="datetime-local"
-                className="input input-bordered input-sm"
+                className="input input-sm"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
               />
             </label>
-            <label className="form-control">
-              <div className="label">
-                <span className="label-text">To</span>
-              </div>
+            <label className="flex flex-col">
+              <span className="text-sm">To</span>
               <input
                 type="datetime-local"
-                className="input input-bordered input-sm"
+                className="input input-sm"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
               />

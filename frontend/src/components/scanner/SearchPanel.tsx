@@ -328,13 +328,11 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
             </div>
             <div className="collapse-content space-y-3">
               {/* Transcript */}
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text text-xs">Transcript</span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-xs">Transcript</span>
                 <input
                   type="text"
-                  className="input input-bordered input-sm w-full"
+                  className="input input-sm w-full"
                   placeholder="Search transcripts…"
                   value={filters.transcript ?? ""}
                   onChange={(e) =>
@@ -344,12 +342,10 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               </label>
 
               {/* System */}
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text text-xs">System</span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-xs">System</span>
                 <select
-                  className="select select-bordered select-sm w-full"
+                  className="select select-sm w-full"
                   value={filters.systemId ?? ""}
                   onChange={(e) =>
                     dispatch(
@@ -369,12 +365,10 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               </label>
 
               {/* Talkgroup */}
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text text-xs">Talkgroup</span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-xs">Talkgroup</span>
                 <select
-                  className="select select-bordered select-sm w-full"
+                  className="select select-sm w-full"
                   value={filters.talkgroupId ?? ""}
                   onChange={(e) =>
                     dispatch(
@@ -394,12 +388,10 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               </label>
 
               {/* Group */}
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text text-xs">Group</span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-xs">Group</span>
                 <select
-                  className="select select-bordered select-sm w-full"
+                  className="select select-sm w-full"
                   value={filters.groupFilter ?? ""}
                   onChange={(e) =>
                     dispatch(setGroupFilter(e.target.value || undefined))
@@ -415,12 +407,10 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               </label>
 
               {/* Tag */}
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text text-xs">Tag</span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-xs">Tag</span>
                 <select
-                  className="select select-bordered select-sm w-full"
+                  className="select select-sm w-full"
                   value={filters.tagFilter ?? ""}
                   onChange={(e) =>
                     dispatch(setTagFilter(e.target.value || undefined))
@@ -436,13 +426,11 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               </label>
 
               {/* Date from */}
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text text-xs">Date from</span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-xs">Date from</span>
                 <input
                   type="date"
-                  className="input input-bordered input-sm w-full"
+                  className="input input-sm w-full"
                   value={filters.dateFrom ?? ""}
                   onChange={(e) =>
                     dispatch(setDateFrom(e.target.value || undefined))
@@ -451,13 +439,11 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               </label>
 
               {/* Date to */}
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text text-xs">Date to</span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-xs">Date to</span>
                 <input
                   type="date"
-                  className="input input-bordered input-sm w-full"
+                  className="input input-sm w-full"
                   value={filters.dateTo ?? ""}
                   onChange={(e) =>
                     dispatch(setDateTo(e.target.value || undefined))
@@ -466,12 +452,10 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               </label>
 
               {/* Sort */}
-              <label className="form-control w-full">
-                <div className="label">
-                  <span className="label-text text-xs">Sort</span>
-                </div>
+              <label className="flex flex-col w-full">
+                <span className="text-xs">Sort</span>
                 <select
-                  className="select select-bordered select-sm w-full"
+                  className="select select-sm w-full"
                   value={filters.sort}
                   onChange={(e) =>
                     dispatch(setSort(e.target.value as "asc" | "desc"))

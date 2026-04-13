@@ -146,13 +146,11 @@ function LabelTable<T extends { id: number; label: string }>({
               {editingId != null ? `Edit ${title}` : `Add ${title}`}
             </h3>
             <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Label</span>
-                </label>
+              <div className="flex flex-col">
+                <span className="text-sm">Label</span>
                 <input
                   type="text"
-                  className="input input-bordered w-full"
+                  className="input w-full"
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
                   required

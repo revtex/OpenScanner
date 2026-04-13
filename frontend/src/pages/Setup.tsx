@@ -51,7 +51,7 @@ export default function Setup() {
               <input
                 type="text"
                 placeholder="Admin username"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
@@ -60,7 +60,7 @@ export default function Setup() {
               <input
                 type="password"
                 placeholder="Password"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
@@ -70,7 +70,7 @@ export default function Setup() {
               <input
                 type="password"
                 placeholder="Confirm password"
-                className="input input-bordered w-full"
+                className="input w-full"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"

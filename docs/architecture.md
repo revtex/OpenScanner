@@ -4,7 +4,7 @@
 
 ## Overview
 
-OpenScanner is a modern web-based radio call manager inspired by rdio-scanner. It uses a Go backend (Gin + SQLite) with a React frontend (TypeScript + DaisyUI), connected via WebSocket for real-time call streaming.
+OpenScanner is a modern web-based radio call manager inspired by rdio-scanner. It uses a Go backend (Gin + SQLite) with a React frontend (TypeScript + Tailwind CSS 4 + DaisyUI 5), connected via WebSocket for real-time call streaming.
 
 ## System Diagram
 
