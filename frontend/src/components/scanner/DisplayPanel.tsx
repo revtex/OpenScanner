@@ -65,7 +65,6 @@ export function DisplayPanel({
   isAuthenticated,
 }: DisplayPanelProps) {
   const clock = useClock();
-  const [fullscreen, setFullscreen] = useState(false);
   const [brightness, setBrightness] = useState(() => {
     const saved = localStorage.getItem("lcd-brightness");
     return saved ? Number(saved) : 50;
@@ -84,10 +83,6 @@ export function DisplayPanel({
   const [shareCall] = useShareCallMutation();
   const bookmarkedCallIds = bookmarkData?.callIds ?? [];
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  const handleDoubleClick = useCallback(() => {
-    setFullscreen((prev) => !prev);
-  }, []);
 
   const handleShare = useCallback(async () => {
     if (!currentCall) return;
@@ -174,7 +169,6 @@ export function DisplayPanel({
                 <button
                   className="btn btn-ghost btn-xs btn-circle opacity-50 hover:opacity-50"
                   onClick={() => setShowBrightness((p) => !p)}
-                  onDoubleClick={(e) => e.stopPropagation()}
                   aria-label="Adjust brightness"
                 >
                   <Sun className="w-4 h-4" />
@@ -254,7 +248,6 @@ export function DisplayPanel({
                 <button
                   className="btn btn-ghost btn-xs btn-circle opacity-50 hover:opacity-50"
                   onClick={() => setShowBrightness((p) => !p)}
-                  onDoubleClick={(e) => e.stopPropagation()}
                   aria-label="Adjust brightness"
                 >
                   <Sun className="w-4 h-4" />
@@ -290,25 +283,9 @@ export function DisplayPanel({
       <div
         className="lcd-display rounded-lg"
         style={{ filter: `brightness(${brightness / 100})` }}
-        onDoubleClick={handleDoubleClick}
       >
         {displayContent}
       </div>
-
-      {/* Fullscreen modal */}
-      {fullscreen && (
-        <dialog className="modal modal-open" onClick={handleDoubleClick}>
-          <div
-            className="modal-box max-w-3xl lcd-display"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {displayContent}
-          </div>
-          <form method="dialog" className="modal-backdrop">
-            <button onClick={handleDoubleClick}>close</button>
-          </form>
-        </dialog>
-      )}
 
       {/* Toast notification */}
       {toastMessage && (
