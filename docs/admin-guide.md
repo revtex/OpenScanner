@@ -31,7 +31,7 @@ Each admin panel includes a help description paragraph below its heading explain
 Manage user accounts. Each row shows username, role badge (`admin` / `listener`), disabled status, expiration date, and connection limit.
 
 - **Create** — Modal form: username, password, role selector, optional expiration and connection limit
-- **Edit** — Inline editing of role, disabled toggle, expiration, connection limit
+- **Edit** — Modal form for username, optional password reset, role, disabled flag, expiration, and connection limit
 - **Delete** — Cannot delete your own account
 
 ### Systems
@@ -74,14 +74,16 @@ Configure forwarding of calls to remote OpenScanner instances.
 
 ### Options
 
-Application settings form organized into 6 sections:
+Application settings form organized into multiple sections:
 
-- **General** — `publicAccess` toggle (with warning badge), `maxClients`, `autoPopulate`
-- **Sharing** — Shareable link settings
-- **Audio** — FFmpeg mode, audio conversion settings
-- **Webhooks** — Webhook delivery settings
-- **Transcription** — Enable/disable, Whisper model size, GPU toggle (fields shown conditionally when transcription is enabled)
-- **Dashboard** — Display and UI preferences
+- **General** — Branding, support email, public access, dark mode, keyboard shortcuts
+- **Scanner Behavior** — Auto-populate, ordering/toggle behavior, listener count, max clients, AFS systems
+- **Call Processing** — Audio conversion, duplicate detection settings, prune days
+- **Display** — Dimmer delay, keypad beep style
+- **Sharing & Notifications** — Shareable links, push notifications
+- **Webhooks** — Webhook enable/disable switch
+- **Transcription** — Enable/disable, binary path, model, language (model/language shown when enabled)
+- **Dashboard** — Activity dashboard toggle
 
 All settings use appropriate input types (toggles, numbers, text fields).
 
@@ -96,11 +98,10 @@ Virtualized log viewer for application logs.
 
 Utility operations for import, export, and account management.
 
-- **CSV Import** — Upload talkgroup or unit CSV files with system selector
+- **CSV Import** — Upload talkgroup or unit CSV files
 - **JSON Export** — Download full application config as JSON
 - **JSON Import** — Upload a JSON config file (transactional; duplicates skipped)
 - **Missing Audio Audit** — Scan all systems for call records whose audio files are missing from disk; delete orphaned rows
-- **Change Password** — Change your own admin password
 
 ### Webhooks
 
@@ -136,7 +137,11 @@ Each resource supports **GET** (list), **POST** (create), **PUT /:id** (update),
 - **GET /api/admin/config** — All settings as `[{key, value}, ...]` JSON array
 - **PUT /api/admin/config** — Update settings; broadcasts `CFG` to WebSocket clients
 - **GET /api/admin/logs** — Query params: `from`, `to` (unix), `level` (`info`/`warn`/`error`)
+- **GET /api/admin/fs/directories** — List server directories for the Dir Watches browser
 - **POST /api/admin/import/talkgroups** — CSV upload with `system_id`
 - **POST /api/admin/import/units** — CSV upload with `system_id`
 - **GET /api/admin/export/config** — Full config JSON download
 - **POST /api/admin/import/config** — Config JSON import (transactional)
+- **GET /api/admin/tools/audio-missing** — Find call rows whose audio files are missing
+- **POST /api/admin/tools/audio-missing/cleanup** — Delete confirmed missing-audio call rows
+- **GET /api/admin/ws** — Admin WebSocket endpoint
