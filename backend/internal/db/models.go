@@ -47,6 +47,8 @@ type Call struct {
 	Site            sql.NullString `db:"site" json:"site"`
 	Channel         sql.NullString `db:"channel" json:"channel"`
 	Decoder         sql.NullString `db:"decoder" json:"decoder"`
+	ErrorCount      sql.NullInt64  `db:"error_count" json:"error_count"`
+	SpikeCount      sql.NullInt64  `db:"spike_count" json:"spike_count"`
 }
 
 type Dirwatch struct {

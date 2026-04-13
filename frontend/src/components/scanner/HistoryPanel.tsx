@@ -55,6 +55,18 @@ export function HistoryPanel({ history, time12hFormat }: HistoryPanelProps) {
                 </span>
               </>
             )}
+            {call.errorCount != null && call.errorCount > 0 && (
+              <>
+                <span>·</span>
+                <span className="shrink-0">E:{call.errorCount}</span>
+              </>
+            )}
+            {call.spikeCount != null && call.spikeCount > 0 && (
+              <>
+                <span>·</span>
+                <span className="shrink-0">S:{call.spikeCount}</span>
+              </>
+            )}
           </div>
         </div>
       ))}

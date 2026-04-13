@@ -36,6 +36,8 @@ interface BookmarkCall {
   site?: string;
   channel?: string;
   decoder?: string;
+  errorCount?: number;
+  spikeCount?: number;
   bookmarked: boolean;
 }
 
@@ -55,6 +57,8 @@ function bookmarkCallToCall(bc: BookmarkCall): Call {
     site: bc.site,
     channel: bc.channel,
     decoder: bc.decoder,
+    errorCount: bc.errorCount,
+    spikeCount: bc.spikeCount,
     systemLabel: bc.systemLabel,
     talkgroupLabel: bc.talkgroupLabel,
     talkgroupName: bc.talkgroupName,
@@ -195,6 +199,12 @@ export default function BookmarksPanel({
                     <span>UID: {call.source}</span>
                   )}
                   <span className="shrink-0">TGID: {call.talkgroupId}</span>
+                  {call.errorCount != null && call.errorCount > 0 && (
+                    <span>E:{call.errorCount}</span>
+                  )}
+                  {call.spikeCount != null && call.spikeCount > 0 && (
+                    <span>S:{call.spikeCount}</span>
+                  )}
                 </div>
               </div>
               {/* Date/time + action buttons */}

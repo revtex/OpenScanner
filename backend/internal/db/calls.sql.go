@@ -71,7 +71,9 @@ INSERT INTO calls (
     talkgroup_id,
     site,
     channel,
-    decoder
+    decoder,
+    error_count,
+    spike_count
 ) VALUES (
     ?1,
     ?2,
@@ -87,7 +89,9 @@ INSERT INTO calls (
     ?12,
     ?13,
     ?14,
-    ?15
+    ?15,
+    ?16,
+    ?17
 ) RETURNING id
 `
 
@@ -107,6 +111,8 @@ type CreateCallParams struct {
 	Site            sql.NullString `db:"site" json:"site"`
 	Channel         sql.NullString `db:"channel" json:"channel"`
 	Decoder         sql.NullString `db:"decoder" json:"decoder"`
+	ErrorCount      sql.NullInt64  `db:"error_count" json:"error_count"`
+	SpikeCount      sql.NullInt64  `db:"spike_count" json:"spike_count"`
 }
 
 func (q *Queries) CreateCall(ctx context.Context, arg CreateCallParams) (int64, error) {
@@ -126,6 +132,8 @@ func (q *Queries) CreateCall(ctx context.Context, arg CreateCallParams) (int64, 
 		arg.Site,
 		arg.Channel,
 		arg.Decoder,
+		arg.ErrorCount,
+		arg.SpikeCount,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -152,7 +160,7 @@ func (q *Queries) DeleteCallBatch(ctx context.Context, id int64) error {
 
 const getCall = `-- name: GetCall :one
 SELECT
-    c.id, c.audio_path, c.audio_name, c.audio_type, c.date_time, c.frequency, c.duration, c.source, c.sources_json, c.frequencies_json, c.patches_json, c.system_id, c.talkgroup_id, c.site, c.channel, c.decoder,
+    c.id, c.audio_path, c.audio_name, c.audio_type, c.date_time, c.frequency, c.duration, c.source, c.sources_json, c.frequencies_json, c.patches_json, c.system_id, c.talkgroup_id, c.site, c.channel, c.decoder, c.error_count, c.spike_count,
     s.label  AS system_label,
     t.label  AS talkgroup_label,
     t.name   AS talkgroup_name
@@ -180,6 +188,8 @@ type GetCallRow struct {
 	Site            sql.NullString `db:"site" json:"site"`
 	Channel         sql.NullString `db:"channel" json:"channel"`
 	Decoder         sql.NullString `db:"decoder" json:"decoder"`
+	ErrorCount      sql.NullInt64  `db:"error_count" json:"error_count"`
+	SpikeCount      sql.NullInt64  `db:"spike_count" json:"spike_count"`
 	SystemLabel     sql.NullString `db:"system_label" json:"system_label"`
 	TalkgroupLabel  sql.NullString `db:"talkgroup_label" json:"talkgroup_label"`
 	TalkgroupName   sql.NullString `db:"talkgroup_name" json:"talkgroup_name"`
@@ -205,6 +215,8 @@ func (q *Queries) GetCall(ctx context.Context, id int64) (GetCallRow, error) {
 		&i.Site,
 		&i.Channel,
 		&i.Decoder,
+		&i.ErrorCount,
+		&i.SpikeCount,
 		&i.SystemLabel,
 		&i.TalkgroupLabel,
 		&i.TalkgroupName,
@@ -300,7 +312,7 @@ func (q *Queries) HasCallInTimeRange(ctx context.Context, arg HasCallInTimeRange
 }
 
 const listCalls = `-- name: ListCalls :many
-SELECT c.id, c.audio_path, c.audio_name, c.audio_type, c.date_time, c.frequency, c.duration, c.source, c.sources_json, c.frequencies_json, c.patches_json, c.system_id, c.talkgroup_id, c.site, c.channel, c.decoder
+SELECT c.id, c.audio_path, c.audio_name, c.audio_type, c.date_time, c.frequency, c.duration, c.source, c.sources_json, c.frequencies_json, c.patches_json, c.system_id, c.talkgroup_id, c.site, c.channel, c.decoder, c.error_count, c.spike_count
 FROM calls c
 WHERE
     (?1    IS NULL OR c.system_id    = ?1)
@@ -359,6 +371,8 @@ func (q *Queries) ListCalls(ctx context.Context, arg ListCallsParams) ([]Call, e
 			&i.Site,
 			&i.Channel,
 			&i.Decoder,
+			&i.ErrorCount,
+			&i.SpikeCount,
 		); err != nil {
 			return nil, err
 		}
@@ -374,7 +388,7 @@ func (q *Queries) ListCalls(ctx context.Context, arg ListCallsParams) ([]Call, e
 }
 
 const listCallsAsc = `-- name: ListCallsAsc :many
-SELECT c.id, c.audio_path, c.audio_name, c.audio_type, c.date_time, c.frequency, c.duration, c.source, c.sources_json, c.frequencies_json, c.patches_json, c.system_id, c.talkgroup_id, c.site, c.channel, c.decoder
+SELECT c.id, c.audio_path, c.audio_name, c.audio_type, c.date_time, c.frequency, c.duration, c.source, c.sources_json, c.frequencies_json, c.patches_json, c.system_id, c.talkgroup_id, c.site, c.channel, c.decoder, c.error_count, c.spike_count
 FROM calls c
 WHERE
     (?1    IS NULL OR c.system_id    = ?1)
@@ -433,6 +447,8 @@ func (q *Queries) ListCallsAsc(ctx context.Context, arg ListCallsAscParams) ([]C
 			&i.Site,
 			&i.Channel,
 			&i.Decoder,
+			&i.ErrorCount,
+			&i.SpikeCount,
 		); err != nil {
 			return nil, err
 		}

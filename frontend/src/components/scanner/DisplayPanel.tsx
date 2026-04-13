@@ -199,7 +199,7 @@ export function DisplayPanel({
                 </button>
               )}
             </div>
-            <div className="flex gap-1">
+            <div className="flex items-center gap-1">
               {isAvoided && (
                 <span className="badge badge-xs bg-base-300 text-base-content">
                   AVOID
@@ -210,6 +210,18 @@ export function DisplayPanel({
                   PATCH
                 </span>
               )}
+              <span className="opacity-50 text-xs">
+                {currentCall.errorCount != null
+                  ? `E: ${currentCall.errorCount}`
+                  : ""}
+                {currentCall.errorCount != null &&
+                currentCall.spikeCount != null
+                  ? " "
+                  : ""}
+                {currentCall.spikeCount != null
+                  ? `S: ${currentCall.spikeCount}`
+                  : ""}
+              </span>
             </div>
           </div>
         </>

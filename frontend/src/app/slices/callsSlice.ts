@@ -22,6 +22,8 @@ export interface CallSearchResult {
   site?: string;
   channel?: string;
   decoder?: string;
+  errorCount?: number;
+  spikeCount?: number;
   transcript: string;
   bookmarked: boolean;
 }

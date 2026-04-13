@@ -126,7 +126,7 @@ func (q *Queries) ListBookmarkCallIDsByUser(ctx context.Context, userID sql.Null
 
 const listBookmarkCallsByUser = `-- name: ListBookmarkCallsByUser :many
 SELECT
-    c.id, c.audio_path, c.audio_name, c.audio_type, c.date_time, c.frequency, c.duration, c.source, c.sources_json, c.frequencies_json, c.patches_json, c.system_id, c.talkgroup_id, c.site, c.channel, c.decoder,
+    c.id, c.audio_path, c.audio_name, c.audio_type, c.date_time, c.frequency, c.duration, c.source, c.sources_json, c.frequencies_json, c.patches_json, c.system_id, c.talkgroup_id, c.site, c.channel, c.decoder, c.error_count, c.spike_count,
     s.label AS system_label,
     s.system_id AS system_radio_id,
     t.label AS talkgroup_label,
@@ -159,6 +159,8 @@ type ListBookmarkCallsByUserRow struct {
 	Site             sql.NullString `db:"site" json:"site"`
 	Channel          sql.NullString `db:"channel" json:"channel"`
 	Decoder          sql.NullString `db:"decoder" json:"decoder"`
+	ErrorCount       sql.NullInt64  `db:"error_count" json:"error_count"`
+	SpikeCount       sql.NullInt64  `db:"spike_count" json:"spike_count"`
 	SystemLabel      sql.NullString `db:"system_label" json:"system_label"`
 	SystemRadioID    sql.NullInt64  `db:"system_radio_id" json:"system_radio_id"`
 	TalkgroupLabel   sql.NullString `db:"talkgroup_label" json:"talkgroup_label"`
@@ -193,6 +195,8 @@ func (q *Queries) ListBookmarkCallsByUser(ctx context.Context, userID sql.NullIn
 			&i.Site,
 			&i.Channel,
 			&i.Decoder,
+			&i.ErrorCount,
+			&i.SpikeCount,
 			&i.SystemLabel,
 			&i.SystemRadioID,
 			&i.TalkgroupLabel,

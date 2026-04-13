@@ -192,6 +192,18 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		}
 	}
 
+	var errorCount, spikeCount sql.NullInt64
+	if v := c.PostForm("errorCount"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			errorCount = sql.NullInt64{Int64: n, Valid: true}
+		}
+	}
+	if v := c.PostForm("spikeCount"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			spikeCount = sql.NullInt64{Int64: n, Valid: true}
+		}
+	}
+
 	var sourcesJSON, frequenciesJSON, patchesJSON sql.NullString
 	if v := c.PostForm("sources"); v != "" {
 		sourcesJSON = sql.NullString{String: v, Valid: true}
@@ -397,6 +409,8 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		Site:            siteCol,
 		Channel:         channelCol,
 		Decoder:         decoderCol,
+		ErrorCount:      errorCount,
+		SpikeCount:      spikeCount,
 	})
 	if err != nil {
 		slog.Error("failed to insert call", "error", err)
@@ -435,6 +449,12 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		}
 		if decoderCol.Valid {
 			calPayload["decoder"] = decoderCol.String
+		}
+		if errorCount.Valid {
+			calPayload["errorCount"] = errorCount.Int64
+		}
+		if spikeCount.Valid {
+			calPayload["spikeCount"] = spikeCount.Int64
 		}
 		calMsg, err := ws.NewCALMessage(calPayload)
 		if err != nil {
@@ -523,6 +543,8 @@ type CallSearchResult struct {
 	Site           string `json:"site,omitempty"`
 	Channel        string `json:"channel,omitempty"`
 	Decoder        string `json:"decoder,omitempty"`
+	ErrorCount     *int64 `json:"errorCount,omitempty"`
+	SpikeCount     *int64 `json:"spikeCount,omitempty"`
 	Transcript     string `json:"transcript,omitempty"`
 	Bookmarked     bool   `json:"bookmarked"`
 }
@@ -758,17 +780,14 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 		if call.Duration.Valid {
 			r.Duration = &call.Duration.Int64
 		}
-		if call.Site.Valid {
-			r.Site = call.Site.String
-		}
-		if call.Channel.Valid {
-			r.Channel = call.Channel.String
-		}
-		if call.Decoder.Valid {
-			r.Decoder = call.Decoder.String
-		}
 		if call.Source.Valid {
 			r.Source = &call.Source.Int64
+		}
+		if call.ErrorCount.Valid {
+			r.ErrorCount = &call.ErrorCount.Int64
+		}
+		if call.SpikeCount.Valid {
+			r.SpikeCount = &call.SpikeCount.Int64
 		}
 		if call.Site.Valid {
 			r.Site = call.Site.String

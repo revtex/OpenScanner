@@ -80,7 +80,9 @@ CREATE TABLE IF NOT EXISTS calls (
     talkgroup_id     INTEGER REFERENCES talkgroups(id) ON DELETE SET NULL,
     site             TEXT,
     channel          TEXT,
-    decoder          TEXT
+    decoder          TEXT,
+    error_count      INTEGER,
+    spike_count      INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_calls_datetime_system_tg ON calls(date_time, system_id, talkgroup_id);

@@ -68,7 +68,9 @@ INSERT INTO calls (
     talkgroup_id,
     site,
     channel,
-    decoder
+    decoder,
+    error_count,
+    spike_count
 ) VALUES (
     :audio_path,
     :audio_name,
@@ -84,7 +86,9 @@ INSERT INTO calls (
     :talkgroup_id,
     :site,
     :channel,
-    :decoder
+    :decoder,
+    :error_count,
+    :spike_count
 ) RETURNING id;
 
 -- name: DeleteCall :exec

@@ -109,6 +109,12 @@ func (h *BookmarkHandler) GetBookmarkCalls(c *gin.Context) {
 		if row.Source.Valid {
 			r.Source = &row.Source.Int64
 		}
+		if row.ErrorCount.Valid {
+			r.ErrorCount = &row.ErrorCount.Int64
+		}
+		if row.SpikeCount.Valid {
+			r.SpikeCount = &row.SpikeCount.Int64
+		}
 		if row.TalkgroupRadioID.Valid {
 			r.TalkgroupID = row.TalkgroupRadioID.Int64
 		}

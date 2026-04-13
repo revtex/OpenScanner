@@ -175,6 +175,8 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
           site: call.site,
           channel: call.channel,
           decoder: call.decoder,
+          errorCount: call.errorCount,
+          spikeCount: call.spikeCount,
           systemLabel: call.systemLabel,
           talkgroupLabel: call.talkgroupLabel,
           talkgroupName: call.talkgroupName,
@@ -296,6 +298,12 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                       {call.source > 0 && <span>UID: {call.source}</span>}
                       {call.talkgroupId > 0 && (
                         <span>TGID: {call.talkgroupId}</span>
+                      )}
+                      {call.errorCount != null && call.errorCount > 0 && (
+                        <span>E:{call.errorCount}</span>
+                      )}
+                      {call.spikeCount != null && call.spikeCount > 0 && (
+                        <span>S:{call.spikeCount}</span>
                       )}
                     </div>
                   </div>

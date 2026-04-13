@@ -97,6 +97,8 @@ export const api = createApi({
           frequency?: number;
           duration?: number;
           source?: number;
+          errorCount?: number;
+          spikeCount?: number;
           bookmarked: boolean;
         }[];
       },

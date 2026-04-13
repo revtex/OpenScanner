@@ -17,6 +17,8 @@ export interface Call {
   site?: string; // receiver site name
   channel?: string; // channel identifier
   decoder?: string; // decoder type (e.g. "P25 Phase 1")
+  errorCount?: number; // P25 error count
+  spikeCount?: number; // P25 spike count
   systemLabel?: string; // populated from config
   talkgroupLabel?: string; // populated from config
   talkgroupName?: string; // populated from config
