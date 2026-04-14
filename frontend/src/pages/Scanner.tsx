@@ -96,7 +96,7 @@ export default function Scanner() {
   );
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="max-w-2xl mx-auto p-6 pb-24">
       <LEDPanel />
       <DisplayPanel
         currentCall={scanner.currentCall}
