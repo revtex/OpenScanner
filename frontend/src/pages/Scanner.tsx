@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useGetSetupStatusQuery } from "@/app/api";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { setSetupStatus, selectToken } from "@/app/slices/authSlice";
-import { expireAvoids } from "@/app/slices/scannerSlice";
+import { expireAvoids, setPaused } from "@/app/slices/scannerSlice";
 import { useScanner } from "@/hooks/useScanner";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { LEDPanel } from "@/components/scanner/LEDPanel";
@@ -85,6 +85,15 @@ export default function Scanner() {
     const id = setInterval(() => dispatch(expireAvoids()), 10_000);
     return () => clearInterval(id);
   }, [dispatch]);
+
+  // Pause applies to the current playback moment only; clear stale paused UI
+  // state when leaving the scanner route.
+  useEffect(
+    () => () => {
+      dispatch(setPaused(false));
+    },
+    [dispatch],
+  );
 
   return (
     <div className="max-w-2xl mx-auto p-6">

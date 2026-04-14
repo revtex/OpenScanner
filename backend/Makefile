@@ -22,6 +22,7 @@ lint:
 clean:
 	rm -f $(BINARY) server migrate
 	rm -rf tmp/
+	rm -f docs/docs.go docs/swagger.json docs/swagger.yaml
 	rm -f ../data/openscanner.db ../data/openscanner.db-wal ../data/openscanner.db-shm
 	rm -rf ../data/recordings/
 

@@ -92,6 +92,9 @@ export const scannerSlice = createSlice({
     togglePause(state) {
       state.isPaused = !state.isPaused;
     },
+    setPaused(state, action: PayloadAction<boolean>) {
+      state.isPaused = action.payload;
+    },
     toggleLive(state) {
       state.isLive = !state.isLive;
     },
@@ -211,6 +214,7 @@ export const {
   setCurrentCall,
   clearCurrentCall,
   togglePause,
+  setPaused,
   toggleLive,
   holdSystem,
   holdTG,

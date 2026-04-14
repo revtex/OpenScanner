@@ -5,6 +5,7 @@ import {
   setCurrentCall,
   clearCurrentCall,
   togglePause,
+  setPaused,
   toggleLive,
   holdSystem,
   holdTG,
@@ -89,6 +90,13 @@ describe("scannerSlice", () => {
     it("toggles isPaused from true to false", () => {
       let state = reducer(undefined, togglePause());
       state = reducer(state, togglePause());
+      expect(state.isPaused).toBe(false);
+    });
+
+    it("sets isPaused explicitly", () => {
+      let state = reducer(undefined, setPaused(true));
+      expect(state.isPaused).toBe(true);
+      state = reducer(state, setPaused(false));
       expect(state.isPaused).toBe(false);
     });
   });
