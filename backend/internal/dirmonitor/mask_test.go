@@ -240,3 +240,272 @@ func TestTokensFromCall_TgAFSEmpty(t *testing.T) {
 		t.Errorf("TgAFS = %q, want empty string", tok.TgAFS)
 	}
 }
+
+// ── ParseMask tests ──────────────────────────────────────────────────────────
+
+// TestParseMask_ProScanWithParens is the exact scenario from the bug report:
+// a ProScan mask with parentheses in the talkgroup label.
+func TestParseMask_ProScanWithParens(t *testing.T) {
+	mask := "#DATE_#TIME_#GROUP_#TGLBL_#TG"
+	filename := "2025-08-17_12-15-16_St. Johns County Fire Rescue_A1 Primary (Dispatch)_10000"
+
+	values, ok := ParseMask(mask, filename)
+	if !ok {
+		t.Fatal("ParseMask returned false; expected match")
+	}
+
+	want := map[string]string{
+		"#DATE":  "2025-08-17",
+		"#TIME":  "12-15-16",
+		"#GROUP": "St. Johns County Fire Rescue",
+		"#TGLBL": "A1 Primary (Dispatch)",
+		"#TG":    "10000",
+	}
+	for k, v := range want {
+		if values[k] != v {
+			t.Errorf("token %s = %q, want %q", k, values[k], v)
+		}
+	}
+}
+
+// TestParseMask_NumericOnly tests a mask with only numeric tokens.
+func TestParseMask_NumericOnly(t *testing.T) {
+	mask := "#SYS-#TG"
+	filename := "42-10000"
+
+	values, ok := ParseMask(mask, filename)
+	if !ok {
+		t.Fatal("ParseMask returned false")
+	}
+	if values["#SYS"] != "42" {
+		t.Errorf("#SYS = %q, want %q", values["#SYS"], "42")
+	}
+	if values["#TG"] != "10000" {
+		t.Errorf("#TG = %q, want %q", values["#TG"], "10000")
+	}
+}
+
+// TestParseMask_NoTokens returns false for a mask without tokens.
+func TestParseMask_NoTokens(t *testing.T) {
+	_, ok := ParseMask("static_mask", "anything")
+	if ok {
+		t.Error("ParseMask should return false for mask without tokens")
+	}
+}
+
+// TestParseMask_NoMatch returns false when the filename doesn't match.
+func TestParseMask_NoMatch(t *testing.T) {
+	mask := "#DATE_#TIME_#TG"
+	filename := "no-underscores-here"
+
+	_, ok := ParseMask(mask, filename)
+	if ok {
+		t.Error("ParseMask should return false for non-matching filename")
+	}
+}
+
+// TestParseMask_FrequencyTokens tests MHz/kHz/Hz token extraction.
+func TestParseMask_FrequencyTokens(t *testing.T) {
+	mask := "#DATE_#TGMHZ_#TG"
+	filename := "20250817_851.025_10000"
+
+	values, ok := ParseMask(mask, filename)
+	if !ok {
+		t.Fatal("ParseMask returned false")
+	}
+	if values["#TGMHZ"] != "851.025" {
+		t.Errorf("#TGMHZ = %q, want %q", values["#TGMHZ"], "851.025")
+	}
+}
+
+// TestParseMask_TGID verifies #TGID is extracted separately from #TG.
+func TestParseMask_TGID(t *testing.T) {
+	mask := "#DATE_#TGID"
+	filename := "20250817_99999"
+
+	values, ok := ParseMask(mask, filename)
+	if !ok {
+		t.Fatal("ParseMask returned false")
+	}
+	if values["#TGID"] != "99999" {
+		t.Errorf("#TGID = %q, want %q", values["#TGID"], "99999")
+	}
+}
+
+// TestParseMask_CompactDatetime tests masks with compact YYYYMMDD/HHMMSS.
+func TestParseMask_CompactDatetime(t *testing.T) {
+	mask := "#DATE_#TIME_#TG"
+	filename := "20250817_121516_10000"
+
+	values, ok := ParseMask(mask, filename)
+	if !ok {
+		t.Fatal("ParseMask returned false")
+	}
+	if values["#DATE"] != "20250817" {
+		t.Errorf("#DATE = %q, want %q", values["#DATE"], "20250817")
+	}
+	if values["#TIME"] != "121516" {
+		t.Errorf("#TIME = %q, want %q", values["#TIME"], "121516")
+	}
+}
+
+// TestParseMask_SysLabel tests the #SYSLBL token.
+func TestParseMask_SysLabel(t *testing.T) {
+	mask := "#SYSLBL_#TG"
+	filename := "My System_10000"
+
+	values, ok := ParseMask(mask, filename)
+	if !ok {
+		t.Fatal("ParseMask returned false")
+	}
+	if values["#SYSLBL"] != "My System" {
+		t.Errorf("#SYSLBL = %q, want %q", values["#SYSLBL"], "My System")
+	}
+}
+
+// ── ApplyMaskValues tests ────────────────────────────────────────────────────
+
+// TestApplyMaskValues_FillsZeroFields verifies that mask values fill in
+// zero-valued fields.
+func TestApplyMaskValues_FillsZeroFields(t *testing.T) {
+	call := &ParsedCall{
+		AudioFilePath: "/tmp/test.wav",
+		DateTime:      time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	values := map[string]string{
+		"#TG":    "10000",
+		"#SYS":   "42",
+		"#TGLBL": "A1 Primary (Dispatch)",
+		"#UNIT":  "5432",
+	}
+	ApplyMaskValues(call, values)
+
+	if call.TalkgroupID != 10000 {
+		t.Errorf("TalkgroupID = %d, want 10000", call.TalkgroupID)
+	}
+	if call.SystemID != 42 {
+		t.Errorf("SystemID = %d, want 42", call.SystemID)
+	}
+	if call.TalkgroupTitle != "A1 Primary (Dispatch)" {
+		t.Errorf("TalkgroupTitle = %q, want %q", call.TalkgroupTitle, "A1 Primary (Dispatch)")
+	}
+	if call.Source != 5432 {
+		t.Errorf("Source = %d, want 5432", call.Source)
+	}
+}
+
+// TestApplyMaskValues_DoesNotOverwriteNonZero verifies that non-zero fields
+// set by the parser or config overrides are preserved.
+func TestApplyMaskValues_DoesNotOverwriteNonZero(t *testing.T) {
+	call := &ParsedCall{
+		AudioFilePath:  "/tmp/test.wav",
+		TalkgroupID:    999, // already set by config override
+		SystemID:       5,   // already set
+		TalkgroupTitle: "Existing",
+	}
+	values := map[string]string{
+		"#TG":    "10000",
+		"#SYS":   "42",
+		"#TGLBL": "From Mask",
+	}
+	ApplyMaskValues(call, values)
+
+	if call.TalkgroupID != 999 {
+		t.Errorf("TalkgroupID = %d, want 999 (should not be overwritten)", call.TalkgroupID)
+	}
+	if call.SystemID != 5 {
+		t.Errorf("SystemID = %d, want 5 (should not be overwritten)", call.SystemID)
+	}
+	if call.TalkgroupTitle != "Existing" {
+		t.Errorf("TalkgroupTitle = %q, want %q (should not be overwritten)", call.TalkgroupTitle, "Existing")
+	}
+}
+
+// TestApplyMaskValues_DateTime verifies that mask-extracted date/time always
+// replaces the parsed DateTime (which is typically file ModTime).
+func TestApplyMaskValues_DateTime(t *testing.T) {
+	modTime := time.Date(2025, 8, 17, 16, 0, 0, 0, time.UTC)
+	call := &ParsedCall{
+		AudioFilePath: "/tmp/test.wav",
+		DateTime:      modTime,
+	}
+	values := map[string]string{
+		"#DATE": "2025-08-17",
+		"#TIME": "12-15-16",
+	}
+	ApplyMaskValues(call, values)
+
+	if call.DateTime.Equal(modTime) {
+		t.Error("DateTime should have been replaced by mask-extracted value")
+	}
+	// Verify the masked date/time was parsed (in local TZ, so compare components).
+	if call.DateTime.Year() != 2025 || call.DateTime.Month() != 8 || call.DateTime.Day() != 17 {
+		t.Errorf("DateTime date = %v, want 2025-08-17", call.DateTime)
+	}
+	if call.DateTime.Hour() != 12 || call.DateTime.Minute() != 15 || call.DateTime.Second() != 16 {
+		t.Errorf("DateTime time = %v, want 12:15:16", call.DateTime)
+	}
+}
+
+// TestApplyMaskValues_FrequencyMHz verifies MHz frequency extraction.
+func TestApplyMaskValues_FrequencyMHz(t *testing.T) {
+	call := &ParsedCall{AudioFilePath: "/tmp/test.wav"}
+	ApplyMaskValues(call, map[string]string{"#TGMHZ": "851.025"})
+	if call.Frequency != 851025000 {
+		t.Errorf("Frequency = %d, want 851025000", call.Frequency)
+	}
+}
+
+// TestApplyMaskValues_TGID verifies #TGID takes precedence over #TG.
+func TestApplyMaskValues_TGID(t *testing.T) {
+	call := &ParsedCall{AudioFilePath: "/tmp/test.wav"}
+	ApplyMaskValues(call, map[string]string{
+		"#TGID": "12345",
+		"#TG":   "99999",
+	})
+	if call.TalkgroupID != 12345 {
+		t.Errorf("TalkgroupID = %d, want 12345 (#TGID should take precedence)", call.TalkgroupID)
+	}
+}
+
+// TestParseMaskDateTime verifies various date/time format combinations.
+func TestParseMaskDateTime(t *testing.T) {
+	cases := []struct {
+		name     string
+		dateStr  string
+		timeStr  string
+		wantOK   bool
+		wantYear int
+		wantMon  time.Month
+		wantDay  int
+		wantHour int
+		wantMin  int
+		wantSec  int
+	}{
+		{"dashed", "2025-08-17", "12-15-16", true, 2025, 8, 17, 12, 15, 16},
+		{"compact", "20250817", "121516", true, 2025, 8, 17, 12, 15, 16},
+		{"colons", "2025-08-17", "12:15:16", true, 2025, 8, 17, 12, 15, 16},
+		{"short_date", "2025", "121516", false, 0, 0, 0, 0, 0, 0},
+		{"short_time", "20250817", "12", true, 2025, 8, 17, 12, 0, 0},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := parseMaskDateTime(tc.dateStr, tc.timeStr)
+			if ok != tc.wantOK {
+				t.Fatalf("parseMaskDateTime(%q, %q) ok = %v, want %v", tc.dateStr, tc.timeStr, ok, tc.wantOK)
+			}
+			if !ok {
+				return
+			}
+			if got.Year() != tc.wantYear || got.Month() != tc.wantMon || got.Day() != tc.wantDay {
+				t.Errorf("date = %d-%02d-%02d, want %d-%02d-%02d",
+					got.Year(), got.Month(), got.Day(), tc.wantYear, tc.wantMon, tc.wantDay)
+			}
+			if got.Hour() != tc.wantHour || got.Minute() != tc.wantMin || got.Second() != tc.wantSec {
+				t.Errorf("time = %02d:%02d:%02d, want %02d:%02d:%02d",
+					got.Hour(), got.Minute(), got.Second(), tc.wantHour, tc.wantMin, tc.wantSec)
+			}
+		})
+	}
+}

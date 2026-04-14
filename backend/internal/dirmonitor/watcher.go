@@ -324,6 +324,20 @@ func (s *Service) handleFile(ctx context.Context, dw db.Dirmonitor, filePath str
 		return
 	}
 
+	// Apply mask-based metadata extraction from filename. This fills in
+	// zero-valued fields (e.g. TalkgroupID, SystemID) that the parser did
+	// not extract but the mask can provide. Fields already set by the parser
+	// or config overrides are never overwritten.
+	if dw.Mask.Valid && dw.Mask.String != "" {
+		base := strings.TrimSuffix(filepath.Base(fileReal), filepath.Ext(fileReal))
+		if values, ok := ParseMask(dw.Mask.String, base); ok {
+			ApplyMaskValues(parsed, values)
+		} else {
+			slog.Debug("dirmonitor: mask did not match filename",
+				"id", dw.ID, "mask", dw.Mask.String, "filename", base)
+		}
+	}
+
 	// File size validation: reject files smaller than a valid audio header
 	// (44 bytes is the minimum WAV header size).
 	const minAudioBytes = 44

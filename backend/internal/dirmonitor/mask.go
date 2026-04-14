@@ -1,8 +1,11 @@
-// Package dirmonitor — meta-mask token expansion (#DATE, #TIME, #TGLBL, etc.).
+// Package dirmonitor — meta-mask token expansion (#DATE, #TIME, #TGLBL, etc.)
+// and reverse mask parsing (filename → metadata extraction).
 package dirmonitor
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -76,4 +79,211 @@ func TokensFromCall(callTime time.Time, sysLabel string, sysID int64, tgLabel, g
 		KHz:      fmt.Sprintf("%d", freqHz/1000),
 		MHz:      fmt.Sprintf("%.3f", float64(freqHz)/1_000_000),
 	}
+}
+
+// ── Reverse mask parsing (filename → metadata) ───────────────────────────────
+
+// reToken matches a mask token: # followed by one or more uppercase letters.
+var reToken = regexp.MustCompile(`#[A-Z]+`)
+
+// tokenCapturePattern maps known mask tokens to regex sub-patterns used when
+// building a regex from a mask for filename matching.
+//
+// Text tokens use (.+?) (non-greedy) so that literal separators between tokens
+// act as anchors. Numeric tokens use (\d+). Date/time tokens use (\S+?) to
+// match compact values that may contain dashes or colons but not spaces.
+var tokenCapturePattern = map[string]string{
+	"#DATE":  `(\S+?)`,
+	"#ZTIME": `(\S+?)`,
+	"#TIME":  `(\S+?)`,
+	"#GROUP": `(.+?)`,
+	"#SYSLBL": `(.+?)`,
+	"#TAG":    `(.+?)`,
+	"#TGAFS":  `(.+?)`,
+	"#UNIT":   `(\d+)`,
+	"#TGLBL":  `(.+?)`,
+	"#TGMHZ":  `([\d.]+)`,
+	"#TGKHZ":  `(\d+)`,
+	"#TGHZ":   `(\d+)`,
+	"#TGID":   `(\d+)`,
+	"#SYS":    `(\d+)`,
+	"#MHZ":    `([\d.]+)`,
+	"#KHZ":    `(\d+)`,
+	"#HZ":     `(\d+)`,
+	"#TG":     `(\d+)`,
+}
+
+// ParseMask converts a mask pattern into a regex, matches it against the
+// given filename (without extension), and returns a map of token→value for
+// each matched token. Returns nil, false if the mask has no tokens or the
+// filename doesn't match.
+//
+// Example:
+//
+//	mask = "#DATE_#TIME_#GROUP_#TGLBL_#TG"
+//	filename = "2025-08-17_12-15-16_St. Johns County Fire Rescue_A1 Primary (Dispatch)_10000"
+//	→ {"#DATE":"2025-08-17", "#TIME":"12-15-16", "#GROUP":"St. Johns County Fire Rescue",
+//	   "#TGLBL":"A1 Primary (Dispatch)", "#TG":"10000"}, true
+func ParseMask(mask, filename string) (map[string]string, bool) {
+	locs := reToken.FindAllStringIndex(mask, -1)
+	if len(locs) == 0 {
+		return nil, false
+	}
+
+	var pattern strings.Builder
+	var names []string
+	pattern.WriteString("^")
+	lastEnd := 0
+
+	for _, loc := range locs {
+		// Escape literal text between tokens (separators like _ or -).
+		if loc[0] > lastEnd {
+			pattern.WriteString(regexp.QuoteMeta(mask[lastEnd:loc[0]]))
+		}
+		token := mask[loc[0]:loc[1]]
+		if p, ok := tokenCapturePattern[token]; ok {
+			pattern.WriteString(p)
+			names = append(names, token)
+		} else {
+			// Unknown token — treat as literal.
+			pattern.WriteString(regexp.QuoteMeta(token))
+		}
+		lastEnd = loc[1]
+	}
+
+	if lastEnd < len(mask) {
+		pattern.WriteString(regexp.QuoteMeta(mask[lastEnd:]))
+	}
+	pattern.WriteString("$")
+
+	re, err := regexp.Compile(pattern.String())
+	if err != nil {
+		return nil, false
+	}
+
+	subs := re.FindStringSubmatch(filename)
+	if subs == nil {
+		return nil, false
+	}
+
+	result := make(map[string]string, len(names))
+	for i, name := range names {
+		if i+1 < len(subs) {
+			result[name] = subs[i+1]
+		}
+	}
+	return result, true
+}
+
+// ApplyMaskValues fills zero-valued fields in call with values extracted from
+// mask token matching. Non-zero fields (already set by the parser or config
+// overrides) are never overwritten — except DateTime, which is replaced when
+// the mask provides both #DATE and #TIME because the mask timestamp is more
+// accurate than file ModTime.
+func ApplyMaskValues(call *ParsedCall, values map[string]string) {
+	// Talkgroup ID from #TGID or #TG.
+	if call.TalkgroupID == 0 {
+		for _, tok := range []string{"#TGID", "#TG"} {
+			if s, ok := values[tok]; ok {
+				if v, err := strconv.ParseInt(s, 10, 64); err == nil && v > 0 {
+					call.TalkgroupID = v
+					break
+				}
+			}
+		}
+	}
+
+	// System ID from #SYS.
+	if call.SystemID == 0 {
+		if s, ok := values["#SYS"]; ok {
+			if v, err := strconv.ParseInt(s, 10, 64); err == nil && v > 0 {
+				call.SystemID = v
+			}
+		}
+	}
+
+	// System label from #SYSLBL.
+	if call.SystemLabel == "" {
+		if s, ok := values["#SYSLBL"]; ok {
+			call.SystemLabel = s
+		}
+	}
+
+	// Talkgroup title from #TGLBL.
+	if call.TalkgroupTitle == "" {
+		if s, ok := values["#TGLBL"]; ok {
+			call.TalkgroupTitle = s
+		}
+	}
+
+	// Source unit from #UNIT.
+	if call.Source == 0 {
+		if s, ok := values["#UNIT"]; ok {
+			if v, err := strconv.ParseInt(s, 10, 64); err == nil && v > 0 {
+				call.Source = v
+			}
+		}
+	}
+
+	// Frequency from various Hz/kHz/MHz tokens.
+	if call.Frequency == 0 {
+		type ft struct {
+			token string
+			mult  float64
+		}
+		for _, f := range []ft{
+			{"#HZ", 1}, {"#TGHZ", 1},
+			{"#KHZ", 1000}, {"#TGKHZ", 1000},
+			{"#MHZ", 1_000_000}, {"#TGMHZ", 1_000_000},
+		} {
+			if s, ok := values[f.token]; ok {
+				if f.mult == 1 {
+					if v, err := strconv.ParseInt(s, 10, 64); err == nil && v > 0 {
+						call.Frequency = v
+						break
+					}
+				} else {
+					if v, err := strconv.ParseFloat(s, 64); err == nil && v > 0 {
+						call.Frequency = int64(v * f.mult)
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// Date + Time: prefer mask-extracted timestamp over file ModTime.
+	dateStr, hasDate := values["#DATE"]
+	timeStr, hasTime := values["#TIME"]
+	if !hasTime {
+		timeStr, hasTime = values["#ZTIME"]
+	}
+	if hasDate && hasTime {
+		if t, ok := parseMaskDateTime(dateStr, timeStr); ok {
+			call.DateTime = t
+		}
+	}
+}
+
+// parseMaskDateTime parses date and time strings extracted from a mask match.
+// Handles common formats by stripping separators (-, /, :, .) and parsing
+// as YYYYMMDDHHMMSS. Returns the parsed time in local timezone.
+func parseMaskDateTime(dateStr, timeStr string) (time.Time, bool) {
+	strip := strings.NewReplacer("-", "", "/", "", ":", "", ".", "")
+	d := strip.Replace(dateStr)
+	t := strip.Replace(timeStr)
+
+	if len(d) != 8 {
+		return time.Time{}, false
+	}
+	// Pad short time values (e.g. HHMM → HHMM00).
+	for len(t) < 6 {
+		t += "0"
+	}
+
+	parsed, err := time.ParseInLocation("20060102150405", d+t[:6], time.Now().Location())
+	if err != nil {
+		return time.Time{}, false
+	}
+	return parsed, true
 }
