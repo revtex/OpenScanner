@@ -89,11 +89,13 @@ See [docs/deployment.md](docs/deployment.md) for production deployment guidance.
 ## Documentation
 
 - [docs/architecture.md](docs/architecture.md): System architecture and data flow
-- [docs/api.md](docs/api.md): Full API reference
+- [docs/api.md](docs/api.md): API behavior guide and integration flow
 - [docs/admin-guide.md](docs/admin-guide.md): Admin dashboard usage
 - [docs/deployment.md](docs/deployment.md): Deployment and operations
 - [docs/recorder-integration.md](docs/recorder-integration.md): Recorder setup and DirWatch
 - [docs/plan.md](docs/plan.md): Implementation roadmap and project phases
+
+Swagger UI is available at `/api/admin/docs` after creating a docs session via `POST /api/admin/docs/session` as an authenticated admin.
 
 ## Development
 
@@ -112,6 +114,6 @@ make lint
 
 ## Project Status
 
-Phases 1 through 12 are complete, including core ingestion, streaming, admin dashboard, and deployment paths.
+Core ingestion, streaming, admin dashboard, sharing, and deployment paths are implemented and actively maintained.
 
 For detailed phase tracking, see [docs/plan.md](docs/plan.md).

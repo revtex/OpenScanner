@@ -132,7 +132,7 @@ Configure webhook endpoints for event notifications. This panel is accessible at
 
 ## Admin API Reference
 
-All admin endpoints are under `/api/admin/` and require `Authorization: Bearer <jwt>` with `admin` role. Full request/response details are in [api.md](api.md#admin-crud-endpoints).
+All admin endpoints are under `/api/admin/` and require `Authorization: Bearer <jwt>` with `admin` role. Behavioral summaries are in [api.md](api.md). Contract-level request/response schemas and per-endpoint auth are in Swagger UI at `/api/admin/docs` (open via `POST /api/admin/docs/session`).
 
 ### Resource CRUD
 

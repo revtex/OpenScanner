@@ -103,7 +103,7 @@ graph TD
 #### State Management
 
 - **frontend/src/app/store.ts** — Redux store combining `scannerSlice`, `authSlice`, and RTK Query `api` reducers
-- **frontend/src/app/slices/scannerSlice.ts** — Full scanner state with 17 reducers: `callReceived`, `setCurrentCall`, `clearCurrentCall`, `togglePause`, `toggleLive`, `holdSystem`, `holdTG`, `addAvoid`, `removeAvoid`, `clearAvoids`, `setListenerCount`, `setConnectionStatus`, `setConfig`, `toggleTG`, `restoreTGSelection`, `setAllTGs`, `expireAvoids`; queue management, and history tracking
+- **frontend/src/app/slices/scannerSlice.ts** — Full scanner state reducers for playback control (`togglePause`, `setPaused`, `toggleLive`), active call/history tracking (`setCurrentCall`, `clearCurrentCall`), hold/avoid logic, config updates, TG selection (`toggleTG`, `setAllTGs`, `setTGsBySystem`), and transcript updates
 - **frontend/src/app/slices/authSlice.ts** — Auth state: `setCredentials` (JWT + user), `clearCredentials`, `setSetupStatus`; token stored in `localStorage` (key `os_auth`) for persistence across browser tabs/windows
 - **frontend/src/app/slices/callsSlice.ts** — Search filter state: system, talkgroup, group, tag, date range, sort direction, bookmarked-only; drives SearchPanel query params
 - **frontend/src/app/slices/shareSlice.ts** — RTK Query mutation for creating shareable call links

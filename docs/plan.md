@@ -656,10 +656,10 @@ All resources support `GET` (list), `POST` (create), `PUT /:id` (update), `DELET
 
 ### OpenAPI Documentation
 
-| Method | Path                     | Auth | Description                        |
-| ------ | ------------------------ | ---- | ---------------------------------- |
-| GET    | `/api/docs`              | —    | Swagger UI (embedded static files) |
-| GET    | `/api/docs/openapi.yaml` | —    | Raw OpenAPI 3.1 spec               |
+| Method | Path                      | Auth           | Description                                    |
+| ------ | ------------------------- | -------------- | ---------------------------------------------- |
+| POST   | `/api/admin/docs/session` | JWT (admin)    | Issue short-lived HTTP-only docs cookie        |
+| GET    | `/api/admin/docs/*`       | Swagger cookie | Swagger UI and generated docs static endpoints |
 
 ### CLI Management (via `cmd/server` subcommands)
 
@@ -1372,7 +1372,7 @@ OpenScanner has its own visual language — it is **not** a clone or reskin of a
 | Interactions     | Tooltips with keyboard hints; dropdown menus; inline volume slider                          |
 | Features         | Bookmarks, shareable links, transcription, push notifications, webhooks, activity dashboard |
 | Admin            | Same-SPA sidebar layout; feature toggles in Options panel                                   |
-| API              | OpenAPI/Swagger docs at `/api/docs`                                                         |
+| API              | OpenAPI/Swagger docs at `/api/admin/docs` (after `POST /api/admin/docs/session`)            |
 | PWA              | Service Worker + manifest + push notification support                                       |
 
 ---
@@ -1427,8 +1427,8 @@ All extended features are **configurable** — disabled by default (except keybo
 ### OpenAPI / Swagger Docs
 
 - OpenAPI 3.1 YAML spec file describing all endpoints, request/response schemas, auth schemes
-- Embedded Swagger UI served at `/api/docs` via `go:embed` (swagger-ui-dist static files)
-- Raw spec available at `/api/docs/openapi.yaml`
+- Embedded Swagger UI served at `/api/admin/docs/*` and protected by a short-lived HTTP-only cookie
+- Admin clients mint the docs cookie via `POST /api/admin/docs/session`
 - Always available (not toggleable) — useful for third-party integrations
 
 ### Activity Dashboard / Stats
@@ -1873,7 +1873,7 @@ All extended features are **configurable** — disabled by default (except keybo
 **Goal:** All docs are complete, accurate, and match the final implementation.
 
 1. `docs/architecture.md` — Mermaid system overview diagram, call ingest data flow diagram, WS message flow diagram, first-run flow diagram
-2. `docs/api.md` — OpenAPI 3.1 YAML spec for all 30+ endpoints; Swagger UI served at `/api/docs`
+2. `docs/api.md` — behavior-focused API guide; endpoint contract details live in Swagger UI at `/api/admin/docs` (session minted via `/api/admin/docs/session`)
 3. `docs/admin-guide.md` — step-by-step UI walkthrough; screenshots/GIFs (optional)
 4. `docs/deployment.md` — bare metal (Linux/macOS/Windows), Docker, docker-compose, nginx reverse proxy config, Caddy Caddyfile, Let's Encrypt, environment variables reference
 5. `docs/recorder-integration.md` — per-recorder quick-start (Trunk Recorder JSON plugin config, SDRTrunk export path, RTLSDR-Airband dirwatch setup, DSDPlus Fast Lane, ProScan, voxcall)
@@ -2002,7 +2002,7 @@ Each phase is complete when all of the following pass:
 | 12  | `--service install` registers system service on Linux/macOS/Windows                                                                                      |
 | 13  | `docker build -t openscanner .` succeeds; `docker run -p 3000:3000 openscanner` → app at `:3000`                                                         |
 | 14  | After server restart, all settings from SQLite persist (spot-check `pruneDays`, custom TG labels)                                                        |
-| 15  | Swagger UI reachable at `/api/docs` and renders all endpoints                                                                                            |
+| 15  | Swagger UI reachable at `/api/admin/docs` after calling `/api/admin/docs/session` as an authenticated admin                                              |
 | 16  | `GET /api/health` returns `{status: "ok"}` — Docker HEALTHCHECK passes                                                                                   |
 | 17  | `PRAGMA journal_mode` returns `wal` after DB connection open                                                                                             |
 | 18  | All log output is structured JSON (slog) with request IDs                                                                                                |
@@ -2074,7 +2074,7 @@ Everything rdio-scanner v6.6.x does:
 - Shareable call links with OpenGraph tags for link previews
 - Keyboard shortcuts for power-user scanner operation
 - Dark / light theme toggle (DaisyUI dual theme)
-- OpenAPI 3.1 / Swagger UI at `/api/docs`
+- OpenAPI 3.1 / Swagger UI at `/api/admin/docs` (after `POST /api/admin/docs/session`)
 - Activity dashboard with calls/hour sparkline and top TGs
 - Call bookmarking (per-user for authenticated, per-session for public)
 - Browser push notifications (Web Push / VAPID) for specific TGs
