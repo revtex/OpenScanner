@@ -45,7 +45,7 @@ type Deps struct {
 	Processor          *audio.Processor
 	Hub                *ws.Hub
 	SQLDB              *sql.DB
-	DirMonitorReloader   DirMonitorReloader
+	DirMonitorReloader DirMonitorReloader
 	DownstreamReloader DownstreamReloader
 	DownstreamNotifier DownstreamNotifier
 	Version            string
