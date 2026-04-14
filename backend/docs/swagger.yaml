@@ -1,186 +1,13 @@
 basePath: /api
 definitions:
-  github_com_openscanner_openscanner_internal_db.ApiKey:
-    properties:
-      disabled:
-        type: integer
-      id:
-        type: integer
-      ident:
-        $ref: '#/definitions/sql.NullString'
-      key:
-        type: string
-      order:
-        type: integer
-      systems_json:
-        $ref: '#/definitions/sql.NullString'
-    type: object
-  github_com_openscanner_openscanner_internal_db.Dirwatch:
-    properties:
-      delay:
-        $ref: '#/definitions/sql.NullInt64'
-      delete_after:
-        type: integer
-      directory:
-        type: string
-      disabled:
-        type: integer
-      extension:
-        $ref: '#/definitions/sql.NullString'
-      frequency:
-        $ref: '#/definitions/sql.NullInt64'
-      id:
-        type: integer
-      mask:
-        $ref: '#/definitions/sql.NullString'
-      order:
-        type: integer
-      system_id:
-        $ref: '#/definitions/sql.NullInt64'
-      talkgroup_id:
-        $ref: '#/definitions/sql.NullInt64'
-      type:
-        type: string
-      use_polling:
-        type: integer
-    type: object
-  github_com_openscanner_openscanner_internal_db.Downstream:
-    properties:
-      api_key:
-        type: string
-      disabled:
-        type: integer
-      id:
-        type: integer
-      order:
-        type: integer
-      systems_json:
-        $ref: '#/definitions/sql.NullString'
-      url:
-        type: string
-    type: object
-  github_com_openscanner_openscanner_internal_db.Group:
-    properties:
-      id:
-        type: integer
-      label:
-        type: string
-    type: object
-  github_com_openscanner_openscanner_internal_db.Setting:
-    properties:
-      key:
-        type: string
-      value:
-        type: string
-    type: object
-  github_com_openscanner_openscanner_internal_db.System:
-    properties:
-      auto_populate:
-        type: integer
-      blacklists_json:
-        $ref: '#/definitions/sql.NullString'
-      id:
-        type: integer
-      label:
-        type: string
-      led:
-        $ref: '#/definitions/sql.NullString'
-      order:
-        type: integer
-      system_id:
-        type: integer
-    type: object
-  github_com_openscanner_openscanner_internal_db.Tag:
-    properties:
-      id:
-        type: integer
-      label:
-        type: string
-    type: object
-  github_com_openscanner_openscanner_internal_db.Talkgroup:
-    properties:
-      frequency:
-        $ref: '#/definitions/sql.NullInt64'
-      group_id:
-        $ref: '#/definitions/sql.NullInt64'
-      id:
-        type: integer
-      label:
-        $ref: '#/definitions/sql.NullString'
-      led:
-        $ref: '#/definitions/sql.NullString'
-      name:
-        $ref: '#/definitions/sql.NullString'
-      order:
-        type: integer
-      system_id:
-        type: integer
-      tag_id:
-        $ref: '#/definitions/sql.NullInt64'
-      talkgroup_id:
-        type: integer
-    type: object
-  github_com_openscanner_openscanner_internal_db.Unit:
-    properties:
-      id:
-        type: integer
-      label:
-        $ref: '#/definitions/sql.NullString'
-      order:
-        type: integer
-      system_id:
-        type: integer
-      unit_id:
-        type: integer
-    type: object
-  github_com_openscanner_openscanner_internal_db.User:
-    properties:
-      created_at:
-        type: integer
-      disabled:
-        type: integer
-      expiration:
-        $ref: '#/definitions/sql.NullInt64'
-      id:
-        type: integer
-      limit:
-        $ref: '#/definitions/sql.NullInt64'
-      password_need_change:
-        type: integer
-      role:
-        type: string
-      systems_json:
-        $ref: '#/definitions/sql.NullString'
-      updated_at:
-        type: integer
-      username:
-        type: string
-    type: object
-  github_com_openscanner_openscanner_internal_db.Webhook:
-    properties:
-      disabled:
-        type: integer
-      id:
-        type: integer
-      order:
-        type: integer
-      secret:
-        $ref: '#/definitions/sql.NullString'
-      systems_json:
-        $ref: '#/definitions/sql.NullString'
-      type:
-        type: string
-      url:
-        type: string
-    type: object
-  internal_api.ActivityChartResponse:
+  ActivityChartResponse:
     properties:
       buckets:
         items:
-          $ref: '#/definitions/internal_api.ChartBucket'
+          $ref: '#/definitions/ChartBucket'
         type: array
     type: object
-  internal_api.ActivityStatsResponse:
+  ActivityStatsResponse:
     properties:
       activeListeners:
         type: integer
@@ -193,30 +20,77 @@ definitions:
       uptime:
         type: integer
     type: object
-  internal_api.BookmarkCallsResponse:
+  ApiKey:
+    properties:
+      disabled:
+        type: integer
+      id:
+        type: integer
+      ident:
+        type: string
+      key:
+        type: string
+      order:
+        type: integer
+      systems_json:
+        type: string
+    type: object
+  ApiKeyCreateResponse:
+    properties:
+      createdKey:
+        type: string
+      disabled:
+        type: integer
+      fingerprint:
+        type: string
+      id:
+        type: integer
+      ident:
+        type: string
+      order:
+        type: integer
+      systemsJson:
+        type: string
+    type: object
+  ApiKeyResponse:
+    properties:
+      disabled:
+        type: integer
+      fingerprint:
+        type: string
+      id:
+        type: integer
+      ident:
+        type: string
+      order:
+        type: integer
+      systemsJson:
+        type: string
+    type: object
+  BookmarkCallsResponse:
     properties:
       calls:
         items:
-          $ref: '#/definitions/internal_api.CallSearchResult'
+          $ref: '#/definitions/CallSearchResult'
         type: array
     type: object
-  internal_api.BookmarkIDsResponse:
+  BookmarkIDsResponse:
     properties:
       callIds:
         items:
           type: integer
         type: array
     type: object
-  internal_api.CallSearchResponse:
+  CallSearchResponse:
     properties:
       calls:
         items:
-          $ref: '#/definitions/internal_api.CallSearchResult'
+          $ref: '#/definitions/CallSearchResult'
         type: array
       total:
         type: integer
     type: object
-  internal_api.CallSearchResult:
+  CallSearchResult:
     properties:
       audioName:
         type: string
@@ -263,27 +137,557 @@ definitions:
       transcript:
         type: string
     type: object
-  internal_api.ChartBucket:
+  ChangePasswordRequest:
+    properties:
+      currentPassword:
+        type: string
+      newPassword:
+        type: string
+    type: object
+  ChartBucket:
     properties:
       count:
         type: integer
       hour:
         type: integer
     type: object
-  internal_api.ErrorResponse:
+  CleanupMissingAudioRequest:
+    properties:
+      callIds:
+        items:
+          type: integer
+        type: array
+      confirm:
+        type: boolean
+    type: object
+  CleanupMissingAudioResponse:
+    properties:
+      deleted:
+        type: integer
+      requested:
+        type: integer
+      skipped:
+        items:
+          $ref: '#/definitions/MissingAudioCall'
+        type: array
+    type: object
+  ConfigExport:
+    properties:
+      apiKeys:
+        items:
+          $ref: '#/definitions/ExportAPIKey'
+        type: array
+      dirwatches:
+        items:
+          $ref: '#/definitions/Dirwatch'
+        type: array
+      downstreams:
+        items:
+          $ref: '#/definitions/ExportDownstream'
+        type: array
+      groups:
+        items:
+          $ref: '#/definitions/Group'
+        type: array
+      settings:
+        items:
+          $ref: '#/definitions/Setting'
+        type: array
+      systems:
+        items:
+          $ref: '#/definitions/System'
+        type: array
+      tags:
+        items:
+          $ref: '#/definitions/Tag'
+        type: array
+      talkgroups:
+        items:
+          $ref: '#/definitions/Talkgroup'
+        type: array
+      units:
+        items:
+          $ref: '#/definitions/Unit'
+        type: array
+      users:
+        items:
+          $ref: '#/definitions/User'
+        type: array
+      webhooks:
+        items:
+          $ref: '#/definitions/ExportWebhook'
+        type: array
+    type: object
+  ConfigImport:
+    properties:
+      apiKeys:
+        items:
+          $ref: '#/definitions/ApiKey'
+        type: array
+      dirwatches:
+        items:
+          $ref: '#/definitions/Dirwatch'
+        type: array
+      downstreams:
+        items:
+          $ref: '#/definitions/Downstream'
+        type: array
+      groups:
+        items:
+          $ref: '#/definitions/Group'
+        type: array
+      settings:
+        items:
+          $ref: '#/definitions/Setting'
+        type: array
+      systems:
+        items:
+          $ref: '#/definitions/System'
+        type: array
+      tags:
+        items:
+          $ref: '#/definitions/Tag'
+        type: array
+      talkgroups:
+        items:
+          $ref: '#/definitions/Talkgroup'
+        type: array
+      units:
+        items:
+          $ref: '#/definitions/Unit'
+        type: array
+      webhooks:
+        items:
+          $ref: '#/definitions/Webhook'
+        type: array
+    type: object
+  CreateAPIKeyRequest:
+    properties:
+      disabled:
+        type: integer
+      ident:
+        type: string
+      key:
+        type: string
+      order:
+        type: integer
+      systemsJson:
+        type: string
+    type: object
+  CreateDirwatchRequest:
+    properties:
+      delay:
+        type: integer
+      deleteAfter:
+        type: integer
+      directory:
+        type: string
+      disabled:
+        type: integer
+      extension:
+        type: string
+      frequency:
+        type: integer
+      mask:
+        type: string
+      order:
+        type: integer
+      systemId:
+        type: integer
+      talkgroupId:
+        type: integer
+      type:
+        type: string
+      usePolling:
+        type: integer
+    type: object
+  CreateDownstreamRequest:
+    properties:
+      apiKey:
+        type: string
+      disabled:
+        type: integer
+      order:
+        type: integer
+      systemsJson:
+        type: string
+      url:
+        type: string
+    type: object
+  CreateSystemRequest:
+    properties:
+      autoPopulate:
+        type: integer
+      blacklistsJson:
+        type: string
+      label:
+        type: string
+      led:
+        type: string
+      order:
+        type: integer
+      systemId:
+        type: integer
+    type: object
+  CreateTalkgroupRequest:
+    properties:
+      frequency:
+        type: integer
+      groupId:
+        type: integer
+      label:
+        type: string
+      led:
+        type: string
+      name:
+        type: string
+      order:
+        type: integer
+      systemId:
+        type: integer
+      tagId:
+        type: integer
+      talkgroupId:
+        type: integer
+    type: object
+  CreateUnitRequest:
+    properties:
+      label:
+        type: string
+      order:
+        type: integer
+      systemId:
+        type: integer
+      unitId:
+        type: integer
+    type: object
+  CreateUserRequest:
+    properties:
+      disabled:
+        type: integer
+      expiration:
+        type: integer
+      limit:
+        type: integer
+      password:
+        type: string
+      role:
+        type: string
+      systemsJson:
+        type: string
+      username:
+        type: string
+    type: object
+  CreateWebhookRequest:
+    properties:
+      disabled:
+        type: integer
+      order:
+        type: integer
+      secret:
+        type: string
+      systemsJson:
+        type: string
+      type:
+        type: string
+      url:
+        type: string
+    type: object
+  Dirwatch:
+    properties:
+      delay:
+        type: integer
+      delete_after:
+        type: integer
+      directory:
+        type: string
+      disabled:
+        type: integer
+      extension:
+        type: string
+      frequency:
+        type: integer
+      id:
+        type: integer
+      mask:
+        type: string
+      order:
+        type: integer
+      system_id:
+        type: integer
+      talkgroup_id:
+        type: integer
+      type:
+        type: string
+      use_polling:
+        type: integer
+    type: object
+  DirwatchResponse:
+    properties:
+      delay:
+        type: integer
+      deleteAfter:
+        type: integer
+      directory:
+        type: string
+      disabled:
+        type: integer
+      extension:
+        type: string
+      frequency:
+        type: integer
+      id:
+        type: integer
+      mask:
+        type: string
+      order:
+        type: integer
+      systemId:
+        type: integer
+      talkgroupId:
+        type: integer
+      type:
+        type: string
+      usePolling:
+        type: integer
+    type: object
+  Downstream:
+    properties:
+      api_key:
+        type: string
+      disabled:
+        type: integer
+      id:
+        type: integer
+      order:
+        type: integer
+      systems_json:
+        type: string
+      url:
+        type: string
+    type: object
+  DownstreamResponse:
+    properties:
+      apiKey:
+        type: string
+      disabled:
+        type: integer
+      id:
+        type: integer
+      order:
+        type: integer
+      systemsJson:
+        type: string
+      url:
+        type: string
+    type: object
+  ErrorResponse:
     properties:
       error:
         example: descriptive error message
         type: string
     type: object
-  internal_api.ShareCreateResponse:
+  ExportAPIKey:
+    properties:
+      disabled:
+        type: integer
+      id:
+        type: integer
+      ident:
+        type: string
+      order:
+        type: integer
+      systemsJson:
+        type: string
+    type: object
+  ExportDownstream:
+    properties:
+      disabled:
+        type: integer
+      id:
+        type: integer
+      order:
+        type: integer
+      systemsJson:
+        type: string
+      url:
+        type: string
+    type: object
+  ExportWebhook:
+    properties:
+      disabled:
+        type: integer
+      id:
+        type: integer
+      order:
+        type: integer
+      systemsJson:
+        type: string
+      type:
+        type: string
+      url:
+        type: string
+    type: object
+  Group:
+    properties:
+      id:
+        type: integer
+      label:
+        type: string
+    type: object
+  GroupRequest:
+    properties:
+      label:
+        type: string
+    type: object
+  ListServerDirectoriesResponse:
+    properties:
+      directories:
+        items:
+          $ref: '#/definitions/ServerDirectoryEntry'
+        type: array
+      parent:
+        type: string
+      path:
+        type: string
+    type: object
+  LogResponse:
+    properties:
+      dateTime:
+        type: integer
+      id:
+        type: integer
+      level:
+        type: string
+      message:
+        type: string
+    type: object
+  LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  LoginResponse:
+    properties:
+      passwordNeedChange:
+        type: boolean
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/LoginUserResponse'
+    type: object
+  LoginUserResponse:
+    properties:
+      id:
+        type: integer
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  MissingAudioCall:
+    properties:
+      audioName:
+        type: string
+      audioPath:
+        type: string
+      dateTime:
+        type: integer
+      id:
+        type: integer
+      reason:
+        type: string
+    type: object
+  MissingAudioResponse:
+    properties:
+      checked:
+        type: integer
+      limit:
+        type: integer
+      missing:
+        items:
+          $ref: '#/definitions/MissingAudioCall'
+        type: array
+      offset:
+        type: integer
+      recordingsDir:
+        type: string
+      totalCalls:
+        type: integer
+    type: object
+  ReorderAPIKeyItem:
+    properties:
+      id:
+        type: integer
+      order:
+        type: integer
+    type: object
+  ReorderAPIKeysRequest:
+    properties:
+      apiKeys:
+        items:
+          $ref: '#/definitions/ReorderAPIKeyItem'
+        type: array
+    type: object
+  ReorderSystemItem:
+    properties:
+      id:
+        type: integer
+      order:
+        type: integer
+    type: object
+  ReorderSystemsRequest:
+    properties:
+      systems:
+        items:
+          $ref: '#/definitions/ReorderSystemItem'
+        type: array
+    type: object
+  ServerDirectoryEntry:
+    properties:
+      name:
+        type: string
+      path:
+        type: string
+    type: object
+  Setting:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+    type: object
+  SettingResponse:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+    type: object
+  SetupRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  SetupStatusResponse:
+    properties:
+      needsSetup:
+        type: boolean
+      publicAccess:
+        type: boolean
+    type: object
+  ShareCreateResponse:
     properties:
       token:
         type: string
       url:
         type: string
     type: object
-  internal_api.ShareResponse:
+  ShareResponse:
     properties:
       audioUrl:
         type: string
@@ -306,7 +710,7 @@ definitions:
       transcript:
         type: string
     type: object
-  internal_api.SharedLinkListItem:
+  SharedLinkListItem:
     properties:
       callId:
         type: integer
@@ -329,13 +733,105 @@ definitions:
       token:
         type: string
     type: object
-  internal_api.ToggleBookmarkRequest:
+  System:
+    properties:
+      auto_populate:
+        type: integer
+      blacklists_json:
+        type: string
+      id:
+        type: integer
+      label:
+        type: string
+      led:
+        type: string
+      order:
+        type: integer
+      system_id:
+        type: integer
+    type: object
+  SystemResponse:
+    properties:
+      autoPopulate:
+        type: integer
+      blacklistsJson:
+        type: string
+      id:
+        type: integer
+      label:
+        type: string
+      led:
+        type: string
+      order:
+        type: integer
+      systemId:
+        type: integer
+    type: object
+  Tag:
+    properties:
+      id:
+        type: integer
+      label:
+        type: string
+    type: object
+  TagRequest:
+    properties:
+      label:
+        type: string
+    type: object
+  Talkgroup:
+    properties:
+      frequency:
+        type: integer
+      group_id:
+        type: integer
+      id:
+        type: integer
+      label:
+        type: string
+      led:
+        type: string
+      name:
+        type: string
+      order:
+        type: integer
+      system_id:
+        type: integer
+      tag_id:
+        type: integer
+      talkgroup_id:
+        type: integer
+    type: object
+  TalkgroupResponse:
+    properties:
+      frequency:
+        type: integer
+      groupId:
+        type: integer
+      id:
+        type: integer
+      label:
+        type: string
+      led:
+        type: string
+      name:
+        type: string
+      order:
+        type: integer
+      systemId:
+        type: integer
+      tagId:
+        type: integer
+      talkgroupId:
+        type: integer
+    type: object
+  ToggleBookmarkRequest:
     properties:
       callId:
         example: 42
         type: integer
     type: object
-  internal_api.ToggleBookmarkResponse:
+  ToggleBookmarkResponse:
     properties:
       bookmarked:
         example: true
@@ -344,7 +840,7 @@ definitions:
         example: 7
         type: integer
     type: object
-  internal_api.TopTalkgroup:
+  TopTalkgroup:
     properties:
       callCount:
         type: integer
@@ -355,163 +851,40 @@ definitions:
       talkgroupLabel:
         type: string
     type: object
-  internal_api.TopTalkgroupsResponse:
+  TopTalkgroupsResponse:
     properties:
       talkgroups:
         items:
-          $ref: '#/definitions/internal_api.TopTalkgroup'
+          $ref: '#/definitions/TopTalkgroup'
         type: array
     type: object
-  internal_api.apiKeyCreateResponse:
+  Unit:
     properties:
-      createdKey:
-        type: string
-      disabled:
-        type: integer
-      fingerprint:
-        type: string
       id:
         type: integer
-      ident:
+      label:
         type: string
       order:
         type: integer
-      systemsJson:
-        type: string
-    type: object
-  internal_api.apiKeyResponse:
-    properties:
-      disabled:
+      system_id:
         type: integer
-      fingerprint:
-        type: string
+      unit_id:
+        type: integer
+    type: object
+  UnitResponse:
+    properties:
       id:
         type: integer
-      ident:
+      label:
         type: string
       order:
         type: integer
-      systemsJson:
-        type: string
-    type: object
-  internal_api.changePasswordRequest:
-    properties:
-      currentPassword:
-        type: string
-      newPassword:
-        type: string
-    type: object
-  internal_api.cleanupMissingAudioRequest:
-    properties:
-      callIds:
-        items:
-          type: integer
-        type: array
-      confirm:
-        type: boolean
-    type: object
-  internal_api.cleanupMissingAudioResponse:
-    properties:
-      deleted:
+      systemId:
         type: integer
-      requested:
+      unitId:
         type: integer
-      skipped:
-        items:
-          $ref: '#/definitions/internal_api.missingAudioCall'
-        type: array
     type: object
-  internal_api.configExport:
-    properties:
-      apiKeys:
-        items:
-          $ref: '#/definitions/internal_api.exportAPIKey'
-        type: array
-      dirwatches:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Dirwatch'
-        type: array
-      downstreams:
-        items:
-          $ref: '#/definitions/internal_api.exportDownstream'
-        type: array
-      groups:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Group'
-        type: array
-      settings:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Setting'
-        type: array
-      systems:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.System'
-        type: array
-      tags:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Tag'
-        type: array
-      talkgroups:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Talkgroup'
-        type: array
-      units:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Unit'
-        type: array
-      users:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.User'
-        type: array
-      webhooks:
-        items:
-          $ref: '#/definitions/internal_api.exportWebhook'
-        type: array
-    type: object
-  internal_api.configImport:
-    properties:
-      apiKeys:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.ApiKey'
-        type: array
-      dirwatches:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Dirwatch'
-        type: array
-      downstreams:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Downstream'
-        type: array
-      groups:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Group'
-        type: array
-      settings:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Setting'
-        type: array
-      systems:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.System'
-        type: array
-      tags:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Tag'
-        type: array
-      talkgroups:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Talkgroup'
-        type: array
-      units:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Unit'
-        type: array
-      webhooks:
-        items:
-          $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Webhook'
-        type: array
-    type: object
-  internal_api.createAPIKeyRequest:
+  UpdateAPIKeyRequest:
     properties:
       disabled:
         type: integer
@@ -524,7 +897,7 @@ definitions:
       systemsJson:
         type: string
     type: object
-  internal_api.createDirwatchRequest:
+  UpdateDirwatchRequest:
     properties:
       delay:
         type: integer
@@ -551,7 +924,7 @@ definitions:
       usePolling:
         type: integer
     type: object
-  internal_api.createDownstreamRequest:
+  UpdateDownstreamRequest:
     properties:
       apiKey:
         type: string
@@ -564,7 +937,7 @@ definitions:
       url:
         type: string
     type: object
-  internal_api.createSystemRequest:
+  UpdateSystemRequest:
     properties:
       autoPopulate:
         type: integer
@@ -579,420 +952,7 @@ definitions:
       systemId:
         type: integer
     type: object
-  internal_api.createTalkgroupRequest:
-    properties:
-      frequency:
-        type: integer
-      groupId:
-        type: integer
-      label:
-        type: string
-      led:
-        type: string
-      name:
-        type: string
-      order:
-        type: integer
-      systemId:
-        type: integer
-      tagId:
-        type: integer
-      talkgroupId:
-        type: integer
-    type: object
-  internal_api.createUnitRequest:
-    properties:
-      label:
-        type: string
-      order:
-        type: integer
-      systemId:
-        type: integer
-      unitId:
-        type: integer
-    type: object
-  internal_api.createUserRequest:
-    properties:
-      disabled:
-        type: integer
-      expiration:
-        type: integer
-      limit:
-        type: integer
-      password:
-        type: string
-      role:
-        type: string
-      systemsJson:
-        type: string
-      username:
-        type: string
-    type: object
-  internal_api.createWebhookRequest:
-    properties:
-      disabled:
-        type: integer
-      order:
-        type: integer
-      secret:
-        type: string
-      systemsJson:
-        type: string
-      type:
-        type: string
-      url:
-        type: string
-    type: object
-  internal_api.dirwatchResponse:
-    properties:
-      delay:
-        type: integer
-      deleteAfter:
-        type: integer
-      directory:
-        type: string
-      disabled:
-        type: integer
-      extension:
-        type: string
-      frequency:
-        type: integer
-      id:
-        type: integer
-      mask:
-        type: string
-      order:
-        type: integer
-      systemId:
-        type: integer
-      talkgroupId:
-        type: integer
-      type:
-        type: string
-      usePolling:
-        type: integer
-    type: object
-  internal_api.downstreamResponse:
-    properties:
-      apiKey:
-        type: string
-      disabled:
-        type: integer
-      id:
-        type: integer
-      order:
-        type: integer
-      systemsJson:
-        type: string
-      url:
-        type: string
-    type: object
-  internal_api.exportAPIKey:
-    properties:
-      disabled:
-        type: integer
-      id:
-        type: integer
-      ident:
-        type: string
-      order:
-        type: integer
-      systemsJson:
-        type: string
-    type: object
-  internal_api.exportDownstream:
-    properties:
-      disabled:
-        type: integer
-      id:
-        type: integer
-      order:
-        type: integer
-      systemsJson:
-        type: string
-      url:
-        type: string
-    type: object
-  internal_api.exportWebhook:
-    properties:
-      disabled:
-        type: integer
-      id:
-        type: integer
-      order:
-        type: integer
-      systemsJson:
-        type: string
-      type:
-        type: string
-      url:
-        type: string
-    type: object
-  internal_api.groupRequest:
-    properties:
-      label:
-        type: string
-    type: object
-  internal_api.listServerDirectoriesResponse:
-    properties:
-      directories:
-        items:
-          $ref: '#/definitions/internal_api.serverDirectoryEntry'
-        type: array
-      parent:
-        type: string
-      path:
-        type: string
-    type: object
-  internal_api.logResponse:
-    properties:
-      dateTime:
-        type: integer
-      id:
-        type: integer
-      level:
-        type: string
-      message:
-        type: string
-    type: object
-  internal_api.loginRequest:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    type: object
-  internal_api.loginResponse:
-    properties:
-      passwordNeedChange:
-        type: boolean
-      token:
-        type: string
-      user:
-        $ref: '#/definitions/internal_api.loginUserResponse'
-    type: object
-  internal_api.loginUserResponse:
-    properties:
-      id:
-        type: integer
-      role:
-        type: string
-      username:
-        type: string
-    type: object
-  internal_api.missingAudioCall:
-    properties:
-      audioName:
-        type: string
-      audioPath:
-        type: string
-      dateTime:
-        type: integer
-      id:
-        type: integer
-      reason:
-        type: string
-    type: object
-  internal_api.missingAudioResponse:
-    properties:
-      checked:
-        type: integer
-      limit:
-        type: integer
-      missing:
-        items:
-          $ref: '#/definitions/internal_api.missingAudioCall'
-        type: array
-      offset:
-        type: integer
-      recordingsDir:
-        type: string
-      totalCalls:
-        type: integer
-    type: object
-  internal_api.reorderAPIKeyItem:
-    properties:
-      id:
-        type: integer
-      order:
-        type: integer
-    type: object
-  internal_api.reorderAPIKeysRequest:
-    properties:
-      apiKeys:
-        items:
-          $ref: '#/definitions/internal_api.reorderAPIKeyItem'
-        type: array
-    type: object
-  internal_api.reorderSystemItem:
-    properties:
-      id:
-        type: integer
-      order:
-        type: integer
-    type: object
-  internal_api.reorderSystemsRequest:
-    properties:
-      systems:
-        items:
-          $ref: '#/definitions/internal_api.reorderSystemItem'
-        type: array
-    type: object
-  internal_api.serverDirectoryEntry:
-    properties:
-      name:
-        type: string
-      path:
-        type: string
-    type: object
-  internal_api.settingResponse:
-    properties:
-      key:
-        type: string
-      value:
-        type: string
-    type: object
-  internal_api.setupRequest:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    type: object
-  internal_api.setupStatusResponse:
-    properties:
-      needsSetup:
-        type: boolean
-      publicAccess:
-        type: boolean
-    type: object
-  internal_api.systemResponse:
-    properties:
-      autoPopulate:
-        type: integer
-      blacklistsJson:
-        type: string
-      id:
-        type: integer
-      label:
-        type: string
-      led:
-        type: string
-      order:
-        type: integer
-      systemId:
-        type: integer
-    type: object
-  internal_api.tagRequest:
-    properties:
-      label:
-        type: string
-    type: object
-  internal_api.talkgroupResponse:
-    properties:
-      frequency:
-        type: integer
-      groupId:
-        type: integer
-      id:
-        type: integer
-      label:
-        type: string
-      led:
-        type: string
-      name:
-        type: string
-      order:
-        type: integer
-      systemId:
-        type: integer
-      tagId:
-        type: integer
-      talkgroupId:
-        type: integer
-    type: object
-  internal_api.unitResponse:
-    properties:
-      id:
-        type: integer
-      label:
-        type: string
-      order:
-        type: integer
-      systemId:
-        type: integer
-      unitId:
-        type: integer
-    type: object
-  internal_api.updateAPIKeyRequest:
-    properties:
-      disabled:
-        type: integer
-      ident:
-        type: string
-      key:
-        type: string
-      order:
-        type: integer
-      systemsJson:
-        type: string
-    type: object
-  internal_api.updateDirwatchRequest:
-    properties:
-      delay:
-        type: integer
-      deleteAfter:
-        type: integer
-      directory:
-        type: string
-      disabled:
-        type: integer
-      extension:
-        type: string
-      frequency:
-        type: integer
-      mask:
-        type: string
-      order:
-        type: integer
-      systemId:
-        type: integer
-      talkgroupId:
-        type: integer
-      type:
-        type: string
-      usePolling:
-        type: integer
-    type: object
-  internal_api.updateDownstreamRequest:
-    properties:
-      apiKey:
-        type: string
-      disabled:
-        type: integer
-      order:
-        type: integer
-      systemsJson:
-        type: string
-      url:
-        type: string
-    type: object
-  internal_api.updateSystemRequest:
-    properties:
-      autoPopulate:
-        type: integer
-      blacklistsJson:
-        type: string
-      label:
-        type: string
-      led:
-        type: string
-      order:
-        type: integer
-      systemId:
-        type: integer
-    type: object
-  internal_api.updateTalkgroupRequest:
+  UpdateTalkgroupRequest:
     properties:
       frequency:
         type: integer
@@ -1011,7 +971,7 @@ definitions:
       talkgroupId:
         type: integer
     type: object
-  internal_api.updateUnitRequest:
+  UpdateUnitRequest:
     properties:
       label:
         type: string
@@ -1020,7 +980,7 @@ definitions:
       unitId:
         type: integer
     type: object
-  internal_api.updateUserRequest:
+  UpdateUserRequest:
     properties:
       disabled:
         type: integer
@@ -1035,7 +995,7 @@ definitions:
       username:
         type: string
     type: object
-  internal_api.updateWebhookRequest:
+  UpdateWebhookRequest:
     properties:
       disabled:
         type: integer
@@ -1050,7 +1010,30 @@ definitions:
       url:
         type: string
     type: object
-  internal_api.userResponse:
+  User:
+    properties:
+      created_at:
+        type: integer
+      disabled:
+        type: integer
+      expiration:
+        type: integer
+      id:
+        type: integer
+      limit:
+        type: integer
+      password_need_change:
+        type: integer
+      role:
+        type: string
+      systems_json:
+        type: string
+      updated_at:
+        type: integer
+      username:
+        type: string
+    type: object
+  UserResponse:
     properties:
       createdAt:
         type: integer
@@ -1071,7 +1054,24 @@ definitions:
       username:
         type: string
     type: object
-  internal_api.webhookResponse:
+  Webhook:
+    properties:
+      disabled:
+        type: integer
+      id:
+        type: integer
+      order:
+        type: integer
+      secret:
+        type: string
+      systems_json:
+        type: string
+      type:
+        type: string
+      url:
+        type: string
+    type: object
+  WebhookResponse:
     properties:
       disabled:
         type: integer
@@ -1088,23 +1088,6 @@ definitions:
       url:
         type: string
     type: object
-  sql.NullInt64:
-    properties:
-      int64:
-        type: integer
-      valid:
-        description: Valid is true if Int64 is not NULL
-        type: boolean
-    type: object
-  sql.NullString:
-    properties:
-      string:
-        type: string
-      valid:
-        description: Valid is true if String is not NULL
-        type: boolean
-    type: object
-host: localhost:3000
 info:
   contact: {}
   description: Radio call manager API — real-time audio streaming, call management,
@@ -1121,11 +1104,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.ActivityChartResponse'
+            $ref: '#/definitions/ActivityChartResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get activity chart data
@@ -1141,11 +1124,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.ActivityStatsResponse'
+            $ref: '#/definitions/ActivityStatsResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get activity statistics
@@ -1160,11 +1143,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.TopTalkgroupsResponse'
+            $ref: '#/definitions/TopTalkgroupsResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get top talkgroups
@@ -1180,12 +1163,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_api.apiKeyResponse'
+              $ref: '#/definitions/ApiKeyResponse'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List API keys
@@ -1201,26 +1184,26 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.createAPIKeyRequest'
+          $ref: '#/definitions/CreateAPIKeyRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api.apiKeyCreateResponse'
+            $ref: '#/definitions/ApiKeyCreateResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create an API key
@@ -1248,15 +1231,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete an API key
@@ -1277,30 +1260,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.updateAPIKeyRequest'
+          $ref: '#/definitions/UpdateAPIKeyRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.apiKeyResponse'
+            $ref: '#/definitions/ApiKeyResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update an API key
@@ -1317,7 +1300,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.reorderAPIKeysRequest'
+          $ref: '#/definitions/ReorderAPIKeysRequest'
       produces:
       - application/json
       responses:
@@ -1331,15 +1314,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Reorder API keys
@@ -1355,12 +1338,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_api.settingResponse'
+              $ref: '#/definitions/SettingResponse'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List all settings
@@ -1378,7 +1361,7 @@ paths:
         required: true
         schema:
           items:
-            $ref: '#/definitions/internal_api.settingResponse'
+            $ref: '#/definitions/SettingResponse'
           type: array
       produces:
       - application/json
@@ -1390,11 +1373,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update settings
@@ -1410,12 +1393,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_api.dirwatchResponse'
+              $ref: '#/definitions/DirwatchResponse'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List directory watches
@@ -1431,26 +1414,26 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.createDirwatchRequest'
+          $ref: '#/definitions/CreateDirwatchRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api.dirwatchResponse'
+            $ref: '#/definitions/DirwatchResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a directory watch
@@ -1478,15 +1461,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a directory watch
@@ -1507,30 +1490,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.updateDirwatchRequest'
+          $ref: '#/definitions/UpdateDirwatchRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.dirwatchResponse'
+            $ref: '#/definitions/DirwatchResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update a directory watch
@@ -1546,12 +1529,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_api.downstreamResponse'
+              $ref: '#/definitions/DownstreamResponse'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List downstreams
@@ -1567,26 +1550,26 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.createDownstreamRequest'
+          $ref: '#/definitions/CreateDownstreamRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api.downstreamResponse'
+            $ref: '#/definitions/DownstreamResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a downstream
@@ -1614,15 +1597,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a downstream
@@ -1643,30 +1626,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.updateDownstreamRequest'
+          $ref: '#/definitions/UpdateDownstreamRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.downstreamResponse'
+            $ref: '#/definitions/DownstreamResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update a downstream
@@ -1682,11 +1665,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.configExport'
+            $ref: '#/definitions/ConfigExport'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Export full configuration
@@ -1708,11 +1691,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.listServerDirectoriesResponse'
+            $ref: '#/definitions/ListServerDirectoriesResponse'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List server directories
@@ -1728,12 +1711,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Group'
+              $ref: '#/definitions/Group'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List groups
@@ -1749,30 +1732,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.groupRequest'
+          $ref: '#/definitions/GroupRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Group'
+            $ref: '#/definitions/Group'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a group
@@ -1800,15 +1783,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a group
@@ -1829,34 +1812,34 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.groupRequest'
+          $ref: '#/definitions/GroupRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Group'
+            $ref: '#/definitions/Group'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update a group
@@ -1875,7 +1858,7 @@ paths:
         name: config
         required: true
         schema:
-          $ref: '#/definitions/internal_api.configImport'
+          $ref: '#/definitions/ConfigImport'
       produces:
       - application/json
       responses:
@@ -1886,11 +1869,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Import full configuration
@@ -1924,11 +1907,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Import talkgroups from CSV
@@ -1961,11 +1944,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Import units from CSV
@@ -1995,16 +1978,16 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_api.logResponse'
+              $ref: '#/definitions/LogResponse'
             type: array
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List logs
@@ -2020,12 +2003,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_api.SharedLinkListItem'
+              $ref: '#/definitions/SharedLinkListItem'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List shared links
@@ -2050,15 +2033,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a shared link
@@ -2074,12 +2057,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_api.systemResponse'
+              $ref: '#/definitions/SystemResponse'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List systems
@@ -2095,26 +2078,26 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.createSystemRequest'
+          $ref: '#/definitions/CreateSystemRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api.systemResponse'
+            $ref: '#/definitions/SystemResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a system
@@ -2142,15 +2125,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a system
@@ -2171,30 +2154,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.updateSystemRequest'
+          $ref: '#/definitions/UpdateSystemRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.systemResponse'
+            $ref: '#/definitions/SystemResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update a system
@@ -2211,7 +2194,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.reorderSystemsRequest'
+          $ref: '#/definitions/ReorderSystemsRequest'
       produces:
       - application/json
       responses:
@@ -2225,15 +2208,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Reorder systems
@@ -2249,12 +2232,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Tag'
+              $ref: '#/definitions/Tag'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List tags
@@ -2270,30 +2253,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.tagRequest'
+          $ref: '#/definitions/TagRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Tag'
+            $ref: '#/definitions/Tag'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a tag
@@ -2321,15 +2304,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a tag
@@ -2350,34 +2333,34 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.tagRequest'
+          $ref: '#/definitions/TagRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_openscanner_openscanner_internal_db.Tag'
+            $ref: '#/definitions/Tag'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update a tag
@@ -2393,12 +2376,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_api.talkgroupResponse'
+              $ref: '#/definitions/TalkgroupResponse'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List talkgroups
@@ -2414,26 +2397,26 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.createTalkgroupRequest'
+          $ref: '#/definitions/CreateTalkgroupRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api.talkgroupResponse'
+            $ref: '#/definitions/TalkgroupResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a talkgroup
@@ -2461,15 +2444,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a talkgroup
@@ -2490,30 +2473,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.updateTalkgroupRequest'
+          $ref: '#/definitions/UpdateTalkgroupRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.talkgroupResponse'
+            $ref: '#/definitions/TalkgroupResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update a talkgroup
@@ -2538,15 +2521,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.missingAudioResponse'
+            $ref: '#/definitions/MissingAudioResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List calls with missing audio files
@@ -2564,22 +2547,22 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.cleanupMissingAudioRequest'
+          $ref: '#/definitions/CleanupMissingAudioRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.cleanupMissingAudioResponse'
+            $ref: '#/definitions/CleanupMissingAudioResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Clean up calls with missing audio
@@ -2595,12 +2578,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_api.unitResponse'
+              $ref: '#/definitions/UnitResponse'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List units
@@ -2616,26 +2599,26 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.createUnitRequest'
+          $ref: '#/definitions/CreateUnitRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api.unitResponse'
+            $ref: '#/definitions/UnitResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a unit
@@ -2663,15 +2646,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a unit
@@ -2692,30 +2675,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.updateUnitRequest'
+          $ref: '#/definitions/UpdateUnitRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.unitResponse'
+            $ref: '#/definitions/UnitResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update a unit
@@ -2731,12 +2714,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_api.userResponse'
+              $ref: '#/definitions/UserResponse'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List users
@@ -2752,30 +2735,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.createUserRequest'
+          $ref: '#/definitions/CreateUserRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api.userResponse'
+            $ref: '#/definitions/UserResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a user
@@ -2804,19 +2787,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a user
@@ -2837,34 +2820,34 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.updateUserRequest'
+          $ref: '#/definitions/UpdateUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.userResponse'
+            $ref: '#/definitions/UserResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update a user
@@ -2880,12 +2863,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_api.webhookResponse'
+              $ref: '#/definitions/WebhookResponse'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List webhooks
@@ -2901,26 +2884,26 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.createWebhookRequest'
+          $ref: '#/definitions/CreateWebhookRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api.webhookResponse'
+            $ref: '#/definitions/WebhookResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create a webhook
@@ -2948,15 +2931,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete a webhook
@@ -2977,30 +2960,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.updateWebhookRequest'
+          $ref: '#/definitions/UpdateWebhookRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.webhookResponse'
+            $ref: '#/definitions/WebhookResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update a webhook
@@ -3017,30 +3000,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.loginRequest'
+          $ref: '#/definitions/LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.loginResponse'
+            $ref: '#/definitions/LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       summary: Log in
       tags:
       - Auth
@@ -3060,11 +3043,11 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Log out
@@ -3079,15 +3062,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.loginUserResponse'
+            $ref: '#/definitions/LoginUserResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Current user
@@ -3105,7 +3088,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.changePasswordRequest'
+          $ref: '#/definitions/ChangePasswordRequest'
       produces:
       - application/json
       responses:
@@ -3119,15 +3102,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Change password
@@ -3142,15 +3125,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.BookmarkIDsResponse'
+            $ref: '#/definitions/BookmarkIDsResponse'
         "401":
           description: Authentication required
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List bookmarked call IDs
@@ -3167,26 +3150,26 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_api.ToggleBookmarkRequest'
+          $ref: '#/definitions/ToggleBookmarkRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.ToggleBookmarkResponse'
+            $ref: '#/definitions/ToggleBookmarkResponse'
         "400":
           description: Invalid request body
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "401":
           description: Authentication required
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Toggle bookmark on a call
@@ -3202,15 +3185,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.BookmarkCallsResponse'
+            $ref: '#/definitions/BookmarkCallsResponse'
         "401":
           description: Authentication required
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List bookmarked calls with metadata
@@ -3320,19 +3303,19 @@ paths:
         "400":
           description: Bad request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "401":
           description: API key required
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "429":
           description: Rate limit exceeded
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - APIKeyAuth: []
       summary: Upload a call recording
@@ -3390,15 +3373,15 @@ paths:
         "200":
           description: Paginated call results
           schema:
-            $ref: '#/definitions/internal_api.CallSearchResponse'
+            $ref: '#/definitions/CallSearchResponse'
         "400":
           description: Invalid query parameter
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Search calls
@@ -3424,19 +3407,19 @@ paths:
         "400":
           description: Invalid call ID
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "401":
           description: Authentication required
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Call or audio not found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get call audio file
@@ -3458,15 +3441,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Unshare a call
@@ -3485,19 +3468,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.ShareCreateResponse'
+            $ref: '#/definitions/ShareCreateResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get call share status
@@ -3516,31 +3499,31 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.ShareCreateResponse'
+            $ref: '#/definitions/ShareCreateResponse'
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api.ShareCreateResponse'
+            $ref: '#/definitions/ShareCreateResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: Share a call
@@ -3577,7 +3560,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api.setupRequest'
+          $ref: '#/definitions/SetupRequest'
       produces:
       - application/json
       responses:
@@ -3591,15 +3574,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       summary: Complete initial setup
       tags:
       - Setup
@@ -3613,11 +3596,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.setupStatusResponse'
+            $ref: '#/definitions/SetupStatusResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       summary: Get setup status
       tags:
       - Setup
@@ -3635,15 +3618,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api.ShareResponse'
+            $ref: '#/definitions/ShareResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       summary: Get shared call by token
       tags:
       - Sharing
@@ -3666,11 +3649,11 @@ paths:
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       summary: Get shared call audio
       tags:
       - Sharing
@@ -3681,7 +3664,7 @@ securityDefinitions:
     name: X-API-Key
     type: apiKey
   BearerAuth:
-    description: JWT token prefixed with "Bearer "
+    description: Paste the value exactly as copied (already includes Bearer prefix)
     in: header
     name: Authorization
     type: apiKey

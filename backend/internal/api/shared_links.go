@@ -22,7 +22,7 @@ type SharedLinkListItem struct {
 	SystemLabel    string `json:"systemLabel"`
 	TalkgroupLabel string `json:"talkgroupLabel"`
 	TalkgroupName  string `json:"talkgroupName"`
-}
+} // @name SharedLinkListItem
 
 // GetSharedLinks handles GET /api/admin/shared-links.
 //

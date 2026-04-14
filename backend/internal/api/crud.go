@@ -81,7 +81,7 @@ type createUserRequest struct {
 	SystemsJson *string `json:"systemsJson"`
 	Expiration  *int64  `json:"expiration"`
 	Limit       *int64  `json:"limit"`
-}
+} // @name CreateUserRequest
 
 type updateUserRequest struct {
 	Username    string  `json:"username"`
@@ -90,18 +90,18 @@ type updateUserRequest struct {
 	SystemsJson *string `json:"systemsJson"`
 	Expiration  *int64  `json:"expiration"`
 	Limit       *int64  `json:"limit"`
-}
+} // @name UpdateUserRequest
 
 type serverDirectoryEntry struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
-}
+} // @name ServerDirectoryEntry
 
 type listServerDirectoriesResponse struct {
 	Path        string                 `json:"path"`
 	Parent      *string                `json:"parent"`
 	Directories []serverDirectoryEntry `json:"directories"`
-}
+} // @name ListServerDirectoriesResponse
 
 // hiddenTopLevelDirs are directories excluded from the root listing because
 // they are kernel/system virtual filesystems that are not useful for selecting
@@ -948,7 +948,7 @@ func (h *AdminHandler) DeleteUnit(c *gin.Context) {
 
 type groupRequest struct {
 	Label string `json:"label"`
-}
+} // @name GroupRequest
 
 // ListGroups handles GET /api/admin/groups.
 //
@@ -1110,7 +1110,7 @@ func (h *AdminHandler) DeleteGroup(c *gin.Context) {
 
 type tagRequest struct {
 	Label string `json:"label"`
-}
+} // @name TagRequest
 
 // ListTags handles GET /api/admin/tags.
 //

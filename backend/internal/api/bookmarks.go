@@ -17,23 +17,23 @@ type BookmarkHandler struct {
 // ToggleBookmarkRequest is the request body for POST /api/bookmarks.
 type ToggleBookmarkRequest struct {
 	CallID int64 `json:"callId" example:"42"`
-}
+} // @name ToggleBookmarkRequest
 
 // ToggleBookmarkResponse is returned after toggling a bookmark.
 type ToggleBookmarkResponse struct {
 	Bookmarked bool  `json:"bookmarked" example:"true"`
 	ID         int64 `json:"id,omitempty" example:"7"`
-}
+} // @name ToggleBookmarkResponse
 
 // BookmarkIDsResponse is returned by GET /api/bookmarks.
 type BookmarkIDsResponse struct {
 	CallIDs []int64 `json:"callIds"`
-}
+} // @name BookmarkIDsResponse
 
 // BookmarkCallsResponse is returned by GET /api/bookmarks/calls.
 type BookmarkCallsResponse struct {
 	Calls []CallSearchResult `json:"calls"`
-}
+} // @name BookmarkCallsResponse
 
 // PostToggleBookmark handles POST /api/bookmarks — toggles a bookmark for the authenticated user.
 //

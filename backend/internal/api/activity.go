@@ -18,7 +18,7 @@ type ActivityStatsResponse struct {
 	CallsTotal      int64 `json:"callsTotal"`
 	ActiveListeners int   `json:"activeListeners"`
 	Uptime          int64 `json:"uptime"`
-}
+} // @name ActivityStatsResponse
 
 // GetActivityStats handles GET /api/admin/activity/stats.
 //
@@ -68,12 +68,12 @@ func (h *AdminHandler) GetActivityStats(c *gin.Context) {
 type ChartBucket struct {
 	Hour  int64 `json:"hour"`
 	Count int64 `json:"count"`
-}
+} // @name ChartBucket
 
 // ActivityChartResponse is the JSON payload for GET /api/admin/activity/chart.
 type ActivityChartResponse struct {
 	Buckets []ChartBucket `json:"buckets"`
-}
+} // @name ActivityChartResponse
 
 // GetActivityChart handles GET /api/admin/activity/chart.
 //
@@ -110,12 +110,12 @@ type TopTalkgroup struct {
 	TalkgroupLabel string `json:"talkgroupLabel"`
 	SystemLabel    string `json:"systemLabel"`
 	CallCount      int64  `json:"callCount"`
-}
+} // @name TopTalkgroup
 
 // TopTalkgroupsResponse is the JSON payload for GET /api/admin/activity/top-talkgroups.
 type TopTalkgroupsResponse struct {
 	Talkgroups []TopTalkgroup `json:"talkgroups"`
-}
+} // @name TopTalkgroupsResponse
 
 // GetTopTalkgroups handles GET /api/admin/activity/top-talkgroups.
 //

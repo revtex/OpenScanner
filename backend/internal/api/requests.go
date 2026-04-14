@@ -31,7 +31,7 @@ type createSystemRequest struct {
 	BlacklistsJson *string `json:"blacklistsJson"`
 	Led            *string `json:"led"`
 	Order          int64   `json:"order"`
-}
+} // @name CreateSystemRequest
 
 func (r createSystemRequest) toParams() db.CreateSystemParams {
 	return db.CreateSystemParams{
@@ -51,16 +51,16 @@ type updateSystemRequest struct {
 	BlacklistsJson *string `json:"blacklistsJson"`
 	Led            *string `json:"led"`
 	Order          int64   `json:"order"`
-}
+} // @name UpdateSystemRequest
 
 type reorderSystemItem struct {
 	ID    int64 `json:"id"`
 	Order int64 `json:"order"`
-}
+} // @name ReorderSystemItem
 
 type reorderSystemsRequest struct {
 	Systems []reorderSystemItem `json:"systems"`
-}
+} // @name ReorderSystemsRequest
 
 func (r updateSystemRequest) toParams(id int64) db.UpdateSystemParams {
 	return db.UpdateSystemParams{
@@ -86,7 +86,7 @@ type createTalkgroupRequest struct {
 	GroupID     *int64  `json:"groupId"`
 	TagID       *int64  `json:"tagId"`
 	Order       int64   `json:"order"`
-}
+} // @name CreateTalkgroupRequest
 
 func (r createTalkgroupRequest) toParams() db.CreateTalkgroupParams {
 	return db.CreateTalkgroupParams{
@@ -111,7 +111,7 @@ type updateTalkgroupRequest struct {
 	GroupID     *int64  `json:"groupId"`
 	TagID       *int64  `json:"tagId"`
 	Order       int64   `json:"order"`
-}
+} // @name UpdateTalkgroupRequest
 
 func (r updateTalkgroupRequest) toParams(id int64) db.UpdateTalkgroupParams {
 	return db.UpdateTalkgroupParams{
@@ -134,7 +134,7 @@ type createUnitRequest struct {
 	UnitID   int64   `json:"unitId"`
 	Label    *string `json:"label"`
 	Order    int64   `json:"order"`
-}
+} // @name CreateUnitRequest
 
 func (r createUnitRequest) toParams() db.CreateUnitParams {
 	return db.CreateUnitParams{
@@ -149,7 +149,7 @@ type updateUnitRequest struct {
 	UnitID int64   `json:"unitId"`
 	Label  *string `json:"label"`
 	Order  int64   `json:"order"`
-}
+} // @name UpdateUnitRequest
 
 func (r updateUnitRequest) toParams(id int64) db.UpdateUnitParams {
 	return db.UpdateUnitParams{
@@ -168,7 +168,7 @@ type createAPIKeyRequest struct {
 	Disabled    int64   `json:"disabled"`
 	SystemsJson *string `json:"systemsJson"`
 	Order       int64   `json:"order"`
-}
+} // @name CreateAPIKeyRequest
 
 func (r createAPIKeyRequest) toParams(hashedKey string) db.CreateAPIKeyParams {
 	return db.CreateAPIKeyParams{
@@ -186,16 +186,16 @@ type updateAPIKeyRequest struct {
 	Disabled    int64   `json:"disabled"`
 	SystemsJson *string `json:"systemsJson"`
 	Order       int64   `json:"order"`
-}
+} // @name UpdateAPIKeyRequest
 
 type reorderAPIKeyItem struct {
 	ID    int64 `json:"id"`
 	Order int64 `json:"order"`
-}
+} // @name ReorderAPIKeyItem
 
 type reorderAPIKeysRequest struct {
 	APIKeys []reorderAPIKeyItem `json:"apiKeys"`
-}
+} // @name ReorderAPIKeysRequest
 
 func (r updateAPIKeyRequest) toParams(id int64) db.UpdateAPIKeyParams {
 	key := ""
@@ -227,7 +227,7 @@ type createDirwatchRequest struct {
 	SystemID    *int64  `json:"systemId"`
 	TalkgroupID *int64  `json:"talkgroupId"`
 	Order       int64   `json:"order"`
-}
+} // @name CreateDirwatchRequest
 
 func (r createDirwatchRequest) toParams() db.CreateDirwatchParams {
 	return db.CreateDirwatchParams{
@@ -259,7 +259,7 @@ type updateDirwatchRequest struct {
 	SystemID    *int64  `json:"systemId"`
 	TalkgroupID *int64  `json:"talkgroupId"`
 	Order       int64   `json:"order"`
-}
+} // @name UpdateDirwatchRequest
 
 func (r updateDirwatchRequest) toParams(id int64) db.UpdateDirwatchParams {
 	return db.UpdateDirwatchParams{
@@ -287,7 +287,7 @@ type createDownstreamRequest struct {
 	SystemsJson *string `json:"systemsJson"`
 	Disabled    int64   `json:"disabled"`
 	Order       int64   `json:"order"`
-}
+} // @name CreateDownstreamRequest
 
 func (r createDownstreamRequest) toParams() db.CreateDownstreamParams {
 	return db.CreateDownstreamParams{
@@ -305,7 +305,7 @@ type updateDownstreamRequest struct {
 	SystemsJson *string `json:"systemsJson"`
 	Disabled    int64   `json:"disabled"`
 	Order       int64   `json:"order"`
-}
+} // @name UpdateDownstreamRequest
 
 func (r updateDownstreamRequest) toParams(id int64) db.UpdateDownstreamParams {
 	return db.UpdateDownstreamParams{
@@ -327,7 +327,7 @@ type createWebhookRequest struct {
 	SystemsJson *string `json:"systemsJson"`
 	Disabled    int64   `json:"disabled"`
 	Order       int64   `json:"order"`
-}
+} // @name CreateWebhookRequest
 
 func (r createWebhookRequest) toParams() db.CreateWebhookParams {
 	return db.CreateWebhookParams{
@@ -347,7 +347,7 @@ type updateWebhookRequest struct {
 	SystemsJson *string `json:"systemsJson"`
 	Disabled    int64   `json:"disabled"`
 	Order       int64   `json:"order"`
-}
+} // @name UpdateWebhookRequest
 
 func (r updateWebhookRequest) toParams(id int64) db.UpdateWebhookParams {
 	return db.UpdateWebhookParams{

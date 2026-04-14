@@ -16,7 +16,7 @@ type exportAPIKey struct {
 	Disabled    int64   `json:"disabled"`
 	SystemsJson *string `json:"systemsJson,omitempty"`
 	Order       int64   `json:"order"`
-}
+} // @name ExportAPIKey
 
 type exportDownstream struct {
 	ID          int64   `json:"id"`
@@ -24,7 +24,7 @@ type exportDownstream struct {
 	SystemsJson *string `json:"systemsJson,omitempty"`
 	Disabled    int64   `json:"disabled"`
 	Order       int64   `json:"order"`
-}
+} // @name ExportDownstream
 
 type exportWebhook struct {
 	ID          int64   `json:"id"`
@@ -33,7 +33,7 @@ type exportWebhook struct {
 	SystemsJson *string `json:"systemsJson,omitempty"`
 	Disabled    int64   `json:"disabled"`
 	Order       int64   `json:"order"`
-}
+} // @name ExportWebhook
 
 // configExport is the full JSON config export structure.
 // Sensitive fields (API key hashes, downstream API keys, webhook secrets)
@@ -50,7 +50,7 @@ type configExport struct {
 	Dirwatches  []db.Dirwatch      `json:"dirwatches"`
 	Downstreams []exportDownstream `json:"downstreams"`
 	Webhooks    []exportWebhook    `json:"webhooks"`
-}
+} // @name ConfigExport
 
 // ExportConfig handles GET /api/admin/export/config.
 //
@@ -195,7 +195,7 @@ type configImport struct {
 	Dirwatches  []db.Dirwatch   `json:"dirwatches"`
 	Downstreams []db.Downstream `json:"downstreams"`
 	Webhooks    []db.Webhook    `json:"webhooks"`
-}
+} // @name ConfigImport
 
 // ImportConfig handles POST /api/admin/import/config.
 //

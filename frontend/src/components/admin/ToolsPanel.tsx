@@ -357,9 +357,9 @@ export default function ToolsPanel() {
           </h2>
           <p className="text-sm text-base-content/70">
             Browse the interactive Swagger UI to explore and test all API
-            endpoints. Use the token below to authorize requests via the
-            padlock icon in Swagger UI. Your docs session expires after 1
-            hour — click "Open Swagger UI" again to refresh it.
+            endpoints. Use the token below to authorize requests via the padlock
+            icon in Swagger UI. Your docs session expires after 1 hour — click
+            "Open Swagger UI" again to refresh it.
           </p>
           <div className="flex items-center gap-2 flex-wrap">
             <button
@@ -381,7 +381,7 @@ export default function ToolsPanel() {
               className="btn btn-outline btn-sm"
               onClick={() => {
                 if (token) {
-                  navigator.clipboard.writeText(token);
+                  navigator.clipboard.writeText(`Bearer ${token}`);
                   showToast("Bearer token copied to clipboard", "success");
                 }
               }}

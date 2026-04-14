@@ -29,19 +29,19 @@ func NewAuthHandler(queries *db.Queries, rateLimiter *auth.RateLimiter) *AuthHan
 type loginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
-}
+} // @name LoginRequest
 
 type loginUserResponse struct {
 	ID       int64  `json:"id"`
 	Username string `json:"username"`
 	Role     string `json:"role"`
-}
+} // @name LoginUserResponse
 
 type loginResponse struct {
 	Token              string            `json:"token"`
 	User               loginUserResponse `json:"user"`
 	PasswordNeedChange bool              `json:"passwordNeedChange"`
-}
+} // @name LoginResponse
 
 // PostLogin handles POST /api/auth/login.
 // Returns 429 if rate-limited (via middleware), 401 for invalid credentials, 200 with JWT on success.
@@ -161,7 +161,7 @@ func (h *AuthHandler) PostLogout(c *gin.Context) {
 type changePasswordRequest struct {
 	CurrentPassword string `json:"currentPassword"`
 	NewPassword     string `json:"newPassword"`
-}
+} // @name ChangePasswordRequest
 
 // PutPassword handles PUT /api/auth/password (JWT required, any role).
 // Verifies the current password and updates it to the new one.

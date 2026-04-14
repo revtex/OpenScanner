@@ -580,7 +580,7 @@ type CallSearchResult struct {
 	SpikeCount     *int64 `json:"spikeCount,omitempty"`
 	Transcript     string `json:"transcript,omitempty"`
 	Bookmarked     bool   `json:"bookmarked"`
-}
+} // @name CallSearchResult
 
 // GetCallAudio handles GET /api/calls/:id/audio.
 //
@@ -666,7 +666,7 @@ func (h *CallHandler) GetCallAudio(c *gin.Context) {
 type CallSearchResponse struct {
 	Calls []CallSearchResult `json:"calls"`
 	Total int64              `json:"total"`
-}
+} // @name CallSearchResponse
 
 // GetCalls handles GET /api/calls — paginated call archive search.
 //

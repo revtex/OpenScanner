@@ -4,13 +4,12 @@
 //	@version		1.0
 //	@description	Radio call manager API — real-time audio streaming, call management, and admin CRUD.
 //
-//	@host		localhost:3000
 //	@BasePath	/api
 //
 //	@securityDefinitions.apikey	BearerAuth
 //	@in							header
 //	@name						Authorization
-//	@description				JWT token prefixed with "Bearer "
+//	@description				Paste the value exactly as copied (already includes Bearer prefix)
 //
 //	@securityDefinitions.apikey	APIKeyAuth
 //	@in							header

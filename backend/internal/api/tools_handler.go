@@ -18,7 +18,7 @@ type missingAudioCall struct {
 	AudioPath string `json:"audioPath"`
 	AudioName string `json:"audioName"`
 	Reason    string `json:"reason"`
-}
+} // @name MissingAudioCall
 
 type missingAudioResponse struct {
 	RecordingsDir string             `json:"recordingsDir"`
@@ -27,18 +27,18 @@ type missingAudioResponse struct {
 	TotalCalls    int64              `json:"totalCalls"`
 	Checked       int                `json:"checked"`
 	Missing       []missingAudioCall `json:"missing"`
-}
+} // @name MissingAudioResponse
 
 type cleanupMissingAudioRequest struct {
 	Confirm bool    `json:"confirm"`
 	CallIDs []int64 `json:"callIds"`
-}
+} // @name CleanupMissingAudioRequest
 
 type cleanupMissingAudioResponse struct {
 	Requested int                `json:"requested"`
 	Deleted   int                `json:"deleted"`
 	Skipped   []missingAudioCall `json:"skipped"`
-}
+} // @name CleanupMissingAudioResponse
 
 func missingAudioReason(recordingsDir, audioPath string) string {
 	relPath := filepath.Clean(audioPath)

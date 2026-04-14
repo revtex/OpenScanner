@@ -28,13 +28,13 @@ type ShareResponse struct {
 	Source         int64  `json:"source"`
 	Transcript     string `json:"transcript,omitempty"`
 	AudioURL       string `json:"audioUrl"`
-}
+} // @name ShareResponse
 
 // ShareCreateResponse is returned when a call is shared.
 type ShareCreateResponse struct {
 	Token string `json:"token"`
 	URL   string `json:"url"`
-}
+} // @name ShareCreateResponse
 
 // PostShareCall handles POST /api/calls/:id/share.
 // Creates a shared_links record for the call and returns the token + URL.

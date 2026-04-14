@@ -27,7 +27,7 @@ func NewSetupHandler(queries *db.Queries) *SetupHandler {
 type setupStatusResponse struct {
 	NeedsSetup   bool `json:"needsSetup"`
 	PublicAccess bool `json:"publicAccess"`
-}
+} // @name SetupStatusResponse
 
 // GetSetupStatus godoc
 //
@@ -65,7 +65,7 @@ func (h *SetupHandler) GetSetupStatus(c *gin.Context) {
 type setupRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
-}
+} // @name SetupRequest
 
 // PostSetup godoc
 //

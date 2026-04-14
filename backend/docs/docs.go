@@ -34,13 +34,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ActivityChartResponse"
+                            "$ref": "#/definitions/ActivityChartResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -65,13 +65,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ActivityStatsResponse"
+                            "$ref": "#/definitions/ActivityStatsResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -96,13 +96,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.TopTalkgroupsResponse"
+                            "$ref": "#/definitions/TopTalkgroupsResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -129,14 +129,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_api.apiKeyResponse"
+                                "$ref": "#/definitions/ApiKeyResponse"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -165,7 +165,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.createAPIKeyRequest"
+                            "$ref": "#/definitions/CreateAPIKeyRequest"
                         }
                     }
                 ],
@@ -173,25 +173,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.apiKeyCreateResponse"
+                            "$ref": "#/definitions/ApiKeyCreateResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -222,7 +222,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.reorderAPIKeysRequest"
+                            "$ref": "#/definitions/ReorderAPIKeysRequest"
                         }
                     }
                 ],
@@ -241,19 +241,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -291,7 +291,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.updateAPIKeyRequest"
+                            "$ref": "#/definitions/UpdateAPIKeyRequest"
                         }
                     }
                 ],
@@ -299,31 +299,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.apiKeyResponse"
+                            "$ref": "#/definitions/ApiKeyResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -366,19 +366,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -405,14 +405,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_api.settingResponse"
+                                "$ref": "#/definitions/SettingResponse"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -443,7 +443,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_api.settingResponse"
+                                "$ref": "#/definitions/SettingResponse"
                             }
                         }
                     }
@@ -458,13 +458,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -491,14 +491,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_api.dirwatchResponse"
+                                "$ref": "#/definitions/DirwatchResponse"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -527,7 +527,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.createDirwatchRequest"
+                            "$ref": "#/definitions/CreateDirwatchRequest"
                         }
                     }
                 ],
@@ -535,25 +535,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.dirwatchResponse"
+                            "$ref": "#/definitions/DirwatchResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -591,7 +591,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.updateDirwatchRequest"
+                            "$ref": "#/definitions/UpdateDirwatchRequest"
                         }
                     }
                 ],
@@ -599,31 +599,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.dirwatchResponse"
+                            "$ref": "#/definitions/DirwatchResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -666,19 +666,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -705,14 +705,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_api.downstreamResponse"
+                                "$ref": "#/definitions/DownstreamResponse"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -741,7 +741,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.createDownstreamRequest"
+                            "$ref": "#/definitions/CreateDownstreamRequest"
                         }
                     }
                 ],
@@ -749,25 +749,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.downstreamResponse"
+                            "$ref": "#/definitions/DownstreamResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -805,7 +805,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.updateDownstreamRequest"
+                            "$ref": "#/definitions/UpdateDownstreamRequest"
                         }
                     }
                 ],
@@ -813,31 +813,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.downstreamResponse"
+                            "$ref": "#/definitions/DownstreamResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -880,19 +880,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -917,13 +917,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.configExport"
+                            "$ref": "#/definitions/ConfigExport"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -957,13 +957,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.listServerDirectoriesResponse"
+                            "$ref": "#/definitions/ListServerDirectoriesResponse"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -990,14 +990,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Group"
+                                "$ref": "#/definitions/Group"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1026,7 +1026,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.groupRequest"
+                            "$ref": "#/definitions/GroupRequest"
                         }
                     }
                 ],
@@ -1034,31 +1034,31 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Group"
+                            "$ref": "#/definitions/Group"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1096,7 +1096,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.groupRequest"
+                            "$ref": "#/definitions/GroupRequest"
                         }
                     }
                 ],
@@ -1104,37 +1104,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Group"
+                            "$ref": "#/definitions/Group"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1177,19 +1177,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1220,7 +1220,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.configImport"
+                            "$ref": "#/definitions/ConfigImport"
                         }
                     }
                 ],
@@ -1234,13 +1234,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1290,13 +1290,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1346,13 +1346,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1399,20 +1399,20 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_api.logResponse"
+                                "$ref": "#/definitions/LogResponse"
                             }
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1439,14 +1439,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_api.SharedLinkListItem"
+                                "$ref": "#/definitions/SharedLinkListItem"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1486,19 +1486,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1525,14 +1525,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_api.systemResponse"
+                                "$ref": "#/definitions/SystemResponse"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1561,7 +1561,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.createSystemRequest"
+                            "$ref": "#/definitions/CreateSystemRequest"
                         }
                     }
                 ],
@@ -1569,25 +1569,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.systemResponse"
+                            "$ref": "#/definitions/SystemResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1618,7 +1618,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.reorderSystemsRequest"
+                            "$ref": "#/definitions/ReorderSystemsRequest"
                         }
                     }
                 ],
@@ -1637,19 +1637,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1687,7 +1687,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.updateSystemRequest"
+                            "$ref": "#/definitions/UpdateSystemRequest"
                         }
                     }
                 ],
@@ -1695,31 +1695,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.systemResponse"
+                            "$ref": "#/definitions/SystemResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1762,19 +1762,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1801,14 +1801,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Tag"
+                                "$ref": "#/definitions/Tag"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1837,7 +1837,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.tagRequest"
+                            "$ref": "#/definitions/TagRequest"
                         }
                     }
                 ],
@@ -1845,31 +1845,31 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Tag"
+                            "$ref": "#/definitions/Tag"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1907,7 +1907,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.tagRequest"
+                            "$ref": "#/definitions/TagRequest"
                         }
                     }
                 ],
@@ -1915,37 +1915,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Tag"
+                            "$ref": "#/definitions/Tag"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -1988,19 +1988,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2027,14 +2027,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_api.talkgroupResponse"
+                                "$ref": "#/definitions/TalkgroupResponse"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2063,7 +2063,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.createTalkgroupRequest"
+                            "$ref": "#/definitions/CreateTalkgroupRequest"
                         }
                     }
                 ],
@@ -2071,25 +2071,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.talkgroupResponse"
+                            "$ref": "#/definitions/TalkgroupResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2127,7 +2127,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.updateTalkgroupRequest"
+                            "$ref": "#/definitions/UpdateTalkgroupRequest"
                         }
                     }
                 ],
@@ -2135,31 +2135,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.talkgroupResponse"
+                            "$ref": "#/definitions/TalkgroupResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2202,19 +2202,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2253,19 +2253,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.missingAudioResponse"
+                            "$ref": "#/definitions/MissingAudioResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2296,7 +2296,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.cleanupMissingAudioRequest"
+                            "$ref": "#/definitions/CleanupMissingAudioRequest"
                         }
                     }
                 ],
@@ -2304,19 +2304,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.cleanupMissingAudioResponse"
+                            "$ref": "#/definitions/CleanupMissingAudioResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2343,14 +2343,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_api.unitResponse"
+                                "$ref": "#/definitions/UnitResponse"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2379,7 +2379,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.createUnitRequest"
+                            "$ref": "#/definitions/CreateUnitRequest"
                         }
                     }
                 ],
@@ -2387,25 +2387,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.unitResponse"
+                            "$ref": "#/definitions/UnitResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2443,7 +2443,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.updateUnitRequest"
+                            "$ref": "#/definitions/UpdateUnitRequest"
                         }
                     }
                 ],
@@ -2451,31 +2451,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.unitResponse"
+                            "$ref": "#/definitions/UnitResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2518,19 +2518,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2557,14 +2557,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_api.userResponse"
+                                "$ref": "#/definitions/UserResponse"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2593,7 +2593,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.createUserRequest"
+                            "$ref": "#/definitions/CreateUserRequest"
                         }
                     }
                 ],
@@ -2601,31 +2601,31 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.userResponse"
+                            "$ref": "#/definitions/UserResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2663,7 +2663,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.updateUserRequest"
+                            "$ref": "#/definitions/UpdateUserRequest"
                         }
                     }
                 ],
@@ -2671,37 +2671,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.userResponse"
+                            "$ref": "#/definitions/UserResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2744,25 +2744,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2789,14 +2789,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_api.webhookResponse"
+                                "$ref": "#/definitions/WebhookResponse"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2825,7 +2825,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.createWebhookRequest"
+                            "$ref": "#/definitions/CreateWebhookRequest"
                         }
                     }
                 ],
@@ -2833,25 +2833,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.webhookResponse"
+                            "$ref": "#/definitions/WebhookResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2889,7 +2889,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.updateWebhookRequest"
+                            "$ref": "#/definitions/UpdateWebhookRequest"
                         }
                     }
                 ],
@@ -2897,31 +2897,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.webhookResponse"
+                            "$ref": "#/definitions/WebhookResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2964,19 +2964,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3002,7 +3002,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.loginRequest"
+                            "$ref": "#/definitions/LoginRequest"
                         }
                     }
                 ],
@@ -3010,31 +3010,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.loginResponse"
+                            "$ref": "#/definitions/LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3070,13 +3070,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3101,19 +3101,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.loginUserResponse"
+                            "$ref": "#/definitions/LoginUserResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3144,7 +3144,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.changePasswordRequest"
+                            "$ref": "#/definitions/ChangePasswordRequest"
                         }
                     }
                 ],
@@ -3163,19 +3163,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3200,19 +3200,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.BookmarkIDsResponse"
+                            "$ref": "#/definitions/BookmarkIDsResponse"
                         }
                     },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3241,7 +3241,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ToggleBookmarkRequest"
+                            "$ref": "#/definitions/ToggleBookmarkRequest"
                         }
                     }
                 ],
@@ -3249,25 +3249,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ToggleBookmarkResponse"
+                            "$ref": "#/definitions/ToggleBookmarkResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request body",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3292,19 +3292,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.BookmarkCallsResponse"
+                            "$ref": "#/definitions/BookmarkCallsResponse"
                         }
                     },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3469,25 +3469,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "API key required",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "429": {
                         "description": "Rate limit exceeded",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3575,19 +3575,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Paginated call results",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.CallSearchResponse"
+                            "$ref": "#/definitions/CallSearchResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid query parameter",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3627,25 +3627,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid call ID",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Call or audio not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3676,25 +3676,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ShareCreateResponse"
+                            "$ref": "#/definitions/ShareCreateResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3723,43 +3723,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ShareCreateResponse"
+                            "$ref": "#/definitions/ShareCreateResponse"
                         }
                     },
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ShareCreateResponse"
+                            "$ref": "#/definitions/ShareCreateResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3791,19 +3791,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3857,7 +3857,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_api.setupRequest"
+                            "$ref": "#/definitions/SetupRequest"
                         }
                     }
                 ],
@@ -3876,19 +3876,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3908,13 +3908,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.setupStatusResponse"
+                            "$ref": "#/definitions/SetupStatusResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3940,19 +3940,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ShareResponse"
+                            "$ref": "#/definitions/ShareResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -3987,13 +3987,13 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -4001,283 +4001,18 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_openscanner_openscanner_internal_db.ApiKey": {
-            "type": "object",
-            "properties": {
-                "disabled": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "ident": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "key": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systems_json": {
-                    "$ref": "#/definitions/sql.NullString"
-                }
-            }
-        },
-        "github_com_openscanner_openscanner_internal_db.Dirwatch": {
-            "type": "object",
-            "properties": {
-                "delay": {
-                    "$ref": "#/definitions/sql.NullInt64"
-                },
-                "delete_after": {
-                    "type": "integer"
-                },
-                "directory": {
-                    "type": "string"
-                },
-                "disabled": {
-                    "type": "integer"
-                },
-                "extension": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "frequency": {
-                    "$ref": "#/definitions/sql.NullInt64"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "mask": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "system_id": {
-                    "$ref": "#/definitions/sql.NullInt64"
-                },
-                "talkgroup_id": {
-                    "$ref": "#/definitions/sql.NullInt64"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "use_polling": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_openscanner_openscanner_internal_db.Downstream": {
-            "type": "object",
-            "properties": {
-                "api_key": {
-                    "type": "string"
-                },
-                "disabled": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systems_json": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_openscanner_openscanner_internal_db.Group": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "label": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_openscanner_openscanner_internal_db.Setting": {
-            "type": "object",
-            "properties": {
-                "key": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_openscanner_openscanner_internal_db.System": {
-            "type": "object",
-            "properties": {
-                "auto_populate": {
-                    "type": "integer"
-                },
-                "blacklists_json": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "label": {
-                    "type": "string"
-                },
-                "led": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "system_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_openscanner_openscanner_internal_db.Tag": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "label": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_openscanner_openscanner_internal_db.Talkgroup": {
-            "type": "object",
-            "properties": {
-                "frequency": {
-                    "$ref": "#/definitions/sql.NullInt64"
-                },
-                "group_id": {
-                    "$ref": "#/definitions/sql.NullInt64"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "label": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "led": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "name": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "system_id": {
-                    "type": "integer"
-                },
-                "tag_id": {
-                    "$ref": "#/definitions/sql.NullInt64"
-                },
-                "talkgroup_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_openscanner_openscanner_internal_db.Unit": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "label": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "system_id": {
-                    "type": "integer"
-                },
-                "unit_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_openscanner_openscanner_internal_db.User": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "integer"
-                },
-                "disabled": {
-                    "type": "integer"
-                },
-                "expiration": {
-                    "$ref": "#/definitions/sql.NullInt64"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "limit": {
-                    "$ref": "#/definitions/sql.NullInt64"
-                },
-                "password_need_change": {
-                    "type": "integer"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "systems_json": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "updated_at": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_openscanner_openscanner_internal_db.Webhook": {
-            "type": "object",
-            "properties": {
-                "disabled": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "secret": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "systems_json": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.ActivityChartResponse": {
+        "ActivityChartResponse": {
             "type": "object",
             "properties": {
                 "buckets": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_api.ChartBucket"
+                        "$ref": "#/definitions/ChartBucket"
                     }
                 }
             }
         },
-        "internal_api.ActivityStatsResponse": {
+        "ActivityStatsResponse": {
             "type": "object",
             "properties": {
                 "activeListeners": {
@@ -4297,18 +4032,90 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.BookmarkCallsResponse": {
+        "ApiKey": {
+            "type": "object",
+            "properties": {
+                "disabled": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "ident": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systems_json": {
+                    "type": "string"
+                }
+            }
+        },
+        "ApiKeyCreateResponse": {
+            "type": "object",
+            "properties": {
+                "createdKey": {
+                    "type": "string"
+                },
+                "disabled": {
+                    "type": "integer"
+                },
+                "fingerprint": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "ident": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemsJson": {
+                    "type": "string"
+                }
+            }
+        },
+        "ApiKeyResponse": {
+            "type": "object",
+            "properties": {
+                "disabled": {
+                    "type": "integer"
+                },
+                "fingerprint": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "ident": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemsJson": {
+                    "type": "string"
+                }
+            }
+        },
+        "BookmarkCallsResponse": {
             "type": "object",
             "properties": {
                 "calls": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_api.CallSearchResult"
+                        "$ref": "#/definitions/CallSearchResult"
                     }
                 }
             }
         },
-        "internal_api.BookmarkIDsResponse": {
+        "BookmarkIDsResponse": {
             "type": "object",
             "properties": {
                 "callIds": {
@@ -4319,13 +4126,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.CallSearchResponse": {
+        "CallSearchResponse": {
             "type": "object",
             "properties": {
                 "calls": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_api.CallSearchResult"
+                        "$ref": "#/definitions/CallSearchResult"
                     }
                 },
                 "total": {
@@ -4333,7 +4140,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.CallSearchResult": {
+        "CallSearchResult": {
             "type": "object",
             "properties": {
                 "audioName": {
@@ -4404,7 +4211,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.ChartBucket": {
+        "ChangePasswordRequest": {
+            "type": "object",
+            "properties": {
+                "currentPassword": {
+                    "type": "string"
+                },
+                "newPassword": {
+                    "type": "string"
+                }
+            }
+        },
+        "ChartBucket": {
             "type": "object",
             "properties": {
                 "count": {
@@ -4415,7 +4233,510 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.ErrorResponse": {
+        "CleanupMissingAudioRequest": {
+            "type": "object",
+            "properties": {
+                "callIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "confirm": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "CleanupMissingAudioResponse": {
+            "type": "object",
+            "properties": {
+                "deleted": {
+                    "type": "integer"
+                },
+                "requested": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/MissingAudioCall"
+                    }
+                }
+            }
+        },
+        "ConfigExport": {
+            "type": "object",
+            "properties": {
+                "apiKeys": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ExportAPIKey"
+                    }
+                },
+                "dirwatches": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Dirwatch"
+                    }
+                },
+                "downstreams": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ExportDownstream"
+                    }
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Group"
+                    }
+                },
+                "settings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Setting"
+                    }
+                },
+                "systems": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/System"
+                    }
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Tag"
+                    }
+                },
+                "talkgroups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Talkgroup"
+                    }
+                },
+                "units": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Unit"
+                    }
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/User"
+                    }
+                },
+                "webhooks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ExportWebhook"
+                    }
+                }
+            }
+        },
+        "ConfigImport": {
+            "type": "object",
+            "properties": {
+                "apiKeys": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ApiKey"
+                    }
+                },
+                "dirwatches": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Dirwatch"
+                    }
+                },
+                "downstreams": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Downstream"
+                    }
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Group"
+                    }
+                },
+                "settings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Setting"
+                    }
+                },
+                "systems": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/System"
+                    }
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Tag"
+                    }
+                },
+                "talkgroups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Talkgroup"
+                    }
+                },
+                "units": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Unit"
+                    }
+                },
+                "webhooks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Webhook"
+                    }
+                }
+            }
+        },
+        "CreateAPIKeyRequest": {
+            "type": "object",
+            "properties": {
+                "disabled": {
+                    "type": "integer"
+                },
+                "ident": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemsJson": {
+                    "type": "string"
+                }
+            }
+        },
+        "CreateDirwatchRequest": {
+            "type": "object",
+            "properties": {
+                "delay": {
+                    "type": "integer"
+                },
+                "deleteAfter": {
+                    "type": "integer"
+                },
+                "directory": {
+                    "type": "string"
+                },
+                "disabled": {
+                    "type": "integer"
+                },
+                "extension": {
+                    "type": "string"
+                },
+                "frequency": {
+                    "type": "integer"
+                },
+                "mask": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemId": {
+                    "type": "integer"
+                },
+                "talkgroupId": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "usePolling": {
+                    "type": "integer"
+                }
+            }
+        },
+        "CreateDownstreamRequest": {
+            "type": "object",
+            "properties": {
+                "apiKey": {
+                    "type": "string"
+                },
+                "disabled": {
+                    "type": "integer"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemsJson": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "CreateSystemRequest": {
+            "type": "object",
+            "properties": {
+                "autoPopulate": {
+                    "type": "integer"
+                },
+                "blacklistsJson": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "led": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "CreateTalkgroupRequest": {
+            "type": "object",
+            "properties": {
+                "frequency": {
+                    "type": "integer"
+                },
+                "groupId": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "led": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemId": {
+                    "type": "integer"
+                },
+                "tagId": {
+                    "type": "integer"
+                },
+                "talkgroupId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "CreateUnitRequest": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemId": {
+                    "type": "integer"
+                },
+                "unitId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "CreateUserRequest": {
+            "type": "object",
+            "properties": {
+                "disabled": {
+                    "type": "integer"
+                },
+                "expiration": {
+                    "type": "integer"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "systemsJson": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "CreateWebhookRequest": {
+            "type": "object",
+            "properties": {
+                "disabled": {
+                    "type": "integer"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "secret": {
+                    "type": "string"
+                },
+                "systemsJson": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "Dirwatch": {
+            "type": "object",
+            "properties": {
+                "delay": {
+                    "type": "integer"
+                },
+                "delete_after": {
+                    "type": "integer"
+                },
+                "directory": {
+                    "type": "string"
+                },
+                "disabled": {
+                    "type": "integer"
+                },
+                "extension": {
+                    "type": "string"
+                },
+                "frequency": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "mask": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "system_id": {
+                    "type": "integer"
+                },
+                "talkgroup_id": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "use_polling": {
+                    "type": "integer"
+                }
+            }
+        },
+        "DirwatchResponse": {
+            "type": "object",
+            "properties": {
+                "delay": {
+                    "type": "integer"
+                },
+                "deleteAfter": {
+                    "type": "integer"
+                },
+                "directory": {
+                    "type": "string"
+                },
+                "disabled": {
+                    "type": "integer"
+                },
+                "extension": {
+                    "type": "string"
+                },
+                "frequency": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "mask": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemId": {
+                    "type": "integer"
+                },
+                "talkgroupId": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "usePolling": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Downstream": {
+            "type": "object",
+            "properties": {
+                "api_key": {
+                    "type": "string"
+                },
+                "disabled": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systems_json": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "DownstreamResponse": {
+            "type": "object",
+            "properties": {
+                "apiKey": {
+                    "type": "string"
+                },
+                "disabled": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemsJson": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -4424,7 +4745,307 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.ShareCreateResponse": {
+        "ExportAPIKey": {
+            "type": "object",
+            "properties": {
+                "disabled": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "ident": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemsJson": {
+                    "type": "string"
+                }
+            }
+        },
+        "ExportDownstream": {
+            "type": "object",
+            "properties": {
+                "disabled": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemsJson": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "ExportWebhook": {
+            "type": "object",
+            "properties": {
+                "disabled": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemsJson": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "Group": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
+                }
+            }
+        },
+        "GroupRequest": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                }
+            }
+        },
+        "ListServerDirectoriesResponse": {
+            "type": "object",
+            "properties": {
+                "directories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ServerDirectoryEntry"
+                    }
+                },
+                "parent": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
+        "LogResponse": {
+            "type": "object",
+            "properties": {
+                "dateTime": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "LoginRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "LoginResponse": {
+            "type": "object",
+            "properties": {
+                "passwordNeedChange": {
+                    "type": "boolean"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/LoginUserResponse"
+                }
+            }
+        },
+        "LoginUserResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "MissingAudioCall": {
+            "type": "object",
+            "properties": {
+                "audioName": {
+                    "type": "string"
+                },
+                "audioPath": {
+                    "type": "string"
+                },
+                "dateTime": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "MissingAudioResponse": {
+            "type": "object",
+            "properties": {
+                "checked": {
+                    "type": "integer"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "missing": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/MissingAudioCall"
+                    }
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "recordingsDir": {
+                    "type": "string"
+                },
+                "totalCalls": {
+                    "type": "integer"
+                }
+            }
+        },
+        "ReorderAPIKeyItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "order": {
+                    "type": "integer"
+                }
+            }
+        },
+        "ReorderAPIKeysRequest": {
+            "type": "object",
+            "properties": {
+                "apiKeys": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ReorderAPIKeyItem"
+                    }
+                }
+            }
+        },
+        "ReorderSystemItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "order": {
+                    "type": "integer"
+                }
+            }
+        },
+        "ReorderSystemsRequest": {
+            "type": "object",
+            "properties": {
+                "systems": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ReorderSystemItem"
+                    }
+                }
+            }
+        },
+        "ServerDirectoryEntry": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
+        "Setting": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "SettingResponse": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "SetupRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "SetupStatusResponse": {
+            "type": "object",
+            "properties": {
+                "needsSetup": {
+                    "type": "boolean"
+                },
+                "publicAccess": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "ShareCreateResponse": {
             "type": "object",
             "properties": {
                 "token": {
@@ -4435,7 +5056,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.ShareResponse": {
+        "ShareResponse": {
             "type": "object",
             "properties": {
                 "audioUrl": {
@@ -4470,7 +5091,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.SharedLinkListItem": {
+        "SharedLinkListItem": {
             "type": "object",
             "properties": {
                 "callId": {
@@ -4505,7 +5126,148 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.ToggleBookmarkRequest": {
+        "System": {
+            "type": "object",
+            "properties": {
+                "auto_populate": {
+                    "type": "integer"
+                },
+                "blacklists_json": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "led": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "system_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "SystemResponse": {
+            "type": "object",
+            "properties": {
+                "autoPopulate": {
+                    "type": "integer"
+                },
+                "blacklistsJson": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "led": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "Tag": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
+                }
+            }
+        },
+        "TagRequest": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                }
+            }
+        },
+        "Talkgroup": {
+            "type": "object",
+            "properties": {
+                "frequency": {
+                    "type": "integer"
+                },
+                "group_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "led": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "system_id": {
+                    "type": "integer"
+                },
+                "tag_id": {
+                    "type": "integer"
+                },
+                "talkgroup_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "TalkgroupResponse": {
+            "type": "object",
+            "properties": {
+                "frequency": {
+                    "type": "integer"
+                },
+                "groupId": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "led": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "systemId": {
+                    "type": "integer"
+                },
+                "tagId": {
+                    "type": "integer"
+                },
+                "talkgroupId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "ToggleBookmarkRequest": {
             "type": "object",
             "properties": {
                 "callId": {
@@ -4514,7 +5276,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.ToggleBookmarkResponse": {
+        "ToggleBookmarkResponse": {
             "type": "object",
             "properties": {
                 "bookmarked": {
@@ -4527,7 +5289,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.TopTalkgroup": {
+        "TopTalkgroup": {
             "type": "object",
             "properties": {
                 "callCount": {
@@ -4544,245 +5306,58 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.TopTalkgroupsResponse": {
+        "TopTalkgroupsResponse": {
             "type": "object",
             "properties": {
                 "talkgroups": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_api.TopTalkgroup"
+                        "$ref": "#/definitions/TopTalkgroup"
                     }
                 }
             }
         },
-        "internal_api.apiKeyCreateResponse": {
+        "Unit": {
             "type": "object",
             "properties": {
-                "createdKey": {
-                    "type": "string"
-                },
-                "disabled": {
-                    "type": "integer"
-                },
-                "fingerprint": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "integer"
                 },
-                "ident": {
+                "label": {
                     "type": "string"
                 },
                 "order": {
                     "type": "integer"
                 },
-                "systemsJson": {
-                    "type": "string"
+                "system_id": {
+                    "type": "integer"
+                },
+                "unit_id": {
+                    "type": "integer"
                 }
             }
         },
-        "internal_api.apiKeyResponse": {
+        "UnitResponse": {
             "type": "object",
             "properties": {
-                "disabled": {
-                    "type": "integer"
-                },
-                "fingerprint": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "integer"
                 },
-                "ident": {
+                "label": {
                     "type": "string"
                 },
                 "order": {
                     "type": "integer"
                 },
-                "systemsJson": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.changePasswordRequest": {
-            "type": "object",
-            "properties": {
-                "currentPassword": {
-                    "type": "string"
-                },
-                "newPassword": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.cleanupMissingAudioRequest": {
-            "type": "object",
-            "properties": {
-                "callIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "confirm": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "internal_api.cleanupMissingAudioResponse": {
-            "type": "object",
-            "properties": {
-                "deleted": {
+                "systemId": {
                     "type": "integer"
                 },
-                "requested": {
+                "unitId": {
                     "type": "integer"
-                },
-                "skipped": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_api.missingAudioCall"
-                    }
                 }
             }
         },
-        "internal_api.configExport": {
-            "type": "object",
-            "properties": {
-                "apiKeys": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_api.exportAPIKey"
-                    }
-                },
-                "dirwatches": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Dirwatch"
-                    }
-                },
-                "downstreams": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_api.exportDownstream"
-                    }
-                },
-                "groups": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Group"
-                    }
-                },
-                "settings": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Setting"
-                    }
-                },
-                "systems": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.System"
-                    }
-                },
-                "tags": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Tag"
-                    }
-                },
-                "talkgroups": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Talkgroup"
-                    }
-                },
-                "units": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Unit"
-                    }
-                },
-                "users": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.User"
-                    }
-                },
-                "webhooks": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_api.exportWebhook"
-                    }
-                }
-            }
-        },
-        "internal_api.configImport": {
-            "type": "object",
-            "properties": {
-                "apiKeys": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.ApiKey"
-                    }
-                },
-                "dirwatches": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Dirwatch"
-                    }
-                },
-                "downstreams": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Downstream"
-                    }
-                },
-                "groups": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Group"
-                    }
-                },
-                "settings": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Setting"
-                    }
-                },
-                "systems": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.System"
-                    }
-                },
-                "tags": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Tag"
-                    }
-                },
-                "talkgroups": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Talkgroup"
-                    }
-                },
-                "units": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Unit"
-                    }
-                },
-                "webhooks": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_openscanner_openscanner_internal_db.Webhook"
-                    }
-                }
-            }
-        },
-        "internal_api.createAPIKeyRequest": {
+        "UpdateAPIKeyRequest": {
             "type": "object",
             "properties": {
                 "disabled": {
@@ -4802,7 +5377,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.createDirwatchRequest": {
+        "UpdateDirwatchRequest": {
             "type": "object",
             "properties": {
                 "delay": {
@@ -4843,7 +5418,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.createDownstreamRequest": {
+        "UpdateDownstreamRequest": {
             "type": "object",
             "properties": {
                 "apiKey": {
@@ -4863,7 +5438,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.createSystemRequest": {
+        "UpdateSystemRequest": {
             "type": "object",
             "properties": {
                 "autoPopulate": {
@@ -4886,643 +5461,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.createTalkgroupRequest": {
-            "type": "object",
-            "properties": {
-                "frequency": {
-                    "type": "integer"
-                },
-                "groupId": {
-                    "type": "integer"
-                },
-                "label": {
-                    "type": "string"
-                },
-                "led": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemId": {
-                    "type": "integer"
-                },
-                "tagId": {
-                    "type": "integer"
-                },
-                "talkgroupId": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_api.createUnitRequest": {
-            "type": "object",
-            "properties": {
-                "label": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemId": {
-                    "type": "integer"
-                },
-                "unitId": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_api.createUserRequest": {
-            "type": "object",
-            "properties": {
-                "disabled": {
-                    "type": "integer"
-                },
-                "expiration": {
-                    "type": "integer"
-                },
-                "limit": {
-                    "type": "integer"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "systemsJson": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.createWebhookRequest": {
-            "type": "object",
-            "properties": {
-                "disabled": {
-                    "type": "integer"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "secret": {
-                    "type": "string"
-                },
-                "systemsJson": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.dirwatchResponse": {
-            "type": "object",
-            "properties": {
-                "delay": {
-                    "type": "integer"
-                },
-                "deleteAfter": {
-                    "type": "integer"
-                },
-                "directory": {
-                    "type": "string"
-                },
-                "disabled": {
-                    "type": "integer"
-                },
-                "extension": {
-                    "type": "string"
-                },
-                "frequency": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "mask": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemId": {
-                    "type": "integer"
-                },
-                "talkgroupId": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "usePolling": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_api.downstreamResponse": {
-            "type": "object",
-            "properties": {
-                "apiKey": {
-                    "type": "string"
-                },
-                "disabled": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemsJson": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.exportAPIKey": {
-            "type": "object",
-            "properties": {
-                "disabled": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "ident": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemsJson": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.exportDownstream": {
-            "type": "object",
-            "properties": {
-                "disabled": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemsJson": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.exportWebhook": {
-            "type": "object",
-            "properties": {
-                "disabled": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemsJson": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.groupRequest": {
-            "type": "object",
-            "properties": {
-                "label": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.listServerDirectoriesResponse": {
-            "type": "object",
-            "properties": {
-                "directories": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_api.serverDirectoryEntry"
-                    }
-                },
-                "parent": {
-                    "type": "string"
-                },
-                "path": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.logResponse": {
-            "type": "object",
-            "properties": {
-                "dateTime": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "level": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.loginRequest": {
-            "type": "object",
-            "properties": {
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.loginResponse": {
-            "type": "object",
-            "properties": {
-                "passwordNeedChange": {
-                    "type": "boolean"
-                },
-                "token": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/internal_api.loginUserResponse"
-                }
-            }
-        },
-        "internal_api.loginUserResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.missingAudioCall": {
-            "type": "object",
-            "properties": {
-                "audioName": {
-                    "type": "string"
-                },
-                "audioPath": {
-                    "type": "string"
-                },
-                "dateTime": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "reason": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.missingAudioResponse": {
-            "type": "object",
-            "properties": {
-                "checked": {
-                    "type": "integer"
-                },
-                "limit": {
-                    "type": "integer"
-                },
-                "missing": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_api.missingAudioCall"
-                    }
-                },
-                "offset": {
-                    "type": "integer"
-                },
-                "recordingsDir": {
-                    "type": "string"
-                },
-                "totalCalls": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_api.reorderAPIKeyItem": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "order": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_api.reorderAPIKeysRequest": {
-            "type": "object",
-            "properties": {
-                "apiKeys": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_api.reorderAPIKeyItem"
-                    }
-                }
-            }
-        },
-        "internal_api.reorderSystemItem": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "order": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_api.reorderSystemsRequest": {
-            "type": "object",
-            "properties": {
-                "systems": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_api.reorderSystemItem"
-                    }
-                }
-            }
-        },
-        "internal_api.serverDirectoryEntry": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "path": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.settingResponse": {
-            "type": "object",
-            "properties": {
-                "key": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.setupRequest": {
-            "type": "object",
-            "properties": {
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.setupStatusResponse": {
-            "type": "object",
-            "properties": {
-                "needsSetup": {
-                    "type": "boolean"
-                },
-                "publicAccess": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "internal_api.systemResponse": {
-            "type": "object",
-            "properties": {
-                "autoPopulate": {
-                    "type": "integer"
-                },
-                "blacklistsJson": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "label": {
-                    "type": "string"
-                },
-                "led": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemId": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_api.tagRequest": {
-            "type": "object",
-            "properties": {
-                "label": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.talkgroupResponse": {
-            "type": "object",
-            "properties": {
-                "frequency": {
-                    "type": "integer"
-                },
-                "groupId": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "label": {
-                    "type": "string"
-                },
-                "led": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemId": {
-                    "type": "integer"
-                },
-                "tagId": {
-                    "type": "integer"
-                },
-                "talkgroupId": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_api.unitResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "label": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemId": {
-                    "type": "integer"
-                },
-                "unitId": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_api.updateAPIKeyRequest": {
-            "type": "object",
-            "properties": {
-                "disabled": {
-                    "type": "integer"
-                },
-                "ident": {
-                    "type": "string"
-                },
-                "key": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemsJson": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.updateDirwatchRequest": {
-            "type": "object",
-            "properties": {
-                "delay": {
-                    "type": "integer"
-                },
-                "deleteAfter": {
-                    "type": "integer"
-                },
-                "directory": {
-                    "type": "string"
-                },
-                "disabled": {
-                    "type": "integer"
-                },
-                "extension": {
-                    "type": "string"
-                },
-                "frequency": {
-                    "type": "integer"
-                },
-                "mask": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemId": {
-                    "type": "integer"
-                },
-                "talkgroupId": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "usePolling": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_api.updateDownstreamRequest": {
-            "type": "object",
-            "properties": {
-                "apiKey": {
-                    "type": "string"
-                },
-                "disabled": {
-                    "type": "integer"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemsJson": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_api.updateSystemRequest": {
-            "type": "object",
-            "properties": {
-                "autoPopulate": {
-                    "type": "integer"
-                },
-                "blacklistsJson": {
-                    "type": "string"
-                },
-                "label": {
-                    "type": "string"
-                },
-                "led": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "systemId": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_api.updateTalkgroupRequest": {
+        "UpdateTalkgroupRequest": {
             "type": "object",
             "properties": {
                 "frequency": {
@@ -5551,7 +5490,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.updateUnitRequest": {
+        "UpdateUnitRequest": {
             "type": "object",
             "properties": {
                 "label": {
@@ -5565,7 +5504,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.updateUserRequest": {
+        "UpdateUserRequest": {
             "type": "object",
             "properties": {
                 "disabled": {
@@ -5588,7 +5527,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.updateWebhookRequest": {
+        "UpdateWebhookRequest": {
             "type": "object",
             "properties": {
                 "disabled": {
@@ -5611,7 +5550,42 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.userResponse": {
+        "User": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "integer"
+                },
+                "disabled": {
+                    "type": "integer"
+                },
+                "expiration": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "password_need_change": {
+                    "type": "integer"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "systems_json": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "UserResponse": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -5643,7 +5617,33 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_api.webhookResponse": {
+        "Webhook": {
+            "type": "object",
+            "properties": {
+                "disabled": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "secret": {
+                    "type": "string"
+                },
+                "systems_json": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "WebhookResponse": {
             "type": "object",
             "properties": {
                 "disabled": {
@@ -5668,30 +5668,6 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "sql.NullInt64": {
-            "type": "object",
-            "properties": {
-                "int64": {
-                    "type": "integer"
-                },
-                "valid": {
-                    "description": "Valid is true if Int64 is not NULL",
-                    "type": "boolean"
-                }
-            }
-        },
-        "sql.NullString": {
-            "type": "object",
-            "properties": {
-                "string": {
-                    "type": "string"
-                },
-                "valid": {
-                    "description": "Valid is true if String is not NULL",
-                    "type": "boolean"
-                }
-            }
         }
     },
     "securityDefinitions": {
@@ -5702,7 +5678,7 @@ const docTemplate = `{
             "in": "header"
         },
         "BearerAuth": {
-            "description": "JWT token prefixed with \"Bearer \"",
+            "description": "Paste the value exactly as copied (already includes Bearer prefix)",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
@@ -5713,7 +5689,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:3000",
+	Host:             "",
 	BasePath:         "/api",
 	Schemes:          []string{},
 	Title:            "OpenScanner API",
