@@ -79,4 +79,27 @@ describe("SharedCall", () => {
     render(<SharedCall />);
     expect(screen.getByText("Call not found")).toBeInTheDocument();
   });
+
+  it("falls back when API returns an unsafe audio URL", () => {
+    mockUseParams.mockReturnValue({ token: "abc-123-def" });
+    mockUseGetSharedCallQuery.mockReturnValue({
+      data: {
+        token: "abc-123-def",
+        dateTime: 1700000000,
+        systemLabel: "Test System",
+        talkgroupLabel: "TG Alpha",
+        talkgroupName: "Alpha Group",
+        frequency: 851_000_000,
+        duration: 5000,
+        source: 123,
+        audioUrl: "javascript:alert(1)",
+      },
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<SharedCall />);
+    expect(screen.getByText("Call not found")).toBeInTheDocument();
+    expect(screen.queryByText("Download")).not.toBeInTheDocument();
+  });
 });

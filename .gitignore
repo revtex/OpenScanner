@@ -9,6 +9,9 @@
 /backend/internal/static/dist/*
 !/backend/internal/static/dist/.gitkeep
 
+# Generated Swagger artifacts
+/backend/docs/
+
 # Node
 /frontend/node_modules/
 /frontend/dist/

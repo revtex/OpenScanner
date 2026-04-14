@@ -234,4 +234,54 @@ describe("Login", () => {
       expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
     });
   });
+
+  it("rejects protocol-relative redirect targets", async () => {
+    mockLocationState = { from: "//evil.example/steal" };
+    mockPostLogin.mockReturnValue({
+      unwrap: () =>
+        Promise.resolve({
+          token: "tok",
+          user: { id: 1, username: "admin", role: "admin" },
+          passwordNeedChange: false,
+        }),
+    });
+
+    renderLogin();
+    fireEvent.change(screen.getByPlaceholderText("Username"), {
+      target: { value: "admin" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password"), {
+      target: { value: "pass1234" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+    });
+  });
+
+  it("rejects redirect targets with query strings", async () => {
+    mockLocationState = { from: "/admin/users?next=/admin" };
+    mockPostLogin.mockReturnValue({
+      unwrap: () =>
+        Promise.resolve({
+          token: "tok",
+          user: { id: 1, username: "admin", role: "admin" },
+          passwordNeedChange: false,
+        }),
+    });
+
+    renderLogin();
+    fireEvent.change(screen.getByPlaceholderText("Username"), {
+      target: { value: "admin" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password"), {
+      target: { value: "pass1234" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+    });
+  });
 });

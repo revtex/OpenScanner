@@ -13,6 +13,11 @@ interface LoginLocationState {
   from?: string;
 }
 
+function isSafePostLoginPath(path: string): boolean {
+  // Allow only simple in-app absolute paths (no scheme, host, query, or traversal-like chars).
+  return /^\/(?!\/)[A-Za-z0-9/_-]*$/.test(path);
+}
+
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,7 +42,7 @@ export default function Login() {
   }
 
   const getPostLoginPath = (role: string) => {
-    if (typeof from !== "string" || !from.startsWith("/")) {
+    if (typeof from !== "string" || !isSafePostLoginPath(from)) {
       return "/";
     }
     if (from.startsWith("/admin") && role !== "admin") {

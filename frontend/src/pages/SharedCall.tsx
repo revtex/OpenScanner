@@ -17,6 +17,21 @@ function formatDate(unix: number): string {
   return new Date(unix * 1000).toLocaleString();
 }
 
+function getSafeSharedAudioUrl(raw: string): string | null {
+  if (typeof raw !== "string" || raw.length === 0) return null;
+
+  try {
+    const parsed = new URL(raw, window.location.origin);
+    if (parsed.origin !== window.location.origin) return null;
+    if (!parsed.pathname.startsWith("/api/shared/")) return null;
+    if (!parsed.pathname.endsWith("/audio")) return null;
+    if (parsed.pathname.includes("\\")) return null;
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return null;
+  }
+}
+
 export default function SharedCall() {
   const { token } = useParams<{ token: string }>();
   const {
@@ -36,6 +51,28 @@ export default function SharedCall() {
   }
 
   if (isError || !call) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="card bg-base-200 shadow-xl max-w-md w-full mx-4">
+          <div className="card-body items-center text-center">
+            <Radio className="w-12 h-12 text-base-content/40" />
+            <h2 className="card-title">Call not found</h2>
+            <p className="text-base-content/60">
+              This call may have been removed or sharing may be disabled.
+            </p>
+            <div className="card-actions mt-4">
+              <a href="/" className="btn btn-primary">
+                Go to Scanner
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const safeAudioUrl = getSafeSharedAudioUrl(call.audioUrl);
+  if (!safeAudioUrl) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="card bg-base-200 shadow-xl max-w-md w-full mx-4">
@@ -111,7 +148,7 @@ export default function SharedCall() {
           {/* Audio player */}
           <audio
             controls
-            src={call.audioUrl}
+            src={safeAudioUrl}
             className="w-full"
             preload="metadata"
           />
@@ -128,7 +165,7 @@ export default function SharedCall() {
 
           {/* Download */}
           <div className="card-actions justify-end">
-            <a href={call.audioUrl} download className="btn btn-sm btn-outline">
+            <a href={safeAudioUrl} download className="btn btn-sm btn-outline">
               <Download className="w-4 h-4" />
               Download
             </a>
