@@ -79,7 +79,7 @@ type swagApiKey struct { //nolint:unused
 	Order       int64   `json:"order"`
 } // @name ApiKey
 
-// swagDirwatch mirrors db.Dirwatch for Swagger.
+// swagDirmonitor mirrors db.Dirmonitor for Swagger.
 type swagDirmonitor struct { //nolint:unused
 	ID          int64   `json:"id"`
 	Directory   string  `json:"directory"`
@@ -126,7 +126,7 @@ var (
 	_ swagTalkgroup
 	_ swagUnit
 	_ swagApiKey
-	_ swagDirwatch
+	_ swagDirmonitor
 	_ swagDownstream
 	_ swagWebhook
 )
