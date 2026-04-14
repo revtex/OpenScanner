@@ -18,37 +18,50 @@ func Seed(ctx context.Context, db *sql.DB) error {
 	}
 	defer tx.Rollback() //nolint:errcheck // rolled back intentionally on error path
 
-	if err := seedAppState(ctx, tx); err != nil {
+	var seeded bool
+	if ok, err := seedAppState(ctx, tx); err != nil {
 		return err
+	} else if ok {
+		seeded = true
 	}
-	if err := seedSettings(ctx, tx); err != nil {
+	if ok, err := seedSettings(ctx, tx); err != nil {
 		return err
+	} else if ok {
+		seeded = true
 	}
-	if err := seedGroups(ctx, tx); err != nil {
+	if ok, err := seedGroups(ctx, tx); err != nil {
 		return err
+	} else if ok {
+		seeded = true
 	}
-	if err := seedTags(ctx, tx); err != nil {
+	if ok, err := seedTags(ctx, tx); err != nil {
 		return err
+	} else if ok {
+		seeded = true
 	}
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit seed transaction: %w", err)
 	}
 
-	slog.Info("database seeded with defaults")
-	return nil
-}
-
-func seedAppState(ctx context.Context, tx *sql.Tx) error {
-	_, err := tx.ExecContext(ctx,
-		`INSERT OR IGNORE INTO app_state (id, setup_complete) VALUES (1, 0)`)
-	if err != nil {
-		return fmt.Errorf("seed app_state: %w", err)
+	if seeded {
+		slog.Info("database seeded with defaults")
 	}
 	return nil
 }
 
-func seedSettings(ctx context.Context, tx *sql.Tx) error {
+func seedAppState(ctx context.Context, tx *sql.Tx) (bool, error) {
+	res, err := tx.ExecContext(ctx,
+		`INSERT OR IGNORE INTO app_state (id, setup_complete) VALUES (1, 0)`)
+	if err != nil {
+		return false, fmt.Errorf("seed app_state: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
+
+func seedSettings(ctx context.Context, tx *sql.Tx) (bool, error) {
+	var inserted bool
 	defaults := []struct{ key, value string }{
 		{"autoPopulate", "true"},
 		{"pruneDays", "7"},
@@ -83,29 +96,37 @@ func seedSettings(ctx context.Context, tx *sql.Tx) error {
 	}
 
 	for _, s := range defaults {
-		_, err := tx.ExecContext(ctx,
+		res, err := tx.ExecContext(ctx,
 			`INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)`,
 			s.key, s.value)
 		if err != nil {
-			return fmt.Errorf("seed setting %q: %w", s.key, err)
+			return false, fmt.Errorf("seed setting %q: %w", s.key, err)
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			inserted = true
 		}
 	}
-	return nil
+	return inserted, nil
 }
 
-func seedGroups(ctx context.Context, tx *sql.Tx) error {
+func seedGroups(ctx context.Context, tx *sql.Tx) (bool, error) {
+	var inserted bool
 	groups := []string{"Air", "Common", "EMS", "Fire", "Interop", "Law", "Public Works", "Unknown"}
 	for _, name := range groups {
-		_, err := tx.ExecContext(ctx,
+		res, err := tx.ExecContext(ctx,
 			`INSERT OR IGNORE INTO groups (label) VALUES (?)`, name)
 		if err != nil {
-			return fmt.Errorf("seed group %q: %w", name, err)
+			return false, fmt.Errorf("seed group %q: %w", name, err)
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			inserted = true
 		}
 	}
-	return nil
+	return inserted, nil
 }
 
-func seedTags(ctx context.Context, tx *sql.Tx) error {
+func seedTags(ctx context.Context, tx *sql.Tx) (bool, error) {
+	var inserted bool
 	tags := []string{
 		"ATC",
 		"Corrections",
@@ -130,11 +151,14 @@ func seedTags(ctx context.Context, tx *sql.Tx) error {
 		"Utilities",
 	}
 	for _, name := range tags {
-		_, err := tx.ExecContext(ctx,
+		res, err := tx.ExecContext(ctx,
 			`INSERT OR IGNORE INTO tags (label) VALUES (?)`, name)
 		if err != nil {
-			return fmt.Errorf("seed tag %q: %w", name, err)
+			return false, fmt.Errorf("seed tag %q: %w", name, err)
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			inserted = true
 		}
 	}
-	return nil
+	return inserted, nil
 }
