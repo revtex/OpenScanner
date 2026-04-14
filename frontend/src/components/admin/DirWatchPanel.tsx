@@ -162,8 +162,8 @@ export default function DirWatchPanel() {
     } catch (err) {
       const fallback =
         editingId != null
-          ? "Failed to update directory watch"
-          : "Failed to create directory watch";
+          ? "Failed to update directory monitor"
+          : "Failed to create directory monitor";
       const msg =
         typeof err === "object" &&
         err !== null &&
@@ -178,11 +178,11 @@ export default function DirWatchPanel() {
   };
 
   const handleDelete = async (d: AdminDirwatch) => {
-    if (!window.confirm(`Delete directory watch "${d.directory}"?`)) return;
+    if (!window.confirm(`Delete directory monitor "${d.directory}"?`)) return;
     try {
       await deleteDirwatch(d.id).unwrap();
     } catch {
-      showError("Failed to delete directory watch");
+      showError("Failed to delete directory monitor");
     }
   };
 
@@ -204,7 +204,7 @@ export default function DirWatchPanel() {
         order: d.order,
       }).unwrap();
     } catch {
-      showError("Failed to update directory watch");
+      showError("Failed to update directory monitor");
     }
   };
 
@@ -252,7 +252,7 @@ export default function DirWatchPanel() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold mb-4">Directory Watches</h1>
+      <h1 className="text-xl font-semibold mb-4">Directory Monitors</h1>
       <p className="text-sm text-base-content/70 mb-4">
         Monitor local directories for new audio files and automatically ingest
         them as calls. Configure the directory path, file mask pattern, and how
@@ -262,7 +262,7 @@ export default function DirWatchPanel() {
         <div className="card-body">
           <div className="flex justify-end mb-2">
             <button className="btn btn-primary btn-sm" onClick={openCreate}>
-              <Plus className="w-4 h-4" /> Add Directory Watch
+              <Plus className="w-4 h-4" /> Add Monitor
             </button>
           </div>
           <div className="overflow-x-auto">
@@ -271,10 +271,6 @@ export default function DirWatchPanel() {
                 <tr>
                   <th>Directory</th>
                   <th>Type</th>
-                  <th>Mask</th>
-                  <th>Extension</th>
-                  <th>Delay</th>
-                  <th>Delete After</th>
                   <th>Disabled</th>
                   <th>Actions</th>
                 </tr>
@@ -287,10 +283,6 @@ export default function DirWatchPanel() {
                       {DIRWATCH_TYPES.find((t) => t.value === d.type)?.label ??
                         d.type}
                     </td>
-                    <td>{d.mask ?? "—"}</td>
-                    <td>{d.extension ?? "—"}</td>
-                    <td>{d.delay != null ? `${d.delay} ms` : "—"}</td>
-                    <td>{d.deleteAfter ? "Yes" : "No"}</td>
                     <td>
                       <input
                         type="checkbox"
@@ -303,14 +295,14 @@ export default function DirWatchPanel() {
                       <button
                         className="btn btn-ghost btn-xs"
                         onClick={() => openEdit(d)}
-                        aria-label="Edit directory watch"
+                        aria-label="Edit monitor"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button
                         className="btn btn-ghost btn-xs"
                         onClick={() => handleDelete(d)}
-                        aria-label="Delete directory watch"
+                        aria-label="Delete monitor"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -319,8 +311,8 @@ export default function DirWatchPanel() {
                 ))}
                 {sorted.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="text-center opacity-60">
-                      No directory watches configured
+                    <td colSpan={4} className="text-center opacity-60">
+                      No directory monitors configured
                     </td>
                   </tr>
                 )}
@@ -335,8 +327,8 @@ export default function DirWatchPanel() {
         <div className="modal-box max-w-lg">
           <h3 className="font-bold text-lg mb-4">
             {editingId != null
-              ? "Edit Directory Watch"
-              : "Create Directory Watch"}
+              ? "Edit Directory Monitor"
+              : "Create Directory Monitor"}
           </h3>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             {/* Always-shown fields */}

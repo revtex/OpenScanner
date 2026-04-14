@@ -53,7 +53,7 @@ const navItems = [
   { to: "/admin/systems", label: "Systems", icon: Radio },
   { to: "/admin/groups", label: "Groups & Tags", icon: FolderTree },
   { to: "/admin/apikeys", label: "API Keys", icon: Key },
-  { to: "/admin/dirwatches", label: "Dir Watches", icon: FolderSearch },
+  { to: "/admin/dirwatches", label: "Monitors", icon: FolderSearch },
   { to: "/admin/downstreams", label: "Downstreams", icon: ArrowDownToLine },
   { to: "/admin/shared-links", label: "Shared Links", icon: Share2 },
   { to: "/admin/options", label: "Options", icon: Settings },

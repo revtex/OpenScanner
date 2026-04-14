@@ -88,7 +88,9 @@ function SystemCard({
               {units.length}
             </div>
             <label className="flex items-center gap-1 cursor-pointer">
-              <span className="text-xs text-base-content/60">Auto Populate</span>
+              <span className="text-xs text-base-content/60">
+                Auto Populate
+              </span>
               <input
                 type="checkbox"
                 className="toggle toggle-primary toggle-xs"
