@@ -22,9 +22,18 @@ type SharedLinkListItem struct {
 	SystemLabel    string `json:"systemLabel"`
 	TalkgroupLabel string `json:"talkgroupLabel"`
 	TalkgroupName  string `json:"talkgroupName"`
-}
+} // @name SharedLinkListItem
 
 // GetSharedLinks handles GET /api/admin/shared-links.
+//
+// @Summary      List shared links
+// @Description  Returns all shared links with associated call metadata.
+// @Tags         Admin
+// @Produce      json
+// @Success      200  {array}   SharedLinkListItem
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/shared-links [get]
 func (h *AdminHandler) GetSharedLinks(c *gin.Context) {
 	rows, err := h.queries.ListSharedLinks(c.Request.Context())
 	if err != nil {
@@ -53,6 +62,18 @@ func (h *AdminHandler) GetSharedLinks(c *gin.Context) {
 }
 
 // DeleteSharedLinkAdmin handles DELETE /api/admin/shared-links/:id.
+//
+// @Summary      Delete a shared link
+// @Description  Removes a shared link by its ID.
+// @Tags         Admin
+// @Produce      json
+// @Param        id  path  int  true  "Shared link ID"
+// @Success      200  {object}  object  "deleted: true"
+// @Failure      400  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/shared-links/{id} [delete]
 func (h *AdminHandler) DeleteSharedLinkAdmin(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || id <= 0 {

@@ -14,6 +14,41 @@ type BookmarkHandler struct {
 	queries *db.Queries
 }
 
+// ToggleBookmarkRequest is the request body for POST /api/bookmarks.
+type ToggleBookmarkRequest struct {
+	CallID int64 `json:"callId" example:"42"`
+} // @name ToggleBookmarkRequest
+
+// ToggleBookmarkResponse is returned after toggling a bookmark.
+type ToggleBookmarkResponse struct {
+	Bookmarked bool  `json:"bookmarked" example:"true"`
+	ID         int64 `json:"id,omitempty" example:"7"`
+} // @name ToggleBookmarkResponse
+
+// BookmarkIDsResponse is returned by GET /api/bookmarks.
+type BookmarkIDsResponse struct {
+	CallIDs []int64 `json:"callIds"`
+} // @name BookmarkIDsResponse
+
+// BookmarkCallsResponse is returned by GET /api/bookmarks/calls.
+type BookmarkCallsResponse struct {
+	Calls []CallSearchResult `json:"calls"`
+} // @name BookmarkCallsResponse
+
+// PostToggleBookmark handles POST /api/bookmarks — toggles a bookmark for the authenticated user.
+//
+//	@Summary		Toggle bookmark on a call
+//	@Description	Creates a bookmark if one does not exist for the given call and user, or removes it if it already exists.
+//	@Tags			Bookmarks
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			body	body	ToggleBookmarkRequest	true	"Call to bookmark"
+//	@Success		200	{object}	ToggleBookmarkResponse
+//	@Failure		400	{object}	ErrorResponse	"Invalid request body"
+//	@Failure		401	{object}	ErrorResponse	"Authentication required"
+//	@Failure		500	{object}	ErrorResponse	"Internal server error"
+//	@Router			/bookmarks [post]
 func (h *BookmarkHandler) PostToggleBookmark(c *gin.Context) {
 	var req struct {
 		CallID int64 `json:"callId"`
@@ -63,6 +98,17 @@ func (h *BookmarkHandler) PostToggleBookmark(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"bookmarked": false})
 }
 
+// GetBookmarkIDs handles GET /api/bookmarks — returns call IDs bookmarked by the authenticated user.
+//
+//	@Summary		List bookmarked call IDs
+//	@Description	Returns an array of call IDs that the authenticated user has bookmarked.
+//	@Tags			Bookmarks
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	BookmarkIDsResponse
+//	@Failure		401	{object}	ErrorResponse	"Authentication required"
+//	@Failure		500	{object}	ErrorResponse	"Internal server error"
+//	@Router			/bookmarks [get]
 func (h *BookmarkHandler) GetBookmarkIDs(c *gin.Context) {
 	uid, _ := c.Get("userID")
 	userID := uid.(int64)
@@ -79,6 +125,16 @@ func (h *BookmarkHandler) GetBookmarkIDs(c *gin.Context) {
 }
 
 // GetBookmarkCalls handles GET /api/bookmarks/calls — returns bookmarked calls with full metadata.
+//
+//	@Summary		List bookmarked calls with metadata
+//	@Description	Returns full call details for all calls bookmarked by the authenticated user.
+//	@Tags			Bookmarks
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	BookmarkCallsResponse
+//	@Failure		401	{object}	ErrorResponse	"Authentication required"
+//	@Failure		500	{object}	ErrorResponse	"Internal server error"
+//	@Router			/bookmarks/calls [get]
 func (h *BookmarkHandler) GetBookmarkCalls(c *gin.Context) {
 	uid, _ := c.Get("userID")
 	userID := uid.(int64)

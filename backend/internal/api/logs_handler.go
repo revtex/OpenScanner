@@ -13,6 +13,19 @@ import (
 const maxLogResults = 10_000
 
 // GetLogs handles GET /api/admin/logs?from=&to=&level=.
+//
+// @Summary      List logs
+// @Description  Returns log entries within an optional date range and level filter. Results are capped at 10,000 rows (X-Truncated header set when truncated).
+// @Tags         Admin
+// @Produce      json
+// @Param        from   query  int     false  "Start unix timestamp"
+// @Param        to     query  int     false  "End unix timestamp (defaults to now)"
+// @Param        level  query  string  false  "Log level filter (e.g. INFO, WARN, ERROR)"
+// @Success      200  {array}   logResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/logs [get]
 func (h *AdminHandler) GetLogs(c *gin.Context) {
 	ctx := c.Request.Context()
 

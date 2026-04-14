@@ -2,9 +2,14 @@
 package auth
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -211,4 +216,47 @@ func ParseToken(tokenStr string) (*Claims, error) {
 		return nil, jwt.ErrTokenInvalidClaims
 	}
 	return claims, nil
+}
+
+// swaggerCookieName is the cookie name used for Swagger UI session auth.
+const SwaggerCookieName = "os_swagger"
+
+// SetSwaggerCookie sets a short-lived, HTTP-only, SameSite=Strict cookie
+// that authorises access to the Swagger UI docs route.
+// The cookie value is an HMAC-SHA256 of "swagger:<expiry>" signed with JWTSecret.
+func SetSwaggerCookie(c interface {
+	SetSameSite(http.SameSite)
+	SetCookie(name, value string, maxAge int, path, domain string, secure, httpOnly bool)
+}) {
+	const maxAge = 3600 // 1 hour
+	expiry := time.Now().Add(time.Duration(maxAge) * time.Second).Unix()
+	payload := fmt.Sprintf("swagger:%d", expiry)
+	mac := hmac.New(sha256.New, JWTSecret)
+	mac.Write([]byte(payload))
+	sig := hex.EncodeToString(mac.Sum(nil))
+	value := fmt.Sprintf("%d.%s", expiry, sig)
+
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie(SwaggerCookieName, value, maxAge, "/api/admin/docs", "", false, true)
+}
+
+// ValidateSwaggerCookie checks that the swagger cookie value is valid and
+// not expired.
+func ValidateSwaggerCookie(value string) bool {
+	parts := strings.SplitN(value, ".", 2)
+	if len(parts) != 2 {
+		return false
+	}
+	expiry, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return false
+	}
+	if time.Now().Unix() > expiry {
+		return false
+	}
+	payload := fmt.Sprintf("swagger:%d", expiry)
+	mac := hmac.New(sha256.New, JWTSecret)
+	mac.Write([]byte(payload))
+	expected := hex.EncodeToString(mac.Sum(nil))
+	return hmac.Equal([]byte(parts[1]), []byte(expected))
 }

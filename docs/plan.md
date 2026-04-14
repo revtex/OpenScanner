@@ -142,7 +142,7 @@ openscanner/                     ← monorepo root
 │   │   │   ├── ui/              ← shared UI components
 │   │   │   ├── scanner/
 │   │   │   │   ├── LEDPanel.tsx         ← green/orange/blink LED states
-│   │   │   │   ├── DisplayPanel.tsx     ← 8-row info display (clock, system, TG, name, freq/TGID, site/UID, E/S badges, bookmark/share)
+│   │   │   │   ├── DisplayPanel.tsx     ← 7-row info display (clock, system, TG, name, freq/TGID, site/UID, actions/badges/E/S)
 │   │   │   │   ├── ControlToolbar.tsx   ← Two-row icon toolbar (playback + mode toggles)
 │   │   │   │   ├── HistoryPanel.tsx     ← last 5 calls (TG name + time, system · UID · TGID · freq · E/S)
 │   │   │   │   ├── SelectTGPanel.tsx    ← TG selection slide-out panel
@@ -515,13 +515,13 @@ Speech-to-text results for calls.
 
 Shareable call links with UUID tokens for public access.
 
-| Column       | Type                     | Notes                   |
-| ------------ | ------------------------ | ----------------------- |
-| `id`         | INTEGER PK AUTOINCREMENT |                         |
-| `call_id`    | INTEGER FK → calls       | CASCADE DELETE; UNIQUE  |
-| `user_id`    | INTEGER FK → users       | CASCADE DELETE          |
-| `token`      | TEXT UNIQUE              | UUID v4 share token     |
-| `created_at` | INTEGER                  | Unix epoch seconds      |
+| Column       | Type                     | Notes                  |
+| ------------ | ------------------------ | ---------------------- |
+| `id`         | INTEGER PK AUTOINCREMENT |                        |
+| `call_id`    | INTEGER FK → calls       | CASCADE DELETE; UNIQUE |
+| `user_id`    | INTEGER FK → users       | CASCADE DELETE         |
+| `token`      | TEXT UNIQUE              | UUID v4 share token    |
+| `created_at` | INTEGER                  | Unix epoch seconds     |
 
 **Index:** `CREATE INDEX idx_shared_links_token ON shared_links(token)`
 
@@ -917,24 +917,23 @@ The scanner page is a single vertically-stacked column, centered, max-width 640p
 │ OPENSCANNER                    [☼/☾] [LED]│  ← Status bar + theme toggle
 ├─────────────────────────────────────────────┤
 │ 12:34:56              L: 3           Q: 2   │  ← Row 1: clock, listeners, queue
-│                                             │  ← Row 2: (spacer, small text)
-│ System Name                    Tag Name     │  ← Row 3: system + tag
-│ TG Label                 04/10  12:34:56    │  ← Row 4: TG label + date/time
+│ System Name                    Tag Name     │  ← Row 2: system label + tag
+│ TG Group · TG Label             12:34:56    │  ← Row 3: TG group/label + time
 │                                             │
-│           ████ Talkgroup Name ████          │  ← Row 5: TG name (large, bold)
+│           ████ Talkgroup Name ████          │  ← Row 4: TG name (large, bold)
 │                                             │
-│ F: 851.025                   TGID: 12345    │  ← Row 6: frequency + TGID
-│ E: 0  S: 0                    UID: 54321    │  ← Row 7: errors, spikes, unit ID
-│                [☆] [↗]  ⏲ 30M  AVOID  PATCH  │  ← Row 8: bookmark, share, flags
+│ F: 851 025 Hz                TGID: 12345    │  ← Row 5: frequency + TGID
+│ Site · Decoder                 UID: 54321   │  ← Row 6: site/decoder + unit ID
+│ [☀] [☆] [↗]          AVOID  PATCH  E:0 S:0 │  ← Row 7: actions + badges + E/S
 │─────────────────────────────────────────────│
 │ “Police Dispatch: requesting backup...”      │  ← Transcript (if available)
 │─────────────────────────────────────────────│
-│ Time     │ System   │ Talkgroup │ Name      │  ← History header
-│ 12:34:50 │ Police   │ Dispatch  │ Main Disp │  ← History row (bold = playing)
-│ 12:34:32 │ Fire     │ Tac 1     │ Fire Tac  │
-│ 12:34:11 │ Police   │ Patrol    │ North Pct │
-│ 12:33:58 │ EMS      │ Dispatch  │ EMS Disp  │
-│ 12:33:40 │ Police   │ Dispatch  │ Main Disp │
+│ Police Dispatch                      12:34  │  ← History: TG name + time
+│  Police · UID:54321 · TGID:12345            │  ←   system · UID · TGID · freq
+│ Fire Tac 1                           12:33  │
+│  Fire · TGID:45678 · 851.0250 MHz           │
+│ EMS Dispatch                         12:32  │
+│  EMS · UID:11111 · TGID:99999              │
 ├─────────────────────────────────────────────┤
 │                                             │
 │  ⏵  ⏸  ⏭  ⟲  │  🔇━━━━●━━━━🔊  │  ⬇  ☆  │  ← Toolbar row 1
@@ -955,33 +954,33 @@ The scanner page is a single vertically-stacked column, centered, max-width 640p
 #### Display Panel (`DisplayPanel.tsx`)
 
 - **Dark surface** (`base-200` background) with subtle inner shadow
-- 8 rows of monospace-style data (font-size 14px, line-height 20px)
-- Row 5 (TG name) is large: font-size 24px, line-height 32px, font-weight bold
-- Row 8 (flags) right-aligned; AVOID/PATCH badges shown as small pills with `base-300` bg
-- **Bookmark star** (`BookmarkButton.tsx`): `☆` (outline) / `★` (filled) icon button on row 8; toggles bookmark for current call; only shown when a call is loaded
-- **Share icon**: `↗` icon button on row 8; copies shareable call link to clipboard; only shown when `shareableLinks` setting is enabled
-- Double-click anywhere → fullscreen modal (same display, scaled up)
-- When idle (no call playing): slightly dimmed background
+- 7 rows of monospace-style data (font-size 14px, line-height 20px)
+- Row 4 (TG name) is large: font-size 24px, line-height 32px, font-weight bold
+- Row 7: brightness toggle (`☀`), bookmark star, and share button left-aligned; AVOID/PATCH badges and E:/S: values right-aligned
+- **Brightness control**: `☀` icon button on row 7; click reveals inline range slider (20–120%); value persisted in localStorage
+- **Bookmark star** (`BookmarkButton.tsx`): `☆` (outline) / `★` (filled) icon button on row 7; toggles bookmark for current call; only shown when a call is loaded
+- **Share icon**: `↗` icon button on row 7; copies shareable call link to clipboard; only shown when `shareableLinks` setting is enabled
+- **E/S display**: `E: {n}` and `S: {n}` shown right-aligned on row 7 at reduced opacity when values are present
+- When idle (no call playing): rows 2–6 invisible, row 4 shows "OPENSCANNER" at 30% opacity, row 7 shows only brightness control
 - When auth required: centered unlock code input overlaid on display
 
 #### Transcript Panel (`TranscriptPanel.tsx`)
 
-- Embedded between the 8-row display and history table, inside the same dark surface
+- Embedded between the 7-row display and history table, inside the same dark surface
 - Only rendered when `transcriptionEnabled` setting is `true` **and** the current call has a transcript
 - Single-line or multi-line text, font-size 13px, italic, `neutral-content` at 80% opacity
 - Wrapped in a collapsible `<details>` element (open by default); clicking the summary row collapses/expands
 - Receives live updates via WS `TRN` event — text appears shortly after call finishes playing
 - If no transcript available: element is hidden (no empty placeholder)
 
-#### History Table (inside `DisplayPanel`)
+#### History Panel (`HistoryPanel.tsx`, inside `DisplayPanel`)
 
-- Embedded below the 8-row display, inside the same dark surface (not a separate panel)
-- Table with 4 columns: Time (10%), System (25%), Talkgroup (25%), Name (40%)
-- Font-size 11px; rows 21px tall; header text 40% opacity
-- Currently-playing row has `font-weight: 700`
-- Shows last 5 calls; rows separated by 1px border at 20% opacity
-- **Bookmark indicator**: small `★` star icon (8px) appended to the Name column for bookmarked calls
-- **Share button**: small `↗` icon on hover/tap on each row (only when `shareableLinks` enabled); copies link to clipboard
+- Embedded below the 7-row display, inside the same dark surface (not a separate panel)
+- Shows last 5 calls as a compact list; each entry is two lines:
+  - **Line 1:** Talkgroup name (left, truncated) + call time (right, 60% opacity), font-size 12px
+  - **Line 2:** `system · UID:{n} · TGID:{n} · {freq} MHz · E:{n} · S:{n}`, font-size 10px, 40% opacity; fields omitted when zero/null
+- Top border at 20% opacity; rows separated by 1px bottom border at 10% opacity
+- `flex-1 overflow-hidden` fills remaining display height
 
 #### Control Toolbar (`ControlToolbar.tsx`)
 
@@ -1064,17 +1063,19 @@ Slides in from the **left** edge (full-width on mobile, 500px on desktop). Uses 
 
 ```
 ┌───────────────────────────────────────┐
-│ Search Calls               [X →] │  ← Title + close
+│ Search Calls                    [X] │  ← Title + close
 ├───────────────────────────────────────┤
-│  ⊳ 12:34 │ Police │ Dispatch │ ★   │  ← Result row + bookmark
-│  ⊳ 12:33 │ Fire   │ Tac 1    │     │
-│  ■ 12:32 │ EMS    │ Dispatch │     │  ← Playing (stop icon)
-│  ⊳ 12:31 │ Police │ Patrol   │     │
-│  ⊳ 12:30 │ Police │ Dispatch │ ★   │
-│  ... (virtualized)                │
+│ Police Dispatch      Apr 10  12:34  │  ← Row 1: TG name + date/time
+│  Police Department       [▶] [⬇] [☆] │  ← Row 2: system + action buttons
+│  851.0250 MHz  UID:54321  TGID:123  │  ← Row 3: freq, UID, TGID, E/S
+│─────────────────────────────────────│
+│ Fire Tac 1           Apr 10  12:33  │
+│  Fire Dept               [▶] [⬇] [☆] │
+│  854.2125 MHz  TGID:456            │
+│─────────────────────────────────────│
+│  ... (virtualized via react-virtual)│
 │───────────────────────────────────────│
 │  [◀ Prev]  Page 1 of 10  [Next ▶] │  ← Paginator
-│  [💾 Download mode]                │  ← Toggle download vs play
 ├───────────────────────────────────────┤
 │  ▼ Filters                  [3]   │  ← Collapsible (shows active count)
 │  Transcript [________________]   │
@@ -1090,16 +1091,18 @@ Slides in from the **left** edge (full-width on mobile, 500px on desktop). Uses 
 └───────────────────────────────────────┘
 ```
 
-- **Results list**: virtualized via `@tanstack/react-virtual` (not paginated-only); each row is a flex row with play/stop icon, time, system, TG name, bookmark indicator
-- **Paginator**: `btn btn-sm` prev/next + page count; sits between results and filters
-- **Download mode**: `toggle toggle-primary` to switch play buttons to download buttons
-- **Filters section**: DaisyUI `collapse collapse-arrow`; header shows count of active filters as a `badge`; expands on click
-- **Transcript search**: `input input-bordered input-sm`; queries `GET /api/calls?transcript=<text>` with `LIKE` search on `transcriptions.text`; only shown when `transcriptionEnabled` setting is `true`
+- **Results list**: virtualized via `@tanstack/react-virtual`; each row has 3 lines:
+  - **Line 1:** TG name (left, truncated, 12px font-medium) + date and time (right, 11px, 60% opacity)
+  - **Line 2:** system label (left, 11px, 60% opacity) + per-row action buttons (right): Play, Download, Bookmark
+  - **Line 3:** freq MHz, UID, TGID, E:{n}, S:{n} (11px, 40% opacity); fields omitted when zero/null
+- **Per-row action buttons**: `btn btn-ghost btn-xs btn-square`; Play (`▶`), Download (`⬇`), Bookmark (`☆`/`★` with `text-warning` + `fill-current` when active)
+- **Paginator**: `join` button group with prev/next + page count; sits between results and filters
+- **Filters section**: DaisyUI `collapse collapse-arrow`; header shows count of active filters as a `badge badge-primary badge-sm`; expands on click
+- **Transcript search**: `input input-sm`; queries `GET /api/calls?transcript=<text>` with `LIKE` search on `transcriptions.text`
 - **Bookmarked only**: `toggle toggle-sm` to filter to bookmarked calls only
-- **Bookmark indicator**: `★` star icon (text-warning) after the TG name for bookmarked calls
-- **Reset filters**: `btn btn-ghost btn-sm` clears all active filters
-- All filter inputs use DaisyUI `select select-bordered select-sm` and `input input-bordered input-sm`
-- Loading state: `loading loading-spinner` overlaid on results area
+- **Reset filters**: `btn btn-ghost btn-sm` with `RotateCcw` icon; clears all active filters
+- All filter selects use `select select-sm w-full`, date inputs use `input input-sm w-full`
+- Loading state: `loading loading-spinner loading-md` overlaid on results area with semi-transparent background
 
 ### Bookmarks Panel (`BookmarksPanel.tsx`)
 

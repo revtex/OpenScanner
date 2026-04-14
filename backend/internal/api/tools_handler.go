@@ -18,7 +18,7 @@ type missingAudioCall struct {
 	AudioPath string `json:"audioPath"`
 	AudioName string `json:"audioName"`
 	Reason    string `json:"reason"`
-}
+} // @name MissingAudioCall
 
 type missingAudioResponse struct {
 	RecordingsDir string             `json:"recordingsDir"`
@@ -27,18 +27,18 @@ type missingAudioResponse struct {
 	TotalCalls    int64              `json:"totalCalls"`
 	Checked       int                `json:"checked"`
 	Missing       []missingAudioCall `json:"missing"`
-}
+} // @name MissingAudioResponse
 
 type cleanupMissingAudioRequest struct {
 	Confirm bool    `json:"confirm"`
 	CallIDs []int64 `json:"callIds"`
-}
+} // @name CleanupMissingAudioRequest
 
 type cleanupMissingAudioResponse struct {
 	Requested int                `json:"requested"`
 	Deleted   int                `json:"deleted"`
 	Skipped   []missingAudioCall `json:"skipped"`
-}
+} // @name CleanupMissingAudioResponse
 
 func missingAudioReason(recordingsDir, audioPath string) string {
 	relPath := filepath.Clean(audioPath)
@@ -58,6 +58,18 @@ func missingAudioReason(recordingsDir, audioPath string) string {
 // GetMissingAudioCalls handles GET /api/admin/tools/audio-missing.
 // It checks archived calls in a page window and returns entries whose audio
 // file does not exist under the configured recordings directory.
+//
+// @Summary      List calls with missing audio files
+// @Description  Paginates through stored calls and returns those whose audio file is missing from disk.
+// @Tags         Admin
+// @Produce      json
+// @Param        limit   query  int  false  "Page size (1–1000, default 200)"
+// @Param        offset  query  int  false  "Page offset (default 0)"
+// @Success      200  {object}  missingAudioResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/tools/audio-missing [get]
 func (h *AdminHandler) GetMissingAudioCalls(c *gin.Context) {
 	limit := int64(200)
 	if v := c.Query("limit"); v != "" {
@@ -133,6 +145,18 @@ func (h *AdminHandler) GetMissingAudioCalls(c *gin.Context) {
 
 // CleanupMissingAudioCalls handles POST /api/admin/tools/audio-missing/cleanup.
 // It deletes call rows only when the call is still missing on disk at delete time.
+//
+// @Summary      Clean up calls with missing audio
+// @Description  Deletes call database rows for the given call IDs, but only if their audio file is still missing on disk at delete time. Requires confirm=true.
+// @Tags         Admin
+// @Accept       json
+// @Produce      json
+// @Param        body  body  cleanupMissingAudioRequest  true  "Call IDs to clean up"
+// @Success      200  {object}  cleanupMissingAudioResponse
+// @Failure      400  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/tools/audio-missing/cleanup [post]
 func (h *AdminHandler) CleanupMissingAudioCalls(c *gin.Context) {
 	var req cleanupMissingAudioRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

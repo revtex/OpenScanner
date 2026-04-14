@@ -16,6 +16,19 @@ import (
 
 // ImportTalkgroups handles POST /api/admin/import/talkgroups.
 // Accepts a multipart CSV file and a system_id form field.
+//
+// @Summary      Import talkgroups from CSV
+// @Description  Accepts a multipart CSV file with talkgroup data and a system_id form field. Columns: talkgroup_id, label, name, tag_id, group_id, frequency, led, order. Header rows are auto-skipped.
+// @Tags         Admin
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        system_id  formData  int   true  "System ID to import talkgroups into"
+// @Param        file       formData  file  true  "CSV file"
+// @Success      200  {object}  object  "imported: count"
+// @Failure      400  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/import/talkgroups [post]
 func (h *AdminHandler) ImportTalkgroups(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -129,6 +142,19 @@ func (h *AdminHandler) ImportTalkgroups(c *gin.Context) {
 
 // ImportUnits handles POST /api/admin/import/units.
 // Accepts a multipart CSV file and a system_id form field.
+//
+// @Summary      Import units from CSV
+// @Description  Accepts a multipart CSV file with unit data and a system_id form field. Columns: unit_id, label, order. Header rows are auto-skipped.
+// @Tags         Admin
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        system_id  formData  int   true  "System ID to import units into"
+// @Param        file       formData  file  true  "CSV file"
+// @Success      200  {object}  object  "imported: count"
+// @Failure      400  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/import/units [post]
 func (h *AdminHandler) ImportUnits(c *gin.Context) {
 	ctx := c.Request.Context()
 

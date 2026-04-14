@@ -7,6 +7,11 @@ import (
 	"github.com/openscanner/openscanner/internal/db"
 )
 
+// ErrorResponse is the standard JSON error envelope used by all endpoints.
+type ErrorResponse struct {
+	Error string `json:"error" example:"descriptive error message"`
+} // @name ErrorResponse
+
 // nullStr unwraps sql.NullString to *string for clean JSON serialisation.
 func nullStr(n sql.NullString) *string {
 	if !n.Valid {
@@ -35,7 +40,7 @@ type userResponse struct {
 	Limit       *int64  `json:"limit"`
 	CreatedAt   int64   `json:"createdAt"`
 	UpdatedAt   int64   `json:"updatedAt"`
-}
+} // @name UserResponse
 
 func toUserResponse(u db.User) userResponse {
 	return userResponse{
@@ -69,7 +74,7 @@ type systemResponse struct {
 	BlacklistsJson *string `json:"blacklistsJson"`
 	Led            *string `json:"led"`
 	Order          int64   `json:"order"`
-}
+} // @name SystemResponse
 
 func toSystemResponse(s db.System) systemResponse {
 	return systemResponse{
@@ -104,7 +109,7 @@ type talkgroupResponse struct {
 	GroupID     *int64  `json:"groupId"`
 	TagID       *int64  `json:"tagId"`
 	Order       int64   `json:"order"`
-}
+} // @name TalkgroupResponse
 
 func toTalkgroupResponse(t db.Talkgroup) talkgroupResponse {
 	return talkgroupResponse{
@@ -137,7 +142,7 @@ type unitResponse struct {
 	UnitID   int64   `json:"unitId"`
 	Label    *string `json:"label"`
 	Order    int64   `json:"order"`
-}
+} // @name UnitResponse
 
 func toUnitResponse(u db.Unit) unitResponse {
 	return unitResponse{
@@ -166,12 +171,12 @@ type apiKeyResponse struct {
 	Disabled    int64   `json:"disabled"`
 	SystemsJson *string `json:"systemsJson"`
 	Order       int64   `json:"order"`
-}
+} // @name ApiKeyResponse
 
 type apiKeyCreateResponse struct {
 	apiKeyResponse
 	CreatedKey string `json:"createdKey"`
-}
+} // @name ApiKeyCreateResponse
 
 func toAPIKeyResponse(k db.ApiKey) apiKeyResponse {
 	fingerprint := auth.HashAPIKey(k.Key)
@@ -212,7 +217,7 @@ type dirwatchResponse struct {
 	SystemID    *int64  `json:"systemId"`
 	TalkgroupID *int64  `json:"talkgroupId"`
 	Order       int64   `json:"order"`
-}
+} // @name DirwatchResponse
 
 func toDirwatchResponse(d db.Dirwatch) dirwatchResponse {
 	return dirwatchResponse{
@@ -249,7 +254,7 @@ type downstreamResponse struct {
 	SystemsJson *string `json:"systemsJson"`
 	Disabled    int64   `json:"disabled"`
 	Order       int64   `json:"order"`
-}
+} // @name DownstreamResponse
 
 func toDownstreamResponse(d db.Downstream) downstreamResponse {
 	return downstreamResponse{
@@ -280,7 +285,7 @@ type webhookResponse struct {
 	SystemsJson *string `json:"systemsJson"`
 	Disabled    int64   `json:"disabled"`
 	Order       int64   `json:"order"`
-}
+} // @name WebhookResponse
 
 func toWebhookResponse(w db.Webhook) webhookResponse {
 	return webhookResponse{
@@ -309,7 +314,7 @@ type logResponse struct {
 	DateTime int64  `json:"dateTime"`
 	Level    string `json:"level"`
 	Message  string `json:"message"`
-}
+} // @name LogResponse
 
 func toLogResponse(l db.Log) logResponse {
 	return logResponse{
@@ -333,7 +338,7 @@ func toLogResponses(logs []db.Log) []logResponse {
 type settingResponse struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
-}
+} // @name SettingResponse
 
 func toSettingResponses(settings []db.Setting) []settingResponse {
 	out := make([]settingResponse, len(settings))

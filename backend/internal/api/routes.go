@@ -9,6 +9,11 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	_ "github.com/openscanner/openscanner/docs" // swagger generated docs
+
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
@@ -203,6 +208,21 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		// Shared Links
 		admin.GET("/shared-links", adminHandler.GetSharedLinks)
 		admin.DELETE("/shared-links/:id", adminHandler.DeleteSharedLinkAdmin)
+
+		// Swagger: issue a short-lived HTTP-only cookie so Swagger UI
+		// can be opened in a new browser tab without exposing the JWT.
+		admin.POST("/docs/session", func(c *gin.Context) {
+			auth.SetSwaggerCookie(c)
+			c.JSON(200, gin.H{"ok": true})
+		})
+	}
+
+	// Swagger API documentation — protected by the HTTP-only cookie
+	// set via POST /api/admin/docs/session above.
+	swaggerDocs := api.Group("/admin/docs")
+	swaggerDocs.Use(middleware.SwaggerCookieAuth())
+	{
+		swaggerDocs.GET("/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
 	// WebSocket endpoints.

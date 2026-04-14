@@ -1,4 +1,20 @@
 // Package main is the entry point for the OpenScanner server.
+//
+//	@title			OpenScanner API
+//	@version		1.0
+//	@description	Radio call manager API — real-time audio streaming, call management, and admin CRUD.
+//
+//	@BasePath	/api
+//
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
+//	@description				Paste the value exactly as copied (already includes Bearer prefix)
+//
+//	@securityDefinitions.apikey	APIKeyAuth
+//	@in							header
+//	@name						X-API-Key
+//	@description				API key for call upload endpoints
 package main
 
 import (

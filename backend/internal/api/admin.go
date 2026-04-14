@@ -29,22 +29,35 @@ func NewAuthHandler(queries *db.Queries, rateLimiter *auth.RateLimiter) *AuthHan
 type loginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
-}
+} // @name LoginRequest
 
 type loginUserResponse struct {
 	ID       int64  `json:"id"`
 	Username string `json:"username"`
 	Role     string `json:"role"`
-}
+} // @name LoginUserResponse
 
 type loginResponse struct {
 	Token              string            `json:"token"`
 	User               loginUserResponse `json:"user"`
 	PasswordNeedChange bool              `json:"passwordNeedChange"`
-}
+} // @name LoginResponse
 
 // PostLogin handles POST /api/auth/login.
 // Returns 429 if rate-limited (via middleware), 401 for invalid credentials, 200 with JWT on success.
+//
+// @Summary      Log in
+// @Description  Authenticate with username and password, returns a JWT token.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        body  body      loginRequest   true  "Login credentials"
+// @Success      200   {object}  loginResponse
+// @Failure      400   {object}  ErrorResponse
+// @Failure      401   {object}  ErrorResponse
+// @Failure      429   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /auth/login [post]
 func (h *AuthHandler) PostLogin(c *gin.Context) {
 	ip := c.ClientIP()
 
@@ -126,6 +139,16 @@ func (h *AuthHandler) logAuthEvent(ctx context.Context, level, message, ip strin
 
 // PostLogout handles POST /api/auth/logout (JWT required).
 // Revokes the current token so it cannot be reused.
+//
+// @Summary      Log out
+// @Description  Revoke the current JWT token.
+// @Tags         Auth
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  object{ok=bool}
+// @Failure      401  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /auth/logout [post]
 func (h *AuthHandler) PostLogout(c *gin.Context) {
 	if jtiVal, ok := c.Get("jti"); ok {
 		if jti, ok := jtiVal.(string); ok {
@@ -138,10 +161,23 @@ func (h *AuthHandler) PostLogout(c *gin.Context) {
 type changePasswordRequest struct {
 	CurrentPassword string `json:"currentPassword"`
 	NewPassword     string `json:"newPassword"`
-}
+} // @name ChangePasswordRequest
 
 // PutPassword handles PUT /api/auth/password (JWT required, any role).
 // Verifies the current password and updates it to the new one.
+//
+// @Summary      Change password
+// @Description  Change the current user's password. Requires the current password for verification.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      changePasswordRequest  true  "Current and new password"
+// @Success      200   {object}  object{ok=bool}
+// @Failure      400   {object}  ErrorResponse
+// @Failure      401   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /auth/password [put]
 func (h *AuthHandler) PutPassword(c *gin.Context) {
 	userIDVal, _ := c.Get("userID")
 	userID, _ := userIDVal.(int64)
@@ -191,6 +227,16 @@ func (h *AuthHandler) PutPassword(c *gin.Context) {
 
 // GetMe handles GET /api/auth/me (JWT required).
 // Returns the current user's basic profile.
+//
+// @Summary      Current user
+// @Description  Return the authenticated user's profile.
+// @Tags         Auth
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  loginUserResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /auth/me [get]
 func (h *AuthHandler) GetMe(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	username, _ := c.Get("username")

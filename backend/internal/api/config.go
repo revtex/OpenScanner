@@ -48,6 +48,15 @@ var allowedSettingKeys = map[string]bool{
 
 // GetConfig handles GET /api/admin/config.
 // Returns all settings as a JSON object {key: value, ...}.
+//
+// @Summary      List all settings
+// @Description  Returns every configuration key-value pair.
+// @Tags         Admin
+// @Produce      json
+// @Success      200  {array}   settingResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/config [get]
 func (h *AdminHandler) GetConfig(c *gin.Context) {
 	settings, err := h.queries.ListSettings(c.Request.Context())
 	if err != nil {
@@ -62,6 +71,18 @@ func (h *AdminHandler) GetConfig(c *gin.Context) {
 // PutConfig handles PUT /api/admin/config.
 // Accepts a JSON object of key/value pairs, upserts each setting.
 // Broadcasts CFG to all WS clients after update.
+//
+// @Summary      Update settings
+// @Description  Upserts one or more configuration key-value pairs and broadcasts CFG to WebSocket clients.
+// @Tags         Admin
+// @Accept       json
+// @Produce      json
+// @Param        settings  body  []settingResponse  true  "Array of key/value settings"
+// @Success      200  {object}  object  "ok: true"
+// @Failure      400  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/config [put]
 func (h *AdminHandler) PutConfig(c *gin.Context) {
 	var settings []struct {
 		Key   string `json:"key"`

@@ -18,9 +18,18 @@ type ActivityStatsResponse struct {
 	CallsTotal      int64 `json:"callsTotal"`
 	ActiveListeners int   `json:"activeListeners"`
 	Uptime          int64 `json:"uptime"`
-}
+} // @name ActivityStatsResponse
 
 // GetActivityStats handles GET /api/admin/activity/stats.
+//
+// @Summary      Get activity statistics
+// @Description  Returns call counts (today, this week, total), active listeners, and server uptime.
+// @Tags         Admin
+// @Produce      json
+// @Success      200  {object}  ActivityStatsResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/activity/stats [get]
 func (h *AdminHandler) GetActivityStats(c *gin.Context) {
 	ctx := c.Request.Context()
 	now := time.Now()
@@ -59,14 +68,23 @@ func (h *AdminHandler) GetActivityStats(c *gin.Context) {
 type ChartBucket struct {
 	Hour  int64 `json:"hour"`
 	Count int64 `json:"count"`
-}
+} // @name ChartBucket
 
 // ActivityChartResponse is the JSON payload for GET /api/admin/activity/chart.
 type ActivityChartResponse struct {
 	Buckets []ChartBucket `json:"buckets"`
-}
+} // @name ActivityChartResponse
 
 // GetActivityChart handles GET /api/admin/activity/chart.
+//
+// @Summary      Get activity chart data
+// @Description  Returns call counts bucketed by hour for the last 24 hours.
+// @Tags         Admin
+// @Produce      json
+// @Success      200  {object}  ActivityChartResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/activity/chart [get]
 func (h *AdminHandler) GetActivityChart(c *gin.Context) {
 	ctx := c.Request.Context()
 	cutoff := time.Now().Add(-24 * time.Hour).Unix()
@@ -92,14 +110,23 @@ type TopTalkgroup struct {
 	TalkgroupLabel string `json:"talkgroupLabel"`
 	SystemLabel    string `json:"systemLabel"`
 	CallCount      int64  `json:"callCount"`
-}
+} // @name TopTalkgroup
 
 // TopTalkgroupsResponse is the JSON payload for GET /api/admin/activity/top-talkgroups.
 type TopTalkgroupsResponse struct {
 	Talkgroups []TopTalkgroup `json:"talkgroups"`
-}
+} // @name TopTalkgroupsResponse
 
 // GetTopTalkgroups handles GET /api/admin/activity/top-talkgroups.
+//
+// @Summary      Get top talkgroups
+// @Description  Returns the top 10 talkgroups by call count over the last 24 hours.
+// @Tags         Admin
+// @Produce      json
+// @Success      200  {object}  TopTalkgroupsResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/activity/top-talkgroups [get]
 func (h *AdminHandler) GetTopTalkgroups(c *gin.Context) {
 	ctx := c.Request.Context()
 	cutoff := time.Now().Add(-24 * time.Hour).Unix()

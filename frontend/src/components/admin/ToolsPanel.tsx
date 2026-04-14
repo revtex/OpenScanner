@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, Download } from "lucide-react";
+import { Upload, Download, ExternalLink } from "lucide-react";
 import {
   useImportTalkgroupsMutation,
   useImportUnitsMutation,
@@ -9,8 +9,13 @@ import {
   useCleanupMissingAudioCallsMutation,
   type MissingAudioResponse,
 } from "@/app/slices/adminSlice";
+import { selectToken } from "@/app/slices/authSlice";
+import { useAppSelector } from "@/app/store";
+
+const SWAGGER_URL = "/api/admin/docs/index.html";
 
 export default function ToolsPanel() {
+  const token = useAppSelector(selectToken);
   const [importTalkgroups] = useImportTalkgroupsMutation();
   const [importUnits] = useImportUnitsMutation();
   const [triggerExport] = useLazyExportConfigQuery();
@@ -341,6 +346,49 @@ export default function ToolsPanel() {
               )}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* API Documentation */}
+      <div className="card bg-base-200 mb-4">
+        <div className="card-body">
+          <h2 className="card-title text-base">
+            <ExternalLink className="w-4 h-4" /> API Documentation
+          </h2>
+          <p className="text-sm text-base-content/70">
+            Browse the interactive Swagger UI to explore and test all API
+            endpoints. Use the token below to authorize requests via the padlock
+            icon in Swagger UI. Your docs session expires after 1 hour — click
+            "Open Swagger UI" again to refresh it.
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={async () => {
+                const res = await fetch("/api/admin/docs/session", {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                if (res.ok) {
+                  window.open(SWAGGER_URL, "_blank", "noopener");
+                }
+              }}
+            >
+              Open Swagger UI
+              <ExternalLink className="w-4 h-4" />
+            </button>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                if (token) {
+                  navigator.clipboard.writeText(`Bearer ${token}`);
+                  showToast("Bearer token copied to clipboard", "success");
+                }
+              }}
+            >
+              Copy Bearer Token
+            </button>
+          </div>
         </div>
       </div>
 

@@ -154,7 +154,7 @@ graph TD
 Scanner.tsx (lazy-loaded page)
 ├── LEDPanel          — Branding text + theme toggle + colored LED (green=live, orange=paused, pulse=idle)
 ├── DisplayPanel      — Nokia-style LCD display (.lcd-display CSS class: green background #bbc8c0, scanlines, bevel shadow)
-│   │                   8-row monospace display with clock
+│   │                   7-row monospace display with clock
 │   ├── BookmarkButton   — Star toggle on current call (wired to backend bookmarks API)
 │   ├── Share button     — Share2 icon, copies call permalink to clipboard
 │   ├── Brightness slider — Sun icon toggle, inline horizontal slider (20–120%), persisted to localStorage, default 50%
