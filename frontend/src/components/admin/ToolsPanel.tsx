@@ -7,6 +7,7 @@ import {
   useImportConfigMutation,
   useLazyGetMissingAudioCallsQuery,
   useCleanupMissingAudioCallsMutation,
+  useListSystemsQuery,
   type MissingAudioResponse,
 } from "@/app/slices/adminSlice";
 import { selectToken } from "@/app/slices/authSlice";
@@ -24,12 +25,17 @@ export default function ToolsPanel() {
     useLazyGetMissingAudioCallsQuery();
   const [cleanupMissingAudioCalls, { isLoading: cleaningMissingAudio }] =
     useCleanupMissingAudioCallsMutation();
+  const { data: systems } = useListSystemsQuery();
 
   const [toast, setToast] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"error" | "success">("error");
   const tgFileRef = useRef<HTMLInputElement>(null);
   const unitFileRef = useRef<HTMLInputElement>(null);
   const configFileRef = useRef<HTMLInputElement>(null);
+  const [selectedSystemId, setSelectedSystemId] = useState<string>("");
+  const [unitImportMode, setUnitImportMode] = useState<"overwrite" | "skip">(
+    "overwrite",
+  );
 
   const [missingAudioResult, setMissingAudioResult] =
     useState<MissingAudioResponse | null>(null);
@@ -65,11 +71,18 @@ export default function ToolsPanel() {
   const handleImportUnits = async () => {
     const file = unitFileRef.current?.files?.[0];
     if (!file) return;
+    if (!selectedSystemId) {
+      showToast("Please select a system");
+      return;
+    }
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("system_id", selectedSystemId);
+    formData.append("mode", unitImportMode);
     try {
-      await importUnits(formData).unwrap();
-      showToast("Units imported successfully", "success");
+      const result = await importUnits(formData).unwrap();
+      const msg = `Units imported: ${result.inserted} inserted, ${result.updated} updated, ${result.skipped} skipped`;
+      showToast(msg, "success");
       if (unitFileRef.current) unitFileRef.current.value = "";
     } catch {
       showToast("Failed to import units");
@@ -215,18 +228,59 @@ export default function ToolsPanel() {
           <h2 className="card-title text-base">
             <Upload className="w-4 h-4" /> Import Units (CSV)
           </h2>
-          <div className="flex items-center gap-3">
-            <input
-              ref={unitFileRef}
-              type="file"
-              accept=".csv"
-              className="file-input file-input-sm"
-            />
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="label">
+                  <span className="label-text text-sm">System</span>
+                </label>
+                <select
+                  value={selectedSystemId}
+                  onChange={(e) => setSelectedSystemId(e.target.value)}
+                  className="select select-bordered select-sm w-full"
+                >
+                  <option value="">--- Select a system ---</option>
+                  {systems?.map((sys) => (
+                    <option key={sys.id} value={sys.id}>
+                      {sys.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">
+                  <span className="label-text text-sm">Duplicate Mode</span>
+                </label>
+                <select
+                  value={unitImportMode}
+                  onChange={(e) =>
+                    setUnitImportMode(e.target.value as "overwrite" | "skip")
+                  }
+                  className="select select-bordered select-sm w-full"
+                >
+                  <option value="overwrite">Overwrite (update existing)</option>
+                  <option value="skip">Skip (keep existing)</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <input
+                  ref={unitFileRef}
+                  type="file"
+                  accept=".csv"
+                  className="file-input file-input-bordered file-input-sm w-full"
+                />
+              </div>
+            </div>
+            <div className="text-xs text-base-content/70">
+              CSV format: unit_id, label (optional), order (optional). Mode:
+              "Overwrite" updates existing unit labels, "Skip" ignores
+              duplicates.
+            </div>
             <button
-              className="btn btn-primary btn-sm"
+              className="btn btn-primary btn-sm w-full"
               onClick={handleImportUnits}
             >
-              Upload
+              Upload Units
             </button>
           </div>
         </div>

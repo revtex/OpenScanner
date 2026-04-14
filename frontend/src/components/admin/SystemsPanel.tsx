@@ -36,6 +36,8 @@ function SystemCard({
   onEditUnit,
   onDeleteUnit,
   onCreateUnit,
+  unitSearchFilter,
+  onUnitSearchChange,
 }: {
   system: AdminSystem;
   expanded: boolean;
@@ -51,6 +53,8 @@ function SystemCard({
   onEditUnit: (u: AdminUnit) => void;
   onDeleteUnit: (u: AdminUnit) => void;
   onCreateUnit: () => void;
+  unitSearchFilter: string;
+  onUnitSearchChange: (value: string) => void;
 }) {
   return (
     <div className="card bg-base-200">
@@ -152,6 +156,15 @@ function SystemCard({
                   Add
                 </button>
               </div>
+              <div className="mb-3">
+                <input
+                  type="text"
+                  placeholder="Search by unit ID..."
+                  value={unitSearchFilter}
+                  onChange={(e) => onUnitSearchChange(e.target.value)}
+                  className="input input-sm input-bordered w-full"
+                />
+              </div>
               {units.length === 0 ? (
                 <p className="text-sm opacity-60 py-2">No units</p>
               ) : (
@@ -165,28 +178,34 @@ function SystemCard({
                       </tr>
                     </thead>
                     <tbody>
-                      {units.map((u) => (
-                        <tr key={u.id}>
-                          <td>{u.unitId}</td>
-                          <td>{u.label ?? "—"}</td>
-                          <td className="flex gap-1">
-                            <button
-                              className="btn btn-ghost btn-xs"
-                              onClick={() => onEditUnit(u)}
-                              aria-label="Edit unit"
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </button>
-                            <button
-                              className="btn btn-ghost btn-xs"
-                              onClick={() => onDeleteUnit(u)}
-                              aria-label="Delete unit"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {units
+                        .filter(
+                          (u) =>
+                            unitSearchFilter === "" ||
+                            String(u.unitId).includes(unitSearchFilter),
+                        )
+                        .map((u) => (
+                          <tr key={u.id}>
+                            <td>{u.unitId}</td>
+                            <td>{u.label ?? "—"}</td>
+                            <td className="flex gap-1">
+                              <button
+                                className="btn btn-ghost btn-xs"
+                                onClick={() => onEditUnit(u)}
+                                aria-label="Edit unit"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button
+                                className="btn btn-ghost btn-xs"
+                                onClick={() => onDeleteUnit(u)}
+                                aria-label="Delete unit"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                 </div>
@@ -406,6 +425,9 @@ export default function SystemsPanel() {
 
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
+  const [unitSearchFilters, setUnitSearchFilters] = useState<
+    Map<number, string>
+  >(new Map());
 
   // System modal
   const [sysModalOpen, setSysModalOpen] = useState(false);
@@ -754,6 +776,16 @@ export default function SystemsPanel() {
             onEditUnit={openEditUnit}
             onDeleteUnit={handleDeleteUnit}
             onCreateUnit={() => openCreateUnit(sys.id)}
+            unitSearchFilter={unitSearchFilters.get(sys.id) ?? ""}
+            onUnitSearchChange={(value) => {
+              const next = new Map(unitSearchFilters);
+              if (value === "") {
+                next.delete(sys.id);
+              } else {
+                next.set(sys.id, value);
+              }
+              setUnitSearchFilters(next);
+            }}
           />
         ))}
         {sortedSystems.length === 0 && (

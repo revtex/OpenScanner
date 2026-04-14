@@ -517,7 +517,10 @@ const adminApi = api.injectEndpoints({
       }),
       invalidatesTags: ["Talkgroups"],
     }),
-    importUnits: builder.mutation<void, FormData>({
+    importUnits: builder.mutation<
+      { inserted: number; updated: number; skipped: number },
+      FormData
+    >({
       query: (body) => ({
         url: "/admin/import/units",
         method: "POST",

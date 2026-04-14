@@ -1107,7 +1107,7 @@ func TestImportConfig(t *testing.T) {
 		"talkgroups":  []any{},
 		"units":       []any{},
 		"apiKeys":     []any{},
-		"dirmonitors":  []any{},
+		"dirmonitors": []any{},
 		"downstreams": []any{},
 		"webhooks":    []any{},
 	}
