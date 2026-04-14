@@ -43,7 +43,7 @@ export const api = createApi({
     "Groups",
     "Tags",
     "ApiKeys",
-    "Dirwatches",
+    "DirMonitors",
     "Downstreams",
     "Webhooks",
     "Config",

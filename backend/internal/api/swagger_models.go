@@ -79,8 +79,8 @@ type swagApiKey struct { //nolint:unused
 	Order       int64   `json:"order"`
 } // @name ApiKey
 
-// swagDirwatch mirrors db.Dirwatch for Swagger.
-type swagDirwatch struct { //nolint:unused
+// swagDirMonitor mirrors db.Dirwatch for Swagger.
+type swagDirMonitor struct { //nolint:unused
 	ID          int64   `json:"id"`
 	Directory   string  `json:"directory"`
 	Type        string  `json:"type"`
@@ -94,7 +94,7 @@ type swagDirwatch struct { //nolint:unused
 	SystemID    *int64  `json:"system_id"`
 	TalkgroupID *int64  `json:"talkgroup_id"`
 	Order       int64   `json:"order"`
-} // @name Dirwatch
+} // @name DirMonitor
 
 // swagDownstream mirrors db.Downstream for Swagger.
 type swagDownstream struct { //nolint:unused
@@ -126,7 +126,7 @@ var (
 	_ swagTalkgroup
 	_ swagUnit
 	_ swagApiKey
-	_ swagDirwatch
+	_ swagDirMonitor
 	_ swagDownstream
 	_ swagWebhook
 )

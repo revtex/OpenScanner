@@ -1,4 +1,4 @@
-package dirwatch
+package dirmonitor
 
 import (
 	"context"
@@ -131,7 +131,7 @@ func TestHandleFile_PathTraversal_Rejected(t *testing.T) {
 	evilPath := filepath.Join(otherDir, "evil.mp3")
 	os.WriteFile(evilPath, fakeAudioData(), 0644) //nolint:errcheck
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:        1,
 		Directory: watchDir,
 		Type:      "generic",
@@ -149,7 +149,7 @@ func TestHandleFile_PathTraversal_DotDot_Rejected(t *testing.T) {
 	// Construct a path that after filepath.Clean escapes watchDir.
 	crafted := filepath.Join(watchDir, "..", "outside.mp3")
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:        1,
 		Directory: watchDir,
 		Type:      "generic",
@@ -166,7 +166,7 @@ func TestHandleFile_ExtensionFilter_WrongExtension_Skipped(t *testing.T) {
 	os.WriteFile(mp3Path, fakeAudioData(), 0644) //nolint:errcheck
 
 	// Dirwatch only accepts .wav files.
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:        1,
 		Directory: watchDir,
 		Type:      "generic",
@@ -188,7 +188,7 @@ func TestHandleFile_ExtensionFilter_LeadingDot_Accepted(t *testing.T) {
 	os.WriteFile(wavPath, []byte("RIFF"), 0644) //nolint:errcheck
 
 	// Extension stored with a leading dot — should still match.
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:        1,
 		Directory: watchDir,
 		Type:      "trunk-recorder",
@@ -207,7 +207,7 @@ func TestHandleFile_NoExtensionFilter_AllFilesProcessed(t *testing.T) {
 	txtPath := filepath.Join(watchDir, "info.txt")
 	os.WriteFile(txtPath, []byte("text"), 0644) //nolint:errcheck
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:        1,
 		Directory: watchDir,
 		Type:      "generic",
@@ -226,7 +226,7 @@ func TestHandleFile_ParserReturnsNil_IngestNotCalled(t *testing.T) {
 	xmlPath := filepath.Join(watchDir, "meta.xml")
 	os.WriteFile(xmlPath, []byte("<x/>"), 0644) //nolint:errcheck
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:        1,
 		Directory: watchDir,
 		Type:      "voxcall",
@@ -295,7 +295,7 @@ func TestHandleFile_Integration_TrunkRecorder(t *testing.T) {
 	watchDir := t.TempDir()
 	_, audioPath := writeTRWatcherFiles(t, watchDir)
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:        1,
 		Directory: watchDir,
 		Type:      "trunk-recorder",
@@ -358,7 +358,7 @@ func TestHandleFile_Integration_MissingSystemID_Rejected(t *testing.T) {
 	os.WriteFile(jsonPath, data, 0644)             //nolint:errcheck
 	os.WriteFile(audioPath, fakeAudioData(), 0644) //nolint:errcheck
 
-	dw := db.Dirwatch{ID: 1, Directory: watchDir, Type: "trunk-recorder"}
+	dw := db.Dirmonitor{ID: 1, Directory: watchDir, Type: "trunk-recorder"}
 	svc := &Service{queries: queries, processor: processor, hub: nil}
 
 	// handleFile should call ingestCall, which returns an error for SystemID=0.
@@ -409,7 +409,7 @@ func TestIngestCall_SDRTrunk_SystemLabelResolvesSystem(t *testing.T) {
 
 	svc := &Service{queries: queries, processor: processor, hub: nil}
 
-	err = svc.ingestCall(ctx, db.Dirwatch{ID: 2, Directory: watchDir, Type: "sdr-trunk"}, &ParsedCall{
+	err = svc.ingestCall(ctx, db.Dirmonitor{ID: 2, Directory: watchDir, Type: "sdr-trunk"}, &ParsedCall{
 		AudioFilePath: audioPath,
 		DateTime:      time.Unix(1700000000, 0).UTC(),
 		SystemID:      0,
@@ -479,7 +479,7 @@ func TestHandleFile_Integration_AutoPopulate(t *testing.T) {
 		os.WriteFile(jsonPath, data, 0644)             //nolint:errcheck
 		os.WriteFile(audioPath, fakeAudioData(), 0644) //nolint:errcheck
 
-		dw := db.Dirwatch{ID: int64(i + 1), Directory: watchDir, Type: "trunk-recorder"}
+		dw := db.Dirmonitor{ID: int64(i + 1), Directory: watchDir, Type: "trunk-recorder"}
 		svc := &Service{queries: queries, processor: processor, hub: nil}
 		svc.handleFile(ctx, dw, audioPath)
 	}
@@ -538,7 +538,7 @@ func TestHandleFile_Symlink_Escaping_Rejected(t *testing.T) {
 		t.Skipf("symlinks not supported: %v", err)
 	}
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:        1,
 		Directory: watchDir,
 		Type:      "generic",

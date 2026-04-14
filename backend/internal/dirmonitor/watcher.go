@@ -1,5 +1,5 @@
-// Package dirwatch uses fsnotify to watch directories for new audio files.
-package dirwatch
+// Package dirmonitor uses fsnotify to watch directories for new audio files.
+package dirmonitor
 
 import (
 	"context"
@@ -62,9 +62,9 @@ func (s *Service) Start(ctx context.Context) {
 	s.cancel = cancel
 	s.mu.Unlock()
 
-	dirwatches, err := s.queries.ListActiveDirwatches(childCtx)
+	dirwatches, err := s.queries.ListActiveDirMonitors(childCtx)
 	if err != nil {
-		slog.Error("dirwatch: failed to load configs from DB", "error", err)
+		slog.Error("dirmonitor: failed to load configs from DB", "error", err)
 		cancel()
 		return
 	}
@@ -73,7 +73,7 @@ func (s *Service) Start(ctx context.Context) {
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
-			s.runDirwatch(childCtx, dw)
+			s.runDirMonitor(childCtx, dw)
 		}()
 	}
 }
@@ -111,15 +111,15 @@ func (s *Service) stop() {
 	s.wg.Wait()
 }
 
-// runDirwatch dispatches to the appropriate watch strategy for a single entry.
+// runDirMonitor dispatches to the appropriate watch strategy for a single entry.
 // It includes panic recovery so that a bad file or parser bug cannot kill the
 // goroutine permanently.
-func (s *Service) runDirwatch(ctx context.Context, dw db.Dirwatch) {
+func (s *Service) runDirMonitor(ctx context.Context, dw db.Dirmonitor) {
 	defer func() {
 		if r := recover(); r != nil {
 			buf := make([]byte, 4096)
 			n := runtime.Stack(buf, false)
-			slog.Error("dirwatch: recovered from panic",
+			slog.Error("dirmonitor: recovered from panic",
 				"id", dw.ID,
 				"panic", r,
 				"stack", string(buf[:n]),
@@ -127,7 +127,7 @@ func (s *Service) runDirwatch(ctx context.Context, dw db.Dirwatch) {
 		}
 	}()
 
-	slog.Info("dirwatch: starting watcher",
+	slog.Info("dirmonitor: starting watcher",
 		"id", dw.ID,
 		"dir", dw.Directory,
 		"type", dw.Type,
@@ -140,7 +140,7 @@ func (s *Service) runDirwatch(ctx context.Context, dw db.Dirwatch) {
 		s.runWithFsnotify(ctx, dw)
 	}
 
-	slog.Info("dirwatch: watcher stopped", "id", dw.ID)
+	slog.Info("dirmonitor: watcher stopped", "id", dw.ID)
 }
 
 // minDebounceMs is the floor for fsnotify debounce to ensure complete file writes.
@@ -149,16 +149,16 @@ const minDebounceMs = 2000
 // runWithFsnotify watches using kernel inotify/kqueue Create/Write events.
 // A per-file debounce timer ensures we only process a file once its writer
 // has finished — each new Create or Write resets the timer.
-func (s *Service) runWithFsnotify(ctx context.Context, dw db.Dirwatch) {
+func (s *Service) runWithFsnotify(ctx context.Context, dw db.Dirmonitor) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		slog.Error("dirwatch: failed to create fsnotify watcher", "id", dw.ID, "error", err)
+		slog.Error("dirmonitor: failed to create fsnotify watcher", "id", dw.ID, "error", err)
 		return
 	}
 	defer watcher.Close()
 
 	if err := watcher.Add(dw.Directory); err != nil {
-		slog.Error("dirwatch: failed to add directory to watcher",
+		slog.Error("dirmonitor: failed to add directory to watcher",
 			"id", dw.ID, "dir", dw.Directory, "error", err)
 		return
 	}
@@ -212,7 +212,7 @@ func (s *Service) runWithFsnotify(ctx context.Context, dw db.Dirwatch) {
 			if !ok {
 				return
 			}
-			slog.Warn("dirwatch: fsnotify error", "id", dw.ID, "error", err)
+			slog.Warn("dirmonitor: fsnotify error", "id", dw.ID, "error", err)
 		}
 	}
 }
@@ -221,14 +221,14 @@ func (s *Service) runWithFsnotify(ctx context.Context, dw db.Dirwatch) {
 const minPollIntervalMs = 500
 
 // runWithPolling scans the directory on a regular ticker.
-func (s *Service) runWithPolling(ctx context.Context, dw db.Dirwatch) {
+func (s *Service) runWithPolling(ctx context.Context, dw db.Dirmonitor) {
 	delayMs := int64(2000)
 	if dw.Delay.Valid && dw.Delay.Int64 > 0 {
 		delayMs = dw.Delay.Int64
 	}
 	// SECURITY: enforce a minimum polling interval to prevent tight CPU loops.
 	if delayMs < minPollIntervalMs {
-		slog.Warn("dirwatch: poll delay below minimum, clamping",
+		slog.Warn("dirmonitor: poll delay below minimum, clamping",
 			"id", dw.ID, "requested_ms", delayMs, "min_ms", minPollIntervalMs)
 		delayMs = minPollIntervalMs
 	}
@@ -245,7 +245,7 @@ func (s *Service) runWithPolling(ctx context.Context, dw db.Dirwatch) {
 		case <-ticker.C:
 			entries, err := os.ReadDir(dw.Directory)
 			if err != nil {
-				slog.Warn("dirwatch: failed to read directory",
+				slog.Warn("dirmonitor: failed to read directory",
 					"id", dw.ID, "dir", dw.Directory, "error", err)
 				continue
 			}
@@ -280,23 +280,23 @@ func (s *Service) runWithPolling(ctx context.Context, dw db.Dirwatch) {
 
 // handleFile applies security checks, the extension filter, and calls the
 // appropriate parser before handing off to ingestCall.
-func (s *Service) handleFile(ctx context.Context, dw db.Dirwatch, filePath string) {
+func (s *Service) handleFile(ctx context.Context, dw db.Dirmonitor, filePath string) {
 	// Security: resolve symlinks then reject paths that escape the watched directory.
 	watchedReal, err := filepath.EvalSymlinks(filepath.Clean(dw.Directory))
 	if err != nil {
-		slog.Warn("dirwatch: failed to resolve watched directory",
+		slog.Warn("dirmonitor: failed to resolve watched directory",
 			"dir", dw.Directory, "error", err)
 		return
 	}
 	fileReal, err := filepath.EvalSymlinks(filepath.Clean(filePath))
 	if err != nil {
-		slog.Warn("dirwatch: failed to resolve file path, rejected",
+		slog.Warn("dirmonitor: failed to resolve file path, rejected",
 			"file", filePath, "error", err)
 		return
 	}
 	rel, err := filepath.Rel(watchedReal, fileReal)
 	if err != nil || strings.HasPrefix(rel, "..") {
-		slog.Warn("dirwatch: file outside watched directory, rejected",
+		slog.Warn("dirmonitor: file outside watched directory, rejected",
 			"file", filePath, "dir", watchedReal)
 		return
 	}
@@ -316,7 +316,7 @@ func (s *Service) handleFile(ctx context.Context, dw db.Dirwatch, filePath strin
 	parse := parserForType(dw.Type)
 	parsed, err := parse(dw, fileReal)
 	if err != nil {
-		slog.Error("dirwatch: parse error", "id", dw.ID, "file", filePath, "error", err)
+		slog.Error("dirmonitor: parse error", "id", dw.ID, "file", filePath, "error", err)
 		return
 	}
 	if parsed == nil {
@@ -328,29 +328,29 @@ func (s *Service) handleFile(ctx context.Context, dw db.Dirwatch, filePath strin
 	// (44 bytes is the minimum WAV header size).
 	const minAudioBytes = 44
 	if fi, err := os.Stat(parsed.AudioFilePath); err != nil {
-		slog.Warn("dirwatch: cannot stat audio file", "id", dw.ID, "file", parsed.AudioFilePath, "error", err)
+		slog.Warn("dirmonitor: cannot stat audio file", "id", dw.ID, "file", parsed.AudioFilePath, "error", err)
 		return
 	} else if fi.Size() < minAudioBytes {
-		slog.Info("dirwatch: file too small, skipping",
+		slog.Info("dirmonitor: file too small, skipping",
 			"id", dw.ID, "file", parsed.AudioFilePath, "size", fi.Size(), "min", minAudioBytes)
 		return
 	}
 
 	// DateTime validation: reject calls with zero/missing timestamps.
 	if parsed.DateTime.IsZero() {
-		slog.Info("dirwatch: missing or zero datetime, skipping",
+		slog.Info("dirmonitor: missing or zero datetime, skipping",
 			"id", dw.ID, "file", parsed.AudioFilePath)
 		return
 	}
 
 	if err := s.ingestCall(ctx, dw, parsed); err != nil {
-		slog.Error("dirwatch: ingest failed", "id", dw.ID, "file", filePath, "error", err)
+		slog.Error("dirmonitor: ingest failed", "id", dw.ID, "file", filePath, "error", err)
 	}
 }
 
 // ingestCall runs the full call ingest pipeline for a parsed file, mirroring
 // the logic in api/calls.go but without an HTTP context.
-func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *ParsedCall) error {
+func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *ParsedCall) error {
 	// Helper to retrieve a setting value from the DB (returns "" on missing/error).
 	getSetting := func(key string) string {
 		v, err := s.queries.GetSetting(ctx, key)
@@ -397,7 +397,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 			if cerr != nil {
 				return fmt.Errorf("auto-create system %d: %w", parsed.SystemID, cerr)
 			}
-			slog.Info("dirwatch: auto-populated system", "system_id", parsed.SystemID, "db_id", newID)
+			slog.Info("dirmonitor: auto-populated system", "system_id", parsed.SystemID, "db_id", newID)
 			system = db.System{ID: newID, SystemID: parsed.SystemID, Label: label, AutoPopulate: 1}
 			s.hub.BroadcastCFG(ctx)
 		}
@@ -431,7 +431,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 			if cerr != nil {
 				return fmt.Errorf("auto-create system %q: %w", label, cerr)
 			}
-			slog.Info("dirwatch: auto-populated system from label", "system_label", label, "system_id", nextSystemID, "db_id", newID)
+			slog.Info("dirmonitor: auto-populated system from label", "system_label", label, "system_id", nextSystemID, "db_id", newID)
 			system = db.System{ID: newID, SystemID: nextSystemID, Label: label, AutoPopulate: 1}
 			s.hub.BroadcastCFG(ctx)
 		}
@@ -440,7 +440,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 
 	// ── Blacklist check ─────────────────────────────────────────────────────
 	if isBlacklisted(system.BlacklistsJson, parsed.TalkgroupID) {
-		slog.Info("dirwatch: talkgroup is blacklisted, skipping",
+		slog.Info("dirmonitor: talkgroup is blacklisted, skipping",
 			"system_id", system.SystemID, "talkgroup_id", parsed.TalkgroupID)
 		return nil
 	}
@@ -469,7 +469,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 		if cerr != nil {
 			return fmt.Errorf("auto-create talkgroup %d: %w", parsed.TalkgroupID, cerr)
 		}
-		slog.Info("dirwatch: auto-populated talkgroup",
+		slog.Info("dirmonitor: auto-populated talkgroup",
 			"talkgroup_id", parsed.TalkgroupID, "db_id", newID)
 		talkgroup = db.Talkgroup{ID: newID, SystemID: system.ID, TalkgroupID: parsed.TalkgroupID, Name: tgName}
 		s.hub.BroadcastCFG(ctx)
@@ -487,10 +487,10 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 			TagID:       talkgroup.TagID,
 			Order:       talkgroup.Order,
 		}); uerr != nil {
-			slog.Warn("dirwatch: failed to backfill talkgroup name from metadata",
+			slog.Warn("dirmonitor: failed to backfill talkgroup name from metadata",
 				"talkgroup_id", talkgroup.TalkgroupID, "error", uerr)
 		} else {
-			slog.Info("dirwatch: backfilled talkgroup name from audio metadata",
+			slog.Info("dirmonitor: backfilled talkgroup name from audio metadata",
 				"talkgroup_id", talkgroup.TalkgroupID, "name", parsed.TalkgroupTitle)
 			s.hub.BroadcastCFG(ctx)
 		}
@@ -506,10 +506,10 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 		}
 		dup, derr := audio.IsDuplicate(ctx, s.queries, system.ID, talkgroup.ID, parsed.DateTime, windowMs)
 		if derr != nil {
-			slog.Error("dirwatch: duplicate detection error", "error", derr)
+			slog.Error("dirmonitor: duplicate detection error", "error", derr)
 			// Non-fatal: proceed.
 		} else if dup {
-			slog.Info("dirwatch: duplicate call rejected",
+			slog.Info("dirmonitor: duplicate call rejected",
 				"system_id", system.SystemID, "talkgroup_id", parsed.TalkgroupID)
 			return nil
 		}
@@ -597,7 +597,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 		return fmt.Errorf("insert call record: %w", err)
 	}
 
-	slog.Info("dirwatch: call ingested",
+	slog.Info("dirmonitor: call ingested",
 		"id", callID,
 		"system_id", system.SystemID,
 		"talkgroup_id", talkgroup.TalkgroupID,
@@ -636,7 +636,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 
 		calMsg, err := ws.NewCALMessage(calPayload)
 		if err != nil {
-			slog.Error("dirwatch: failed to build CAL message", "error", err)
+			slog.Error("dirmonitor: failed to build CAL message", "error", err)
 		} else {
 			// SECURITY: limit audio read size for WS broadcast to prevent OOM
 			// for large audio files. Files exceeding the limit are still stored
@@ -645,15 +645,15 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 			var audioBytes []byte
 			audioAbsPath := filepath.Join(s.processor.RecordingsDir(), relPath)
 			if rel, pathErr := filepath.Rel(s.processor.RecordingsDir(), audioAbsPath); pathErr != nil || strings.HasPrefix(rel, "..") {
-				slog.Error("dirwatch: audio path escapes base directory", "path", relPath)
+				slog.Error("dirmonitor: audio path escapes base directory", "path", relPath)
 			} else if fi, statErr := os.Stat(audioAbsPath); statErr != nil {
-				slog.Warn("dirwatch: failed to stat audio for WS broadcast",
+				slog.Warn("dirmonitor: failed to stat audio for WS broadcast",
 					"path", relPath, "error", statErr)
 			} else if fi.Size() > maxBroadcastAudioBytes {
-				slog.Warn("dirwatch: audio file too large for inline WS broadcast, sending metadata only",
+				slog.Warn("dirmonitor: audio file too large for inline WS broadcast, sending metadata only",
 					"path", relPath, "size_bytes", fi.Size(), "max_bytes", maxBroadcastAudioBytes)
 			} else if readBytes, readErr := os.ReadFile(audioAbsPath); readErr != nil {
-				slog.Warn("dirwatch: failed to read audio for WS broadcast",
+				slog.Warn("dirmonitor: failed to read audio for WS broadcast",
 					"path", relPath, "error", readErr)
 			} else {
 				audioBytes = readBytes
@@ -709,10 +709,10 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirwatch, parsed *Parsed
 		watchedReal, _ := filepath.EvalSymlinks(filepath.Clean(dw.Directory))
 		fileReal, _ := filepath.EvalSymlinks(cleanPath)
 		if rel, err := filepath.Rel(watchedReal, fileReal); err != nil || strings.HasPrefix(rel, "..") {
-			slog.Warn("dirwatch: refusing to delete file outside watched directory",
+			slog.Warn("dirmonitor: refusing to delete file outside watched directory",
 				"file", parsed.AudioFilePath, "dir", dw.Directory)
 		} else if err := os.Remove(fileReal); err != nil && !os.IsNotExist(err) {
-			slog.Warn("dirwatch: failed to delete source file",
+			slog.Warn("dirmonitor: failed to delete source file",
 				"file", rel, "error", err)
 		}
 	}
@@ -751,7 +751,7 @@ func isBlacklisted(blacklistsJSON sql.NullString, talkgroupID int64) bool {
 	}
 	var ids []int64
 	if err := json.Unmarshal([]byte(blacklistsJSON.String), &ids); err != nil {
-		slog.Warn("dirwatch: failed to parse blacklists_json", "error", err)
+		slog.Warn("dirmonitor: failed to parse blacklists_json", "error", err)
 		return false
 	}
 	for _, id := range ids {

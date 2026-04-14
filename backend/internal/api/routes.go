@@ -23,8 +23,8 @@ import (
 	"github.com/openscanner/openscanner/internal/ws"
 )
 
-// DirwatchReloader is implemented by dirwatch.Service to trigger a config reload.
-type DirwatchReloader interface {
+// DirMonitorReloader is implemented by dirmonitor.Service to trigger a config reload.
+type DirMonitorReloader interface {
 	Reload()
 }
 
@@ -45,7 +45,7 @@ type Deps struct {
 	Processor          *audio.Processor
 	Hub                *ws.Hub
 	SQLDB              *sql.DB
-	DirwatchReloader   DirwatchReloader
+	DirMonitorReloader   DirMonitorReloader
 	DownstreamReloader DownstreamReloader
 	DownstreamNotifier DownstreamNotifier
 	Version            string
@@ -61,7 +61,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	if deps.Processor != nil {
 		recordingsDir = deps.Processor.RecordingsDir()
 	}
-	adminHandler := NewAdminHandler(deps.Queries, deps.Hub, deps.SQLDB, deps.DirwatchReloader, deps.DownstreamReloader, recordingsDir)
+	adminHandler := NewAdminHandler(deps.Queries, deps.Hub, deps.SQLDB, deps.DirMonitorReloader, deps.DownstreamReloader, recordingsDir)
 
 	// Global middleware applied to every request.
 	r.Use(middleware.RequestID())
@@ -166,12 +166,12 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		admin.PUT("/apikeys/:id", adminHandler.UpdateAPIKey)
 		admin.DELETE("/apikeys/:id", adminHandler.DeleteAPIKey)
 
-		// Dirwatches
+		// DirMonitors
 		admin.GET("/fs/directories", adminHandler.ListServerDirectories)
-		admin.GET("/dirwatches", adminHandler.ListDirwatches)
-		admin.POST("/dirwatches", adminHandler.CreateDirwatch)
-		admin.PUT("/dirwatches/:id", adminHandler.UpdateDirwatch)
-		admin.DELETE("/dirwatches/:id", adminHandler.DeleteDirwatch)
+		admin.GET("/dirmonitors", adminHandler.ListDirMonitors)
+		admin.POST("/dirmonitors", adminHandler.CreateDirMonitor)
+		admin.PUT("/dirmonitors/:id", adminHandler.UpdateDirMonitor)
+		admin.DELETE("/dirmonitors/:id", adminHandler.DeleteDirMonitor)
 
 		// Downstreams
 		admin.GET("/downstreams", adminHandler.ListDownstreams)

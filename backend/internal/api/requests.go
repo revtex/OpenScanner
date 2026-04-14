@@ -197,9 +197,9 @@ type reorderAPIKeysRequest struct {
 	APIKeys []reorderAPIKeyItem `json:"apiKeys"`
 } // @name ReorderAPIKeysRequest
 
-// ── Dirwatch requests ──
+// ── DirMonitor requests ──
 
-type createDirwatchRequest struct {
+type createDirMonitorRequest struct {
 	Directory   string  `json:"directory"`
 	Type        string  `json:"type"`
 	Mask        *string `json:"mask"`
@@ -212,10 +212,10 @@ type createDirwatchRequest struct {
 	SystemID    *int64  `json:"systemId"`
 	TalkgroupID *int64  `json:"talkgroupId"`
 	Order       int64   `json:"order"`
-} // @name CreateDirwatchRequest
+} // @name CreateDirMonitorRequest
 
-func (r createDirwatchRequest) toParams() db.CreateDirwatchParams {
-	return db.CreateDirwatchParams{
+func (r createDirMonitorRequest) toParams() db.CreateDirMonitorParams {
+	return db.CreateDirMonitorParams{
 		Directory:   r.Directory,
 		Type:        r.Type,
 		Mask:        ptrToNullStr(r.Mask),
@@ -231,7 +231,7 @@ func (r createDirwatchRequest) toParams() db.CreateDirwatchParams {
 	}
 }
 
-type updateDirwatchRequest struct {
+type updateDirMonitorRequest struct {
 	Directory   string  `json:"directory"`
 	Type        string  `json:"type"`
 	Mask        *string `json:"mask"`
@@ -244,10 +244,10 @@ type updateDirwatchRequest struct {
 	SystemID    *int64  `json:"systemId"`
 	TalkgroupID *int64  `json:"talkgroupId"`
 	Order       int64   `json:"order"`
-} // @name UpdateDirwatchRequest
+} // @name UpdateDirMonitorRequest
 
-func (r updateDirwatchRequest) toParams(id int64) db.UpdateDirwatchParams {
-	return db.UpdateDirwatchParams{
+func (r updateDirMonitorRequest) toParams(id int64) db.UpdateDirMonitorParams {
+	return db.UpdateDirMonitorParams{
 		ID:          id,
 		Directory:   r.Directory,
 		Type:        r.Type,

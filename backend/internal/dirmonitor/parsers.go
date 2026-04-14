@@ -1,5 +1,5 @@
-// Package dirwatch — per-recorder-type file parsers.
-package dirwatch
+// Package dirmonitor — per-recorder-type file parsers.
+package dirmonitor
 
 import (
 	"encoding/json"
@@ -37,7 +37,7 @@ type ParsedCall struct {
 // ParseFunc parses a newly detected file for a given dirwatch config.
 // It may return (nil, nil) when the file should be ignored (e.g. a sidecar
 // whose matching audio has not yet arrived).
-type ParseFunc func(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error)
+type ParseFunc func(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error)
 
 // audioExtensions is the set of recognised audio file extensions (lower-case).
 var audioExtensions = map[string]bool{
@@ -95,7 +95,7 @@ type trunkRecorderSidecar struct {
 //
 //   - JSON triggered  →  parse sidecar, find matching audio; return nil if audio absent.
 //   - Audio triggered →  look for .json sidecar; return nil if sidecar absent.
-func parseTrunkRecorder(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
+func parseTrunkRecorder(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 	ext := strings.ToLower(filepath.Ext(triggeredPath))
 	stem := triggeredPath[:len(triggeredPath)-len(filepath.Ext(triggeredPath))]
 
@@ -189,7 +189,7 @@ var (
 // metadata from MP3 ID3v2 tags (Artist, Comment, Title). If tag reading
 // fails or the file is not an MP3, it falls back to filename pattern
 // parsing: <systemID>_<talkgroupID>_<unixTs>.<ext>
-func parseSDRTrunk(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
+func parseSDRTrunk(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 	if !isAudioFile(triggeredPath) {
 		return nil, nil
 	}
@@ -487,7 +487,7 @@ func decodeUTF16(b []byte) string {
 
 // ── RTL-SDR Airband ──────────────────────────────────────────────────────────
 
-func parseRTLSDRAirband(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
+func parseRTLSDRAirband(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 	if !isAudioFile(triggeredPath) {
 		return nil, nil
 	}
@@ -535,7 +535,7 @@ var (
 //
 // Date is extracted from the parent folder name (YYYYMMDD suffix).
 // MODE determines how the system ID is decoded from the CHANNEL segment.
-func parseDSDPlus(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
+func parseDSDPlus(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 	if !isAudioFile(triggeredPath) {
 		return nil, nil
 	}
@@ -667,7 +667,7 @@ func splitDSDPlusMeta(base string) []string {
 
 // ── ProScan ───────────────────────────────────────────────────────────────────
 
-func parseProScan(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
+func parseProScan(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 	if !isAudioFile(triggeredPath) {
 		return nil, nil
 	}
@@ -692,7 +692,7 @@ func parseProScan(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
 
 // ── VoxCall ───────────────────────────────────────────────────────────────────
 
-func parseVoxCall(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
+func parseVoxCall(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 	if !isAudioFile(triggeredPath) {
 		return nil, nil
 	}
@@ -717,7 +717,7 @@ func parseVoxCall(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
 
 // ── Generic fallback ──────────────────────────────────────────────────────────
 
-func parseGeneric(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
+func parseGeneric(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 	if !isAudioFile(triggeredPath) {
 		return nil, nil
 	}

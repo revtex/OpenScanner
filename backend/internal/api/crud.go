@@ -32,13 +32,13 @@ type AdminHandler struct {
 	queries       *db.Queries
 	hub           *ws.Hub
 	sqlDB         *sql.DB
-	dwReload      DirwatchReloader
+	dwReload      DirMonitorReloader
 	dsReload      DownstreamReloader
 	recordingsDir string
 }
 
 // NewAdminHandler constructs an AdminHandler.
-func NewAdminHandler(queries *db.Queries, hub *ws.Hub, sqlDB *sql.DB, dwReload DirwatchReloader, dsReload DownstreamReloader, recordingsDir ...string) *AdminHandler {
+func NewAdminHandler(queries *db.Queries, hub *ws.Hub, sqlDB *sql.DB, dwReload DirMonitorReloader, dsReload DownstreamReloader, recordingsDir ...string) *AdminHandler {
 	rd := "."
 	if len(recordingsDir) > 0 && strings.TrimSpace(recordingsDir[0]) != "" {
 		rd = recordingsDir[0]
@@ -1518,44 +1518,44 @@ func (h *AdminHandler) DeleteAPIKey(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-// ---------- Dirwatches ----------
+// ---------- DirMonitors ----------
 
-// ListDirwatches handles GET /api/admin/dirwatches.
+// ListDirMonitors handles GET /api/admin/dirmonitors.
 //
 // @Summary  List directory watches
 // @Description  Returns all directory watches.
 // @Tags     Admin
 // @Produce  json
-// @Success  200  {array}   dirwatchResponse
+// @Success  200  {array}   dirmonitorResponse
 // @Failure  500  {object}  ErrorResponse
 // @Security BearerAuth
-// @Router   /admin/dirwatches [get]
-func (h *AdminHandler) ListDirwatches(c *gin.Context) {
-	dirwatches, err := h.queries.ListDirwatches(c.Request.Context())
+// @Router   /admin/dirmonitors [get]
+func (h *AdminHandler) ListDirMonitors(c *gin.Context) {
+	dirmonitors, err := h.queries.ListDirMonitors(c.Request.Context())
 	if err != nil {
-		slog.Error("failed to list dirwatches", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list dirwatches"})
+		slog.Error("failed to list dirmonitors", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list dirmonitors"})
 		return
 	}
-	c.JSON(http.StatusOK, toDirwatchResponses(dirwatches))
+	c.JSON(http.StatusOK, toDirMonitorResponses(dirmonitors))
 }
 
-// CreateDirwatch handles POST /api/admin/dirwatches.
+// CreateDirMonitor handles POST /api/admin/dirmonitors.
 //
 // @Summary  Create a directory watch
 // @Description  Creates a new directory watch.
 // @Tags     Admin
 // @Accept   json
 // @Produce  json
-// @Param    body  body      createDirwatchRequest  true  "Dirwatch to create"
-// @Success  201   {object}  dirwatchResponse
+// @Param    body  body      createDirMonitorRequest  true  "DirMonitor to create"
+// @Success  201   {object}  dirmonitorResponse
 // @Failure  400   {object}  ErrorResponse
 // @Failure  422   {object}  ErrorResponse
 // @Failure  500   {object}  ErrorResponse
 // @Security BearerAuth
-// @Router   /admin/dirwatches [post]
-func (h *AdminHandler) CreateDirwatch(c *gin.Context) {
-	var req createDirwatchRequest
+// @Router   /admin/dirmonitors [post]
+func (h *AdminHandler) CreateDirMonitor(c *gin.Context) {
+	var req createDirMonitorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
@@ -1576,54 +1576,54 @@ func (h *AdminHandler) CreateDirwatch(c *gin.Context) {
 		return
 	}
 
-	id, err := h.queries.CreateDirwatch(c.Request.Context(), req.toParams())
+	id, err := h.queries.CreateDirMonitor(c.Request.Context(), req.toParams())
 	if err != nil {
-		slog.Error("failed to create dirwatch", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create dirwatch"})
+		slog.Error("failed to create dirmonitor", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create dirmonitor"})
 		return
 	}
 
-	dw, err := h.queries.GetDirwatch(c.Request.Context(), id)
+	dw, err := h.queries.GetDirMonitor(c.Request.Context(), id)
 	if err != nil {
-		slog.Error("failed to fetch created dirwatch", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created dirwatch"})
+		slog.Error("failed to fetch created dirmonitor", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created dirmonitor"})
 		return
 	}
-	// Reload the dirwatch service so the new config takes effect immediately.
+	// Reload the dirmonitor service so the new config takes effect immediately.
 	if h.dwReload != nil {
 		h.dwReload.Reload()
 	}
-	c.JSON(http.StatusCreated, toDirwatchResponse(dw))
+	c.JSON(http.StatusCreated, toDirMonitorResponse(dw))
 }
 
-// UpdateDirwatch handles PUT /api/admin/dirwatches/:id.
+// UpdateDirMonitor handles PUT /api/admin/dirmonitors/:id.
 //
 // @Summary  Update a directory watch
 // @Description  Updates an existing directory watch by ID.
 // @Tags     Admin
 // @Accept   json
 // @Produce  json
-// @Param    id    path      int                    true  "Dirwatch ID"
-// @Param    body  body      updateDirwatchRequest  true  "Dirwatch fields to update"
-// @Success  200   {object}  dirwatchResponse
+// @Param    id    path      int                    true  "DirMonitor ID"
+// @Param    body  body      updateDirMonitorRequest  true  "DirMonitor fields to update"
+// @Success  200   {object}  dirmonitorResponse
 // @Failure  400   {object}  ErrorResponse
 // @Failure  404   {object}  ErrorResponse
 // @Failure  422   {object}  ErrorResponse
 // @Failure  500   {object}  ErrorResponse
 // @Security BearerAuth
-// @Router   /admin/dirwatches/{id} [put]
-func (h *AdminHandler) UpdateDirwatch(c *gin.Context) {
+// @Router   /admin/dirmonitors/{id} [put]
+func (h *AdminHandler) UpdateDirMonitor(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
 		return
 	}
 
-	if _, err := h.queries.GetDirwatch(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "dirwatch not found"})
+	if _, err := h.queries.GetDirMonitor(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "dirmonitor not found"})
 		return
 	}
 
-	var req updateDirwatchRequest
+	var req updateDirMonitorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
@@ -1645,55 +1645,55 @@ func (h *AdminHandler) UpdateDirwatch(c *gin.Context) {
 		return
 	}
 
-	if err := h.queries.UpdateDirwatch(c.Request.Context(), req.toParams(id)); err != nil {
-		slog.Error("failed to update dirwatch", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update dirwatch"})
+	if err := h.queries.UpdateDirMonitor(c.Request.Context(), req.toParams(id)); err != nil {
+		slog.Error("failed to update dirmonitor", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update dirmonitor"})
 		return
 	}
 
-	dw, err := h.queries.GetDirwatch(c.Request.Context(), id)
+	dw, err := h.queries.GetDirMonitor(c.Request.Context(), id)
 	if err != nil {
-		slog.Error("failed to fetch updated dirwatch", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated dirwatch"})
+		slog.Error("failed to fetch updated dirmonitor", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated dirmonitor"})
 		return
 	}
-	// Reload the dirwatch service so the updated config takes effect immediately.
+	// Reload the dirmonitor service so the updated config takes effect immediately.
 	if h.dwReload != nil {
 		h.dwReload.Reload()
 	}
-	c.JSON(http.StatusOK, toDirwatchResponse(dw))
+	c.JSON(http.StatusOK, toDirMonitorResponse(dw))
 }
 
-// DeleteDirwatch handles DELETE /api/admin/dirwatches/:id.
+// DeleteDirMonitor handles DELETE /api/admin/dirmonitors/:id.
 //
 // @Summary  Delete a directory watch
 // @Description  Deletes a directory watch by ID.
 // @Tags     Admin
 // @Produce  json
-// @Param    id   path      int  true  "Dirwatch ID"
+// @Param    id   path      int  true  "DirMonitor ID"
 // @Success  200  {object}  object{ok=bool}
 // @Failure  400  {object}  ErrorResponse
 // @Failure  404  {object}  ErrorResponse
 // @Failure  500  {object}  ErrorResponse
 // @Security BearerAuth
-// @Router   /admin/dirwatches/{id} [delete]
-func (h *AdminHandler) DeleteDirwatch(c *gin.Context) {
+// @Router   /admin/dirmonitors/{id} [delete]
+func (h *AdminHandler) DeleteDirMonitor(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
 		return
 	}
 
-	if _, err := h.queries.GetDirwatch(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "dirwatch not found"})
+	if _, err := h.queries.GetDirMonitor(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "dirmonitor not found"})
 		return
 	}
 
-	if err := h.queries.DeleteDirwatch(c.Request.Context(), id); err != nil {
-		slog.Error("failed to delete dirwatch", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete dirwatch"})
+	if err := h.queries.DeleteDirMonitor(c.Request.Context(), id); err != nil {
+		slog.Error("failed to delete dirmonitor", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete dirmonitor"})
 		return
 	}
-	// Reload the dirwatch service so the deleted watcher is stopped immediately.
+	// Reload the dirmonitor service so the deleted watcher is stopped immediately.
 	if h.dwReload != nil {
 		h.dwReload.Reload()
 	}

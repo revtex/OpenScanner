@@ -51,7 +51,7 @@ type Call struct {
 	SpikeCount      sql.NullInt64  `db:"spike_count" json:"spike_count"`
 }
 
-type Dirwatch struct {
+type Dirmonitor struct {
 	ID          int64          `db:"id" json:"id"`
 	Directory   string         `db:"directory" json:"directory"`
 	Type        string         `db:"type" json:"type"`

@@ -60,7 +60,7 @@ openscanner/                     ← monorepo root
 │   │   │   ├── duplicate.go     ← duplicate call detection
 │   │   │   ├── worker.go        ← bounded FFmpeg worker pool (channel queue)
 │   │   │   └── transcriber.go   ← Whisper transcription worker pool
-│   │   ├── dirwatch/            ← fsnotify-based directory watcher
+│   │   ├── dirmonitor/            ← fsnotify-based directory watcher
 │   │   │   ├── watcher.go       ← fsnotify watcher + polling fallback
 │   │   │   ├── parsers.go       ← per-recorder-type file parsers
 │   │   │   └── mask.go          ← meta-mask token expansion
@@ -89,7 +89,7 @@ openscanner/                     ← monorepo root
 │   │   ├── 009_create_calls.sql
 │   │   ├── 010_create_api_keys.sql
 │   │   ├── 011_create_accesses.sql
-│   │   ├── 012_create_dirwatches.sql
+│   │   ├── 012_create_dirmonitors.sql
 │   │   ├── 013_create_downstreams.sql
 │   │   ├── 014_create_logs.sql
 │   │   ├── 015_create_bookmarks.sql
@@ -113,7 +113,7 @@ openscanner/                     ← monorepo root
 │           ├── groups.sql
 │           ├── tags.sql
 │           ├── api_keys.sql
-│           ├── dirwatches.sql
+│           ├── dirmonitors.sql
 │           ├── downstreams.sql
 │           ├── logs.sql
 │           ├── bookmarks.sql
@@ -157,7 +157,7 @@ openscanner/                     ← monorepo root
 │   │   │       ├── UsersPanel.tsx       ← user account management (admin/listener)
 │   │   │       ├── SystemsPanel.tsx     ← systems + talkgroups + units CRUD
 │   │   │       ├── ApiKeysPanel.tsx     ← API key management
-│   │   │       ├── DirWatchPanel.tsx    ← directory watch configuration
+│   │   │       ├── DirMonitorPanel.tsx    ← directory watch configuration
 │   │   │       ├── DownstreamsPanel.tsx ← downstream instance configuration
 │   │   │       ├── GroupsTagsPanel.tsx  ← groups and tags CRUD
 │   │   │       ├── OptionsPanel.tsx     ← all key/value settings
@@ -176,7 +176,7 @@ openscanner/                     ← monorepo root
 │   │   │   └── useTheme.ts      ← dark/light theme toggle + localStorage persist
 │   │   └── types/
 │   │       └── index.ts         ← Call, System, Talkgroup, Group, Tag, ApiKey,
-│   │                               DirWatch, Downstream, Settings, WsMessage, Bookmark,
+│   │                               DirMonitor, Downstream, Settings, WsMessage, Bookmark,
 │   │                               Webhook, PushSubscription, Transcription types
 │   ├── index.html
 │   ├── sw.ts                    ← Service Worker (app-shell caching for PWA)
@@ -415,7 +415,7 @@ Audio file is stored on the filesystem. Only the relative path is in the DB.
 
 > **Dropped in migration 019.** The legacy access codes / PIN-based listener authentication feature has been removed. Authentication is now purely user-based (JWT) or public access mode.
 
-### `dirwatches`
+### `dirmonitors`
 
 | Column         | Type                     | Notes                                                                           |
 | -------------- | ------------------------ | ------------------------------------------------------------------------------- |
@@ -583,7 +583,7 @@ All resources support `GET` (list), `POST` (create), `PUT /:id` (update), `DELET
 | Groups      | `/api/admin/groups`      |
 | Tags        | `/api/admin/tags`        |
 | API Keys    | `/api/admin/apikeys`     |
-| DirWatches  | `/api/admin/dirwatches`  |
+| DirWatches  | `/api/admin/dirmonitors`  |
 | Downstreams | `/api/admin/downstreams` |
 
 **Read-only endpoints** (no POST/PUT/DELETE):
@@ -1623,12 +1623,12 @@ All extended features are **configurable** — disabled by default (except keybo
 
 **Goal:** All admin management endpoints work; config is fully DB-backed.
 
-1. ✅ CRUD handlers for all resources: users, systems, talkgroups, units, groups, tags, apikeys, dirwatches, downstreams, webhooks
+1. ✅ CRUD handlers for all resources: users, systems, talkgroups, units, groups, tags, apikeys, dirmonitors, downstreams, webhooks
 2. ✅ User management: admin can list/create/update/disable/delete users; password field accepted on create, hashed server-side; admin cannot delete own account; role validation enforced (`admin` or `listener`)
 3. ✅ `GET/PUT /api/admin/config` — reads all `settings` rows as a config object; writes back individual keys (allowlist-validated); broadcasts `CFG` on `PUT`
 4. ✅ `GET /api/admin/logs` — filterable by `from`, `to` (Unix timestamps), `level`; truncated to 10,000 rows with `X-Truncated` header
 5. ✅ `POST /api/admin/import/talkgroups` + `POST /api/admin/import/units` — CSV parsing with header detection, safety limit (100,000 rows), system existence validation
-6. ✅ `GET /api/admin/export/config` + `POST /api/admin/import/config` — full JSON config round-trip (settings, users, systems, talkgroups, units, groups, tags, apikeys, dirwatches, downstreams, webhooks) in a single transaction
+6. ✅ `GET /api/admin/export/config` + `POST /api/admin/import/config` — full JSON config round-trip (settings, users, systems, talkgroups, units, groups, tags, apikeys, dirmonitors, downstreams, webhooks) in a single transaction
 7. ✅ Integration tests: every endpoint including 401 (missing JWT), 404 (not found), 422 (validation fail)
 
 **Deliverables:** Full admin dashboard backend is functional; all 50+ endpoints return correct status codes.
@@ -1639,21 +1639,21 @@ All extended features are **configurable** — disabled by default (except keybo
 
 ---
 
-### Phase 7 — DirWatch Service ✅
+### Phase 7 — DirMonitor Service ✅
 
 **Status: COMPLETE**
 
 **Goal:** Audio files dropped into watched directories are automatically ingested.
 
-1. ✅ `internal/dirwatch/watcher.go` — `fsnotify` watcher per configured directory; polling fallback for CIFS/NFS mounts (controlled by `use_polling` column, configurable delay); restarts when dirwatch config changes via admin API
-2. ✅ `internal/dirwatch/parsers.go` — one parser function per recorder type:
+1. ✅ `internal/dirmonitor/watcher.go` — `fsnotify` watcher per configured directory; polling fallback for CIFS/NFS mounts (controlled by `use_polling` column, configurable delay); restarts when dirmonitor config changes via admin API
+2. ✅ `internal/dirmonitor/parsers.go` — one parser function per recorder type:
    - `trunk-recorder` — JSON sidecar file
    - `sdrtrunk` — filename pattern (`<sysID>_<tgID>_<ts>.<ext>`)
    - `rtlsdr-airband` — filename pattern
    - `dsdplus` — DSDPlus Fast Lane format
    - `proscan` — ProScan format
    - `voxcall` — voxcall format
-3. ✅ `internal/dirwatch/mask.go` — expand all meta-mask tokens: `#DATE`, `#TIME`, `#ZTIME`, `#GROUP`, `#SYSLBL`, `#TAG`, `#TGAFS`, `#UNIT`, `#TGLBL`, `#TGHZ`, `#TGKHZ`, `#TGMHZ`, `#TGID`
+3. ✅ `internal/dirmonitor/mask.go` — expand all meta-mask tokens: `#DATE`, `#TIME`, `#ZTIME`, `#GROUP`, `#SYSLBL`, `#TAG`, `#TGAFS`, `#UNIT`, `#TGLBL`, `#TGHZ`, `#TGKHZ`, `#TGMHZ`, `#TGID`
 4. ✅ Delete-after-import: remove source file on successful ingest if `delete_after=1`
 5. ✅ Unit tests: mask expansion for all tokens, each parser with fixture files
 
@@ -1661,7 +1661,7 @@ All extended features are **configurable** — disabled by default (except keybo
 
 **Agents:** Go Expert (watcher, parsers, mask expansion), Testing Expert (unit tests with fixture files).
 
-**References:** [`dirwatches` table](#dirwatches) (columns, 6 recorder types), [Settings](#settings) (`autoPopulate`).
+**References:** [`dirmonitors` table](#dirmonitors) (columns, 6 recorder types), [Settings](#settings) (`autoPopulate`).
 
 ---
 
@@ -1756,7 +1756,7 @@ All extended features are **configurable** — disabled by default (except keybo
    - `UsersPanel` — user accounts table: username, role badge (admin/listener), disabled toggle, expiration, connection limit, system grant editor; create-user form with role selector and password field
    - `SystemsPanel` — systems table with expandable nested talkgroup and unit sub-lists; drag-to-reorder via `@dnd-kit`; **virtual scrolling** via `@tanstack/react-virtual` for systems with many talkgroups
    - `ApiKeysPanel` — generate UUID, copy-to-clipboard, enable/disable toggle, system grant editor, drag-to-reorder
-   - `DirWatchPanel` — directory path, type dropdown, mask field, extension, delay, delete-after toggle
+   - `DirMonitorPanel` — directory path, type dropdown, mask field, extension, delay, delete-after toggle
    - `DownstreamsPanel` — URL, API key, system grant editor, enable/disable
    - `GroupsTagsPanel` — two simple tables: groups and tags with add/rename/delete
    - `OptionsPanel` — all settings key/value pairs rendered as appropriate input types (toggle, number, text); `publicAccess` toggle shown prominently with a warning badge explaining it opens the scanner to unauthenticated listeners
@@ -1814,8 +1814,8 @@ All extended features are **configurable** — disabled by default (except keybo
 | `internal/auth/ratelimit_test.go`    | 3 failures → lockout, lockout expiry after 10 minutes                                         |
 | `internal/audio/duplicate_test.go`   | Duplicate detection within/outside timeframe                                                  |
 | `internal/audio/processor_test.go`   | Path sanitiser blocks `../`, valid paths accepted                                             |
-| `internal/dirwatch/mask_test.go`     | All meta-mask tokens expand correctly                                                         |
-| `internal/dirwatch/parsers_test.go`  | Each parser with fixture input files                                                          |
+| `internal/dirmonitor/mask_test.go`     | All meta-mask tokens expand correctly                                                         |
+| `internal/dirmonitor/parsers_test.go`  | Each parser with fixture input files                                                          |
 | `internal/audio/transcriber_test.go` | Whisper invocation arg construction, binary-not-found graceful disable                        |
 | `internal/api/webhooks_test.go`      | HMAC-SHA256 signature calculation, Discord embed format, delivery retry logic                 |
 | `internal/notify/push_test.go`       | VAPID key generation, subscription TG filter matching                                         |
@@ -1876,7 +1876,7 @@ All extended features are **configurable** — disabled by default (except keybo
 2. `docs/api.md` — behavior-focused API guide; endpoint contract details live in Swagger UI at `/api/admin/docs` (session minted via `/api/admin/docs/session`)
 3. `docs/admin-guide.md` — step-by-step UI walkthrough; screenshots/GIFs (optional)
 4. `docs/deployment.md` — bare metal (Linux/macOS/Windows), Docker, docker-compose, nginx reverse proxy config, Caddy Caddyfile, Let's Encrypt, environment variables reference
-5. `docs/recorder-integration.md` — per-recorder quick-start (Trunk Recorder JSON plugin config, SDRTrunk export path, RTLSDR-Airband dirwatch setup, DSDPlus Fast Lane, ProScan, voxcall)
+5. `docs/recorder-integration.md` — per-recorder quick-start (Trunk Recorder JSON plugin config, SDRTrunk export path, RTLSDR-Airband dirmonitor setup, DSDPlus Fast Lane, ProScan, voxcall)
 
 **Agents:** Docs Expert (all documentation files, OpenAPI spec, Swagger UI integration, admin guide).
 
@@ -1996,7 +1996,7 @@ Each phase is complete when all of the following pass:
 | 6   | After `POST /api/setup` with `{username, password}` → admin user created; `GET /api/setup/status` → `{needsSetup: false}`; `/setup` page returns 403     |
 | 7   | Admin wrong password 3× → next attempt returns 429 for 10 minutes                                                                                        |
 | 8   | `PUT /api/admin/config` → all connected admin WS clients receive `CFG` event                                                                             |
-| 9   | Drop Trunk Recorder file into DirWatch directory → call appears in scanner within polling delay                                                          |
+| 9   | Drop Trunk Recorder file into DirMonitor directory → call appears in scanner within polling delay                                                          |
 | 10  | Configure a downstream → upload a call → downstream instance DB contains the call                                                                        |
 | 11  | CLI `login` → `config-get` → exports valid JSON; `config-set` → imports it back                                                                          |
 | 12  | `--service install` registers system service on Linux/macOS/Windows                                                                                      |
@@ -2033,8 +2033,8 @@ Each phase is complete when all of the following pass:
 Everything rdio-scanner v6.6.x does:
 
 - All 6 recorder integrations (Trunk Recorder, SDRTrunk, RTLSDR-Airband, DSDPlus, ProScan, voxcall)
-- SDRTrunk HTTP API ingest (in addition to DirWatch)
-- DirWatch with all recorder parsers, meta-mask, polling fallback for CIFS/NFS
+- SDRTrunk HTTP API ingest (in addition to DirMonitor)
+- DirMonitor with all recorder parsers, meta-mask, polling fallback for CIFS/NFS
 - Downstream call forwarding
 - API keys with per-system/TG grants
 - Full TG selection (ON/OFF/PARTIAL), live feed, archive search

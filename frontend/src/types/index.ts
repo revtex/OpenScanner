@@ -167,7 +167,7 @@ export interface AdminApiKeyCreateResponse extends AdminApiKey {
   createdKey: string;
 }
 
-export interface AdminDirwatch {
+export interface AdminDirMonitor {
   id: number;
   directory: string;
   type: string;

@@ -36,7 +36,7 @@ import (
 	"github.com/openscanner/openscanner/internal/cli"
 	"github.com/openscanner/openscanner/internal/config"
 	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/dirwatch"
+	"github.com/openscanner/openscanner/internal/dirmonitor"
 	"github.com/openscanner/openscanner/internal/downstream"
 	"github.com/openscanner/openscanner/internal/seed"
 	"github.com/openscanner/openscanner/internal/ws"
@@ -208,11 +208,11 @@ func (p *program) run() {
 	hub := ws.NewHub(queries, config.Version)
 	go hub.Run(ctx)
 
-	// Start DirWatch service.
+	// Start DirMonitor service.
 	dsService := downstream.NewService(queries, processor)
 	dsService.Start(ctx)
 
-	dwService := dirwatch.NewService(queries, processor, hub, dsService)
+	dwService := dirmonitor.NewService(queries, processor, hub, dsService)
 	dwService.Start(ctx)
 
 	api.RegisterRoutes(router, api.Deps{
@@ -221,7 +221,7 @@ func (p *program) run() {
 		Processor:          processor,
 		Hub:                hub,
 		SQLDB:              sqlDB,
-		DirwatchReloader:   dwService,
+		DirMonitorReloader:   dwService,
 		DownstreamReloader: dsService,
 		DownstreamNotifier: dsService,
 		Version:            config.Version,

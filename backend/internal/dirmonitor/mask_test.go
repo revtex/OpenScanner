@@ -1,4 +1,4 @@
-package dirwatch
+package dirmonitor
 
 import (
 	"testing"

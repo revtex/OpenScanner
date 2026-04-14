@@ -8,7 +8,7 @@ import type {
   AdminTag,
   AdminApiKey,
   AdminApiKeyCreateResponse,
-  AdminDirwatch,
+  AdminDirMonitor,
   AdminDownstream,
   AdminWebhook,
   AdminSetting,
@@ -348,7 +348,7 @@ const adminApi = api.injectEndpoints({
       invalidatesTags: ["ApiKeys"],
     }),
 
-    // ── Dirwatches ──
+    // ── DirMonitors ──
     listServerDirectories: builder.query<
       ServerDirectoryListResponse,
       { path: string }
@@ -358,30 +358,30 @@ const adminApi = api.injectEndpoints({
         params: { path },
       }),
     }),
-    listDirwatches: builder.query<AdminDirwatch[], void>({
-      query: () => "/admin/dirwatches",
-      providesTags: ["Dirwatches"],
+    listDirMonitors: builder.query<AdminDirMonitor[], void>({
+      query: () => "/admin/dirmonitors",
+      providesTags: ["DirMonitors"],
     }),
-    createDirwatch: builder.mutation<
-      AdminDirwatch,
-      CreatePayload<AdminDirwatch>
+    createDirMonitor: builder.mutation<
+      AdminDirMonitor,
+      CreatePayload<AdminDirMonitor>
     >({
-      query: (body) => ({ url: "/admin/dirwatches", method: "POST", body }),
-      invalidatesTags: ["Dirwatches"],
+      query: (body) => ({ url: "/admin/dirmonitors", method: "POST", body }),
+      invalidatesTags: ["DirMonitors"],
     }),
-    updateDirwatch: builder.mutation<
-      AdminDirwatch,
-      UpdatePayload<AdminDirwatch>
+    updateDirMonitor: builder.mutation<
+      AdminDirMonitor,
+      UpdatePayload<AdminDirMonitor>
     >({
       query: ({ id, ...body }) => ({
-        url: `/admin/dirwatches/${id}`,
+        url: `/admin/dirmonitors/${id}`,
         method: "PUT",
         body,
       }),
       async onQueryStarted({ id, ...body }, { dispatch, queryFulfilled }) {
         const patch = dispatch(
           adminApi.util.updateQueryData(
-            "listDirwatches",
+            "listDirMonitors",
             undefined,
             (draft) => {
               const dw = draft.find((d) => d.id === id);
@@ -396,11 +396,11 @@ const adminApi = api.injectEndpoints({
           patch.undo();
         }
       },
-      invalidatesTags: ["Dirwatches"],
+      invalidatesTags: ["DirMonitors"],
     }),
-    deleteDirwatch: builder.mutation<void, number>({
-      query: (id) => ({ url: `/admin/dirwatches/${id}`, method: "DELETE" }),
-      invalidatesTags: ["Dirwatches"],
+    deleteDirMonitor: builder.mutation<void, number>({
+      query: (id) => ({ url: `/admin/dirmonitors/${id}`, method: "DELETE" }),
+      invalidatesTags: ["DirMonitors"],
     }),
 
     // ── Downstreams ──
@@ -542,7 +542,7 @@ const adminApi = api.injectEndpoints({
         "Groups",
         "Tags",
         "ApiKeys",
-        "Dirwatches",
+        "DirMonitors",
         "Downstreams",
         "Webhooks",
         "Config",
@@ -613,12 +613,12 @@ export const {
   useUpdateApiKeyMutation,
   useReorderApiKeysMutation,
   useDeleteApiKeyMutation,
-  // Dirwatches
+  // DirMonitors
   useLazyListServerDirectoriesQuery,
-  useListDirwatchesQuery,
-  useCreateDirwatchMutation,
-  useUpdateDirwatchMutation,
-  useDeleteDirwatchMutation,
+  useListDirMonitorsQuery,
+  useCreateDirMonitorMutation,
+  useUpdateDirMonitorMutation,
+  useDeleteDirMonitorMutation,
   // Downstreams
   useListDownstreamsQuery,
   useCreateDownstreamMutation,

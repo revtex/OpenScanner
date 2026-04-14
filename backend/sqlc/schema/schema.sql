@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     "order"      INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS dirwatches (
+CREATE TABLE IF NOT EXISTS dirmonitors (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     directory    TEXT    NOT NULL,
     type         TEXT    NOT NULL,

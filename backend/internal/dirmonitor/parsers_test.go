@@ -1,4 +1,4 @@
-package dirwatch
+package dirmonitor
 
 import (
 	"database/sql"
@@ -13,9 +13,9 @@ import (
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-// dwFor returns a minimal db.Dirwatch for the given type and directory.
-func dwFor(dwType, dir string) db.Dirwatch {
-	return db.Dirwatch{
+// dwFor returns a minimal db.Dirmonitor for the given type and directory.
+func dwFor(dwType, dir string) db.Dirmonitor {
+	return db.Dirmonitor{
 		ID:        1,
 		Directory: dir,
 		Type:      dwType,
@@ -246,7 +246,7 @@ func TestParseSDRTrunk_DirwatchSystemIDOverride(t *testing.T) {
 	audioPath := filepath.Join(dir, "1_12345_1700000000.mp3")
 	os.WriteFile(audioPath, []byte("ID3FAKE"), 0644) //nolint:errcheck
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:        1,
 		Directory: dir,
 		Type:      "sdrtrunk",
@@ -275,7 +275,7 @@ func TestParseSDRTrunk_DirwatchTalkgroupIDOverride(t *testing.T) {
 	audioPath := filepath.Join(dir, "1_12345_1700000000.mp3")
 	os.WriteFile(audioPath, []byte("ID3FAKE"), 0644) //nolint:errcheck
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:          1,
 		Directory:   dir,
 		Type:        "sdrtrunk",
@@ -299,7 +299,7 @@ func TestParseSDRTrunk_FrequencyFromDirwatch(t *testing.T) {
 	audioPath := filepath.Join(dir, "1_12345_1700000000.mp3")
 	os.WriteFile(audioPath, []byte("ID3FAKE"), 0644) //nolint:errcheck
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:        1,
 		Directory: dir,
 		Type:      "sdrtrunk",
@@ -367,7 +367,7 @@ func TestParseRTLSDRAirband_WithDirwatchOverrides(t *testing.T) {
 	audioPath := filepath.Join(dir, "rec.wav")
 	os.WriteFile(audioPath, []byte("RIFF"), 0644) //nolint:errcheck
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:          1,
 		Directory:   dir,
 		Type:        "rtlsdr-airband",
@@ -418,7 +418,7 @@ func TestParseDSDPlus_WithDirwatchOverrides(t *testing.T) {
 	audioPath := filepath.Join(dir, "call.mp3")
 	os.WriteFile(audioPath, []byte("ID3"), 0644) //nolint:errcheck
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:          1,
 		Directory:   dir,
 		Type:        "dsdplus",
@@ -458,7 +458,7 @@ func TestParseProScan_WithDirwatchOverrides(t *testing.T) {
 	audioPath := filepath.Join(dir, "scan.mp3")
 	os.WriteFile(audioPath, []byte("ID3"), 0644) //nolint:errcheck
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:          1,
 		Directory:   dir,
 		Type:        "proscan",
@@ -487,7 +487,7 @@ func TestParseVoxCall_WithDirwatchOverrides(t *testing.T) {
 	audioPath := filepath.Join(dir, "vox.ogg")
 	os.WriteFile(audioPath, []byte("OggS"), 0644) //nolint:errcheck
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:          1,
 		Directory:   dir,
 		Type:        "voxcall",
@@ -527,7 +527,7 @@ func TestParseGeneric_AudioFile(t *testing.T) {
 	audioPath := filepath.Join(dir, "rec.flac")
 	os.WriteFile(audioPath, []byte("fLaC"), 0644) //nolint:errcheck
 
-	dw := db.Dirwatch{
+	dw := db.Dirmonitor{
 		ID:          1,
 		Directory:   dir,
 		Type:        "generic",

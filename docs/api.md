@@ -76,7 +76,7 @@ This page intentionally focuses on behavior, access model, and workflow guidance
 - `/api/admin/tags`
 - `/api/admin/apikeys`
 - `/api/admin/fs/directories`
-- `/api/admin/dirwatches`
+- `/api/admin/dirmonitors`
 - `/api/admin/downstreams`
 - `/api/admin/webhooks`
 

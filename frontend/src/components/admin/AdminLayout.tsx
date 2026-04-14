@@ -38,7 +38,7 @@ import UsersPanel from "@/components/admin/UsersPanel";
 import SystemsPanel from "@/components/admin/SystemsPanel";
 import GroupsTagsPanel from "@/components/admin/GroupsTagsPanel";
 import ApiKeysPanel from "@/components/admin/ApiKeysPanel";
-import DirWatchPanel from "@/components/admin/DirWatchPanel";
+import DirMonitorPanel from "@/components/admin/DirMonitorPanel";
 import DownstreamsPanel from "@/components/admin/DownstreamsPanel";
 import OptionsPanel from "@/components/admin/OptionsPanel";
 import LogsPanel from "@/components/admin/LogsPanel";
@@ -53,7 +53,7 @@ const navItems = [
   { to: "/admin/systems", label: "Systems", icon: Radio },
   { to: "/admin/groups", label: "Groups & Tags", icon: FolderTree },
   { to: "/admin/apikeys", label: "API Keys", icon: Key },
-  { to: "/admin/dirwatches", label: "Monitors", icon: FolderSearch },
+  { to: "/admin/dirmonitors", label: "Monitors", icon: FolderSearch },
   { to: "/admin/downstreams", label: "Downstreams", icon: ArrowDownToLine },
   { to: "/admin/shared-links", label: "Shared Links", icon: Share2 },
   { to: "/admin/options", label: "Options", icon: Settings },
@@ -193,7 +193,7 @@ export default function AdminLayout() {
               <Route path="systems" element={<SystemsPanel />} />
               <Route path="groups" element={<GroupsTagsPanel />} />
               <Route path="apikeys" element={<ApiKeysPanel />} />
-              <Route path="dirwatches" element={<DirWatchPanel />} />
+              <Route path="dirmonitors" element={<DirMonitorPanel />} />
               <Route path="downstreams" element={<DownstreamsPanel />} />
               <Route path="options" element={<OptionsPanel />} />
               <Route path="logs" element={<LogsPanel />} />

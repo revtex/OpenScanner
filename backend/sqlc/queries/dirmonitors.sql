@@ -1,14 +1,14 @@
--- name: GetDirwatch :one
-SELECT * FROM dirwatches WHERE id = ? LIMIT 1;
+-- name: GetDirMonitor :one
+SELECT * FROM dirmonitors WHERE id = ? LIMIT 1;
 
--- name: ListDirwatches :many
-SELECT * FROM dirwatches ORDER BY "order" ASC, id ASC;
+-- name: ListDirMonitors :many
+SELECT * FROM dirmonitors ORDER BY "order" ASC, id ASC;
 
--- name: ListActiveDirwatches :many
-SELECT * FROM dirwatches WHERE disabled = 0 ORDER BY "order" ASC, id ASC;
+-- name: ListActiveDirMonitors :many
+SELECT * FROM dirmonitors WHERE disabled = 0 ORDER BY "order" ASC, id ASC;
 
--- name: CreateDirwatch :one
-INSERT INTO dirwatches (
+-- name: CreateDirMonitor :one
+INSERT INTO dirmonitors (
     directory,
     type,
     mask,
@@ -36,8 +36,8 @@ INSERT INTO dirwatches (
     :order
 ) RETURNING id;
 
--- name: UpdateDirwatch :exec
-UPDATE dirwatches SET
+-- name: UpdateDirMonitor :exec
+UPDATE dirmonitors SET
     directory    = :directory,
     type         = :type,
     mask         = :mask,
@@ -52,5 +52,5 @@ UPDATE dirwatches SET
     "order"      = :order
 WHERE id = :id;
 
--- name: DeleteDirwatch :exec
-DELETE FROM dirwatches WHERE id = ?;
+-- name: DeleteDirMonitor :exec
+DELETE FROM dirmonitors WHERE id = ?;

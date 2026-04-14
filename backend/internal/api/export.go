@@ -47,7 +47,7 @@ type configExport struct {
 	Groups      []db.Group         `json:"groups"`
 	Tags        []db.Tag           `json:"tags"`
 	APIKeys     []exportAPIKey     `json:"apiKeys"`
-	Dirwatches  []db.Dirwatch      `json:"dirwatches"`
+	DirMonitors  []db.Dirmonitor      `json:"dirmonitors"`
 	Downstreams []exportDownstream `json:"downstreams"`
 	Webhooks    []exportWebhook    `json:"webhooks"`
 } // @name ConfigExport
@@ -113,10 +113,10 @@ func (h *AdminHandler) ExportConfig(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to export api keys"})
 		return
 	}
-	dirwatches, err := h.queries.ListDirwatches(ctx)
+	dirmonitors, err := h.queries.ListDirMonitors(ctx)
 	if err != nil {
-		slog.Error("export: failed to list dirwatches", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to export dirwatches"})
+		slog.Error("export: failed to list dirmonitors", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to export dirmonitors"})
 		return
 	}
 	downstreams, err := h.queries.ListDownstreams(ctx)
@@ -174,7 +174,7 @@ func (h *AdminHandler) ExportConfig(c *gin.Context) {
 		Groups:      groups,
 		Tags:        tags,
 		APIKeys:     safeAPIKeys,
-		Dirwatches:  dirwatches,
+		DirMonitors:  dirmonitors,
 		Downstreams: safeDownstreams,
 		Webhooks:    safeWebhooks,
 	}
@@ -192,7 +192,7 @@ type configImport struct {
 	Talkgroups  []db.Talkgroup  `json:"talkgroups"`
 	Units       []db.Unit       `json:"units"`
 	APIKeys     []db.ApiKey     `json:"apiKeys"`
-	Dirwatches  []db.Dirwatch   `json:"dirwatches"`
+	DirMonitors  []db.Dirmonitor   `json:"dirmonitors"`
 	Downstreams []db.Downstream `json:"downstreams"`
 	Webhooks    []db.Webhook    `json:"webhooks"`
 } // @name ConfigImport
@@ -200,7 +200,7 @@ type configImport struct {
 // ImportConfig handles POST /api/admin/import/config.
 //
 // @Summary      Import full configuration
-// @Description  Imports settings, groups, tags, systems, talkgroups, units, API keys, dirwatches, downstreams, and webhooks from a JSON body. Existing records are upserted or skipped on conflict.
+// @Description  Imports settings, groups, tags, systems, talkgroups, units, API keys, dirmonitors, downstreams, and webhooks from a JSON body. Existing records are upserted or skipped on conflict.
 // @Tags         Admin
 // @Accept       json
 // @Produce      json
@@ -332,9 +332,9 @@ func (h *AdminHandler) ImportConfig(c *gin.Context) {
 		}
 	}
 
-	// Dirwatches
-	for _, d := range data.Dirwatches {
-		if _, err := qtx.CreateDirwatch(ctx, db.CreateDirwatchParams{
+	// DirMonitors
+	for _, d := range data.DirMonitors {
+		if _, err := qtx.CreateDirMonitor(ctx, db.CreateDirMonitorParams{
 			Directory:   d.Directory,
 			Type:        d.Type,
 			Mask:        d.Mask,
@@ -349,8 +349,8 @@ func (h *AdminHandler) ImportConfig(c *gin.Context) {
 			Order:       d.Order,
 		}); err != nil {
 			if !isUniqueViolation(err) {
-				slog.Error("import config: failed to create dirwatch", "error", err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to import dirwatches"})
+				slog.Error("import config: failed to create dirmonitor", "error", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to import dirmonitors"})
 				return
 			}
 		}

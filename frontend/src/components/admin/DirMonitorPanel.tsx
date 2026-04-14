@@ -2,16 +2,16 @@ import { useState, useMemo, useCallback } from "react";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import {
   useLazyListServerDirectoriesQuery,
-  useListDirwatchesQuery,
-  useCreateDirwatchMutation,
-  useUpdateDirwatchMutation,
-  useDeleteDirwatchMutation,
+  useListDirMonitorsQuery,
+  useCreateDirMonitorMutation,
+  useUpdateDirMonitorMutation,
+  useDeleteDirMonitorMutation,
   useListSystemsQuery,
   useListTalkgroupsQuery,
 } from "@/app/slices/adminSlice";
-import type { AdminDirwatch } from "@/types";
+import type { AdminDirMonitor } from "@/types";
 
-const DIRWATCH_TYPES = [
+const DIRMONITOR_TYPES = [
   { value: "default", label: "Default (mask-based)" },
   { value: "dsdplus", label: "DSDPlus Fast Lane" },
   { value: "sdr-trunk", label: "SDR Trunk" },
@@ -36,7 +36,7 @@ const MASK_HELP = `Extract metadata from the filename using these tokens:
   #UNIT — unit ID
 Example: cymx_#TG_#DATE_#TIME_#HZ`;
 
-interface DirwatchFormState {
+interface DirMonitorFormState {
   directory: string;
   type: string;
   mask: string;
@@ -50,7 +50,7 @@ interface DirwatchFormState {
   talkgroupId: string;
 }
 
-const emptyForm: DirwatchFormState = {
+const emptyForm: DirMonitorFormState = {
   directory: "",
   type: "trunk-recorder",
   mask: "",
@@ -64,11 +64,11 @@ const emptyForm: DirwatchFormState = {
   talkgroupId: "",
 };
 
-export default function DirWatchPanel() {
-  const { data: dirwatches, isLoading } = useListDirwatchesQuery();
-  const [createDirwatch] = useCreateDirwatchMutation();
-  const [updateDirwatch] = useUpdateDirwatchMutation();
-  const [deleteDirwatch] = useDeleteDirwatchMutation();
+export default function DirMonitorPanel() {
+  const { data: dirmonitors, isLoading } = useListDirMonitorsQuery();
+  const [createDirMonitor] = useCreateDirMonitorMutation();
+  const [updateDirMonitor] = useUpdateDirMonitorMutation();
+  const [deleteDirMonitor] = useDeleteDirMonitorMutation();
   const { data: systems } = useListSystemsQuery();
   const { data: allTalkgroups } = useListTalkgroupsQuery();
   const [loadServerDirs, { data: serverDirs, isFetching: loadingServerDirs }] =
@@ -79,7 +79,7 @@ export default function DirWatchPanel() {
   const [directoryBrowserPath, setDirectoryBrowserPath] = useState("/");
   const [directoryJumpInput, setDirectoryJumpInput] = useState("/");
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<DirwatchFormState>(emptyForm);
+  const [form, setForm] = useState<DirMonitorFormState>(emptyForm);
   const [toast, setToast] = useState<string | null>(null);
 
   const showError = useCallback((msg: string) => {
@@ -88,8 +88,8 @@ export default function DirWatchPanel() {
   }, []);
 
   const sorted = useMemo(
-    () => (dirwatches ? [...dirwatches].sort((a, b) => a.order - b.order) : []),
-    [dirwatches],
+    () => (dirmonitors ? [...dirmonitors].sort((a, b) => a.order - b.order) : []),
+    [dirmonitors],
   );
 
   // Talkgroups indexed by their DB system row ID
@@ -119,7 +119,7 @@ export default function DirWatchPanel() {
     setModalOpen(true);
   };
 
-  const openEdit = (d: AdminDirwatch) => {
+  const openEdit = (d: AdminDirMonitor) => {
     setEditingId(d.id);
     setForm({
       directory: d.directory,
@@ -154,9 +154,9 @@ export default function DirWatchPanel() {
     };
     try {
       if (editingId != null) {
-        await updateDirwatch({ id: editingId, ...payload }).unwrap();
+        await updateDirMonitor({ id: editingId, ...payload }).unwrap();
       } else {
-        await createDirwatch({ ...payload, order: sorted.length }).unwrap();
+        await createDirMonitor({ ...payload, order: sorted.length }).unwrap();
       }
       setModalOpen(false);
     } catch (err) {
@@ -177,18 +177,18 @@ export default function DirWatchPanel() {
     }
   };
 
-  const handleDelete = async (d: AdminDirwatch) => {
+  const handleDelete = async (d: AdminDirMonitor) => {
     if (!window.confirm(`Delete directory monitor "${d.directory}"?`)) return;
     try {
-      await deleteDirwatch(d.id).unwrap();
+      await deleteDirMonitor(d.id).unwrap();
     } catch {
       showError("Failed to delete directory monitor");
     }
   };
 
-  const handleToggleDisabled = async (d: AdminDirwatch) => {
+  const handleToggleDisabled = async (d: AdminDirMonitor) => {
     try {
-      await updateDirwatch({
+      await updateDirMonitor({
         id: d.id,
         directory: d.directory,
         type: d.type,
@@ -280,7 +280,7 @@ export default function DirWatchPanel() {
                   <tr key={d.id}>
                     <td className="font-mono text-sm">{d.directory}</td>
                     <td>
-                      {DIRWATCH_TYPES.find((t) => t.value === d.type)?.label ??
+                      {DIRMONITOR_TYPES.find((t) => t.value === d.type)?.label ??
                         d.type}
                     </td>
                     <td>
@@ -346,7 +346,7 @@ export default function DirWatchPanel() {
                   })
                 }
               >
-                {DIRWATCH_TYPES.map(({ value, label }) => (
+                {DIRMONITOR_TYPES.map(({ value, label }) => (
                   <option key={value} value={value}>
                     {label}
                   </option>

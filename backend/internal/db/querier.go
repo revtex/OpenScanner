@@ -15,7 +15,7 @@ type Querier interface {
 	CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (int64, error)
 	CreateBookmark(ctx context.Context, arg CreateBookmarkParams) (int64, error)
 	CreateCall(ctx context.Context, arg CreateCallParams) (int64, error)
-	CreateDirwatch(ctx context.Context, arg CreateDirwatchParams) (int64, error)
+	CreateDirMonitor(ctx context.Context, arg CreateDirMonitorParams) (int64, error)
 	CreateDownstream(ctx context.Context, arg CreateDownstreamParams) (int64, error)
 	CreateGroup(ctx context.Context, label string) (int64, error)
 	CreateLog(ctx context.Context, arg CreateLogParams) error
@@ -33,7 +33,7 @@ type Querier interface {
 	DeleteBookmarkByCallAndUser(ctx context.Context, arg DeleteBookmarkByCallAndUserParams) error
 	DeleteCall(ctx context.Context, id int64) error
 	DeleteCallBatch(ctx context.Context, id int64) error
-	DeleteDirwatch(ctx context.Context, id int64) error
+	DeleteDirMonitor(ctx context.Context, id int64) error
 	DeleteDownstream(ctx context.Context, id int64) error
 	DeleteGroup(ctx context.Context, id int64) error
 	DeletePushSubscription(ctx context.Context, id int64) error
@@ -61,7 +61,7 @@ type Querier interface {
 	GetCallIDsOlderThan(ctx context.Context, dateTime int64) ([]GetCallIDsOlderThanRow, error)
 	// Returns call count per hour for the last 24 hours (24 rows, one per hour bucket).
 	GetCallsPerHour(ctx context.Context, dateTime int64) ([]GetCallsPerHourRow, error)
-	GetDirwatch(ctx context.Context, id int64) (Dirwatch, error)
+	GetDirMonitor(ctx context.Context, id int64) (Dirmonitor, error)
 	GetDownstream(ctx context.Context, id int64) (Downstream, error)
 	GetGroup(ctx context.Context, id int64) (Group, error)
 	GetPushSubscription(ctx context.Context, id int64) (PushSubscription, error)
@@ -86,7 +86,7 @@ type Querier interface {
 	HasCallAtTimestamp(ctx context.Context, arg HasCallAtTimestampParams) (int64, error)
 	HasCallInTimeRange(ctx context.Context, arg HasCallInTimeRangeParams) (int64, error)
 	ListAPIKeys(ctx context.Context) ([]ApiKey, error)
-	ListActiveDirwatches(ctx context.Context) ([]Dirwatch, error)
+	ListActiveDirMonitors(ctx context.Context) ([]Dirmonitor, error)
 	ListActiveDownstreams(ctx context.Context) ([]Downstream, error)
 	ListActiveWebhooks(ctx context.Context) ([]Webhook, error)
 	ListAllActivePushSubscriptions(ctx context.Context) ([]PushSubscription, error)
@@ -98,7 +98,7 @@ type Querier interface {
 	ListBookmarksByUser(ctx context.Context, userID sql.NullInt64) ([]Bookmark, error)
 	ListCalls(ctx context.Context, arg ListCallsParams) ([]Call, error)
 	ListCallsAsc(ctx context.Context, arg ListCallsAscParams) ([]Call, error)
-	ListDirwatches(ctx context.Context) ([]Dirwatch, error)
+	ListDirMonitors(ctx context.Context) ([]Dirmonitor, error)
 	ListDownstreams(ctx context.Context) ([]Downstream, error)
 	ListGroups(ctx context.Context) ([]Group, error)
 	ListLogs(ctx context.Context) ([]Log, error)
@@ -117,7 +117,7 @@ type Querier interface {
 	PruneLogs(ctx context.Context, dateTime int64) error
 	SetSetupComplete(ctx context.Context, setupComplete int64) error
 	UpdateAPIKey(ctx context.Context, arg UpdateAPIKeyParams) error
-	UpdateDirwatch(ctx context.Context, arg UpdateDirwatchParams) error
+	UpdateDirMonitor(ctx context.Context, arg UpdateDirMonitorParams) error
 	UpdateDownstream(ctx context.Context, arg UpdateDownstreamParams) error
 	UpdateGroup(ctx context.Context, arg UpdateGroupParams) error
 	UpdateSystem(ctx context.Context, arg UpdateSystemParams) error

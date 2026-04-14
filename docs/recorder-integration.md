@@ -1,6 +1,6 @@
 # OpenScanner — Recorder Integration Guide
 
-> Call upload endpoints (`POST /api/call-upload`, `POST /api/trunk-recorder-call-upload`) are fully implemented. DirWatch (directory-based file ingestion) is also fully implemented as of Phase 7.
+> Call upload endpoints (`POST /api/call-upload`, `POST /api/trunk-recorder-call-upload`) are fully implemented. DirMonitor (directory-based file ingestion) is also fully implemented as of Phase 7.
 
 ## HTTP API Upload
 
@@ -13,7 +13,7 @@ Both endpoints require an `X-API-Key` header (or `?key=` query parameter). See [
 
 ## Recorder Support Matrix
 
-| Recorder          | HTTP API                             | DirWatch    |
+| Recorder          | HTTP API                             | DirMonitor    |
 | ----------------- | ------------------------------------ | ----------- |
 | Trunk Recorder    | POST /api/trunk-recorder-call-upload | Implemented |
 | SDRTrunk          | POST /api/call-upload                | Implemented |
@@ -24,20 +24,20 @@ Both endpoints require an `X-API-Key` header (or `?key=` query parameter). See [
 
 ---
 
-## DirWatch Service
+## DirMonitor Service
 
-The DirWatch service monitors local directories for new audio files and automatically ingests them into OpenScanner — no HTTP upload needed. Configure one or more **DirWatch entries** via the admin dashboard (`Admin → DirWatch`) or the API.
+The DirMonitor service monitors local directories for new audio files and automatically ingests them into OpenScanner — no HTTP upload needed. Configure one or more **DirMonitor entries** via the admin dashboard (`Admin → DirMonitor`) or the API.
 
 ### How It Works
 
-1. Each enabled dirwatch entry spawns a dedicated goroutine watching its configured `directory`.
+1. Each enabled dirmonitor entry spawns a dedicated goroutine watching its configured `directory`.
 2. When a new file appears (via fsnotify or polling), the service:
    - Validates the path is inside the watched directory (path-traversal protection)
    - Applies the extension filter if `extension` is set
    - Runs the recorder-type parser to extract call metadata
    - Runs the same ingest pipeline as an HTTP upload (duplicate check → FFmpeg conversion → DB insert → WS broadcast)
    - Optionally deletes the source file if `deleteAfter = 1`
-3. Config changes take effect immediately — creating, updating, or deleting a dirwatch entry via the admin API triggers a full service reload (all watchers stop and restart from the DB).
+3. Config changes take effect immediately — creating, updating, or deleting a dirmonitor entry via the admin API triggers a full service reload (all watchers stop and restart from the DB).
 
 ### Configuration Fields
 
@@ -60,7 +60,7 @@ For API requests, OpenScanner uses the camelCase names above. Database/export fi
 
 ### Reload Behaviour
 
-Any create, update, or delete of a dirwatch entry via `POST/PUT/DELETE /api/admin/dirwatches` calls `Service.Reload` immediately. This stops all running watcher goroutines (gracefully, via context cancellation) and restarts fresh from the database — no server restart required.
+Any create, update, or delete of a dirmonitor entry via `POST/PUT/DELETE /api/admin/dirmonitors` calls `Service.Reload` immediately. This stops all running watcher goroutines (gracefully, via context cancellation) and restarts fresh from the database — no server restart required.
 
 ---
 
@@ -114,48 +114,48 @@ SDRTrunk names its audio files with embedded metadata: `<systemID>_<talkgroupID>
 - For MP3 files, first attempts ID3 parsing (artist/comment/title) for source, date/time, frequency, system label, talkgroup title, site, channel, and decoder
 - Falls back to filename parsing for system ID, talkgroup ID, and timestamp
 - Falls back to file modification time if the timestamp part is missing
-- `systemId`, `talkgroupId`, and `frequency` dirwatch overrides take precedence over parsed values
+- `systemId`, `talkgroupId`, and `frequency` dirmonitor overrides take precedence over parsed values
 
 ### `rtlsdr-airband`
 
-RTLSDR-Airband does not embed metadata in filenames. The dirwatch entry's `systemId` and `talkgroupId` fields specify which system and talkgroup all files in this directory belong to.
+RTLSDR-Airband does not embed metadata in filenames. The dirmonitor entry's `systemId` and `talkgroupId` fields specify which system and talkgroup all files in this directory belong to.
 
 **Parser behaviour:**
 
 - Triggers on audio files only
 - Timestamp from file modification time
-- `frequency` from the `frequency` dirwatch field (or 0 if not set)
+- `frequency` from the `frequency` dirmonitor field (or 0 if not set)
 - In practice, `systemId` and `talkgroupId` must be configured, otherwise ingest is rejected as missing required IDs
 
 ### `dsdplus`
 
-DSDPlus Fast Lane mode drops audio files into a directory. Parser attempts to infer metadata from filename/date structure and applies dirwatch overrides when set.
+DSDPlus Fast Lane mode drops audio files into a directory. Parser attempts to infer metadata from filename/date structure and applies dirmonitor overrides when set.
 
 **Parser behaviour:**
 
 - Triggers on audio files only
 - Timestamp parsed from filename/date structure when available, otherwise file modification time
-- `systemId` and `talkgroupId` from dirwatch config overrides are recommended; ingest requires non-zero resolved IDs
+- `systemId` and `talkgroupId` from dirmonitor config overrides are recommended; ingest requires non-zero resolved IDs
 
 ### `proscan`
 
-ProScan audio exports are primarily identified via the dirwatch config.
+ProScan audio exports are primarily identified via the dirmonitor config.
 
 **Parser behaviour:**
 
 - Triggers on audio files only
 - Timestamp from file modification time
-- `systemId` and `talkgroupId` from dirwatch config overrides are required in practice
+- `systemId` and `talkgroupId` from dirmonitor config overrides are required in practice
 
 ### `voxcall`
 
-voxcall audio exports are primarily identified via the dirwatch config.
+voxcall audio exports are primarily identified via the dirmonitor config.
 
 **Parser behaviour:**
 
 - Triggers on audio files only
 - Timestamp from file modification time
-- `systemId` and `talkgroupId` from dirwatch config overrides are required in practice
+- `systemId` and `talkgroupId` from dirmonitor config overrides are required in practice
 
 ---
 

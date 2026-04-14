@@ -147,7 +147,7 @@ Each resource supports **GET** (list), **POST** (create), **PUT /:id** (update),
 | Groups      | `/api/admin/groups`      |
 | Tags        | `/api/admin/tags`        |
 | API Keys    | `/api/admin/apikeys`     |
-| Dirwatches  | `/api/admin/dirwatches`  |
+| DirMonitors  | `/api/admin/dirmonitors`  |
 | Downstreams | `/api/admin/downstreams` |
 | Webhooks    | `/api/admin/webhooks`    |
 

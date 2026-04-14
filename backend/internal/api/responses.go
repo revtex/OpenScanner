@@ -201,9 +201,9 @@ func toAPIKeyResponses(keys []db.ApiKey) []apiKeyResponse {
 	return out
 }
 
-// ── Dirwatch ──
+// ── DirMonitor ──
 
-type dirwatchResponse struct {
+type dirmonitorResponse struct {
 	ID          int64   `json:"id"`
 	Directory   string  `json:"directory"`
 	Type        string  `json:"type"`
@@ -217,10 +217,10 @@ type dirwatchResponse struct {
 	SystemID    *int64  `json:"systemId"`
 	TalkgroupID *int64  `json:"talkgroupId"`
 	Order       int64   `json:"order"`
-} // @name DirwatchResponse
+} // @name DirMonitorResponse
 
-func toDirwatchResponse(d db.Dirwatch) dirwatchResponse {
-	return dirwatchResponse{
+func toDirMonitorResponse(d db.Dirmonitor) dirmonitorResponse {
+	return dirmonitorResponse{
 		ID:          d.ID,
 		Directory:   d.Directory,
 		Type:        d.Type,
@@ -237,10 +237,10 @@ func toDirwatchResponse(d db.Dirwatch) dirwatchResponse {
 	}
 }
 
-func toDirwatchResponses(dirwatches []db.Dirwatch) []dirwatchResponse {
-	out := make([]dirwatchResponse, len(dirwatches))
-	for i, d := range dirwatches {
-		out[i] = toDirwatchResponse(d)
+func toDirMonitorResponses(dirmonitors []db.Dirmonitor) []dirmonitorResponse {
+	out := make([]dirmonitorResponse, len(dirmonitors))
+	for i, d := range dirmonitors {
+		out[i] = toDirMonitorResponse(d)
 	}
 	return out
 }

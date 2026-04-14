@@ -1,5 +1,5 @@
-// Package dirwatch — meta-mask token expansion (#DATE, #TIME, #TGLBL, etc.).
-package dirwatch
+// Package dirmonitor — meta-mask token expansion (#DATE, #TIME, #TGLBL, etc.).
+package dirmonitor
 
 import (
 	"fmt"
