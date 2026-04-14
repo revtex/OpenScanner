@@ -1,4 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { Share2, Sun } from "lucide-react";
 import { BookmarkButton } from "@/components/scanner/BookmarkButton";
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
@@ -51,6 +57,42 @@ function formatFrequency(hz?: number) {
   const str = hz.toString();
   const spaced = str.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   return `F: ${spaced} Hz`;
+}
+
+function AutoSizeText({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const textEl = textRef.current;
+    if (!container || !textEl) return;
+    // Reset to natural size before measuring.
+    textEl.style.transform = "";
+    textEl.style.display = "inline-block";
+    textEl.style.transformOrigin = "left center";
+    const textWidth = textEl.offsetWidth;
+    const containerWidth = container.clientWidth;
+    if (textWidth > containerWidth) {
+      const scale = containerWidth / textWidth;
+      textEl.style.transform = `scaleX(${scale})`;
+    }
+  }, [text]);
+
+  return (
+    <div
+      ref={containerRef}
+      className={`overflow-hidden whitespace-nowrap ${className ?? ""}`}
+    >
+      <span ref={textRef}>{text}</span>
+    </div>
+  );
 }
 
 export function DisplayPanel({
@@ -139,10 +181,11 @@ export function DisplayPanel({
             </span>
           </div>
 
-          {/* Row 5: TG name — large */}
-          <div className="text-2xl font-bold text-center py-1 truncate">
-            {currentCall.talkgroupName ?? ""}
-          </div>
+          {/* Row 5: TG name — large, auto-sized to fit */}
+          <AutoSizeText
+            text={currentCall.talkgroupName ?? ""}
+            className="text-2xl font-bold text-center py-1"
+          />
 
           {/* Row 6: frequency, TGID */}
           <div className="flex justify-between">
