@@ -186,7 +186,7 @@ export default function AdminLayout() {
             </label>
           </div>
 
-          <main className="flex-1 p-6 max-w-[1200px] w-full mx-auto">
+          <main className="flex-1 p-6 max-w-300 w-full mx-auto">
             <Routes>
               <Route path="activity" element={<ActivityPanel />} />
               <Route path="users" element={<UsersPanel />} />
@@ -236,7 +236,7 @@ export default function AdminLayout() {
           </div>
 
           {/* lg: icons + labels */}
-          <div className="hidden lg:block w-[200px] h-full">
+          <div className="hidden lg:block w-50 h-full">
             <SidebarContent showLabels onSignOut={handleSignOut} />
           </div>
         </div>

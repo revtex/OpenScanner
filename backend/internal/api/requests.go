@@ -197,21 +197,6 @@ type reorderAPIKeysRequest struct {
 	APIKeys []reorderAPIKeyItem `json:"apiKeys"`
 } // @name ReorderAPIKeysRequest
 
-func (r updateAPIKeyRequest) toParams(id int64) db.UpdateAPIKeyParams {
-	key := ""
-	if r.Key != nil {
-		key = *r.Key
-	}
-	return db.UpdateAPIKeyParams{
-		ID:          id,
-		Key:         key,
-		Ident:       ptrToNullStr(r.Ident),
-		Disabled:    r.Disabled,
-		SystemsJson: ptrToNullStr(r.SystemsJson),
-		Order:       r.Order,
-	}
-}
-
 // ── Dirwatch requests ──
 
 type createDirwatchRequest struct {

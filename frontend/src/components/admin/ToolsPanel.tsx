@@ -112,7 +112,7 @@ export default function ToolsPanel() {
     let offset = 0;
     const allMissing: MissingAudioResponse["missing"] = [];
     let totalChecked = 0;
-    let lastResult: MissingAudioResponse | null = null;
+    let lastResult!: MissingAudioResponse;
     setScanProgress({ checked: 0, total: 0 });
 
     try {
@@ -132,10 +132,10 @@ export default function ToolsPanel() {
       }
 
       const combined: MissingAudioResponse = {
-        recordingsDir: lastResult?.recordingsDir ?? ".",
+        recordingsDir: lastResult.recordingsDir,
         limit: totalChecked,
         offset: 0,
-        totalCalls: lastResult?.totalCalls ?? 0,
+        totalCalls: lastResult.totalCalls,
         checked: totalChecked,
         missing: allMissing,
       };

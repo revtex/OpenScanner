@@ -135,12 +135,12 @@ export function LEDPanel() {
               aria-expanded={menuOpen}
             >
               <User className="w-4 h-4" />
-              <span className="text-xs opacity-70 max-w-[6rem] truncate">
+              <span className="text-xs opacity-70 max-w-24 truncate">
                 {username}
               </span>
             </button>
             {menuOpen && (
-              <ul className="absolute right-0 top-full mt-1 menu p-2 shadow-lg bg-base-200 rounded-box w-48 z-[100] border border-base-300">
+              <ul className="absolute right-0 top-full mt-1 menu p-2 shadow-lg bg-base-200 rounded-box w-48 z-100 border border-base-300">
                 {role === "admin" && (
                   <li>
                     <button

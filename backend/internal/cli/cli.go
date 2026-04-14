@@ -141,7 +141,7 @@ func readPassword(prompt string) (string, error) {
 func readLine(prompt string) string {
 	fmt.Print(prompt)
 	var line string
-	fmt.Scanln(&line)
+	_, _ = fmt.Scanln(&line)
 	return strings.TrimSpace(line)
 }
 

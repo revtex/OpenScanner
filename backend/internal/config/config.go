@@ -71,7 +71,7 @@ func Load() (*Config, error) {
 	// since we set defaults before Parse, and Parse overwrites only if flag is provided).
 	// However, flag package always sets the value, so we need to re-apply env and INI
 	// only for flags that were NOT explicitly set on the command line.
-	reapplyPrecedence(cfg, defaultRecordingsDir)
+	reapplyPrecedence(cfg)
 
 	return cfg, nil
 }
@@ -147,7 +147,7 @@ func applyEnv(cfg *Config) {
 // reapplyPrecedence ensures CLI flags > env vars > INI file > defaults.
 // The flag package sets all values to defaults then overwrites with CLI args.
 // We need to detect which flags were explicitly set on the command line.
-func reapplyPrecedence(cfg *Config, defaultRecordingsDir string) {
+func reapplyPrecedence(cfg *Config) {
 	explicitFlags := make(map[string]bool)
 	flag.Visit(func(f *flag.Flag) {
 		explicitFlags[f.Name] = true

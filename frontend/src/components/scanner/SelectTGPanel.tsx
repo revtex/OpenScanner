@@ -150,7 +150,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
 
       {/* Panel */}
       <div
-        className={`fixed top-0 right-0 z-50 flex h-full w-full flex-col bg-base-100 transition-transform duration-300 ease-in-out sm:w-[400px] ${
+        className={`fixed top-0 right-0 z-50 flex h-full w-full flex-col bg-base-100 transition-transform duration-300 ease-in-out sm:w-100 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >

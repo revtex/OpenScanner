@@ -31,7 +31,7 @@ function Sparkline({ buckets }: { buckets: ChartBucket[] }) {
   const maxCount = Math.max(...buckets.map((b) => b.count), 1);
 
   return (
-    <div className="flex items-end gap-[2px] h-32">
+    <div className="flex items-end gap-0.5 h-32">
       {buckets.map((bucket, i) => {
         const heightPct = (bucket.count / maxCount) * 100;
         return (
@@ -40,7 +40,7 @@ function Sparkline({ buckets }: { buckets: ChartBucket[] }) {
             className="flex-1 flex flex-col items-center justify-end h-full"
           >
             <div
-              className="w-full bg-primary rounded-t-sm min-h-[2px] tooltip tooltip-top"
+              className="w-full bg-primary rounded-t-sm min-h-0.5 tooltip tooltip-top"
               data-tip={`${bucket.count} calls`}
               style={{ height: `${Math.max(heightPct, 2)}%` }}
             />

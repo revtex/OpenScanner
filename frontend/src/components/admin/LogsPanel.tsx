@@ -119,7 +119,7 @@ export default function LogsPanel() {
               </div>
 
               {/* Virtualized rows */}
-              <div ref={parentRef} className="overflow-auto h-[600px]">
+              <div ref={parentRef} className="overflow-auto h-150">
                 <div
                   style={{
                     height: `${virtualizer.getTotalSize()}px`,

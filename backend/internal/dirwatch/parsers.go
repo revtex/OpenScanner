@@ -200,7 +200,7 @@ func parseSDRTrunk(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
 	var dt time.Time
 
 	// Try ID3 tag reading first.
-	if tagsParsed := parseSDRTrunkTags(triggeredPath, &sysID, &systemLabel, &tgID, &freq, &source, &dt, &tgTitle, &site, &channel, &decoder); !tagsParsed {
+	if tagsParsed := parseSDRTrunkTags(triggeredPath, &systemLabel, &tgID, &freq, &source, &dt, &tgTitle, &site, &channel, &decoder); !tagsParsed {
 		// Fall back to filename parsing: <systemID>_<talkgroupID>_<unixTs>.<ext>
 		name := filepath.Base(triggeredPath)
 		stem := strings.TrimSuffix(name, filepath.Ext(name))
@@ -251,7 +251,7 @@ func parseSDRTrunk(dw db.Dirwatch, triggeredPath string) (*ParsedCall, error) {
 
 // parseSDRTrunkTags attempts to read ID3 tags from an MP3 file. Returns true
 // if tags were successfully parsed, false otherwise.
-func parseSDRTrunkTags(path string, sysID *int64, systemLabel *string, tgID, freq, source *int64, dt *time.Time, tgTitle *string, site, channel, decoder *string) bool {
+func parseSDRTrunkTags(path string, systemLabel *string, tgID, freq, source *int64, dt *time.Time, tgTitle *string, site, channel, decoder *string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
 	if ext != ".mp3" {
 		return false
@@ -649,9 +649,10 @@ func splitDSDPlusMeta(base string) []string {
 	ptr := 0
 	for i := 0; i < len(base); i++ {
 		ch := base[i]
-		if ch == '[' {
+		switch ch {
+		case '[':
 			inBracket = true
-		} else if ch == ']' {
+		case ']':
 			inBracket = false
 		}
 		if !inBracket && ch == '_' {

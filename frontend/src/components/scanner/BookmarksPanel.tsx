@@ -147,7 +147,7 @@ export default function BookmarksPanel({
       )}
 
       <div
-        className={`fixed inset-y-0 right-0 z-50 w-full sm:w-[500px] max-w-full bg-base-100 shadow-xl transform transition-transform duration-300 ${
+        className={`fixed inset-y-0 right-0 z-50 w-full sm:w-125 max-w-full bg-base-100 shadow-xl transform transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >

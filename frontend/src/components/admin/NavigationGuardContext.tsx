@@ -19,6 +19,7 @@ const NavigationGuardContext = createContext<NavigationGuardContextValue>({
   requestNavigation: () => true,
 });
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useNavigationGuard() {
   return useContext(NavigationGuardContext);
 }
@@ -60,7 +61,7 @@ export function NavigationGuardProvider({
       {children}
 
       {pendingPath && (
-        <dialog className="modal modal-open z-[100]">
+        <dialog className="modal modal-open z-100">
           <div className="modal-box">
             <h3 className="font-bold text-lg">Unsaved Changes</h3>
             <p className="py-4">

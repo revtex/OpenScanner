@@ -222,7 +222,7 @@ function TalkgroupList({
           </thead>
         </table>
       </div>
-      <div ref={parentRef} className="max-h-[400px] overflow-auto">
+      <div ref={parentRef} className="max-h-100 overflow-auto">
         <div
           style={{
             height: `${virtualizer.getTotalSize()}px`,

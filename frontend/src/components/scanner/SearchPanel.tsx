@@ -236,7 +236,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
 
       {/* Panel */}
       <div
-        className={`fixed top-0 left-0 z-50 flex h-full w-full flex-col bg-base-100 transition-transform duration-300 ease-in-out sm:w-[500px] ${
+        className={`fixed top-0 left-0 z-50 flex h-full w-full flex-col bg-base-100 transition-transform duration-300 ease-in-out sm:w-125 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
