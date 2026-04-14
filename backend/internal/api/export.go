@@ -1,8 +1,10 @@
 package api
 
 import (
+	"encoding/csv"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/openscanner/openscanner/internal/db"
@@ -407,4 +409,129 @@ func (h *AdminHandler) ImportConfig(c *gin.Context) {
 
 	slog.Info("config imported successfully")
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// ExportTalkgroups handles GET /api/admin/export/talkgroups.
+//
+// @Summary      Export talkgroups as CSV
+// @Description  Downloads a CSV file of all talkgroups for the given system. Accepts an optional system_id query param; if omitted, all systems are exported.
+// @Tags         Admin
+// @Produce      text/csv
+// @Param        system_id  query  int  false  "Filter by system ID (row ID)"
+// @Success      200  {string}  string  "CSV data"
+// @Failure      400  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/export/talkgroups [get]
+func (h *AdminHandler) ExportTalkgroups(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var talkgroups []db.Talkgroup
+	if systemIDStr := c.Query("system_id"); systemIDStr != "" {
+		systemID, err := strconv.ParseInt(systemIDStr, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid system_id"})
+			return
+		}
+		rows, err := h.queries.ListTalkgroupsBySystem(ctx, systemID)
+		if err != nil {
+			slog.Error("export talkgroups: db error", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			return
+		}
+		talkgroups = rows
+	} else {
+		rows, err := h.queries.ListAllTalkgroups(ctx)
+		if err != nil {
+			slog.Error("export talkgroups: db error", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			return
+		}
+		talkgroups = rows
+	}
+
+	c.Header("Content-Disposition", `attachment; filename="talkgroups.csv"`)
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+
+	w := csv.NewWriter(c.Writer)
+	_ = w.Write([]string{"talkgroup_id", "label", "name", "frequency", "led", "group_id", "tag_id", "order"})
+	for _, tg := range talkgroups {
+		freq := ""
+		if tg.Frequency.Valid {
+			freq = strconv.FormatInt(tg.Frequency.Int64, 10)
+		}
+		groupID := ""
+		if tg.GroupID.Valid {
+			groupID = strconv.FormatInt(tg.GroupID.Int64, 10)
+		}
+		tagID := ""
+		if tg.TagID.Valid {
+			tagID = strconv.FormatInt(tg.TagID.Int64, 10)
+		}
+		_ = w.Write([]string{
+			strconv.FormatInt(tg.TalkgroupID, 10),
+			tg.Label.String,
+			tg.Name.String,
+			freq,
+			tg.Led.String,
+			groupID,
+			tagID,
+			strconv.FormatInt(tg.Order, 10),
+		})
+	}
+	w.Flush()
+}
+
+// ExportUnits handles GET /api/admin/export/units.
+//
+// @Summary      Export units as CSV
+// @Description  Downloads a CSV file of all units for the given system. Accepts an optional system_id query param; if omitted, all systems are exported.
+// @Tags         Admin
+// @Produce      text/csv
+// @Param        system_id  query  int  false  "Filter by system ID (row ID)"
+// @Success      200  {string}  string  "CSV data"
+// @Failure      400  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /admin/export/units [get]
+func (h *AdminHandler) ExportUnits(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var units []db.Unit
+	if systemIDStr := c.Query("system_id"); systemIDStr != "" {
+		systemID, err := strconv.ParseInt(systemIDStr, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid system_id"})
+			return
+		}
+		rows, err := h.queries.ListUnitsBySystem(ctx, systemID)
+		if err != nil {
+			slog.Error("export units: db error", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			return
+		}
+		units = rows
+	} else {
+		rows, err := h.queries.ListAllUnits(ctx)
+		if err != nil {
+			slog.Error("export units: db error", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			return
+		}
+		units = rows
+	}
+
+	c.Header("Content-Disposition", `attachment; filename="units.csv"`)
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+
+	w := csv.NewWriter(c.Writer)
+	_ = w.Write([]string{"unit_id", "label", "order"})
+	for _, u := range units {
+		_ = w.Write([]string{
+			strconv.FormatInt(u.UnitID, 10),
+			u.Label.String,
+			strconv.FormatInt(u.Order, 10),
+		})
+	}
+	w.Flush()
 }

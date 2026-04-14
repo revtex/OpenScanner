@@ -4,6 +4,8 @@ import {
   useImportTalkgroupsMutation,
   useImportUnitsMutation,
   useLazyExportConfigQuery,
+  useLazyExportTalkgroupsQuery,
+  useLazyExportUnitsQuery,
   useImportConfigMutation,
   useLazyGetMissingAudioCallsQuery,
   useCleanupMissingAudioCallsMutation,
@@ -20,6 +22,8 @@ export default function ToolsPanel() {
   const [importTalkgroups] = useImportTalkgroupsMutation();
   const [importUnits] = useImportUnitsMutation();
   const [triggerExport] = useLazyExportConfigQuery();
+  const [triggerExportTalkgroups] = useLazyExportTalkgroupsQuery();
+  const [triggerExportUnits] = useLazyExportUnitsQuery();
   const [importConfig] = useImportConfigMutation();
   const [getMissingAudioCalls, { isFetching: scanningMissingAudio }] =
     useLazyGetMissingAudioCallsQuery();
@@ -40,6 +44,8 @@ export default function ToolsPanel() {
   const [unitImportMode, setUnitImportMode] = useState<"overwrite" | "skip">(
     "overwrite",
   );
+  const [exportTgSystemId, setExportTgSystemId] = useState<string>("");
+  const [exportUnitSystemId, setExportUnitSystemId] = useState<string>("");
 
   const [missingAudioResult, setMissingAudioResult] =
     useState<MissingAudioResponse | null>(null);
@@ -114,6 +120,46 @@ export default function ToolsPanel() {
       URL.revokeObjectURL(url);
     } catch {
       showToast("Failed to export config");
+    }
+  };
+
+  const handleExportTalkgroups = async () => {
+    try {
+      const csv = await triggerExportTalkgroups(
+        exportTgSystemId ? { systemId: Number(exportTgSystemId) } : {},
+      ).unwrap();
+      const systemLabel =
+        systems?.find((s) => String(s.id) === exportTgSystemId)?.label ??
+        "all";
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `talkgroups-${systemLabel}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast("Failed to export talkgroups");
+    }
+  };
+
+  const handleExportUnits = async () => {
+    try {
+      const csv = await triggerExportUnits(
+        exportUnitSystemId ? { systemId: Number(exportUnitSystemId) } : {},
+      ).unwrap();
+      const systemLabel =
+        systems?.find((s) => String(s.id) === exportUnitSystemId)?.label ??
+        "all";
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `units-${systemLabel}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast("Failed to export units");
     }
   };
 
@@ -260,9 +306,9 @@ export default function ToolsPanel() {
               </div>
             </div>
             <div className="text-xs text-base-content/70">
-              CSV format: talkgroup_id, label (optional), name, tag_id, group_id,
-              frequency, led, order. Mode: "Overwrite" updates existing talkgroup
-              properties, "Skip" ignores duplicates.
+              CSV format: talkgroup_id, label (optional), name, tag_id,
+              group_id, frequency, led, order. Mode: "Overwrite" updates
+              existing talkgroup properties, "Skip" ignores duplicates.
             </div>
             <button
               className="btn btn-primary btn-sm w-full"
@@ -334,6 +380,82 @@ export default function ToolsPanel() {
             >
               Upload Units
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* CSV Export: Talkgroups */}
+      <div className="card bg-base-200 mb-4">
+        <div className="card-body">
+          <h2 className="card-title text-base">
+            <Download className="w-4 h-4" /> Export Talkgroups (CSV)
+          </h2>
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="label">
+                  <span className="label-text text-sm">System</span>
+                </label>
+                <select
+                  value={exportTgSystemId}
+                  onChange={(e) => setExportTgSystemId(e.target.value)}
+                  className="select select-bordered select-sm w-full"
+                >
+                  <option value="">All systems</option>
+                  {systems?.map((sys) => (
+                    <option key={sys.id} value={sys.id}>
+                      {sys.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button
+                  className="btn btn-primary btn-sm w-full"
+                  onClick={handleExportTalkgroups}
+                >
+                  Download CSV
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CSV Export: Units */}
+      <div className="card bg-base-200 mb-4">
+        <div className="card-body">
+          <h2 className="card-title text-base">
+            <Download className="w-4 h-4" /> Export Units (CSV)
+          </h2>
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="label">
+                  <span className="label-text text-sm">System</span>
+                </label>
+                <select
+                  value={exportUnitSystemId}
+                  onChange={(e) => setExportUnitSystemId(e.target.value)}
+                  className="select select-bordered select-sm w-full"
+                >
+                  <option value="">All systems</option>
+                  {systems?.map((sys) => (
+                    <option key={sys.id} value={sys.id}>
+                      {sys.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button
+                  className="btn btn-primary btn-sm w-full"
+                  onClick={handleExportUnits}
+                >
+                  Download CSV
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

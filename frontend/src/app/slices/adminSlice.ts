@@ -534,6 +534,20 @@ const adminApi = api.injectEndpoints({
     exportConfig: builder.query<unknown, void>({
       query: () => "/admin/export/config",
     }),
+    exportTalkgroups: builder.query<string, { systemId?: number }>({
+      query: ({ systemId } = {}) => ({
+        url: "/admin/export/talkgroups",
+        params: systemId ? { system_id: systemId } : undefined,
+        responseHandler: "text",
+      }),
+    }),
+    exportUnits: builder.query<string, { systemId?: number }>({
+      query: ({ systemId } = {}) => ({
+        url: "/admin/export/units",
+        params: systemId ? { system_id: systemId } : undefined,
+        responseHandler: "text",
+      }),
+    }),
     importConfig: builder.mutation<void, unknown>({
       query: (body) => ({
         url: "/admin/import/config",
@@ -645,6 +659,10 @@ export const {
   useImportUnitsMutation,
   useExportConfigQuery,
   useLazyExportConfigQuery,
+  useExportTalkgroupsQuery,
+  useLazyExportTalkgroupsQuery,
+  useExportUnitsQuery,
+  useLazyExportUnitsQuery,
   useImportConfigMutation,
   useLazyGetMissingAudioCallsQuery,
   useCleanupMissingAudioCallsMutation,

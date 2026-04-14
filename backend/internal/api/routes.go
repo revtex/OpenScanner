@@ -194,6 +194,8 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		// Import / Export
 		admin.POST("/import/talkgroups", adminHandler.ImportTalkgroups)
 		admin.POST("/import/units", adminHandler.ImportUnits)
+		admin.GET("/export/talkgroups", adminHandler.ExportTalkgroups)
+		admin.GET("/export/units", adminHandler.ExportUnits)
 		admin.GET("/export/config", adminHandler.ExportConfig)
 		admin.POST("/import/config", adminHandler.ImportConfig)
 
