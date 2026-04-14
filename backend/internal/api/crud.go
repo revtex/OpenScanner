@@ -1522,8 +1522,8 @@ func (h *AdminHandler) DeleteAPIKey(c *gin.Context) {
 
 // ListDirMonitors handles GET /api/admin/dirmonitors.
 //
-// @Summary  List directory watches
-// @Description  Returns all directory watches.
+// @Summary  List directory monitors
+// @Description  Returns all directory monitors.
 // @Tags     Admin
 // @Produce  json
 // @Success  200  {array}   dirmonitorResponse
@@ -1583,7 +1583,7 @@ func (h *AdminHandler) CreateDirMonitor(c *gin.Context) {
 		return
 	}
 
-	dw, err := h.queries.GetDirMonitor(c.Request.Context(), id)
+	dm, err := h.queries.GetDirMonitor(c.Request.Context(), id)
 	if err != nil {
 		slog.Error("failed to fetch created dirmonitor", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created dirmonitor"})
@@ -1593,17 +1593,17 @@ func (h *AdminHandler) CreateDirMonitor(c *gin.Context) {
 	if h.dwReload != nil {
 		h.dwReload.Reload()
 	}
-	c.JSON(http.StatusCreated, toDirMonitorResponse(dw))
+	c.JSON(http.StatusCreated, toDirMonitorResponse(dm))
 }
 
 // UpdateDirMonitor handles PUT /api/admin/dirmonitors/:id.
 //
-// @Summary  Update a directory watch
-// @Description  Updates an existing directory watch by ID.
+// @Summary  Update a directory monitor
+// @Description  Updates an existing directory monitor by ID.
 // @Tags     Admin
 // @Accept   json
 // @Produce  json
-// @Param    id    path      int                    true  "DirMonitor ID"
+// @Param    id    path      int                     true  "DirMonitor ID"
 // @Param    body  body      updateDirMonitorRequest  true  "DirMonitor fields to update"
 // @Success  200   {object}  dirmonitorResponse
 // @Failure  400   {object}  ErrorResponse
@@ -1651,7 +1651,7 @@ func (h *AdminHandler) UpdateDirMonitor(c *gin.Context) {
 		return
 	}
 
-	dw, err := h.queries.GetDirMonitor(c.Request.Context(), id)
+	dm, err := h.queries.GetDirMonitor(c.Request.Context(), id)
 	if err != nil {
 		slog.Error("failed to fetch updated dirmonitor", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated dirmonitor"})
@@ -1661,13 +1661,13 @@ func (h *AdminHandler) UpdateDirMonitor(c *gin.Context) {
 	if h.dwReload != nil {
 		h.dwReload.Reload()
 	}
-	c.JSON(http.StatusOK, toDirMonitorResponse(dw))
+	c.JSON(http.StatusOK, toDirMonitorResponse(dm))
 }
 
 // DeleteDirMonitor handles DELETE /api/admin/dirmonitors/:id.
 //
-// @Summary  Delete a directory watch
-// @Description  Deletes a directory watch by ID.
+// @Summary  Delete a directory monitor
+// @Description  Deletes a directory monitor by ID.
 // @Tags     Admin
 // @Produce  json
 // @Param    id   path      int  true  "DirMonitor ID"
@@ -1693,7 +1693,7 @@ func (h *AdminHandler) DeleteDirMonitor(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete dirmonitor"})
 		return
 	}
-	// Reload the dirmonitor service so the deleted watcher is stopped immediately.
+	// Reload the dirmonitor service so the deleted monitor is stopped immediately.
 	if h.dwReload != nil {
 		h.dwReload.Reload()
 	}

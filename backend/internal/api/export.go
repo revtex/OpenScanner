@@ -47,7 +47,7 @@ type configExport struct {
 	Groups      []db.Group         `json:"groups"`
 	Tags        []db.Tag           `json:"tags"`
 	APIKeys     []exportAPIKey     `json:"apiKeys"`
-	DirMonitors  []db.Dirmonitor      `json:"dirmonitors"`
+	DirMonitors []db.Dirmonitor    `json:"dirmonitors"`
 	Downstreams []exportDownstream `json:"downstreams"`
 	Webhooks    []exportWebhook    `json:"webhooks"`
 } // @name ConfigExport
@@ -174,7 +174,7 @@ func (h *AdminHandler) ExportConfig(c *gin.Context) {
 		Groups:      groups,
 		Tags:        tags,
 		APIKeys:     safeAPIKeys,
-		DirMonitors:  dirmonitors,
+		DirMonitors: dirmonitors,
 		Downstreams: safeDownstreams,
 		Webhooks:    safeWebhooks,
 	}
@@ -192,7 +192,7 @@ type configImport struct {
 	Talkgroups  []db.Talkgroup  `json:"talkgroups"`
 	Units       []db.Unit       `json:"units"`
 	APIKeys     []db.ApiKey     `json:"apiKeys"`
-	DirMonitors  []db.Dirmonitor   `json:"dirmonitors"`
+	DirMonitors []db.Dirmonitor `json:"dirmonitors"`
 	Downstreams []db.Downstream `json:"downstreams"`
 	Webhooks    []db.Webhook    `json:"webhooks"`
 } // @name ConfigImport
