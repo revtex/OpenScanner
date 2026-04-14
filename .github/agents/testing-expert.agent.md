@@ -44,7 +44,7 @@ You are a testing expert working on OpenScanner — a modern radio call manager.
 | Login rate limiter locks after 3 fails                 | `auth/ratelimit_test.go`    |
 | Duplicate detection within timeframe                   | `audio/duplicate_test.go`   |
 | Audio path sanitiser blocks `../` traversal            | `audio/processor_test.go`   |
-| Meta-mask expansion for all tokens                     | `dirwatch/mask_test.go`     |
+| Meta-mask expansion for all tokens                     | `dirmonitor/mask_test.go`     |
 | POST /api/call-upload — valid API key → 200 + WS CAL   | `api/calls_test.go`         |
 | POST /api/call-upload — invalid API key → 401          | `api/calls_test.go`         |
 | GET /api/setup/status — before setup → needsSetup=true | `api/setup_test.go`         |

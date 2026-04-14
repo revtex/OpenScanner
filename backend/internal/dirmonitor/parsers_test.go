@@ -241,7 +241,7 @@ func TestParseSDRTrunk_FilenamePattern(t *testing.T) {
 	}
 }
 
-func TestParseSDRTrunk_DirwatchSystemIDOverride(t *testing.T) {
+func TestParseSDRTrunk_DirMonitorSystemIDOverride(t *testing.T) {
 	dir := t.TempDir()
 	audioPath := filepath.Join(dir, "1_12345_1700000000.mp3")
 	os.WriteFile(audioPath, []byte("ID3FAKE"), 0644) //nolint:errcheck
@@ -260,9 +260,9 @@ func TestParseSDRTrunk_DirwatchSystemIDOverride(t *testing.T) {
 	if parsed == nil {
 		t.Fatal("expected non-nil ParsedCall")
 	}
-	// Dirwatch SystemID should override the filename-parsed value.
+	// DirMonitor SystemID should override the filename-parsed value.
 	if parsed.SystemID != 99 {
-		t.Errorf("SystemID = %d, want 99 (dirwatch override)", parsed.SystemID)
+		t.Errorf("SystemID = %d, want 99 (dirmonitor override)", parsed.SystemID)
 	}
 	// TalkgroupID from filename is still 12345 (no talkgroup override set).
 	if parsed.TalkgroupID != 12345 {
@@ -270,7 +270,7 @@ func TestParseSDRTrunk_DirwatchSystemIDOverride(t *testing.T) {
 	}
 }
 
-func TestParseSDRTrunk_DirwatchTalkgroupIDOverride(t *testing.T) {
+func TestParseSDRTrunk_DirMonitorTalkgroupIDOverride(t *testing.T) {
 	dir := t.TempDir()
 	audioPath := filepath.Join(dir, "1_12345_1700000000.mp3")
 	os.WriteFile(audioPath, []byte("ID3FAKE"), 0644) //nolint:errcheck
@@ -290,11 +290,11 @@ func TestParseSDRTrunk_DirwatchTalkgroupIDOverride(t *testing.T) {
 		t.Fatal("expected non-nil ParsedCall")
 	}
 	if parsed.TalkgroupID != 999 {
-		t.Errorf("TalkgroupID = %d, want 999 (dirwatch override)", parsed.TalkgroupID)
+		t.Errorf("TalkgroupID = %d, want 999 (dirmonitor override)", parsed.TalkgroupID)
 	}
 }
 
-func TestParseSDRTrunk_FrequencyFromDirwatch(t *testing.T) {
+func TestParseSDRTrunk_FrequencyFromDirMonitor(t *testing.T) {
 	dir := t.TempDir()
 	audioPath := filepath.Join(dir, "1_12345_1700000000.mp3")
 	os.WriteFile(audioPath, []byte("ID3FAKE"), 0644) //nolint:errcheck
@@ -362,7 +362,7 @@ func TestParserForType_SDRTrunkAlias(t *testing.T) {
 
 // ── RTL-SDR Airband ───────────────────────────────────────────────────────────
 
-func TestParseRTLSDRAirband_WithDirwatchOverrides(t *testing.T) {
+func TestParseRTLSDRAirband_WithDirMonitorOverrides(t *testing.T) {
 	dir := t.TempDir()
 	audioPath := filepath.Join(dir, "rec.wav")
 	os.WriteFile(audioPath, []byte("RIFF"), 0644) //nolint:errcheck
@@ -413,7 +413,7 @@ func TestParseRTLSDRAirband_NonAudio_ReturnsNil(t *testing.T) {
 
 // ── DSDPlus ───────────────────────────────────────────────────────────────────
 
-func TestParseDSDPlus_WithDirwatchOverrides(t *testing.T) {
+func TestParseDSDPlus_WithDirMonitorOverrides(t *testing.T) {
 	dir := t.TempDir()
 	audioPath := filepath.Join(dir, "call.mp3")
 	os.WriteFile(audioPath, []byte("ID3"), 0644) //nolint:errcheck
@@ -453,7 +453,7 @@ func TestParseDSDPlus_NonAudio_ReturnsNil(t *testing.T) {
 
 // ── ProScan ───────────────────────────────────────────────────────────────────
 
-func TestParseProScan_WithDirwatchOverrides(t *testing.T) {
+func TestParseProScan_WithDirMonitorOverrides(t *testing.T) {
 	dir := t.TempDir()
 	audioPath := filepath.Join(dir, "scan.mp3")
 	os.WriteFile(audioPath, []byte("ID3"), 0644) //nolint:errcheck
@@ -482,7 +482,7 @@ func TestParseProScan_WithDirwatchOverrides(t *testing.T) {
 
 // ── VoxCall ───────────────────────────────────────────────────────────────────
 
-func TestParseVoxCall_WithDirwatchOverrides(t *testing.T) {
+func TestParseVoxCall_WithDirMonitorOverrides(t *testing.T) {
 	dir := t.TempDir()
 	audioPath := filepath.Join(dir, "vox.ogg")
 	os.WriteFile(audioPath, []byte("OggS"), 0644) //nolint:errcheck

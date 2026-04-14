@@ -28,7 +28,7 @@ type DownstreamNotifier interface {
 	Notify(event downstream.CallEvent)
 }
 
-// Service manages all active DirWatch watchers.
+// Service manages all active DirMonitor watchers.
 type Service struct {
 	queries    *db.Queries
 	processor  *audio.Processor
@@ -41,7 +41,7 @@ type Service struct {
 	wg         sync.WaitGroup
 }
 
-// NewService creates a DirWatch service.
+// NewService creates a DirMonitor service.
 func NewService(queries *db.Queries, processor *audio.Processor, hub *ws.Hub, dsNotifier DownstreamNotifier) *Service {
 	return &Service{
 		queries:    queries,
@@ -51,7 +51,7 @@ func NewService(queries *db.Queries, processor *audio.Processor, hub *ws.Hub, ds
 	}
 }
 
-// Start loads all active dirwatch configs from the DB and starts a watcher
+// Start loads all active dirmonitor configs from the DB and starts a watcher
 // goroutine for each one. The watchers run until ctx is cancelled or Reload
 // is called.
 func (s *Service) Start(ctx context.Context) {
@@ -62,14 +62,14 @@ func (s *Service) Start(ctx context.Context) {
 	s.cancel = cancel
 	s.mu.Unlock()
 
-	dirwatches, err := s.queries.ListActiveDirMonitors(childCtx)
+	dirmonitors, err := s.queries.ListActiveDirMonitors(childCtx)
 	if err != nil {
 		slog.Error("dirmonitor: failed to load configs from DB", "error", err)
 		cancel()
 		return
 	}
 
-	for _, dw := range dirwatches {
+	for _, dw := range dirmonitors {
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
@@ -79,7 +79,7 @@ func (s *Service) Start(ctx context.Context) {
 }
 
 // Reload stops all running watchers and restarts them fresh from the DB.
-// This should be called after admin CRUD changes to dirwatch configs.
+// This should be called after admin CRUD changes to dirmonitor configs.
 // Reload is serialised via reloadMu to prevent concurrent calls from spawning
 // duplicate watcher goroutines. It reuses the application-lifetime context
 // from the initial Start call rather than accepting a request-scoped context.

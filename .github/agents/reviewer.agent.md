@@ -20,7 +20,7 @@ You are a security and code quality expert reviewing OpenScanner — a Go + Reac
 - [ ] Audio file paths are sanitised — no directory traversal (`../`) allowed
 - [ ] Downstream HTTP client disables redirect following (SSRF protection)
 - [ ] Downstream audio path validated via `filepath.Rel` before read
-- [ ] DirWatch delete-after-ingest validates file is inside watched directory before `os.Remove`
+- [ ] DirMonitor delete-after-ingest validates file is inside watched directory before `os.Remove`
 
 ### A02 — Cryptographic Failures
 

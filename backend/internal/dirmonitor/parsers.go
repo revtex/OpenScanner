@@ -34,7 +34,7 @@ type ParsedCall struct {
 	Decoder        string    // decoder type (e.g. "P25 Phase 1"); "" if unknown
 }
 
-// ParseFunc parses a newly detected file for a given dirwatch config.
+// ParseFunc parses a newly detected file for a given dirmonitor config.
 // It may return (nil, nil) when the file should be ignored (e.g. a sidecar
 // whose matching audio has not yet arrived).
 type ParseFunc func(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error)

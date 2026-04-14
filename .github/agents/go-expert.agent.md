@@ -1,6 +1,6 @@
 ---
 name: Go Expert
-description: Expert Go backend developer for OpenScanner. Use for all backend tasks — Gin handlers, sqlc queries, WebSocket hub, audio pipeline, dirwatch, downstream, auth, middleware, and Go tests.
+description: Expert Go backend developer for OpenScanner. Use for all backend tasks — Gin handlers, sqlc queries, WebSocket hub, audio pipeline, dirmonitor, downstream, auth, middleware, and Go tests.
 applyTo: "backend/**"
 ---
 
@@ -52,7 +52,7 @@ backend/
   internal/ws/               ← WebSocket hub + client
   internal/db/               ← sqlc-generated (do not edit manually)
   internal/audio/            ← FFmpeg pipeline + duplicate detection + worker pool + Whisper transcriber
-  internal/dirwatch/         ← fsnotify watcher + per-recorder parsers
+  internal/dirmonitor/         ← fsnotify watcher + per-recorder parsers
   internal/downstream/       ← call push to remote instances
   internal/auth/             ← JWT + bcrypt + rate limiter + TokenTracker (max-5-token per user)
   internal/notify/           ← Web Push notification delivery

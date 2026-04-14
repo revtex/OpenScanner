@@ -28,7 +28,7 @@ OpenScanner is designed to sit between your recorder(s) and your listeners:
 - Live scanner interface with queue/history behavior and playback controls
 - Call archive search by system, talkgroup, date range, and sort direction
 - Role-based auth with admin and listener permissions
-- Admin CRUD for users, systems, talkgroups, units, groups, tags, API keys, dirwatches, downstreams, and webhooks
+- Admin CRUD for users, systems, talkgroups, units, groups, tags, API keys, dirmonitors, downstreams, and webhooks
 - Tools for CSV import, full JSON config import/export, and missing-audio cleanup
 - Configurable public access mode for listener endpoint behavior
 - Built-in health endpoint for orchestration checks
@@ -59,7 +59,7 @@ On first run, complete the setup flow at /setup to create your admin account.
 OpenScanner supports both:
 
 - HTTP upload endpoints for recorder integrations
-- DirWatch ingestion for recorders that write files locally
+- DirMonitor ingestion for recorders that write files locally
 
 See [docs/recorder-integration.md](docs/recorder-integration.md) for recorder-specific setup and examples.
 
@@ -70,7 +70,7 @@ The admin UI is available at /admin and includes:
 - User and role management
 - Radio system, talkgroup, and unit management
 - API key management for recorder uploads
-- DirWatch and downstream configuration
+- DirMonitor and downstream configuration
 - Settings, logs, and maintenance tools
 
 See [docs/admin-guide.md](docs/admin-guide.md) for a full walkthrough.
@@ -92,7 +92,7 @@ See [docs/deployment.md](docs/deployment.md) for production deployment guidance.
 - [docs/api.md](docs/api.md): API behavior guide and integration flow
 - [docs/admin-guide.md](docs/admin-guide.md): Admin dashboard usage
 - [docs/deployment.md](docs/deployment.md): Deployment and operations
-- [docs/recorder-integration.md](docs/recorder-integration.md): Recorder setup and DirWatch
+- [docs/recorder-integration.md](docs/recorder-integration.md): Recorder setup and DirMonitor
 - [docs/plan.md](docs/plan.md): Implementation roadmap and project phases
 
 Swagger UI is available at `/api/admin/docs` after creating a docs session via `POST /api/admin/docs/session` as an authenticated admin.

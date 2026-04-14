@@ -583,7 +583,7 @@ All resources support `GET` (list), `POST` (create), `PUT /:id` (update), `DELET
 | Groups      | `/api/admin/groups`      |
 | Tags        | `/api/admin/tags`        |
 | API Keys    | `/api/admin/apikeys`     |
-| DirWatches  | `/api/admin/dirmonitors`  |
+| DirMonitors | `/api/admin/dirmonitors`  |
 | Downstreams | `/api/admin/downstreams` |
 
 **Read-only endpoints** (no POST/PUT/DELETE):

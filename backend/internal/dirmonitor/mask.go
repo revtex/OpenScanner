@@ -93,10 +93,10 @@ var reToken = regexp.MustCompile(`#[A-Z]+`)
 // act as anchors. Numeric tokens use (\d+). Date/time tokens use (\S+?) to
 // match compact values that may contain dashes or colons but not spaces.
 var tokenCapturePattern = map[string]string{
-	"#DATE":  `(\S+?)`,
-	"#ZTIME": `(\S+?)`,
-	"#TIME":  `(\S+?)`,
-	"#GROUP": `(.+?)`,
+	"#DATE":   `(\S+?)`,
+	"#ZTIME":  `(\S+?)`,
+	"#TIME":   `(\S+?)`,
+	"#GROUP":  `(.+?)`,
 	"#SYSLBL": `(.+?)`,
 	"#TAG":    `(.+?)`,
 	"#TGAFS":  `(.+?)`,

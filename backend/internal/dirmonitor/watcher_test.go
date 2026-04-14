@@ -58,7 +58,7 @@ func TestNewService_ReturnsNonNil(t *testing.T) {
 	}
 }
 
-func TestService_Start_NoDirwatches_NoPanic(t *testing.T) {
+func TestService_Start_NoDirMonitors_NoPanic(t *testing.T) {
 	_, queries := newWatcherTestDB(t)
 	processor, _ := newWatcherProcessor(t)
 
@@ -66,7 +66,7 @@ func TestService_Start_NoDirwatches_NoPanic(t *testing.T) {
 	defer cancel()
 
 	svc := NewService(queries, processor, nil, nil)
-	// Fresh DB has no active dirwatches → no goroutines should be spawned.
+	// Fresh DB has no active dirmonitors → no goroutines should be spawned.
 	svc.Start(ctx)
 
 	// stop() should return immediately since no goroutines are running.
@@ -84,7 +84,7 @@ func TestService_Reload_NoPanic(t *testing.T) {
 	svc.Start(ctx)
 
 	// Reload should stop existing watchers and restart from DB — no panic even
-	// when there are no active dirwatches.
+	// when there are no active dirmonitors.
 	svc.Reload()
 	svc.stop()
 }
@@ -165,7 +165,7 @@ func TestHandleFile_ExtensionFilter_WrongExtension_Skipped(t *testing.T) {
 	mp3Path := filepath.Join(watchDir, "call.mp3")
 	os.WriteFile(mp3Path, fakeAudioData(), 0644) //nolint:errcheck
 
-	// Dirwatch only accepts .wav files.
+	// DirMonitor only accepts .wav files.
 	dw := db.Dirmonitor{
 		ID:        1,
 		Directory: watchDir,

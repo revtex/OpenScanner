@@ -11,6 +11,6 @@ replace github.com/openscanner/openscanner/internal/db.System github.com/opensca
 replace github.com/openscanner/openscanner/internal/db.Talkgroup github.com/openscanner/openscanner/internal/api.swagTalkgroup
 replace github.com/openscanner/openscanner/internal/db.Unit github.com/openscanner/openscanner/internal/api.swagUnit
 replace github.com/openscanner/openscanner/internal/db.ApiKey github.com/openscanner/openscanner/internal/api.swagApiKey
-replace github.com/openscanner/openscanner/internal/db.Dirwatch github.com/openscanner/openscanner/internal/api.swagDirwatch
+replace github.com/openscanner/openscanner/internal/db.Dirmonitor github.com/openscanner/openscanner/internal/api.swagDirMonitor
 replace github.com/openscanner/openscanner/internal/db.Downstream github.com/openscanner/openscanner/internal/api.swagDownstream
 replace github.com/openscanner/openscanner/internal/db.Webhook github.com/openscanner/openscanner/internal/api.swagWebhook
