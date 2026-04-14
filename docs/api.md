@@ -1,223 +1,143 @@
-# OpenScanner — API Reference
+# OpenScanner API Reference
 
-> **Implementation status:** All endpoints listed below are implemented and available.
+OpenScanner exposes an HTTP API and WebSocket feeds for scanner clients and admin tools.
 
-## Implemented Endpoints
+## Canonical contract source
 
-### Health
+Swagger is the canonical source for endpoint-level contracts:
 
-#### `GET /api/health`
+- request and response schemas
+- query and path parameters
+- status codes
+- security requirements per endpoint
 
-Unauthenticated readiness check.
+Use Swagger for implementation details and integration code generation.
 
-**Response `200`:**
+This page intentionally focuses on behavior, access model, and workflow guidance to avoid schema drift.
 
-```json
-{
-  "status": "ok",
-  "version": "0.1.0"
-}
-```
+## Base path and transport
 
-### Setup
+- HTTP API base path: `/api`
+- Listener WebSocket: `/ws`
+- Admin WebSocket: `/api/admin/ws`
 
-#### `GET /api/setup/status`
+## Authentication and access model
 
-Returns whether initial setup is needed and whether public access is enabled. Unauthenticated.
+- Admin and authenticated user routes use JWT Bearer auth in the `Authorization` header.
+- Call ingest routes use API key auth in `X-API-Key` (with key query fallback for recorder compatibility).
+- Public access mode allows unauthenticated scanner listening and call browsing endpoints intended for public use.
+- Admin routes are never public-access, even when public access mode is enabled.
+- Swagger UI access is protected by a short-lived server-issued cookie flow.
 
-**Response `200`:**
+## Endpoint families
 
-```json
-{
-  "needsSetup": true,
-  "publicAccess": false
-}
-```
+### Public and bootstrap
 
-#### `POST /api/setup`
+- `GET /api/health`
+- `GET /api/setup/status`
+- `POST /api/setup`
 
-Creates the initial admin user and marks setup as complete. Mutex-protected to prevent TOCTOU race conditions. Unauthenticated (only works when `needsSetup` is `true`).
+### Authentication
 
-**Request:**
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `PUT /api/auth/password`
+- `GET /api/auth/me`
 
-```json
-{
-  "username": "admin",
-  "password": "securepass"
-}
-```
+### Calls and sharing
 
-**Validation:** username must not be empty; password must be ≥ 8 characters.
+- `GET /api/calls`
+- `GET /api/calls/:id/audio`
+- `POST /api/calls/:id/share`
+- `GET /api/calls/:id/share`
+- `DELETE /api/calls/:id/share`
+- `GET /api/shared/:token`
+- `GET /api/shared/:token/audio`
 
-**Response `200`:**
+### Bookmarks
 
-```json
-{
-  "ok": true
-}
-```
+- `GET /api/bookmarks`
+- `POST /api/bookmarks`
+- `GET /api/bookmarks/calls`
 
-**Error responses:** `400` (invalid input), `409` (setup already complete), `500` (server error).
+### Recorder ingest
 
-### Auth
+- `POST /api/call-upload`
+- `POST /api/trunk-recorder-call-upload`
 
-#### `POST /api/auth/login`
+### Admin configuration and CRUD
 
-Authenticates a user with username/password. Rate-limited via middleware (3 failures → 10-minute IP lockout). Uses timing-safe comparison with dummy bcrypt hash to prevent username enumeration.
+- `/api/admin/config`
+- `/api/admin/users`
+- `/api/admin/systems`
+- `/api/admin/talkgroups`
+- `/api/admin/units`
+- `/api/admin/groups`
+- `/api/admin/tags`
+- `/api/admin/apikeys`
+- `/api/admin/fs/directories`
+- `/api/admin/dirwatches`
+- `/api/admin/downstreams`
+- `/api/admin/webhooks`
 
-**Request:**
+### Admin operations
 
-```json
-{
-  "username": "admin",
-  "password": "securepass"
-}
-```
+- `/api/admin/logs`
+- `/api/admin/activity/stats`
+- `/api/admin/activity/chart`
+- `/api/admin/activity/top-talkgroups`
+- `/api/admin/tools/audio-missing`
+- `/api/admin/tools/audio-missing/cleanup`
+- `/api/admin/import/talkgroups`
+- `/api/admin/import/units`
+- `/api/admin/export/config`
+- `/api/admin/import/config`
+- `/api/admin/shared-links`
 
-**Response `200`:**
+### Swagger access
 
-```json
-{
-  "token": "<jwt>",
-  "user": {
-    "id": 1,
-    "username": "admin",
-    "role": "admin"
-  },
-  "passwordNeedChange": false
-}
-```
+- `POST /api/admin/docs/session`
+- `GET /api/admin/docs/*`
 
-**Error responses:** `400` (missing fields), `401` (invalid credentials), `429` (rate limited).
+## Behavioral guidance
 
-#### `POST /api/auth/logout`
+### First-run bootstrap
 
-Revokes the current JWT. Requires `Authorization: Bearer <token>`.
+1. Check setup state with `GET /api/setup/status`.
+2. If setup is required, create initial admin with `POST /api/setup`.
+3. Authenticate via `POST /api/auth/login`.
+4. Use admin endpoints to configure systems, talkgroups, ingest, and access settings.
 
-**Response `200`:**
+### Call ingest flow
 
-```json
-{
-  "ok": true
-}
-```
+1. Recorder uploads multipart call data to ingest endpoint with API key auth.
+2. Server validates required fields and applies duplicate and blacklist logic.
+3. Audio is stored and optionally converted based on server settings.
+4. Call record is persisted and real-time events are broadcast to listeners.
+5. Optional downstream and webhook delivery is triggered by server configuration.
 
-#### `PUT /api/auth/password`
+### Sharing flow
 
-Changes the authenticated user's password. Revokes all tokens for the user (credential compromise mitigation). Requires `Authorization: Bearer <token>`.
+1. Authenticated user creates share token for a call.
+2. Public clients read shared metadata and audio through token endpoints.
+3. Share can be removed by owner or admin.
 
-**Request:**
+## WebSocket model
 
-```json
-{
-  "currentPassword": "oldpass",
-  "newPassword": "newpass123"
-}
-```
+- Listener WS supports public-access or token-auth listener/admin sessions.
+- Typical listener welcome sequence includes version and config messages.
+- Broadcast stream includes new calls, config updates, listener counts, and session-control events.
+- Admin WS is intended for dashboard event consumption and administrative real-time features.
 
-**Response `200`:**
+For exact message payload formats and endpoint contracts, rely on Swagger and current backend annotations.
 
-```json
-{
-  "ok": true
-}
-```
+## Maintenance policy
 
-**Error responses:** `400` (invalid input / password < 8 chars), `401` (wrong current password).
+When API contracts change:
 
-#### `GET /api/auth/me`
-
-Returns the authenticated user's info from the JWT claims. Requires `Authorization: Bearer <token>`.
-
-**Response `200`:**
-
-```json
-{
-  "id": 1,
-  "username": "admin",
-  "role": "admin"
-}
-```
-
----
-
-### Call Search
-
-#### `GET /api/calls`
-
-Paginated call archive search with filtering. Uses `OptionalJWTAuth` middleware — works for unauthenticated users when `publicAccess=true`; when a valid JWT is present, per-user bookmark status is included in results.
-
-**Query Parameters:**
-
-| Param          | Type   | Default | Description                             |
-| -------------- | ------ | ------- | --------------------------------------- |
-| `system_id`    | int    | _(all)_ | Filter by system ID                     |
-| `talkgroup_id` | int    | _(all)_ | Filter by talkgroup ID                  |
-| `date_from`    | int64  | _(any)_ | Start of date range (Unix timestamp)    |
-| `date_to`      | int64  | _(any)_ | End of date range (Unix timestamp)      |
-| `page`         | int    | `1`     | Page number (1-indexed)                 |
-| `limit`        | int    | `25`    | Results per page (max 100)              |
-| `sort`         | string | `desc`  | Sort direction by date: `asc` or `desc` |
-
-**Response `200`:**
-
-```json
-{
-  "calls": [
-    {
-      "id": 12345,
-      "dateTime": 1712345678,
-      "frequency": 851012500,
-      "duration": 8,
-      "source": 1234,
-      "systemId": 1,
-      "talkgroupId": 101,
-      "systemLabel": "County",
-      "talkgroupLabel": "Fire Dispatch",
-      "talkgroupName": "Fire Dispatch",
-      "talkgroupTag": "Dispatch",
-      "talkgroupGroup": "Fire",
-      "talkgroupLed": "#ff0000",
-      "site": "Site A",
-      "decoder": "P25 Phase 1",
-      "errorCount": 2,
-      "spikeCount": 5,
-      "transcript": "Engine 5 respond to...",
-      "bookmarked": true
-    }
-  ],
-  "total": 1423
-}
-```
-
-**Notes:**
-
-- `bookmarked` is only present when a valid JWT is provided; omitted for unauthenticated requests
-- `limit` is clamped to a maximum of 100; values above 100 are silently reduced
-- Results are paginated — use `total` with `page` and `limit` to calculate page count
-
-#### `GET /api/calls/:id/audio`
-
-Streams the audio file for a specific call. Uses `OptionalJWTAuth` middleware. Requires a valid JWT **or** `publicAccess=true`; returns `401` for unauthenticated requests on non-public servers. Anonymous users should use `/api/shared/:token/audio` for shared calls instead.
-
-**Response `200`:** Audio file with appropriate `Content-Type` header and `Content-Disposition: inline`.
-
-**Error responses:** `400` (invalid call ID), `401` (authentication required), `404` (call not found or audio file missing), `500` (server error).
-
-#### `POST /api/calls/:id/share`
-
-Creates a shareable link for a call. Requires `Authorization: Bearer <token>`. Only works when the `shareableLinks` setting is enabled. Returns the existing share token if the call is already shared (idempotent).
-
-**Response `201` / `200`:**
-
-```json
-{
-  "token": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "url": "/call/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-}
-```
-
-**Error responses:** `400` (invalid ID), `401` (unauthenticated), `403` (sharing disabled), `404` (call not found).
+1. Update handler annotations.
+2. Regenerate Swagger artifacts.
+3. Update this page only for behavioral or workflow changes, not field-by-field schemas.
 
 #### `DELETE /api/calls/:id/share`
 
