@@ -24,7 +24,8 @@ export default function Login() {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const token = useAppSelector(selectToken);
-  const { data: setupStatus, isLoading: setupLoading } = useGetSetupStatusQuery();
+  const { data: setupStatus, isLoading: setupLoading } =
+    useGetSetupStatusQuery();
   const [postLogin, { isLoading }] = usePostLoginMutation();
   const [changePassword] = useChangePasswordMutation();
 

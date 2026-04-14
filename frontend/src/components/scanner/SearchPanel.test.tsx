@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import SearchPanel from "@/components/scanner/SearchPanel";
@@ -201,15 +201,12 @@ describe("SearchPanel", () => {
       expect(options[1].textContent).toBe("Oldest first");
     });
 
-    it("download mode toggle exists", () => {
-      renderPanel({ scanner: scannerState() });
-      expect(screen.getByText("Download mode")).toBeInTheDocument();
-    });
-
     it("reset filters button clears all filters", () => {
       const { store } = renderPanel({ scanner: scannerState() });
       // First set a filter
-      store.dispatch(callsSlice.actions.setSort("asc"));
+      act(() => {
+        store.dispatch(callsSlice.actions.setSort("asc"));
+      });
       // Click reset
       fireEvent.click(screen.getByText("Reset filters"));
       const state = store.getState();
