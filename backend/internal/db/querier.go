@@ -64,6 +64,7 @@ type Querier interface {
 	GetDirMonitor(ctx context.Context, id int64) (Dirmonitor, error)
 	GetDownstream(ctx context.Context, id int64) (Downstream, error)
 	GetGroup(ctx context.Context, id int64) (Group, error)
+	GetGroupByLabel(ctx context.Context, label string) (Group, error)
 	GetPushSubscription(ctx context.Context, id int64) (PushSubscription, error)
 	GetSetting(ctx context.Context, key string) (Setting, error)
 	GetSharedLinkByCallID(ctx context.Context, callID int64) (SharedLink, error)
@@ -72,6 +73,7 @@ type Querier interface {
 	GetSystemByLabel(ctx context.Context, label string) (System, error)
 	GetSystemBySystemID(ctx context.Context, systemID int64) (System, error)
 	GetTag(ctx context.Context, id int64) (Tag, error)
+	GetTagByLabel(ctx context.Context, label string) (Tag, error)
 	GetTalkgroup(ctx context.Context, id int64) (Talkgroup, error)
 	GetTalkgroupBySystemAndTGID(ctx context.Context, arg GetTalkgroupBySystemAndTGIDParams) (Talkgroup, error)
 	// Returns top N busiest talkgroups (by call count) in a time range.

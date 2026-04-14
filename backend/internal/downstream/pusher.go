@@ -47,6 +47,7 @@ type CallEvent struct {
 	TalkgroupName  string
 	TalkgroupGroup string // group label
 	TalkgroupTag   string // tag label
+	TalkerAlias    string // DMR/P25 talker alias
 }
 
 // systemGrant describes which talkgroups are permitted for a given radio system.
@@ -364,6 +365,9 @@ func (s *Service) pushCall(ctx context.Context, ds db.Downstream, event CallEven
 	}
 	if event.TalkgroupTag != "" {
 		writeField("talkgroupTag", event.TalkgroupTag)
+	}
+	if event.TalkerAlias != "" {
+		writeField("talkerAlias", event.TalkerAlias)
 	}
 
 	if err := writer.Close(); err != nil {

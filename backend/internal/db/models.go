@@ -49,6 +49,7 @@ type Call struct {
 	Decoder         sql.NullString `db:"decoder" json:"decoder"`
 	ErrorCount      sql.NullInt64  `db:"error_count" json:"error_count"`
 	SpikeCount      sql.NullInt64  `db:"spike_count" json:"spike_count"`
+	TalkerAlias     sql.NullString `db:"talker_alias" json:"talker_alias"`
 }
 
 type Dirmonitor struct {

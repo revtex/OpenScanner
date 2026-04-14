@@ -35,8 +35,10 @@ WHERE id = :id;
 DELETE FROM units WHERE id = ?;
 
 -- name: UpsertUnit :exec
-INSERT OR IGNORE INTO units (system_id, unit_id, label, "order")
-VALUES (:system_id, :unit_id, :label, :order);
+INSERT INTO units (system_id, unit_id, label, "order")
+VALUES (:system_id, :unit_id, :label, :order)
+ON CONFLICT (system_id, unit_id) DO UPDATE SET
+    label = COALESCE(excluded.label, units.label);
 
 -- name: ListAllUnits :many
 SELECT * FROM units ORDER BY system_id ASC, "order" ASC, unit_id ASC;

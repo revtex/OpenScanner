@@ -229,11 +229,11 @@ func TestHandleFile_ParserReturnsNil_IngestNotCalled(t *testing.T) {
 	dw := db.Dirmonitor{
 		ID:        1,
 		Directory: watchDir,
-		Type:      "voxcall",
+		Type:      "generic",
 	}
 
 	svc := buildSvcNilDB()
-	// parseVoxCall returns nil for non-audio → ingestCall never called → no panic.
+	// parseGeneric returns nil for non-audio → ingestCall never called → no panic.
 	svc.handleFile(context.Background(), dw, xmlPath)
 }
 

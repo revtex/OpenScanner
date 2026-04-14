@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/openscanner/openscanner/internal/db"
 )
@@ -18,11 +19,15 @@ import (
 // ParsedCall is the normalised metadata extracted by a recorder-specific parser.
 type ParsedCall struct {
 	AudioFilePath  string    // absolute path to audio file on disk
+	SidecarPath    string    // absolute path to companion metadata file (e.g. .json); "" if none
 	DateTime       time.Time // call timestamp
 	SystemID       int64     // radio system ID (0 = unknown)
 	SystemLabel    string    // radio system label (used when SystemID is unknown)
 	TalkgroupID    int64     // radio talkgroup ID (0 = unknown)
-	TalkgroupTitle string    // talkgroup title from metadata (e.g. MP3 ID3 Title tag)
+	TalkgroupTitle string    // talkgroup label / alpha tag from metadata
+	TalkgroupName  string    // talkgroup description / name; "" if unknown
+	TalkgroupTag   string    // talkgroup tag category label (e.g. "Law Dispatch"); "" if unknown
+	TalkgroupGroup string    // talkgroup group label (e.g. "Police"); "" if unknown
 	Frequency      int64     // Hz; 0 if unknown
 	Duration       int64     // ms; 0 if unknown
 	Source         int64     // source unit ID; 0 if unknown
@@ -69,8 +74,6 @@ func parserForType(recorderType string) ParseFunc {
 		return parseDSDPlus
 	case "proscan":
 		return parseProScan
-	case "voxcall":
-		return parseVoxCall
 	default:
 		return parseGeneric
 	}
@@ -80,15 +83,22 @@ func parserForType(recorderType string) ParseFunc {
 
 // trunkRecorderSidecar mirrors the JSON sidecar written by Trunk Recorder.
 type trunkRecorderSidecar struct {
-	StartTime         int64           `json:"start_time"`
-	CallLength        float64         `json:"call_length"`
-	Freq              int64           `json:"freq"`
-	Talkgroup         int64           `json:"talkgroup"`
-	SysNum            int64           `json:"sys_num"`
-	Unit              int64           `json:"unit"`
-	SrcList           json.RawMessage `json:"srcList"`
-	FreqList          json.RawMessage `json:"freqList"`
-	PatchedTalkgroups json.RawMessage `json:"patched_talkgroups"`
+	StartTime            int64           `json:"start_time"`
+	CallLength           float64         `json:"call_length"`
+	Freq                 int64           `json:"freq"`
+	Talkgroup            int64           `json:"talkgroup"`
+	ShortName            string          `json:"short_name"`
+	TalkgroupTag         string          `json:"talkgroup_tag"`
+	TalkgroupAlphaTag    string          `json:"talkgroup_alpha_tag"`
+	TalkgroupDescription string          `json:"talkgroup_description"`
+	TalkgroupGroup       string          `json:"talkgroup_group"`
+	SourceNum            int64           `json:"source_num"`
+	SrcList              json.RawMessage `json:"srcList"`
+	FreqList             json.RawMessage `json:"freqList"`
+	PatchedTalkgroups    json.RawMessage `json:"patched_talkgroups"`
+	// sys_num is not present in current Trunk Recorder JSON output,
+	// but we keep it for backward compatibility with older versions.
+	SysNum int64 `json:"sys_num"`
 }
 
 // parseTrunkRecorder handles both JSON sidecars and audio files.
@@ -138,17 +148,31 @@ func parseTrunkRecorder(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, er
 		return nil, err
 	}
 
+	// talkgroup_alpha_tag is the human-readable label (e.g. "Metro PD Dispatch").
+	// talkgroup_tag is the category (e.g. "Law Dispatch") — resolves to tag_id.
+	// Fall back to talkgroup_tag for label when alpha_tag is absent (old sidecars).
+	tgLabel := sc.TalkgroupAlphaTag
+	if tgLabel == "" {
+		tgLabel = sc.TalkgroupTag
+	}
+
 	return &ParsedCall{
-		AudioFilePath: audioPath,
-		DateTime:      time.Unix(sc.StartTime, 0),
-		SystemID:      sc.SysNum,
-		TalkgroupID:   sc.Talkgroup,
-		Frequency:     sc.Freq,
-		Duration:      int64(sc.CallLength * 1000),
-		Source:        sc.Unit,
-		SourcesJSON:   rawOrEmpty(sc.SrcList),
-		FreqsJSON:     rawOrEmpty(sc.FreqList),
-		PatchesJSON:   rawOrEmpty(sc.PatchedTalkgroups),
+		AudioFilePath:  audioPath,
+		SidecarPath:    jsonPath,
+		DateTime:       time.Unix(sc.StartTime, 0),
+		SystemID:       sc.SysNum,
+		SystemLabel:    sc.ShortName,
+		TalkgroupID:    sc.Talkgroup,
+		TalkgroupTitle: tgLabel,
+		TalkgroupName:  sc.TalkgroupDescription,
+		TalkgroupTag:   sc.TalkgroupTag,
+		TalkgroupGroup: sc.TalkgroupGroup,
+		Frequency:      sc.Freq,
+		Duration:       int64(sc.CallLength * 1000),
+		Source:         sc.SourceNum,
+		SourcesJSON:    rawOrEmpty(sc.SrcList),
+		FreqsJSON:      rawOrEmpty(sc.FreqList),
+		PatchesJSON:    rawOrEmpty(sc.PatchedTalkgroups),
 	}, nil
 }
 
@@ -487,6 +511,13 @@ func decodeUTF16(b []byte) string {
 
 // ── RTL-SDR Airband ──────────────────────────────────────────────────────────
 
+// reAirbandTimestamp matches RTLSDR-Airband filename timestamps:
+//
+//	Normal mode:   TEMPLATE_YYYYMMDD_HH.mp3
+//	Split mode:    TEMPLATE_YYYYMMDD_HHMMSS.mp3
+//	With freq:     TEMPLATE_YYYYMMDD_HHMMSS_FREQ.mp3
+var reAirbandTimestamp = regexp.MustCompile(`_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})?(\d{2})?(?:_(\d+))?(?:\.[^.]+)?$`)
+
 func parseRTLSDRAirband(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 	if !isAudioFile(triggeredPath) {
 		return nil, nil
@@ -495,6 +526,7 @@ func parseRTLSDRAirband(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, er
 	if err != nil {
 		return nil, err
 	}
+
 	var sysID, tgID, freq int64
 	if dw.SystemID.Valid {
 		sysID = dw.SystemID.Int64
@@ -505,9 +537,36 @@ func parseRTLSDRAirband(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, er
 	if dw.Frequency.Valid {
 		freq = dw.Frequency.Int64
 	}
+
+	// Try to extract timestamp and frequency from the filename.
+	dt := info.ModTime()
+	base := filepath.Base(triggeredPath)
+	if m := reAirbandTimestamp.FindStringSubmatch(base); m != nil {
+		year, _ := strconv.Atoi(m[1])
+		month, _ := strconv.Atoi(m[2])
+		day, _ := strconv.Atoi(m[3])
+		hour, _ := strconv.Atoi(m[4])
+		var min, sec int
+		if m[5] != "" {
+			min, _ = strconv.Atoi(m[5])
+		}
+		if m[6] != "" {
+			sec, _ = strconv.Atoi(m[6])
+		}
+		if year > 0 && month >= 1 && month <= 12 && day >= 1 && day <= 31 {
+			dt = time.Date(year, time.Month(month), day, hour, min, sec, 0, time.UTC)
+		}
+		// Frequency from filename (include_freq mode) overrides config only when config is unset.
+		if m[7] != "" && freq == 0 {
+			if f, err := strconv.ParseInt(m[7], 10, 64); err == nil && f > 0 {
+				freq = f
+			}
+		}
+	}
+
 	return &ParsedCall{
 		AudioFilePath: triggeredPath,
-		DateTime:      info.ModTime(),
+		DateTime:      dt,
 		SystemID:      sysID,
 		TalkgroupID:   tgID,
 		Frequency:     freq,
@@ -518,13 +577,12 @@ func parseRTLSDRAirband(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, er
 
 // Compiled regexes for DSD+ filename parsing.
 var (
-	reDSDDate    = regexp.MustCompile(`([0-9]+)$`)
-	reDSDTime    = regexp.MustCompile(`^([0-9]+)`)
-	reDSDSysNum  = regexp.MustCompile(`^([0-9]+)-.+$`)
-	reDSDNexSys  = regexp.MustCompile(`^.([0-9]+)-[0-9]+$`)
-	reDSDNexRAN  = regexp.MustCompile(`RAN([0-9]+)`)
-	reDSDP25Sys  = regexp.MustCompile(`^[^\.]+\.([^-]+)`)
-	reDSDBracket = regexp.MustCompile(`[^\[\]]+`)
+	reDSDDate   = regexp.MustCompile(`([0-9]+)$`)
+	reDSDTime   = regexp.MustCompile(`^([0-9]+)`)
+	reDSDSysNum = regexp.MustCompile(`^([0-9]+)-.+$`)
+	reDSDNexSys = regexp.MustCompile(`^.([0-9]+)-[0-9]+$`)
+	reDSDNexRAN = regexp.MustCompile(`RAN([0-9]+)`)
+	reDSDP25Sys = regexp.MustCompile(`^[^.]+\.([^-]+)`)
 )
 
 // parseDSDPlus handles DSD+ recordings.
@@ -573,6 +631,7 @@ func parseDSDPlus(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 	}
 
 	var sysID, tgID, source int64
+	var tgLabel string
 
 	// Extract system ID from MODE + CHANNEL segments.
 	if len(meta) > 3 {
@@ -605,19 +664,25 @@ func parseDSDPlus(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 		}
 	}
 
-	// Extract talkgroup from second-to-last segment.
+	// Extract talkgroup ID and label from second-to-last segment.
+	// Format: [TGID][optional label] — e.g. "[12345][Fire Dispatch]"
 	if len(meta) >= 2 {
-		if s := reDSDBracket.FindAllString(meta[len(meta)-2], -1); len(s) > 0 {
-			if i, err := strconv.ParseInt(s[0], 10, 64); err == nil && i > 0 {
+		brackets := extractBracketContents(meta[len(meta)-2])
+		if len(brackets) > 0 {
+			if i, err := strconv.ParseInt(brackets[0], 10, 64); err == nil && i > 0 {
 				tgID = i
 			}
+		}
+		if len(brackets) > 1 && hasAlphanumeric(brackets[1]) {
+			tgLabel = brackets[1]
 		}
 	}
 
 	// Extract source unit from last segment.
 	if len(meta) >= 1 {
-		if s := reDSDBracket.FindAllString(meta[len(meta)-1], -1); len(s) > 0 {
-			if i, err := strconv.ParseInt(s[0], 10, 64); err == nil && i > 0 {
+		brackets := extractBracketContents(meta[len(meta)-1])
+		if len(brackets) > 0 {
+			if i, err := strconv.ParseInt(brackets[0], 10, 64); err == nil && i > 0 {
 				source = i
 			}
 		}
@@ -632,11 +697,12 @@ func parseDSDPlus(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 	}
 
 	return &ParsedCall{
-		AudioFilePath: triggeredPath,
-		DateTime:      dt,
-		SystemID:      sysID,
-		TalkgroupID:   tgID,
-		Source:        source,
+		AudioFilePath:  triggeredPath,
+		DateTime:       dt,
+		SystemID:       sysID,
+		TalkgroupID:    tgID,
+		TalkgroupTitle: tgLabel,
+		Source:         source,
 	}, nil
 }
 
@@ -690,31 +756,6 @@ func parseProScan(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 	}, nil
 }
 
-// ── VoxCall ───────────────────────────────────────────────────────────────────
-
-func parseVoxCall(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
-	if !isAudioFile(triggeredPath) {
-		return nil, nil
-	}
-	info, err := os.Stat(triggeredPath)
-	if err != nil {
-		return nil, err
-	}
-	var sysID, tgID int64
-	if dw.SystemID.Valid {
-		sysID = dw.SystemID.Int64
-	}
-	if dw.TalkgroupID.Valid {
-		tgID = dw.TalkgroupID.Int64
-	}
-	return &ParsedCall{
-		AudioFilePath: triggeredPath,
-		DateTime:      info.ModTime(),
-		SystemID:      sysID,
-		TalkgroupID:   tgID,
-	}, nil
-}
-
 // ── Generic fallback ──────────────────────────────────────────────────────────
 
 func parseGeneric(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
@@ -738,4 +779,37 @@ func parseGeneric(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 		SystemID:      sysID,
 		TalkgroupID:   tgID,
 	}, nil
+}
+
+// extractBracketContents collects the text inside each [...] pair in s.
+// For "[54241][Fire Dispatch]" it returns ["54241", "Fire Dispatch"].
+func extractBracketContents(s string) []string {
+	var parts []string
+	for {
+		open := strings.IndexByte(s, '[')
+		if open < 0 {
+			break
+		}
+		close := strings.IndexByte(s[open+1:], ']')
+		if close < 0 {
+			break
+		}
+		inner := s[open+1 : open+1+close]
+		if len(inner) > 0 {
+			parts = append(parts, inner)
+		}
+		s = s[open+1+close+1:]
+	}
+	return parts
+}
+
+// hasAlphanumeric reports whether s contains at least one letter or digit.
+// Used to filter out labels that are only punctuation/whitespace (e.g. "---").
+func hasAlphanumeric(s string) bool {
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return true
+		}
+	}
+	return false
 }

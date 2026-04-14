@@ -471,25 +471,50 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 		if !autoPopulate {
 			return fmt.Errorf("talkgroup %d not found and autoPopulate is disabled", parsed.TalkgroupID)
 		}
-		var tgName sql.NullString
+		var tgLabel, tgName sql.NullString
 		if parsed.TalkgroupTitle != "" {
-			tgName = sql.NullString{String: parsed.TalkgroupTitle, Valid: true}
+			tgLabel = sql.NullString{String: parsed.TalkgroupTitle, Valid: true}
+		}
+		if parsed.TalkgroupName != "" {
+			tgName = sql.NullString{String: parsed.TalkgroupName, Valid: true}
+		}
+		var groupID sql.NullInt64
+		if parsed.TalkgroupGroup != "" {
+			groupID = resolveGroupID(ctx, s.queries, parsed.TalkgroupGroup)
+		}
+		var tagID sql.NullInt64
+		if parsed.TalkgroupTag != "" {
+			tagID = resolveTagID(ctx, s.queries, parsed.TalkgroupTag)
 		}
 		newID, cerr := s.queries.CreateTalkgroup(ctx, db.CreateTalkgroupParams{
 			SystemID:    system.ID,
 			TalkgroupID: parsed.TalkgroupID,
+			Label:       tgLabel,
 			Name:        tgName,
+			GroupID:     groupID,
+			TagID:       tagID,
 		})
 		if cerr != nil {
 			return fmt.Errorf("auto-create talkgroup %d: %w", parsed.TalkgroupID, cerr)
 		}
 		slog.Info("dirmonitor: auto-populated talkgroup",
 			"talkgroup_id", parsed.TalkgroupID, "db_id", newID)
-		talkgroup = db.Talkgroup{ID: newID, SystemID: system.ID, TalkgroupID: parsed.TalkgroupID, Name: tgName}
+		talkgroup = db.Talkgroup{ID: newID, SystemID: system.ID, TalkgroupID: parsed.TalkgroupID, Label: tgLabel, Name: tgName, GroupID: groupID, TagID: tagID}
 		s.hub.BroadcastCFG(ctx)
-	} else if !talkgroup.Name.Valid && parsed.TalkgroupTitle != "" {
-		// Existing talkgroup has no name — backfill from audio metadata.
-		talkgroup.Name = sql.NullString{String: parsed.TalkgroupTitle, Valid: true}
+	} else if needsBackfill(talkgroup, parsed) {
+		// Existing talkgroup has empty fields — backfill from audio metadata.
+		if !talkgroup.Label.Valid && parsed.TalkgroupTitle != "" {
+			talkgroup.Label = sql.NullString{String: parsed.TalkgroupTitle, Valid: true}
+		}
+		if !talkgroup.Name.Valid && parsed.TalkgroupName != "" {
+			talkgroup.Name = sql.NullString{String: parsed.TalkgroupName, Valid: true}
+		}
+		if !talkgroup.GroupID.Valid && parsed.TalkgroupGroup != "" {
+			talkgroup.GroupID = resolveGroupID(ctx, s.queries, parsed.TalkgroupGroup)
+		}
+		if !talkgroup.TagID.Valid && parsed.TalkgroupTag != "" {
+			talkgroup.TagID = resolveTagID(ctx, s.queries, parsed.TalkgroupTag)
+		}
 		if uerr := s.queries.UpdateTalkgroup(ctx, db.UpdateTalkgroupParams{
 			ID:          talkgroup.ID,
 			TalkgroupID: talkgroup.TalkgroupID,
@@ -501,11 +526,11 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 			TagID:       talkgroup.TagID,
 			Order:       talkgroup.Order,
 		}); uerr != nil {
-			slog.Warn("dirmonitor: failed to backfill talkgroup name from metadata",
+			slog.Warn("dirmonitor: failed to backfill talkgroup from metadata",
 				"talkgroup_id", talkgroup.TalkgroupID, "error", uerr)
 		} else {
-			slog.Info("dirmonitor: backfilled talkgroup name from audio metadata",
-				"talkgroup_id", talkgroup.TalkgroupID, "name", parsed.TalkgroupTitle)
+			slog.Info("dirmonitor: backfilled talkgroup from audio metadata",
+				"talkgroup_id", talkgroup.TalkgroupID)
 			s.hub.BroadcastCFG(ctx)
 		}
 	}
@@ -616,6 +641,11 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 		"system_id", system.SystemID,
 		"talkgroup_id", talkgroup.TalkgroupID,
 	)
+
+	// Extract unit tags from sources JSON and upsert into units table.
+	if srcJSON.Valid {
+		upsertUnitsFromSources(ctx, s.queries, system.ID, srcJSON.String)
+	}
 
 	// ── Broadcast to WebSocket listeners ────────────────────────────────────
 	if s.hub != nil {
@@ -729,6 +759,18 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 			slog.Warn("dirmonitor: failed to delete source file",
 				"file", rel, "error", err)
 		}
+		// Also clean up sidecar file (e.g. Trunk Recorder .json companion).
+		if parsed.SidecarPath != "" {
+			scClean := filepath.Clean(parsed.SidecarPath)
+			scReal, _ := filepath.EvalSymlinks(scClean)
+			if rel, err := filepath.Rel(watchedReal, scReal); err != nil || strings.HasPrefix(rel, "..") {
+				slog.Warn("dirmonitor: refusing to delete sidecar outside watched directory",
+					"file", parsed.SidecarPath, "dir", dw.Directory)
+			} else if err := os.Remove(scReal); err != nil && !os.IsNotExist(err) {
+				slog.Warn("dirmonitor: failed to delete sidecar file",
+					"file", rel, "error", err)
+			}
+		}
 	}
 
 	return nil
@@ -774,4 +816,100 @@ func isBlacklisted(blacklistsJSON sql.NullString, talkgroupID int64) bool {
 		}
 	}
 	return false
+}
+
+// resolveGroupID looks up an existing group by label or creates one if it
+// doesn't exist. Returns a valid sql.NullInt64 with the group's DB ID, or
+// an invalid NullInt64 if the operation fails.
+func resolveGroupID(ctx context.Context, q *db.Queries, label string) sql.NullInt64 {
+	g, err := q.GetGroupByLabel(ctx, label)
+	if err == nil {
+		return sql.NullInt64{Int64: g.ID, Valid: true}
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		slog.Warn("dirmonitor: failed to look up group by label", "label", label, "error", err)
+		return sql.NullInt64{}
+	}
+	newID, cerr := q.CreateGroup(ctx, label)
+	if cerr != nil {
+		slog.Warn("dirmonitor: failed to auto-create group", "label", label, "error", cerr)
+		return sql.NullInt64{}
+	}
+	slog.Info("dirmonitor: auto-populated group", "label", label, "db_id", newID)
+	return sql.NullInt64{Int64: newID, Valid: true}
+}
+
+// resolveTagID looks up an existing tag by label or creates one if it
+// doesn't exist. Returns a valid sql.NullInt64 with the tag's DB ID, or
+// an invalid NullInt64 if the operation fails.
+func resolveTagID(ctx context.Context, q *db.Queries, label string) sql.NullInt64 {
+	t, err := q.GetTagByLabel(ctx, label)
+	if err == nil {
+		return sql.NullInt64{Int64: t.ID, Valid: true}
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		slog.Warn("dirmonitor: failed to look up tag by label", "label", label, "error", err)
+		return sql.NullInt64{}
+	}
+	newID, cerr := q.CreateTag(ctx, label)
+	if cerr != nil {
+		slog.Warn("dirmonitor: failed to auto-create tag", "label", label, "error", cerr)
+		return sql.NullInt64{}
+	}
+	slog.Info("dirmonitor: auto-populated tag", "label", label, "db_id", newID)
+	return sql.NullInt64{Int64: newID, Valid: true}
+}
+
+// needsBackfill returns true if at least one talkgroup field is empty and a
+// corresponding value was provided in the parsed metadata.
+func needsBackfill(tg db.Talkgroup, parsed *ParsedCall) bool {
+	if !tg.Label.Valid && parsed.TalkgroupTitle != "" {
+		return true
+	}
+	if !tg.Name.Valid && parsed.TalkgroupName != "" {
+		return true
+	}
+	if !tg.TagID.Valid && parsed.TalkgroupTag != "" {
+		return true
+	}
+	if !tg.GroupID.Valid && parsed.TalkgroupGroup != "" {
+		return true
+	}
+	return false
+}
+
+// upsertUnitsFromSources parses the sources JSON array and upserts any units
+// that include a "tag" (label) into the units table.
+// Sources format: [{"pos":0,"src":12345,"tag":"Unit Name"}, ...]
+func upsertUnitsFromSources(ctx context.Context, q *db.Queries, systemDBID int64, raw string) {
+	var sources []map[string]any
+	if err := json.Unmarshal([]byte(raw), &sources); err != nil {
+		return
+	}
+	for _, entry := range sources {
+		srcVal, ok := entry["src"]
+		if !ok {
+			continue
+		}
+		srcFloat, ok := srcVal.(float64)
+		if !ok || srcFloat <= 0 {
+			continue
+		}
+		tagVal, ok := entry["tag"]
+		if !ok {
+			continue
+		}
+		tag, ok := tagVal.(string)
+		if !ok || tag == "" {
+			continue
+		}
+		if err := q.UpsertUnit(ctx, db.UpsertUnitParams{
+			SystemID: systemDBID,
+			UnitID:   int64(srcFloat),
+			Label:    sql.NullString{String: tag, Valid: true},
+		}); err != nil {
+			slog.Warn("dirmonitor: failed to upsert unit from sources",
+				"unit_id", int64(srcFloat), "tag", tag, "error", err)
+		}
+	}
 }

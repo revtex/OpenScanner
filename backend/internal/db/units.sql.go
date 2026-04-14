@@ -196,8 +196,10 @@ func (q *Queries) UpdateUnit(ctx context.Context, arg UpdateUnitParams) error {
 }
 
 const upsertUnit = `-- name: UpsertUnit :exec
-INSERT OR IGNORE INTO units (system_id, unit_id, label, "order")
+INSERT INTO units (system_id, unit_id, label, "order")
 VALUES (?1, ?2, ?3, ?4)
+ON CONFLICT (system_id, unit_id) DO UPDATE SET
+    label = COALESCE(excluded.label, units.label)
 `
 
 type UpsertUnitParams struct {

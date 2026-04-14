@@ -1,6 +1,9 @@
 -- name: GetGroup :one
 SELECT * FROM groups WHERE id = ? LIMIT 1;
 
+-- name: GetGroupByLabel :one
+SELECT * FROM groups WHERE label = ? LIMIT 1;
+
 -- name: ListGroups :many
 SELECT * FROM groups ORDER BY label ASC;
 

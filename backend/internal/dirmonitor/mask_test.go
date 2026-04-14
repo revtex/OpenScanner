@@ -454,6 +454,69 @@ func TestApplyMaskValues_FrequencyMHz(t *testing.T) {
 	if call.Frequency != 851025000 {
 		t.Errorf("Frequency = %d, want 851025000", call.Frequency)
 	}
+	// #TGMHZ should also set TalkgroupID = Hz / 1000.
+	if call.TalkgroupID != 851025 {
+		t.Errorf("TalkgroupID = %d, want 851025", call.TalkgroupID)
+	}
+}
+
+// TestApplyMaskValues_TGMHZ_NoOverwriteTG verifies that #TGMHZ does not
+// overwrite TalkgroupID when already set.
+func TestApplyMaskValues_TGMHZ_NoOverwriteTG(t *testing.T) {
+	call := &ParsedCall{AudioFilePath: "/tmp/test.wav", TalkgroupID: 999}
+	ApplyMaskValues(call, map[string]string{"#TGMHZ": "851.025"})
+	if call.Frequency != 851025000 {
+		t.Errorf("Frequency = %d, want 851025000", call.Frequency)
+	}
+	if call.TalkgroupID != 999 {
+		t.Errorf("TalkgroupID = %d, want 999 (should not be overwritten)", call.TalkgroupID)
+	}
+}
+
+// TestApplyMaskValues_Group verifies #GROUP extraction.
+func TestApplyMaskValues_Group(t *testing.T) {
+	call := &ParsedCall{AudioFilePath: "/tmp/test.wav"}
+	ApplyMaskValues(call, map[string]string{"#GROUP": "Police"})
+	if call.TalkgroupGroup != "Police" {
+		t.Errorf("TalkgroupGroup = %q, want %q", call.TalkgroupGroup, "Police")
+	}
+}
+
+// TestApplyMaskValues_Tag verifies #TAG extraction.
+func TestApplyMaskValues_Tag(t *testing.T) {
+	call := &ParsedCall{AudioFilePath: "/tmp/test.wav"}
+	ApplyMaskValues(call, map[string]string{"#TAG": "Law Dispatch"})
+	if call.TalkgroupTag != "Law Dispatch" {
+		t.Errorf("TalkgroupTag = %q, want %q", call.TalkgroupTag, "Law Dispatch")
+	}
+}
+
+// TestApplyMaskValues_TagDashIgnored verifies #TAG with "-" is treated as empty.
+func TestApplyMaskValues_TagDashIgnored(t *testing.T) {
+	call := &ParsedCall{AudioFilePath: "/tmp/test.wav"}
+	ApplyMaskValues(call, map[string]string{"#TAG": "-"})
+	if call.TalkgroupTag != "" {
+		t.Errorf("TalkgroupTag = %q, want empty (dash should be ignored)", call.TalkgroupTag)
+	}
+}
+
+// TestApplyMaskValues_TGAFS verifies #TGAFS AFS format decoding.
+func TestApplyMaskValues_TGAFS(t *testing.T) {
+	call := &ParsedCall{AudioFilePath: "/tmp/test.wav"}
+	// AFS "01-031" → a=1, b=3, c=1 → 1<<7 | 3<<3 | 1 = 128 + 24 + 1 = 153
+	ApplyMaskValues(call, map[string]string{"#TGAFS": "01-031"})
+	if call.TalkgroupID != 153 {
+		t.Errorf("TalkgroupID = %d, want 153 (AFS 01-031)", call.TalkgroupID)
+	}
+}
+
+// TestApplyMaskValues_GroupNoOverwrite verifies #GROUP does not overwrite.
+func TestApplyMaskValues_GroupNoOverwrite(t *testing.T) {
+	call := &ParsedCall{AudioFilePath: "/tmp/test.wav", TalkgroupGroup: "Fire"}
+	ApplyMaskValues(call, map[string]string{"#GROUP": "Police"})
+	if call.TalkgroupGroup != "Fire" {
+		t.Errorf("TalkgroupGroup = %q, want %q (should not be overwritten)", call.TalkgroupGroup, "Fire")
+	}
 }
 
 // TestApplyMaskValues_TGID verifies #TGID takes precedence over #TG.

@@ -2,6 +2,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -232,20 +233,40 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		return
 	}
 
+	// SDRTrunk sends test=1 to verify the API key and connection.
+	// Respond with the string it expects so it reports CONNECTED.
+	if c.PostForm("test") == "1" {
+		c.String(http.StatusOK, "incomplete call data: no talkgroup")
+		return
+	}
+
 	// Parse required fields.
 	dateTimeStr := c.PostForm("dateTime")
 	if dateTimeStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "dateTime is required"})
 		return
 	}
-	dateTimeUnix, err := strconv.ParseInt(dateTimeStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid dateTime"})
+	// Try unix timestamp first (Trunk Recorder, SDRTrunk), then ISO 8601 (voxcall).
+	var dateTimeUnix int64
+	if n, err := strconv.ParseInt(dateTimeStr, 10, 64); err == nil {
+		dateTimeUnix = n
+	} else if t, err := time.Parse(time.RFC3339Nano, dateTimeStr); err == nil {
+		dateTimeUnix = t.Unix()
+	} else if t, err := time.Parse(time.RFC3339, dateTimeStr); err == nil {
+		dateTimeUnix = t.Unix()
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid dateTime: expected unix timestamp or ISO 8601"})
 		return
 	}
 	callTime := time.Unix(dateTimeUnix, 0)
 
+	// Trunk Recorder's rdioscanner_uploader plugin sends "system" and
+	// "talkgroup" while our canonical field names are "systemId" and
+	// "talkgroupId". Accept both for backward compatibility.
 	systemIDStr := c.PostForm("systemId")
+	if systemIDStr == "" {
+		systemIDStr = c.PostForm("system")
+	}
 	if systemIDStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "systemId is required"})
 		return
@@ -257,6 +278,9 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	}
 
 	tgIDStr := c.PostForm("talkgroupId")
+	if tgIDStr == "" {
+		tgIDStr = c.PostForm("talkgroup")
+	}
 	if tgIDStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "talkgroupId is required"})
 		return
@@ -323,6 +347,13 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	// Optional talkgroup metadata for auto-populate / backfill.
 	talkgroupLabel := c.PostForm("talkgroupLabel")
 	talkgroupTag := c.PostForm("talkgroupTag")
+	talkgroupGroup := c.PostForm("talkgroupGroup")
+	talkgroupName := c.PostForm("talkgroupName")
+
+	var talkerAliasCol sql.NullString
+	if v := c.PostForm("talkerAlias"); v != "" {
+		talkerAliasCol = sql.NullString{String: v, Valid: true}
+	}
 
 	ctx := c.Request.Context()
 	autoPopulate := h.getSettingValue(c, "autoPopulate") == "true"
@@ -340,6 +371,10 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			return
 		}
 		label := strconv.FormatInt(systemIDRaw, 10)
+		// SDRTrunk and other uploaders send systemLabel with a human-readable name.
+		if sl := c.PostForm("systemLabel"); sl != "" {
+			label = sl
+		}
 		newID, cerr := h.queries.CreateSystem(ctx, db.CreateSystemParams{
 			SystemID:     systemIDRaw,
 			Label:        label,
@@ -382,14 +417,26 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		if talkgroupLabel != "" {
 			tgLabel = sql.NullString{String: talkgroupLabel, Valid: true}
 		}
+		if talkgroupName != "" {
+			tgName = sql.NullString{String: talkgroupName, Valid: true}
+		}
+		// Resolve group from talkgroupGroup (e.g. SDRTrunk sends this).
+		var groupID sql.NullInt64
+		if talkgroupGroup != "" {
+			groupID = resolveGroupID(ctx, h.queries, talkgroupGroup)
+		}
+		// Resolve tag from talkgroupTag (e.g. "Law Dispatch", "Fire-Tac").
+		var tagID sql.NullInt64
 		if talkgroupTag != "" {
-			tgName = sql.NullString{String: talkgroupTag, Valid: true}
+			tagID = resolveTagID(ctx, h.queries, talkgroupTag)
 		}
 		newID, cerr := h.queries.CreateTalkgroup(ctx, db.CreateTalkgroupParams{
 			SystemID:    system.ID,
 			TalkgroupID: talkgroupIDRaw,
 			Label:       tgLabel,
 			Name:        tgName,
+			GroupID:     groupID,
+			TagID:       tagID,
 		})
 		if cerr != nil {
 			slog.Error("failed to auto-create talkgroup", "talkgroup_id", talkgroupIDRaw, "error", cerr)
@@ -397,13 +444,21 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			return
 		}
 		slog.Info("auto-populated talkgroup", "talkgroup_id", talkgroupIDRaw, "db_id", newID)
-		talkgroup = db.Talkgroup{ID: newID, SystemID: system.ID, TalkgroupID: talkgroupIDRaw, Label: tgLabel, Name: tgName}
+		talkgroup = db.Talkgroup{ID: newID, SystemID: system.ID, TalkgroupID: talkgroupIDRaw, Label: tgLabel, Name: tgName, GroupID: groupID, TagID: tagID}
 		h.hub.BroadcastCFG(ctx)
-	} else if !talkgroup.Name.Valid && talkgroupTag != "" {
-		// Existing talkgroup has no name — backfill from upload metadata.
-		talkgroup.Name = sql.NullString{String: talkgroupTag, Valid: true}
+	} else if needsBackfill(talkgroup, talkgroupLabel, talkgroupName, talkgroupTag, talkgroupGroup) {
+		// Existing talkgroup has empty fields — backfill from upload metadata.
 		if !talkgroup.Label.Valid && talkgroupLabel != "" {
 			talkgroup.Label = sql.NullString{String: talkgroupLabel, Valid: true}
+		}
+		if !talkgroup.Name.Valid && talkgroupName != "" {
+			talkgroup.Name = sql.NullString{String: talkgroupName, Valid: true}
+		}
+		if !talkgroup.GroupID.Valid && talkgroupGroup != "" {
+			talkgroup.GroupID = resolveGroupID(ctx, h.queries, talkgroupGroup)
+		}
+		if !talkgroup.TagID.Valid && talkgroupTag != "" {
+			talkgroup.TagID = resolveTagID(ctx, h.queries, talkgroupTag)
 		}
 		if uerr := h.queries.UpdateTalkgroup(ctx, db.UpdateTalkgroupParams{
 			ID:          talkgroup.ID,
@@ -416,11 +471,11 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			TagID:       talkgroup.TagID,
 			Order:       talkgroup.Order,
 		}); uerr != nil {
-			slog.Warn("failed to backfill talkgroup name from upload",
+			slog.Warn("failed to backfill talkgroup from upload",
 				"talkgroup_id", talkgroup.TalkgroupID, "error", uerr)
 		} else {
-			slog.Info("backfilled talkgroup name from upload",
-				"talkgroup_id", talkgroup.TalkgroupID, "name", talkgroupTag)
+			slog.Info("backfilled talkgroup from upload",
+				"talkgroup_id", talkgroup.TalkgroupID)
 			h.hub.BroadcastCFG(ctx)
 		}
 	}
@@ -439,7 +494,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			// Non-fatal: proceed with ingest.
 		} else if dup {
 			slog.Info("duplicate call rejected", "system_id", systemIDRaw, "talkgroup_id", talkgroupIDRaw)
-			c.JSON(http.StatusOK, gin.H{"message": "duplicate"})
+			c.JSON(http.StatusOK, gin.H{"message": "duplicate call rejected"})
 			return
 		}
 	}
@@ -504,6 +559,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		Decoder:         decoderCol,
 		ErrorCount:      errorCount,
 		SpikeCount:      spikeCount,
+		TalkerAlias:     talkerAliasCol,
 	})
 	if err != nil {
 		slog.Error("failed to insert call", "error", err)
@@ -512,6 +568,12 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	}
 
 	slog.Info("call ingested", "id", callID)
+
+	// Extract unit tags from sources JSON and upsert into units table.
+	// Sources format: [{"pos":0,"src":12345,"tag":"Unit Name"}, ...]
+	if sourcesJSON.Valid {
+		upsertUnitsFromSources(ctx, h.queries, system.ID, sourcesJSON.String)
+	}
 
 	// Broadcast to WebSocket listeners.
 	if h.hub != nil {
@@ -549,6 +611,9 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		if spikeCount.Valid {
 			calPayload["spikeCount"] = spikeCount.Int64
 		}
+		if talkerAliasCol.Valid {
+			calPayload["talkerAlias"] = talkerAliasCol.String
+		}
 		calMsg, err := ws.NewCALMessage(calPayload)
 		if err != nil {
 			slog.Error("failed to build CAL message", "error", err)
@@ -574,7 +639,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"id": callID})
+	c.JSON(http.StatusOK, gin.H{"id": callID, "message": "Call imported successfully."})
 
 	// Notify downstream pushers (non-blocking, after response is sent).
 	if h.dsNotifier != nil {
@@ -612,6 +677,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			TalkgroupName:  talkgroup.Name.String,
 			TalkgroupGroup: groupLabel,
 			TalkgroupTag:   tagLabel,
+			TalkerAlias:    talkerAliasCol.String,
 		})
 	}
 }
@@ -638,6 +704,7 @@ type CallSearchResult struct {
 	Decoder        string `json:"decoder,omitempty"`
 	ErrorCount     *int64 `json:"errorCount,omitempty"`
 	SpikeCount     *int64 `json:"spikeCount,omitempty"`
+	TalkerAlias    string `json:"talkerAlias,omitempty"`
 	Transcript     string `json:"transcript,omitempty"`
 	Bookmarked     bool   `json:"bookmarked"`
 } // @name CallSearchResult
@@ -950,6 +1017,9 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 		if call.Decoder.Valid {
 			r.Decoder = call.Decoder.String
 		}
+		if call.TalkerAlias.Valid {
+			r.TalkerAlias = call.TalkerAlias.String
+		}
 
 		// Join system label (cached).
 		sys, ok := systemCache[call.SystemID]
@@ -1035,6 +1105,66 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 	})
 }
 
+// resolveGroupID looks up an existing group by label or creates one if it
+// doesn't exist. Returns a valid sql.NullInt64 with the group's DB ID, or
+// an invalid NullInt64 if the operation fails.
+func resolveGroupID(ctx context.Context, q db.Querier, label string) sql.NullInt64 {
+	g, err := q.GetGroupByLabel(ctx, label)
+	if err == nil {
+		return sql.NullInt64{Int64: g.ID, Valid: true}
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		slog.Warn("failed to look up group by label", "label", label, "error", err)
+		return sql.NullInt64{}
+	}
+	newID, cerr := q.CreateGroup(ctx, label)
+	if cerr != nil {
+		slog.Warn("failed to auto-create group", "label", label, "error", cerr)
+		return sql.NullInt64{}
+	}
+	slog.Info("auto-populated group from upload", "label", label, "db_id", newID)
+	return sql.NullInt64{Int64: newID, Valid: true}
+}
+
+// resolveTagID looks up an existing tag by label or creates one if it
+// doesn't exist. Returns a valid sql.NullInt64 with the tag's DB ID, or
+// an invalid NullInt64 if the operation fails.
+func resolveTagID(ctx context.Context, q db.Querier, label string) sql.NullInt64 {
+	t, err := q.GetTagByLabel(ctx, label)
+	if err == nil {
+		return sql.NullInt64{Int64: t.ID, Valid: true}
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		slog.Warn("failed to look up tag by label", "label", label, "error", err)
+		return sql.NullInt64{}
+	}
+	newID, cerr := q.CreateTag(ctx, label)
+	if cerr != nil {
+		slog.Warn("failed to auto-create tag", "label", label, "error", cerr)
+		return sql.NullInt64{}
+	}
+	slog.Info("auto-populated tag from upload", "label", label, "db_id", newID)
+	return sql.NullInt64{Int64: newID, Valid: true}
+}
+
+// needsBackfill returns true if at least one talkgroup field is empty and a
+// corresponding value was provided in the upload metadata.
+func needsBackfill(tg db.Talkgroup, label, name, tag, group string) bool {
+	if !tg.Label.Valid && label != "" {
+		return true
+	}
+	if !tg.Name.Valid && name != "" {
+		return true
+	}
+	if !tg.TagID.Valid && tag != "" {
+		return true
+	}
+	if !tg.GroupID.Valid && group != "" {
+		return true
+	}
+	return false
+}
+
 // isBlacklistedTG checks whether a talkgroup ID appears in a system's blacklist.
 // The blacklist is a JSON array of integers stored in blacklists_json.
 func isBlacklistedTG(blacklistsJSON sql.NullString, talkgroupID int64) bool {
@@ -1052,4 +1182,41 @@ func isBlacklistedTG(blacklistsJSON sql.NullString, talkgroupID int64) bool {
 		}
 	}
 	return false
+}
+
+// upsertUnitsFromSources parses the sources JSON array and upserts any units
+// that include a "tag" (label) into the units table.
+// Sources format: [{"pos":0,"src":12345,"tag":"Unit Name"}, ...]
+// Entries without "src" or "tag" are silently skipped.
+func upsertUnitsFromSources(ctx context.Context, q *db.Queries, systemDBID int64, raw string) {
+	var sources []map[string]any
+	if err := json.Unmarshal([]byte(raw), &sources); err != nil {
+		return
+	}
+	for _, entry := range sources {
+		srcVal, ok := entry["src"]
+		if !ok {
+			continue
+		}
+		srcFloat, ok := srcVal.(float64)
+		if !ok || srcFloat <= 0 {
+			continue
+		}
+		tagVal, ok := entry["tag"]
+		if !ok {
+			continue
+		}
+		tag, ok := tagVal.(string)
+		if !ok || tag == "" {
+			continue
+		}
+		if err := q.UpsertUnit(ctx, db.UpsertUnitParams{
+			SystemID: systemDBID,
+			UnitID:   int64(srcFloat),
+			Label:    sql.NullString{String: tag, Valid: true},
+		}); err != nil {
+			slog.Warn("failed to upsert unit from sources",
+				"unit_id", int64(srcFloat), "tag", tag, "error", err)
+		}
+	}
 }

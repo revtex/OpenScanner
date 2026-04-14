@@ -24,6 +24,7 @@ export interface CallSearchResult {
   decoder?: string;
   errorCount?: number;
   spikeCount?: number;
+  talkerAlias?: string;
   transcript: string;
   bookmarked: boolean;
 }

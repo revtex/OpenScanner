@@ -187,6 +187,11 @@ func APIKeyAuth(queries *db.Queries) gin.HandlerFunc {
 		requestID, _ := c.Get("requestID")
 
 		key := c.GetHeader("X-API-Key")
+		// Trunk Recorder's rdioscanner_uploader plugin sends the API key
+		// as a multipart form field named "key" rather than a header.
+		if key == "" {
+			key = c.PostForm("key")
+		}
 		if key == "" {
 			slog.Warn("api key auth: missing X-API-Key header",
 				"request_id", requestID,

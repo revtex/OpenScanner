@@ -193,15 +193,20 @@ export function DisplayPanel({
             <span>TGID: {currentCall.talkgroupId}</span>
           </div>
 
-          {/* Row 7: site/decoder, unit ID */}
+          {/* Row 7: site/decoder, unit ID / talker alias */}
           <div className="flex justify-between">
             <span className="truncate opacity-60">
               {[currentCall.site, currentCall.decoder]
                 .filter(Boolean)
                 .join(" · ")}
             </span>
-            <span>
-              {currentCall.source ? `UID: ${currentCall.source}` : ""}
+            <span className="truncate text-right">
+              {[
+                currentCall.source ? `UID: ${currentCall.source}` : "",
+                currentCall.talkerAlias,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </span>
           </div>
 

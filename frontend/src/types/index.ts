@@ -19,6 +19,7 @@ export interface Call {
   decoder?: string; // decoder type (e.g. "P25 Phase 1")
   errorCount?: number; // P25 error count
   spikeCount?: number; // P25 spike count
+  talkerAlias?: string; // DMR/P25 talker alias
   systemLabel?: string; // populated from config
   talkgroupLabel?: string; // populated from config
   talkgroupName?: string; // populated from config
@@ -167,7 +168,7 @@ export interface AdminApiKeyCreateResponse extends AdminApiKey {
   createdKey: string;
 }
 
-export interface AdminDirMonitor {
+export interface AdminDirwatch {
   id: number;
   directory: string;
   type: string;

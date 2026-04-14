@@ -177,6 +177,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
           decoder: call.decoder,
           errorCount: call.errorCount,
           spikeCount: call.spikeCount,
+          talkerAlias: call.talkerAlias,
           systemLabel: call.systemLabel,
           talkgroupLabel: call.talkgroupLabel,
           talkgroupName: call.talkgroupName,
@@ -296,6 +297,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                         <span>{(call.frequency / 1e6).toFixed(4)} MHz</span>
                       )}
                       {call.source > 0 && <span>UID: {call.source}</span>}
+                      {call.talkerAlias && <span>{call.talkerAlias}</span>}
                       {call.talkgroupId > 0 && (
                         <span>TGID: {call.talkgroupId}</span>
                       )}

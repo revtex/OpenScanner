@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/openscanner/openscanner/internal/db"
 )
@@ -34,8 +35,10 @@ func writeTRFiles(t *testing.T, dir string) (jsonPath, audioPath string) {
 		"freq":               int64(851025000),
 		"emergency":          0,
 		"talkgroup":          int64(12345),
+		"talkgroup_tag":      "Fire Dispatch",
+		"short_name":         "MyCity",
 		"sys_num":            int64(1),
-		"unit":               int64(5432),
+		"source_num":         int64(5432),
 		"srcList":            json.RawMessage(`[{"src":5432,"pos":0,"emergency":0,"signal_system":"","tag":""}]`),
 		"freqList":           json.RawMessage(`[{"freq":851025000,"pos":0,"len":20,"error_count":0,"spike_count":0}]`),
 		"patched_talkgroups": json.RawMessage(`[]`),
@@ -88,6 +91,12 @@ func TestParseTrunkRecorder_AudioTrigger(t *testing.T) {
 	if parsed.Source != 5432 {
 		t.Errorf("Source = %d, want 5432", parsed.Source)
 	}
+	if parsed.SystemLabel != "MyCity" {
+		t.Errorf("SystemLabel = %q, want %q", parsed.SystemLabel, "MyCity")
+	}
+	if parsed.TalkgroupTitle != "Fire Dispatch" {
+		t.Errorf("TalkgroupTitle = %q, want %q", parsed.TalkgroupTitle, "Fire Dispatch")
+	}
 	if parsed.AudioFilePath != audioPath {
 		t.Errorf("AudioFilePath = %q, want %q", parsed.AudioFilePath, audioPath)
 	}
@@ -112,6 +121,9 @@ func TestParseTrunkRecorder_JSONTrigger(t *testing.T) {
 	}
 	if parsed.AudioFilePath != audioPath {
 		t.Errorf("AudioFilePath = %q, want %q", parsed.AudioFilePath, audioPath)
+	}
+	if parsed.SidecarPath != jsonPath {
+		t.Errorf("SidecarPath = %q, want %q", parsed.SidecarPath, jsonPath)
 	}
 	if parsed.TalkgroupID != 12345 {
 		t.Errorf("TalkgroupID = %d, want 12345", parsed.TalkgroupID)
@@ -411,6 +423,88 @@ func TestParseRTLSDRAirband_NonAudio_ReturnsNil(t *testing.T) {
 	}
 }
 
+func TestParseRTLSDRAirband_TimestampFromFilename(t *testing.T) {
+	tests := []struct {
+		name     string
+		filename string
+		wantYear int
+		wantMon  time.Month
+		wantDay  int
+		wantHour int
+		wantMin  int
+		wantSec  int
+		wantFreq int64
+	}{
+		{
+			name:     "split_on_transmission",
+			filename: "TOWER_20240115_143522.mp3",
+			wantYear: 2024, wantMon: time.January, wantDay: 15,
+			wantHour: 14, wantMin: 35, wantSec: 22,
+		},
+		{
+			name:     "hourly_rotation",
+			filename: "TOWER_20240115_14.mp3",
+			wantYear: 2024, wantMon: time.January, wantDay: 15,
+			wantHour: 14, wantMin: 0, wantSec: 0,
+		},
+		{
+			name:     "split_with_freq",
+			filename: "TOWER_20240115_143522_120500000.mp3",
+			wantYear: 2024, wantMon: time.January, wantDay: 15,
+			wantHour: 14, wantMin: 35, wantSec: 22,
+			wantFreq: 120500000,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			audioPath := filepath.Join(dir, tc.filename)
+			os.WriteFile(audioPath, []byte("ID3FAKEMP3DATA"), 0644) //nolint:errcheck
+
+			dw := dwFor("rtlsdr-airband", dir)
+			parsed, err := parseRTLSDRAirband(dw, audioPath)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if parsed == nil {
+				t.Fatal("expected non-nil ParsedCall")
+			}
+			wantDT := time.Date(tc.wantYear, tc.wantMon, tc.wantDay,
+				tc.wantHour, tc.wantMin, tc.wantSec, 0, time.UTC)
+			if !parsed.DateTime.Equal(wantDT) {
+				t.Errorf("DateTime = %v, want %v", parsed.DateTime, wantDT)
+			}
+			if parsed.Frequency != tc.wantFreq {
+				t.Errorf("Frequency = %d, want %d", parsed.Frequency, tc.wantFreq)
+			}
+		})
+	}
+}
+
+func TestParseRTLSDRAirband_FreqConfigOverridesFilename(t *testing.T) {
+	dir := t.TempDir()
+	audioPath := filepath.Join(dir, "TOWER_20240115_143522_120500000.mp3")
+	os.WriteFile(audioPath, []byte("ID3FAKEMP3DATA"), 0644) //nolint:errcheck
+
+	dw := db.Dirmonitor{
+		ID:        1,
+		Directory: dir,
+		Type:      "rtlsdr-airband",
+		Frequency: sql.NullInt64{Int64: 118000000, Valid: true},
+	}
+	parsed, err := parseRTLSDRAirband(dw, audioPath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if parsed == nil {
+		t.Fatal("expected non-nil ParsedCall")
+	}
+	// Config frequency should take priority over filename frequency.
+	if parsed.Frequency != 118000000 {
+		t.Errorf("Frequency = %d, want 118000000 (config override)", parsed.Frequency)
+	}
+}
+
 // ── DSDPlus ───────────────────────────────────────────────────────────────────
 
 func TestParseDSDPlus_WithDirMonitorOverrides(t *testing.T) {
@@ -451,6 +545,78 @@ func TestParseDSDPlus_NonAudio_ReturnsNil(t *testing.T) {
 	}
 }
 
+func TestParseDSDPlus_FilenameMetadata(t *testing.T) {
+	// Simulate DSD+ directory structure: parent folder ending in YYYYMMDD.
+	dateDir := filepath.Join(t.TempDir(), "20250817")
+	os.MkdirAll(dateDir, 0755) //nolint:errcheck
+
+	// DSD+ filename: HHMMSS_[data]_P25(BS)_12345-Site1_[54241][Fire Dispatch]_[4424001].mp3
+	filename := "143022_[some data]_P25(BS)_12345-Site1_[54241][Fire Dispatch]_[4424001].mp3"
+	audioPath := filepath.Join(dateDir, filename)
+	os.WriteFile(audioPath, []byte("ID3"), 0644) //nolint:errcheck
+
+	dw := db.Dirmonitor{ID: 1, Directory: dateDir, Type: "dsdplus"}
+	parsed, err := parseDSDPlus(dw, audioPath)
+	if err != nil || parsed == nil {
+		t.Fatalf("unexpected: err=%v parsed=%v", err, parsed)
+	}
+
+	// System ID from P25(BS) mode: first number in channel segment "12345-Site1".
+	if parsed.SystemID != 12345 {
+		t.Errorf("SystemID = %d, want 12345", parsed.SystemID)
+	}
+
+	// Talkgroup ID from second-to-last bracket segment.
+	if parsed.TalkgroupID != 54241 {
+		t.Errorf("TalkgroupID = %d, want 54241", parsed.TalkgroupID)
+	}
+
+	// Talkgroup label from second bracket in second-to-last segment.
+	if parsed.TalkgroupTitle != "Fire Dispatch" {
+		t.Errorf("TalkgroupTitle = %q, want %q", parsed.TalkgroupTitle, "Fire Dispatch")
+	}
+
+	// Source unit from last segment.
+	if parsed.Source != 4424001 {
+		t.Errorf("Source = %d, want 4424001", parsed.Source)
+	}
+
+	// Date/time: parent dir 20250817 + filename prefix 143022.
+	if parsed.DateTime.IsZero() {
+		t.Fatal("DateTime is zero")
+	}
+	utc := parsed.DateTime.UTC()
+	// The parser uses local time then converts to UTC. We can at least
+	// verify the date components were parsed (exact UTC depends on tz).
+	localDT := time.Date(2025, 8, 17, 14, 30, 22, 0, time.Now().Location())
+	wantUTC := localDT.UTC()
+	if !utc.Equal(wantUTC) {
+		t.Errorf("DateTime = %v, want %v", utc, wantUTC)
+	}
+}
+
+func TestParseDSDPlus_PunctuationLabelIgnored(t *testing.T) {
+	dateDir := filepath.Join(t.TempDir(), "20250817")
+	os.MkdirAll(dateDir, 0755) //nolint:errcheck
+
+	// Talkgroup label is just punctuation "---" — should be ignored.
+	filename := "143022_[x]_DMR(BS)_100-Site_[999][---]_[1234].mp3"
+	audioPath := filepath.Join(dateDir, filename)
+	os.WriteFile(audioPath, []byte("ID3"), 0644) //nolint:errcheck
+
+	dw := db.Dirmonitor{ID: 1, Directory: dateDir, Type: "dsdplus"}
+	parsed, err := parseDSDPlus(dw, audioPath)
+	if err != nil || parsed == nil {
+		t.Fatalf("unexpected: err=%v parsed=%v", err, parsed)
+	}
+	if parsed.TalkgroupTitle != "" {
+		t.Errorf("TalkgroupTitle = %q, want empty (punctuation-only should be ignored)", parsed.TalkgroupTitle)
+	}
+	if parsed.TalkgroupID != 999 {
+		t.Errorf("TalkgroupID = %d, want 999", parsed.TalkgroupID)
+	}
+}
+
 // ── ProScan ───────────────────────────────────────────────────────────────────
 
 func TestParseProScan_WithDirMonitorOverrides(t *testing.T) {
@@ -477,46 +643,6 @@ func TestParseProScan_WithDirMonitorOverrides(t *testing.T) {
 	}
 	if parsed.DateTime.IsZero() {
 		t.Error("DateTime is zero")
-	}
-}
-
-// ── VoxCall ───────────────────────────────────────────────────────────────────
-
-func TestParseVoxCall_WithDirMonitorOverrides(t *testing.T) {
-	dir := t.TempDir()
-	audioPath := filepath.Join(dir, "vox.ogg")
-	os.WriteFile(audioPath, []byte("OggS"), 0644) //nolint:errcheck
-
-	dw := db.Dirmonitor{
-		ID:          1,
-		Directory:   dir,
-		Type:        "voxcall",
-		SystemID:    sql.NullInt64{Int64: 2, Valid: true},
-		TalkgroupID: sql.NullInt64{Int64: 555, Valid: true},
-	}
-	parsed, err := parseVoxCall(dw, audioPath)
-	if err != nil || parsed == nil {
-		t.Fatalf("unexpected: err=%v parsed=%v", err, parsed)
-	}
-	if parsed.SystemID != 2 {
-		t.Errorf("SystemID = %d, want 2", parsed.SystemID)
-	}
-	if parsed.TalkgroupID != 555 {
-		t.Errorf("TalkgroupID = %d, want 555", parsed.TalkgroupID)
-	}
-}
-
-func TestParseVoxCall_NonAudio_ReturnsNil(t *testing.T) {
-	dir := t.TempDir()
-	p := filepath.Join(dir, "file.xml")
-	os.WriteFile(p, []byte("<x/>"), 0644) //nolint:errcheck
-
-	parsed, err := parseVoxCall(dwFor("voxcall", dir), p)
-	if err != nil {
-		t.Error(err)
-	}
-	if parsed != nil {
-		t.Errorf("expected nil, got %+v", parsed)
 	}
 }
 
@@ -574,7 +700,6 @@ func TestParserForType(t *testing.T) {
 		{"rtlsdr-airband"},
 		{"dsdplus"},
 		{"proscan"},
-		{"voxcall"},
 		{"unknown-type"},
 		{""},
 	}

@@ -1,6 +1,9 @@
 -- name: GetTag :one
 SELECT * FROM tags WHERE id = ? LIMIT 1;
 
+-- name: GetTagByLabel :one
+SELECT * FROM tags WHERE label = ? LIMIT 1;
+
 -- name: ListTags :many
 SELECT * FROM tags ORDER BY label ASC;
 

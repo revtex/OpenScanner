@@ -40,6 +40,17 @@ func (q *Queries) GetGroup(ctx context.Context, id int64) (Group, error) {
 	return i, err
 }
 
+const getGroupByLabel = `-- name: GetGroupByLabel :one
+SELECT id, label FROM groups WHERE label = ? LIMIT 1
+`
+
+func (q *Queries) GetGroupByLabel(ctx context.Context, label string) (Group, error) {
+	row := q.db.QueryRowContext(ctx, getGroupByLabel, label)
+	var i Group
+	err := row.Scan(&i.ID, &i.Label)
+	return i, err
+}
+
 const listGroups = `-- name: ListGroups :many
 SELECT id, label FROM groups ORDER BY label ASC
 `

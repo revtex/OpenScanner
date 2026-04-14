@@ -40,6 +40,17 @@ func (q *Queries) GetTag(ctx context.Context, id int64) (Tag, error) {
 	return i, err
 }
 
+const getTagByLabel = `-- name: GetTagByLabel :one
+SELECT id, label FROM tags WHERE label = ? LIMIT 1
+`
+
+func (q *Queries) GetTagByLabel(ctx context.Context, label string) (Tag, error) {
+	row := q.db.QueryRowContext(ctx, getTagByLabel, label)
+	var i Tag
+	err := row.Scan(&i.ID, &i.Label)
+	return i, err
+}
+
 const listTags = `-- name: ListTags :many
 SELECT id, label FROM tags ORDER BY label ASC
 `

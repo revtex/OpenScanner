@@ -222,8 +222,8 @@ func TestPostCallUpload_Duplicate(t *testing.T) {
 	if err := json.NewDecoder(w2.Body).Decode(&r2); err != nil {
 		t.Fatalf("decode duplicate response: %v", err)
 	}
-	if r2.Message != "duplicate" {
-		t.Errorf("message = %q, want \"duplicate\"", r2.Message)
+	if r2.Message != "duplicate call rejected" {
+		t.Errorf("message = %q, want \"duplicate call rejected\"", r2.Message)
 	}
 }
 
@@ -265,5 +265,109 @@ func TestPostCallUpload_RateLimited(t *testing.T) {
 	w2 := sendCall(strconv.FormatInt(now+1, 10))
 	if w2.Code != http.StatusTooManyRequests {
 		t.Errorf("second call: status = %d, want 429; body: %s", w2.Code, w2.Body.String())
+	}
+}
+
+// TestPostCallUpload_TestConnection checks that SDRTrunk's test=1 connection
+// check returns 200 with the expected response string.
+func TestPostCallUpload_TestConnection(t *testing.T) {
+	engine, queries := newTestEngineWithCalls(t)
+	seedAPIKey(t, queries, "key-test")
+
+	body, ct := buildCallUpload(t, map[string]string{
+		"test":   "1",
+		"system": "1",
+	}, false)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/call-upload", body)
+	req.Header.Set("Content-Type", ct)
+	req.Header.Set("X-API-Key", "key-test")
+	w := httptest.NewRecorder()
+	engine.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", w.Code, w.Body.String())
+	}
+	if got := w.Body.String(); got != "incomplete call data: no talkgroup" {
+		t.Errorf("body = %q, want \"incomplete call data: no talkgroup\"", got)
+	}
+}
+
+// TestPostCallUpload_SuccessMessage checks that the success response contains
+// the string SDRTrunk expects.
+func TestPostCallUpload_SuccessMessage(t *testing.T) {
+	engine, queries := newTestEngineWithCalls(t)
+	ctx := context.Background()
+
+	seedAPIKey(t, queries, "key-msg")
+	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulate", Value: "true"})
+	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "audioConversion", Value: "0"})
+	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "disableDuplicateDetection", Value: "true"})
+
+	body, ct := buildCallUpload(t, map[string]string{
+		"systemId":    "10",
+		"talkgroupId": "1000",
+		"dateTime":    strconv.FormatInt(time.Now().Unix(), 10),
+	}, true)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/call-upload", body)
+	req.Header.Set("Content-Type", ct)
+	req.Header.Set("X-API-Key", "key-msg")
+	w := httptest.NewRecorder()
+	engine.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", w.Code, w.Body.String())
+	}
+
+	var resp struct {
+		ID      int64  `json:"id"`
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.ID <= 0 {
+		t.Errorf("id = %d, want > 0", resp.ID)
+	}
+	if resp.Message != "Call imported successfully." {
+		t.Errorf("message = %q, want \"Call imported successfully.\"", resp.Message)
+	}
+}
+
+// TestPostCallUpload_SystemLabelAutoPopulate checks that the systemLabel form
+// field is used as the system label when auto-populating.
+func TestPostCallUpload_SystemLabelAutoPopulate(t *testing.T) {
+	engine, queries := newTestEngineWithCalls(t)
+	ctx := context.Background()
+
+	seedAPIKey(t, queries, "key-syslbl")
+	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulate", Value: "true"})
+	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "audioConversion", Value: "0"})
+	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "disableDuplicateDetection", Value: "true"})
+
+	body, ct := buildCallUpload(t, map[string]string{
+		"system":      "99",
+		"talkgroup":   "500",
+		"dateTime":    strconv.FormatInt(time.Now().Unix(), 10),
+		"systemLabel": "My P25 System",
+	}, true)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/call-upload", body)
+	req.Header.Set("Content-Type", ct)
+	req.Header.Set("X-API-Key", "key-syslbl")
+	w := httptest.NewRecorder()
+	engine.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", w.Code, w.Body.String())
+	}
+
+	sys, err := queries.GetSystemBySystemID(ctx, 99)
+	if err != nil {
+		t.Fatalf("GetSystemBySystemID: %v", err)
+	}
+	if sys.Label != "My P25 System" {
+		t.Errorf("system label = %q, want \"My P25 System\"", sys.Label)
 	}
 }

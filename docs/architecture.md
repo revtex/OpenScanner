@@ -15,7 +15,7 @@ The diagram below shows the full planned architecture. Solid lines and green fil
 ```mermaid
 graph TD
     Recorder["Radio Recorder<br/>(Trunk Recorder / SDRTrunk)"] -->|POST /api/call-upload| MW
-    DirMonitor["DirMonitor Service<br/>(fsnotify)"] -->|ingest files| Processor
+    DirWatch["DirWatch Service<br/>(fsnotify)"] -->|ingest files| Processor
 
     MW["Middleware<br/>(JWT, API Key, Rate Limit)"] -->|validated request| API["API Handlers<br/>(Gin)"]
     API -->|processor.Store| Processor["Audio Processor<br/>(FFmpeg Worker Pool)"]
@@ -48,7 +48,7 @@ graph TD
     style Hub fill:#b5e6b5,stroke:#333,color:#000
     style Listeners fill:#b5e6b5,stroke:#333,color:#000
     style Transcriber fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
-    style DirMonitor fill:#b5e6b5,stroke:#333,color:#000
+    style DirWatch fill:#b5e6b5,stroke:#333,color:#000
     style Downstream fill:#b5e6b5,stroke:#333,color:#000
     style Webhooks fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
     style Push fill:#bbb,stroke:#555,color:#000,stroke-dasharray: 5 5
@@ -59,7 +59,7 @@ graph TD
 ### Implemented
 
 - **backend/cmd/server** — Application entry point; loads config, opens DB, runs migrations, seeds defaults, starts Gin HTTP server with timeouts (`ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, `IdleTimeout`); graceful shutdown via `signal.NotifyContext` + error channel
-- **backend/internal/api** — Gin route handlers: health check (`GET /api/health`), first-run setup (`GET /api/setup/status`, `POST /api/setup`), auth (`POST /api/auth/login`, `POST /api/auth/logout`, `PUT /api/auth/password`, `GET /api/auth/me`), bookmarks (`GET /api/bookmarks`, `POST /api/bookmarks` — JWT required), admin CRUD (full CRUD for users, systems, talkgroups, units, groups, tags, apikeys, dirmonitors, downstreams, webhooks), admin config (`GET/PUT /api/admin/config`), admin logs (`GET /api/admin/logs`), CSV import (`POST /api/admin/import/talkgroups`, `POST /api/admin/import/units`), JSON config export/import (`GET /api/admin/export/config`, `POST /api/admin/import/config`), system/apikey reorder (`PUT /api/admin/systems/reorder`, `PUT /api/admin/apikeys/reorder`), directory listing (`GET /api/admin/fs/directories`), missing audio tools (`GET /api/admin/tools/audio-missing`, `POST /api/admin/tools/audio-missing/cleanup`); response DTOs use pointer fields (`*string`/`*int64`) for proper JSON serialization of nullable values; API keys are stored hashed (SHA-256) and returned as truncated fingerprints
+- **backend/internal/api** — Gin route handlers: health check (`GET /api/health`), first-run setup (`GET /api/setup/status`, `POST /api/setup`), auth (`POST /api/auth/login`, `POST /api/auth/logout`, `PUT /api/auth/password`, `GET /api/auth/me`), bookmarks (`GET /api/bookmarks`, `POST /api/bookmarks` — JWT required), admin CRUD (full CRUD for users, systems, talkgroups, units, groups, tags, apikeys, dirwatches, downstreams, webhooks), admin config (`GET/PUT /api/admin/config`), admin logs (`GET /api/admin/logs`), CSV import (`POST /api/admin/import/talkgroups`, `POST /api/admin/import/units`), JSON config export/import (`GET /api/admin/export/config`, `POST /api/admin/import/config`), system/apikey reorder (`PUT /api/admin/systems/reorder`, `PUT /api/admin/apikeys/reorder`), directory listing (`GET /api/admin/fs/directories`), missing audio tools (`GET /api/admin/tools/audio-missing`, `POST /api/admin/tools/audio-missing/cleanup`); response DTOs use pointer fields (`*string`/`*int64`) for proper JSON serialization of nullable values; API keys are stored hashed (SHA-256) and returned as truncated fingerprints
 - **backend/internal/auth** — JWT HS256 (32-byte random secret, 24h expiry, UUID v4 JTI); bcrypt cost 12; `TokenTracker` with max-5 tokens per user (oldest evicted); `RateLimiter` (3 failures → 10-min lockout per IP); timing-safe login with `DummyHash`
 - **backend/internal/config** — Server startup configuration (CLI flags, env vars, optional INI file); precedence: CLI > env > INI > defaults
 - **backend/internal/middleware** — Gin middleware: `RequestID` (UUID v4), `Logger` (structured slog), `CORS` (same-origin with localhost dev exception), `JWTAuth` (validates token + checks revocation), `OptionalJWTAuth` (extracts JWT if present but allows unauthenticated access for public endpoints), `RequireAdmin` (role-based 403), `APIKeyAuth` (header or query param), `RateLimit` (429 on lockout), `MaxBodySize` (request body size limiter)
@@ -88,9 +88,9 @@ graph TD
   - **Security:** HTTP client configured with `CheckRedirect` returning error (SSRF protection — prevents following redirects to internal services); audio file paths validated against path traversal (`../`)
   - **Graceful shutdown:** `dsService.Stop()` is called after the HTTP server has completed shutdown, ensuring in-flight pushes complete before exit
 
-- **backend/internal/dirmonitor** — Directory watching service for automatic call ingest from local recorder output directories:
-  - **watcher.go** — `Service` struct managing one goroutine per active dirmonitor config; `Start` loads configs from DB, `Reload` stops all watchers and restarts fresh (called by admin CRUD after config changes); `runWithFsnotify` uses kernel inotify/kqueue `Create` events; `runWithPolling` scans on a configurable ticker (≥500 ms floor, suitable for CIFS/NFS mounts); `handleFile` enforces path traversal checks and extension filtering before dispatching to the parser; `ingestCall` mirrors the HTTP upload pipeline: system/TG resolution (with `autoPopulate`), duplicate check, `Processor.StoreFile`, DB insert, WS `CAL` broadcast, optional source-file deletion (`delete_after=1`)
-  - **parsers.go** — `ParsedCall` struct + one `ParseFunc` per recorder type: `trunk-recorder` (JSON sidecar + audio file pair), `sdrtrunk` (`<sysID>_<tgID>_<ts>.<ext>` filename pattern), `rtlsdr-airband` (audio file, IDs from dirmonitor config), `dsdplus` (audio file, IDs from dirmonitor config), `proscan` (audio file, IDs from dirmonitor config), `voxcall` (audio file, IDs from dirmonitor config); unrecognised types fall back to `parseGeneric`
+- **backend/internal/dirwatch** — Directory watching service for automatic call ingest from local recorder output directories:
+  - **watcher.go** — `Service` struct managing one goroutine per active dirwatch config; `Start` loads configs from DB, `Reload` stops all watchers and restarts fresh (called by admin CRUD after config changes); `runWithFsnotify` uses kernel inotify/kqueue `Create` events; `runWithPolling` scans on a configurable ticker (≥500 ms floor, suitable for CIFS/NFS mounts); `handleFile` enforces path traversal checks and extension filtering before dispatching to the parser; `ingestCall` mirrors the HTTP upload pipeline: system/TG resolution (with `autoPopulate`), duplicate check, `Processor.StoreFile`, DB insert, WS `CAL` broadcast, optional source-file deletion (`delete_after=1`)
+  - **parsers.go** — `ParsedCall` struct + one `ParseFunc` per recorder type: `trunk-recorder` (JSON sidecar + audio file pair), `sdrtrunk` (`<sysID>_<tgID>_<ts>.<ext>` filename pattern), `rtlsdr-airband` (audio file, IDs from dirwatch config), `dsdplus` (audio file, IDs from dirwatch config), `proscan` (audio file, IDs from dirwatch config); unrecognised types fall back to `parseGeneric`
   - **mask.go** — `MaskTokens` struct + `ExpandMask`/`TokensFromCall`: expands `#DATE`, `#TIME`, `#ZTIME`, `#GROUP`, `#SYSLBL`, `#TAG`, `#TGAFS`, `#UNIT`, `#TGLBL`, `#TGHZ`, `#TGKHZ`, `#TGMHZ`, `#TGID` tokens in directory mask strings
 
 ### Stubs (package declaration only — not yet implemented)
@@ -192,10 +192,10 @@ Scanner.tsx (lazy-loaded page)
 
 #### State Management
 
-- **frontend/src/app/slices/adminSlice.ts** — RTK Query endpoints for all admin CRUD operations (Users, Systems, Talkgroups, Units, Groups, Tags, ApiKeys, DirMonitors, Downstreams, Webhooks, Config, Logs, Import/Export, Password, server directory listing, missing audio tools); tag-based cache invalidation
+- **frontend/src/app/slices/adminSlice.ts** — RTK Query endpoints for all admin CRUD operations (Users, Systems, Talkgroups, Units, Groups, Tags, ApiKeys, Dirwatches, Downstreams, Webhooks, Config, Logs, Import/Export, Password, server directory listing, missing audio tools); tag-based cache invalidation
 - **frontend/src/app/slices/authSlice.ts** — Added `selectToken`, `selectRole`, `selectUsername` selectors
 - **frontend/src/app/api.ts** — Extended `tagTypes` for admin cache invalidation
-- **frontend/src/types/index.ts** — 15 admin types (`AdminUser`, `AdminSystem`, `AdminTalkgroup`, `AdminUnit`, `AdminGroup`, `AdminTag`, `AdminApiKey`, `AdminApiKeyCreateResponse`, `AdminDirMonitor`, `AdminDownstream`, `AdminWebhook`, `AdminSetting`, `AdminLog`, `ChangePasswordRequest`, `CreateUserPayload`, `UpdateUserPayload`)
+- **frontend/src/types/index.ts** — 15 admin types (`AdminUser`, `AdminSystem`, `AdminTalkgroup`, `AdminUnit`, `AdminGroup`, `AdminTag`, `AdminApiKey`, `AdminApiKeyCreateResponse`, `AdminDirwatch`, `AdminDownstream`, `AdminWebhook`, `AdminSetting`, `AdminLog`, `ChangePasswordRequest`, `CreateUserPayload`, `UpdateUserPayload`)
 
 #### Admin Panels
 
@@ -206,7 +206,7 @@ Scanner.tsx (lazy-loaded page)
 | `GroupsTagsPanel`  | Two side-by-side CRUD tables                                                                               |
 | `OptionsPanel`     | Settings form with 6 sections, boolean toggles, conditional transcription fields                           |
 | `ApiKeysPanel`     | Drag-to-reorder, copy-to-clipboard, UUID generation                                                        |
-| `DirMonitorPanel`    | Directory watches CRUD with type dropdown                                                                  |
+| `DirWatchPanel`    | Directory watches CRUD with type dropdown                                                                  |
 | `DownstreamsPanel` | Downstream servers CRUD                                                                                    |
 | `LogsPanel`        | Virtualized log viewer (`@tanstack/react-virtual`) with date/level filters                                 |
 | `ToolsPanel`       | CSV import (`talkgroups`/`units`), JSON config export/import, password change, missing-audio audit/cleanup |

@@ -82,7 +82,8 @@ CREATE TABLE IF NOT EXISTS calls (
     channel          TEXT,
     decoder          TEXT,
     error_count      INTEGER,
-    spike_count      INTEGER
+    spike_count      INTEGER,
+    talker_alias     TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_calls_datetime_system_tg ON calls(date_time, system_id, talkgroup_id);

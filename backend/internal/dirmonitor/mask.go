@@ -216,6 +216,32 @@ func ApplyMaskValues(call *ParsedCall, values map[string]string) {
 		}
 	}
 
+	// Talkgroup group label from #GROUP.
+	if call.TalkgroupGroup == "" {
+		if s, ok := values["#GROUP"]; ok && len(s) > 0 && s != "-" {
+			call.TalkgroupGroup = s
+		}
+	}
+
+	// Talkgroup tag label from #TAG.
+	if call.TalkgroupTag == "" {
+		if s, ok := values["#TAG"]; ok && len(s) > 0 && s != "-" {
+			call.TalkgroupTag = s
+		}
+	}
+
+	// Talkgroup ID from #TGAFS (AFS format: DD-DDD where a<<7|b<<3|c).
+	if call.TalkgroupID == 0 {
+		if s, ok := values["#TGAFS"]; ok && len(s) == 6 && s[2] == '-' {
+			a, errA := strconv.Atoi(s[:2])
+			b, errB := strconv.Atoi(s[3:5])
+			c, errC := strconv.Atoi(s[5:])
+			if errA == nil && errB == nil && errC == nil {
+				call.TalkgroupID = int64(a<<7 | b<<3 | c)
+			}
+		}
+	}
+
 	// Source unit from #UNIT.
 	if call.Source == 0 {
 		if s, ok := values["#UNIT"]; ok {
@@ -225,28 +251,38 @@ func ApplyMaskValues(call *ParsedCall, values map[string]string) {
 		}
 	}
 
-	// Frequency from various Hz/kHz/MHz tokens.
+	// Frequency (and optionally TalkgroupID) from Hz/kHz/MHz tokens.
+	// #TGHZ, #TGKHZ, #TGMHZ set both Frequency AND TalkgroupID (matching
+	// rdio-scanner behaviour for conventional systems where the frequency
+	// identifies the talkgroup). #HZ, #KHZ, #MHZ set Frequency only.
 	if call.Frequency == 0 {
 		type ft struct {
-			token string
-			mult  float64
+			token  string
+			mult   float64
+			setsTG bool
 		}
 		for _, f := range []ft{
-			{"#HZ", 1}, {"#TGHZ", 1},
-			{"#KHZ", 1000}, {"#TGKHZ", 1000},
-			{"#MHZ", 1_000_000}, {"#TGMHZ", 1_000_000},
+			{"#HZ", 1, false}, {"#TGHZ", 1, true},
+			{"#KHZ", 1000, false}, {"#TGKHZ", 1000, true},
+			{"#MHZ", 1_000_000, false}, {"#TGMHZ", 1_000_000, true},
 		} {
 			if s, ok := values[f.token]; ok {
+				var hz float64
 				if f.mult == 1 {
 					if v, err := strconv.ParseInt(s, 10, 64); err == nil && v > 0 {
-						call.Frequency = v
-						break
+						hz = float64(v)
 					}
 				} else {
 					if v, err := strconv.ParseFloat(s, 64); err == nil && v > 0 {
-						call.Frequency = int64(v * f.mult)
-						break
+						hz = v * f.mult
 					}
+				}
+				if hz > 0 {
+					call.Frequency = int64(hz)
+					if f.setsTG && call.TalkgroupID == 0 {
+						call.TalkgroupID = int64(hz / 1000)
+					}
+					break
 				}
 			}
 		}
