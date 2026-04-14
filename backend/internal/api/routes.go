@@ -212,7 +212,8 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		// Swagger: issue a short-lived HTTP-only cookie so Swagger UI
 		// can be opened in a new browser tab without exposing the JWT.
 		admin.POST("/docs/session", func(c *gin.Context) {
-			auth.SetSwaggerCookie(c)
+			secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
+			auth.SetSwaggerCookie(c, secure)
 			c.JSON(200, gin.H{"ok": true})
 		})
 	}

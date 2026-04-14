@@ -373,6 +373,10 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
+	// Revoke all tokens so stale claims (role, disabled, expiration, grants)
+	// are not trusted after an admin update.
+	auth.Tokens.RevokeAllForUser(id)
+
 	user, err := h.queries.GetUser(c.Request.Context(), id)
 	if err != nil {
 		slog.Error("failed to fetch updated user", "error", err)

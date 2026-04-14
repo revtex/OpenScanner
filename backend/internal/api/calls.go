@@ -16,6 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/openscanner/openscanner/internal/audio"
+	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/downstream"
 	"github.com/openscanner/openscanner/internal/ws"
@@ -98,6 +99,65 @@ func (h *CallHandler) getLimiter(apiKeyID int64, rateLimit int) *apiKeyLimiter {
 		h.limiters[apiKeyID] = l
 	}
 	return l
+}
+
+// systemGrant mirrors ws.systemGrant for grant-based filtering in REST handlers.
+type systemGrant struct {
+	ID         int64   `json:"id"`
+	Talkgroups []int64 `json:"talkgroups,omitempty"`
+}
+
+// loadUserGrants returns the parsed grants for the authenticated user. Returns
+// nil (allow-all) for admins, unauthenticated users, or users with no grants.
+func (h *CallHandler) loadUserGrants(c *gin.Context) []systemGrant {
+	role, _ := c.Get("role")
+	roleStr, _ := role.(string)
+	if roleStr == auth.RoleAdmin {
+		return nil
+	}
+	userIDVal, exists := c.Get("userID")
+	if !exists {
+		return nil
+	}
+	uid, _ := userIDVal.(int64)
+	user, err := h.queries.GetUser(c.Request.Context(), uid)
+	if err != nil {
+		return nil
+	}
+	if !user.SystemsJson.Valid || user.SystemsJson.String == "" {
+		return nil
+	}
+	var grants []systemGrant
+	if err := json.Unmarshal([]byte(user.SystemsJson.String), &grants); err != nil {
+		slog.Warn("failed to parse user grants", "user_id", uid, "error", err)
+		return nil
+	}
+	if len(grants) == 0 {
+		return nil
+	}
+	return grants
+}
+
+// isGranted checks whether a call with the given system/talkgroup passes the
+// grant filter. A nil grant list means everything is allowed.
+func isGranted(grants []systemGrant, systemID, talkgroupID int64) bool {
+	if grants == nil {
+		return true
+	}
+	for _, g := range grants {
+		if g.ID != systemID {
+			continue
+		}
+		if len(g.Talkgroups) == 0 {
+			return true
+		}
+		for _, tg := range g.Talkgroups {
+			if tg == talkgroupID {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // getSettingValue fetches a setting value from the DB, returning "" on error.
@@ -623,6 +683,12 @@ func (h *CallHandler) GetCallAudio(c *gin.Context) {
 		return
 	}
 
+	// Enforce per-user grants for non-admin listeners.
+	if grants := h.loadUserGrants(c); !isGranted(grants, call.SystemID, call.TalkgroupID.Int64) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "call not found"})
+		return
+	}
+
 	recordingsDir := h.processor.RecordingsDir()
 	relPath := filepath.Clean(call.AudioPath)
 	if strings.HasPrefix(relPath, "..") || filepath.IsAbs(relPath) {
@@ -807,6 +873,27 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 		slog.Error("failed to list calls", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
+	}
+
+	// Enforce per-user grants — filter out calls the listener is not
+	// authorised to see. Admins and unauthenticated public-access users
+	// have nil grants (allow-all).
+	grants := h.loadUserGrants(c)
+	if grants != nil {
+		allowed := calls[:0]
+		for _, call := range calls {
+			if isGranted(grants, call.SystemID, call.TalkgroupID.Int64) {
+				allowed = append(allowed, call)
+			}
+		}
+		calls = allowed
+		// Adjust total to reflect grant-scoped count. The SQL count does not
+		// know about grants, so cap it to the filtered result set size when
+		// the filter actually removed rows. This is an approximation; an
+		// exact count would require SQL-level grant filtering.
+		if int64(len(calls)) < limit {
+			total = offset + int64(len(calls))
+		}
 	}
 
 	// Build set of bookmarked call IDs for authenticated users.

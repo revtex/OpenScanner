@@ -224,10 +224,11 @@ const SwaggerCookieName = "os_swagger"
 // SetSwaggerCookie sets a short-lived, HTTP-only, SameSite=Strict cookie
 // that authorises access to the Swagger UI docs route.
 // The cookie value is an HMAC-SHA256 of "swagger:<expiry>" signed with JWTSecret.
+// When secure is true the cookie is marked Secure (HTTPS-only).
 func SetSwaggerCookie(c interface {
 	SetSameSite(http.SameSite)
 	SetCookie(name, value string, maxAge int, path, domain string, secure, httpOnly bool)
-}) {
+}, secure bool) {
 	const maxAge = 3600 // 1 hour
 	expiry := time.Now().Add(time.Duration(maxAge) * time.Second).Unix()
 	payload := fmt.Sprintf("swagger:%d", expiry)
@@ -237,7 +238,7 @@ func SetSwaggerCookie(c interface {
 	value := fmt.Sprintf("%d.%s", expiry, sig)
 
 	c.SetSameSite(http.SameSiteStrictMode)
-	c.SetCookie(SwaggerCookieName, value, maxAge, "/api/admin/docs", "", false, true)
+	c.SetCookie(SwaggerCookieName, value, maxAge, "/api/admin/docs", "", secure, true)
 }
 
 // ValidateSwaggerCookie checks that the swagger cookie value is valid and

@@ -179,16 +179,20 @@ func RequireAdmin() gin.HandlerFunc {
 	}
 }
 
-// APIKeyAuth reads the X-API-Key header (or ?key= query param), looks up the key
-// in the database, and sets "apiKeyID" in the Gin context. Aborts with 401 if the
-// key is missing, not found, or disabled.
+// APIKeyAuth reads the X-API-Key header, looks up the key in the database,
+// and sets "apiKeyID" in the Gin context. Aborts with 401 if the key is
+// missing, not found, or disabled.
 func APIKeyAuth(queries *db.Queries) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		requestID, _ := c.Get("requestID")
+
 		key := c.GetHeader("X-API-Key")
 		if key == "" {
-			key = c.Query("key")
-		}
-		if key == "" {
+			slog.Warn("api key auth: missing X-API-Key header",
+				"request_id", requestID,
+				"ip", c.ClientIP(),
+				"path", c.Request.URL.Path,
+			)
 			c.AbortWithStatusJSON(401, gin.H{"error": "API key required"})
 			return
 		}
@@ -200,10 +204,21 @@ func APIKeyAuth(queries *db.Queries) gin.HandlerFunc {
 			apiKey, err = queries.GetAPIKeyByKey(c.Request.Context(), key)
 		}
 		if err != nil {
+			slog.Warn("api key auth: invalid key",
+				"request_id", requestID,
+				"ip", c.ClientIP(),
+				"path", c.Request.URL.Path,
+			)
 			c.AbortWithStatusJSON(401, gin.H{"error": "invalid API key"})
 			return
 		}
 		if apiKey.Disabled != 0 {
+			slog.Warn("api key auth: disabled key used",
+				"request_id", requestID,
+				"ip", c.ClientIP(),
+				"path", c.Request.URL.Path,
+				"api_key_id", apiKey.ID,
+			)
 			c.AbortWithStatusJSON(401, gin.H{"error": "API key is disabled"})
 			return
 		}
