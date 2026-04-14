@@ -271,6 +271,171 @@ Alternatively, if RTLSDR-Airband writes all frequencies to one directory with `i
 
 ---
 
+## DSDPlus Fast Lane
+
+[DSD+](https://www.dsdplus.com/) (DSD Plus) is a Windows-based digital voice decoder that supports P25, DMR, NEXEDGE, D-STAR, and other protocols. DSD+ Fast Lane (FMP24) is its live monitoring companion. Recordings are saved to date-stamped folders.
+
+### DirMonitor Only
+
+DSD+ does not have an HTTP upload feature. Use DirMonitor to ingest recordings.
+
+**DSD+ recording structure:**
+
+DSD+ saves audio files into date-stamped folders with metadata encoded in the filename:
+
+```
+20260414/
+  143022_[some data]_P25(BS)_12345-Site1_[54241][Fire Dispatch]_[4424001].mp3
+  143155_[some data]_DMR(BS)_100-Site2_[999][---]_[1234].mp3
+```
+
+**Filename format:** `HHMMSS_[data]_MODE_CHANNEL_[TGID][TG label]_[SRC][SRC label].ext`
+
+| Segment           | Description                                                                       |
+| ----------------- | --------------------------------------------------------------------------------- |
+| `HHMMSS`          | Time of recording (local time zone)                                               |
+| `[data]`          | Internal DSD+ metadata (ignored)                                                  |
+| `MODE`            | Protocol mode: `P25(BS)`, `DMR(BS)`, `ConP(BS)`, `NEXEDGE48(CB)`, `P25`, etc.    |
+| `CHANNEL`         | Channel info with system ID prefix (format varies by mode)                        |
+| `[TGID][label]`   | Talkgroup ID and optional label in brackets                                       |
+| `[SRC][label]`    | Source unit ID and optional label in brackets                                      |
+| Parent folder     | Date folder name ending in `YYYYMMDD` (e.g. `20260414`)                           |
+
+**Admin → Dir Monitors → Add:**
+
+| Field        | Value                                                    |
+| ------------ | -------------------------------------------------------- |
+| Directory    | DSD+ recordings root (parent of the YYYYMMDD folders)    |
+| Type         | `dsdplus`                                                |
+| Extension    | `mp3` (or `wav` depending on DSD+ config)                |
+| Delete After | Your preference                                          |
+
+**What the parser extracts from the filename:**
+
+| Filename Component                          | Extracted Field  | Example                                       |
+| ------------------------------------------- | ---------------- | --------------------------------------------- |
+| Parent folder `YYYYMMDD` + filename `HHMMSS`| Date/Time        | Folder `20260414` + prefix `143022`            |
+| MODE + CHANNEL                              | System ID        | `P25(BS)` + `12345-Site1` → system ID `12345` |
+| Second-to-last bracket segment              | Talkgroup ID     | `[54241]` → `54241`                           |
+| Second bracket in TG segment                | Talkgroup Label  | `[Fire Dispatch]` → label (punctuation-only filtered) |
+| Last bracket segment                        | Source Unit      | `[4424001]` → source `4424001`                |
+
+**System ID extraction by mode:**
+
+| Mode                                          | System ID source                              |
+| --------------------------------------------- | --------------------------------------------- |
+| `ConP(BS)`, `DMR(BS)`, `P25(BS)`             | Numeric prefix of channel segment (`12345-*`) |
+| `NEXEDGE48(*)`, `NEXEDGE96(*)`               | Second number in channel or RAN number        |
+| `P25` (non-BS)                                | Hex value parsed from channel segment         |
+
+**Config overrides:** Setting System ID or Talkgroup ID on the DirMonitor entry overrides any values parsed from the filename.
+
+---
+
+## ProScan
+
+[ProScan](https://www.proscan.org/) is a Windows application for controlling and recording from Uniden scanners. It records audio files with metadata in the filename, using the mask system to extract fields.
+
+### DirMonitor Only
+
+ProScan does not have an HTTP upload feature. Use DirMonitor with the **Mask** system to extract metadata from filenames.
+
+The ProScan parser itself is minimal — it uses file modification time for the timestamp and relies entirely on the DirMonitor mask to extract system, talkgroup, group, tag, and other fields from the filename path.
+
+**Example ProScan recording directory:**
+
+```
+C:\ProScan\Recordings\
+  St. Johns County Public Safety/
+    2025-08-17_12-15-16_St. Johns County Fire Rescue_A1 Primary (Dispatch)_10000.wav
+```
+
+**Admin → Dir Monitors → Add:**
+
+| Field        | Value                                                                    |
+| ------------ | ------------------------------------------------------------------------ |
+| Directory    | ProScan's recording directory (e.g. `C:\ProScan\Recordings\SystemName`) |
+| Type         | `proscan`                                                                |
+| Extension    | `wav`                                                                    |
+| Mask         | **Required** — pattern to extract metadata from filenames (see below)    |
+| Delete After | Your preference                                                          |
+
+**Mask examples for common ProScan filename patterns:**
+
+| Filename Pattern                                                              | Mask                              |
+| ----------------------------------------------------------------------------- | --------------------------------- |
+| `2025-08-17_12-15-16_Fire Rescue_A1 Primary (Dispatch)_10000.wav`            | `#DATE_#TIME_#GROUP_#TGLBL_#TG`   |
+| `2025-08-17_12-15-16_10000.wav`                                              | `#DATE_#TIME_#TG`                 |
+| `Police/2025-08-17_12-15-16_Law Dispatch_10000.wav`                          | `#GROUP/#DATE_#TIME_#TAG_#TG`     |
+
+See the [Mask System](#mask-system) section below for the full list of available tokens.
+
+**Important:** Without a mask, the parser only captures file modification time and any System ID / Talkgroup ID overrides set on the DirMonitor entry. All other metadata (date, time, talkgroup, group, tag, label) must come from the mask.
+
+---
+
+## voxcall
+
+[voxcall](https://github.com/USA-RedDragon/voxcall) is a lightweight call uploader that sends recordings to rdio-scanner-compatible endpoints.
+
+### API Upload Only
+
+voxcall pushes calls via HTTP to `/api/call-upload`. It does not produce local files for DirMonitor.
+
+**voxcall configuration:**
+
+| Config field | Value                                          |
+| ------------ | ---------------------------------------------- |
+| `server`     | `http://openscanner:3000/api/call-upload`      |
+| `apiKey`     | Your API key from Admin → API Keys             |
+
+**Fields voxcall sends:**
+
+| Field         | Description                                      |
+| ------------- | ------------------------------------------------ |
+| `key`         | API key                                          |
+| `systemId`    | System numeric ID                                |
+| `talkgroupId` | Talkgroup numeric ID                             |
+| `dateTime`    | ISO 8601 timestamp (RFC 3339 format)             |
+| `audio`       | Audio file                                       |
+| `frequency`   | Frequency in Hz                                  |
+| `source`      | Source unit ID                                    |
+| `sources`     | JSON array of source units                       |
+| `duration`    | Call duration in seconds                         |
+
+**Key difference:** voxcall sends `dateTime` as an ISO 8601 string (e.g. `2026-04-14T15:30:22Z`) rather than a Unix timestamp. OpenScanner handles both formats automatically.
+
+---
+
+## Generic (Custom Recorders)
+
+For recorders not listed above — or any software that writes audio files to a directory — use the **generic** DirMonitor type.
+
+The generic parser does no filename parsing at all. It uses:
+
+- **File modification time** as the call timestamp
+- **System ID** and **Talkgroup ID** from the DirMonitor config overrides (required)
+- **Mask** for extracting any additional metadata from the filename/path
+
+**Admin → Dir Monitors → Add:**
+
+| Field        | Value                                                                                               |
+| ------------ | --------------------------------------------------------------------------------------------------- |
+| Directory    | The directory where audio files are written                                                         |
+| Type         | (any unrecognized type name, or leave empty — all unknown types fall through to the generic parser) |
+| System ID    | **Required** — select the system                                                                    |
+| Talkgroup ID | **Required** unless using a mask with `#TG` or `#TGID`                                             |
+| Mask         | Optional — extract metadata from filename                                                           |
+| Extension    | The audio file extension to watch for                                                               |
+| Delete After | Your preference                                                                                     |
+
+**Tip:** Combine the generic type with a mask to handle virtually any recording software. For example, if your recorder writes files as `recordings/System1/TG_12345/20260414_153022.wav`, set:
+
+- Directory: `/recordings`
+- Mask: `#SYSLBL/#TGLBL/#DATE_#TIME`
+
+---
+
 ## Common Settings
 
 These OpenScanner settings (in **Admin → Settings**) affect all recorder integrations:
