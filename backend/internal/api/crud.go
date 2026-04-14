@@ -805,20 +805,53 @@ func (h *AdminHandler) DeleteTalkgroup(c *gin.Context) {
 // ListUnits handles GET /api/admin/units.
 //
 // @Summary  List units
-// @Description  Returns all units.
+// @Description  Returns all units, optionally filtered by system_id and/or unit_id pattern.
 // @Tags     Admin
 // @Produce  json
+// @Param    system_id  query    int     false  "Filter by system_id"
+// @Param    unit_id    query    string  false  "Search by unit_id (numeric, prefix matching)"
 // @Success  200  {array}   unitResponse
 // @Failure  500  {object}  ErrorResponse
 // @Security BearerAuth
 // @Router   /admin/units [get]
 func (h *AdminHandler) ListUnits(c *gin.Context) {
-	units, err := h.queries.ListAllUnits(c.Request.Context())
+	systemIDStr := c.Query("system_id")
+	unitIDPattern := c.Query("unit_id")
+	ctx := c.Request.Context()
+
+	var units []db.Unit
+	var err error
+
+	if systemIDStr != "" {
+		// Filter by system_id
+		systemID, e := strconv.ParseInt(systemIDStr, 10, 64)
+		if e != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid system_id"})
+			return
+		}
+		units, err = h.queries.ListUnitsBySystem(ctx, systemID)
+	} else {
+		// List all units
+		units, err = h.queries.ListAllUnits(ctx)
+	}
+
 	if err != nil {
 		slog.Error("failed to list units", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list units"})
 		return
 	}
+
+	// Apply unit_id pattern filter if provided (in-memory prefix matching)
+	if unitIDPattern != "" {
+		filtered := make([]db.Unit, 0, len(units))
+		for _, u := range units {
+			if strings.HasPrefix(strconv.FormatInt(u.UnitID, 10), unitIDPattern) {
+				filtered = append(filtered, u)
+			}
+		}
+		units = filtered
+	}
+
 	c.JSON(http.StatusOK, toUnitResponses(units))
 }
 

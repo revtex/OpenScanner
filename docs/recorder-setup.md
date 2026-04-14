@@ -291,42 +291,42 @@ DSD+ saves audio files into date-stamped folders with metadata encoded in the fi
 
 **Filename format:** `HHMMSS_[data]_MODE_CHANNEL_[TGID][TG label]_[SRC][SRC label].ext`
 
-| Segment           | Description                                                                       |
-| ----------------- | --------------------------------------------------------------------------------- |
-| `HHMMSS`          | Time of recording (local time zone)                                               |
-| `[data]`          | Internal DSD+ metadata (ignored)                                                  |
-| `MODE`            | Protocol mode: `P25(BS)`, `DMR(BS)`, `ConP(BS)`, `NEXEDGE48(CB)`, `P25`, etc.    |
-| `CHANNEL`         | Channel info with system ID prefix (format varies by mode)                        |
-| `[TGID][label]`   | Talkgroup ID and optional label in brackets                                       |
-| `[SRC][label]`    | Source unit ID and optional label in brackets                                      |
-| Parent folder     | Date folder name ending in `YYYYMMDD` (e.g. `20260414`)                           |
+| Segment         | Description                                                                   |
+| --------------- | ----------------------------------------------------------------------------- |
+| `HHMMSS`        | Time of recording (local time zone)                                           |
+| `[data]`        | Internal DSD+ metadata (ignored)                                              |
+| `MODE`          | Protocol mode: `P25(BS)`, `DMR(BS)`, `ConP(BS)`, `NEXEDGE48(CB)`, `P25`, etc. |
+| `CHANNEL`       | Channel info with system ID prefix (format varies by mode)                    |
+| `[TGID][label]` | Talkgroup ID and optional label in brackets                                   |
+| `[SRC][label]`  | Source unit ID and optional label in brackets                                 |
+| Parent folder   | Date folder name ending in `YYYYMMDD` (e.g. `20260414`)                       |
 
 **Admin → Dir Monitors → Add:**
 
-| Field        | Value                                                    |
-| ------------ | -------------------------------------------------------- |
-| Directory    | DSD+ recordings root (parent of the YYYYMMDD folders)    |
-| Type         | `dsdplus`                                                |
-| Extension    | `mp3` (or `wav` depending on DSD+ config)                |
-| Delete After | Your preference                                          |
+| Field        | Value                                                 |
+| ------------ | ----------------------------------------------------- |
+| Directory    | DSD+ recordings root (parent of the YYYYMMDD folders) |
+| Type         | `dsdplus`                                             |
+| Extension    | `mp3` (or `wav` depending on DSD+ config)             |
+| Delete After | Your preference                                       |
 
 **What the parser extracts from the filename:**
 
-| Filename Component                          | Extracted Field  | Example                                       |
-| ------------------------------------------- | ---------------- | --------------------------------------------- |
-| Parent folder `YYYYMMDD` + filename `HHMMSS`| Date/Time        | Folder `20260414` + prefix `143022`            |
-| MODE + CHANNEL                              | System ID        | `P25(BS)` + `12345-Site1` → system ID `12345` |
-| Second-to-last bracket segment              | Talkgroup ID     | `[54241]` → `54241`                           |
-| Second bracket in TG segment                | Talkgroup Label  | `[Fire Dispatch]` → label (punctuation-only filtered) |
-| Last bracket segment                        | Source Unit      | `[4424001]` → source `4424001`                |
+| Filename Component                           | Extracted Field | Example                                               |
+| -------------------------------------------- | --------------- | ----------------------------------------------------- |
+| Parent folder `YYYYMMDD` + filename `HHMMSS` | Date/Time       | Folder `20260414` + prefix `143022`                   |
+| MODE + CHANNEL                               | System ID       | `P25(BS)` + `12345-Site1` → system ID `12345`         |
+| Second-to-last bracket segment               | Talkgroup ID    | `[54241]` → `54241`                                   |
+| Second bracket in TG segment                 | Talkgroup Label | `[Fire Dispatch]` → label (punctuation-only filtered) |
+| Last bracket segment                         | Source Unit     | `[4424001]` → source `4424001`                        |
 
 **System ID extraction by mode:**
 
-| Mode                                          | System ID source                              |
-| --------------------------------------------- | --------------------------------------------- |
-| `ConP(BS)`, `DMR(BS)`, `P25(BS)`             | Numeric prefix of channel segment (`12345-*`) |
-| `NEXEDGE48(*)`, `NEXEDGE96(*)`               | Second number in channel or RAN number        |
-| `P25` (non-BS)                                | Hex value parsed from channel segment         |
+| Mode                             | System ID source                              |
+| -------------------------------- | --------------------------------------------- |
+| `ConP(BS)`, `DMR(BS)`, `P25(BS)` | Numeric prefix of channel segment (`12345-*`) |
+| `NEXEDGE48(*)`, `NEXEDGE96(*)`   | Second number in channel or RAN number        |
+| `P25` (non-BS)                   | Hex value parsed from channel segment         |
 
 **Config overrides:** Setting System ID or Talkgroup ID on the DirMonitor entry overrides any values parsed from the filename.
 
@@ -352,21 +352,21 @@ C:\ProScan\Recordings\
 
 **Admin → Dir Monitors → Add:**
 
-| Field        | Value                                                                    |
-| ------------ | ------------------------------------------------------------------------ |
+| Field        | Value                                                                   |
+| ------------ | ----------------------------------------------------------------------- |
 | Directory    | ProScan's recording directory (e.g. `C:\ProScan\Recordings\SystemName`) |
-| Type         | `proscan`                                                                |
-| Extension    | `wav`                                                                    |
-| Mask         | **Required** — pattern to extract metadata from filenames (see below)    |
-| Delete After | Your preference                                                          |
+| Type         | `proscan`                                                               |
+| Extension    | `wav`                                                                   |
+| Mask         | **Required** — pattern to extract metadata from filenames (see below)   |
+| Delete After | Your preference                                                         |
 
 **Mask examples for common ProScan filename patterns:**
 
-| Filename Pattern                                                              | Mask                              |
-| ----------------------------------------------------------------------------- | --------------------------------- |
-| `2025-08-17_12-15-16_Fire Rescue_A1 Primary (Dispatch)_10000.wav`            | `#DATE_#TIME_#GROUP_#TGLBL_#TG`   |
-| `2025-08-17_12-15-16_10000.wav`                                              | `#DATE_#TIME_#TG`                 |
-| `Police/2025-08-17_12-15-16_Law Dispatch_10000.wav`                          | `#GROUP/#DATE_#TIME_#TAG_#TG`     |
+| Filename Pattern                                                  | Mask                            |
+| ----------------------------------------------------------------- | ------------------------------- |
+| `2025-08-17_12-15-16_Fire Rescue_A1 Primary (Dispatch)_10000.wav` | `#DATE_#TIME_#GROUP_#TGLBL_#TG` |
+| `2025-08-17_12-15-16_10000.wav`                                   | `#DATE_#TIME_#TG`               |
+| `Police/2025-08-17_12-15-16_Law Dispatch_10000.wav`               | `#GROUP/#DATE_#TIME_#TAG_#TG`   |
 
 See the [Mask System](#mask-system) section below for the full list of available tokens.
 
@@ -384,24 +384,24 @@ voxcall pushes calls via HTTP to `/api/call-upload`. It does not produce local f
 
 **voxcall configuration:**
 
-| Config field | Value                                          |
-| ------------ | ---------------------------------------------- |
-| `server`     | `http://openscanner:3000/api/call-upload`      |
-| `apiKey`     | Your API key from Admin → API Keys             |
+| Config field | Value                                     |
+| ------------ | ----------------------------------------- |
+| `server`     | `http://openscanner:3000/api/call-upload` |
+| `apiKey`     | Your API key from Admin → API Keys        |
 
 **Fields voxcall sends:**
 
-| Field         | Description                                      |
-| ------------- | ------------------------------------------------ |
-| `key`         | API key                                          |
-| `systemId`    | System numeric ID                                |
-| `talkgroupId` | Talkgroup numeric ID                             |
-| `dateTime`    | ISO 8601 timestamp (RFC 3339 format)             |
-| `audio`       | Audio file                                       |
-| `frequency`   | Frequency in Hz                                  |
-| `source`      | Source unit ID                                    |
-| `sources`     | JSON array of source units                       |
-| `duration`    | Call duration in seconds                         |
+| Field         | Description                          |
+| ------------- | ------------------------------------ |
+| `key`         | API key                              |
+| `systemId`    | System numeric ID                    |
+| `talkgroupId` | Talkgroup numeric ID                 |
+| `dateTime`    | ISO 8601 timestamp (RFC 3339 format) |
+| `audio`       | Audio file                           |
+| `frequency`   | Frequency in Hz                      |
+| `source`      | Source unit ID                       |
+| `sources`     | JSON array of source units           |
+| `duration`    | Call duration in seconds             |
 
 **Key difference:** voxcall sends `dateTime` as an ISO 8601 string (e.g. `2026-04-14T15:30:22Z`) rather than a Unix timestamp. OpenScanner handles both formats automatically.
 
@@ -424,7 +424,7 @@ The generic parser does no filename parsing at all. It uses:
 | Directory    | The directory where audio files are written                                                         |
 | Type         | (any unrecognized type name, or leave empty — all unknown types fall through to the generic parser) |
 | System ID    | **Required** — select the system                                                                    |
-| Talkgroup ID | **Required** unless using a mask with `#TG` or `#TGID`                                             |
+| Talkgroup ID | **Required** unless using a mask with `#TG` or `#TGID`                                              |
 | Mask         | Optional — extract metadata from filename                                                           |
 | Extension    | The audio file extension to watch for                                                               |
 | Delete After | Your preference                                                                                     |
