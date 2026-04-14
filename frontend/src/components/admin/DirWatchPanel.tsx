@@ -560,19 +560,6 @@ export default function DirWatchPanel() {
                 </div>
               </label>
             </div>
-            <div className="flex flex-col">
-              <label className="flex items-center cursor-pointer justify-start gap-3">
-                <input
-                  type="checkbox"
-                  className="toggle toggle-primary"
-                  checked={form.disabled === 1}
-                  onChange={(e) =>
-                    setForm({ ...form, disabled: e.target.checked ? 1 : 0 })
-                  }
-                />
-                <span className="text-sm">Disabled</span>
-              </label>
-            </div>
 
             <div className="modal-action">
               <button
