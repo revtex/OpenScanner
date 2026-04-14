@@ -1,34 +1,10 @@
 import { useState, useRef, useCallback, useMemo } from "react";
-import {
-  Pencil,
-  Trash2,
-  Plus,
-  ChevronRight,
-  ChevronDown,
-  GripVertical,
-} from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  type DragEndEvent,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { Pencil, Trash2, Plus, ChevronDown, Radio, Users } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   useListSystemsQuery,
   useCreateSystemMutation,
   useUpdateSystemMutation,
-  useReorderSystemsMutation,
   useDeleteSystemMutation,
   useListTalkgroupsQuery,
   useCreateTalkgroupMutation,
@@ -43,15 +19,23 @@ import {
 } from "@/app/slices/adminSlice";
 import type { AdminSystem, AdminTalkgroup, AdminUnit } from "@/types";
 
-// ─── Sortable system row ───
+// ─── System card ───
 
-function SortableSystemRow({
+function SystemCard({
   system,
   expanded,
   onToggle,
   onEdit,
   onDelete,
   onToggleAutoPopulate,
+  talkgroups,
+  units,
+  onEditTg,
+  onDeleteTg,
+  onCreateTg,
+  onEditUnit,
+  onDeleteUnit,
+  onCreateUnit,
 }: {
   system: AdminSystem;
   expanded: boolean;
@@ -59,71 +43,151 @@ function SortableSystemRow({
   onEdit: () => void;
   onDelete: () => void;
   onToggleAutoPopulate: () => void;
+  talkgroups: AdminTalkgroup[];
+  units: AdminUnit[];
+  onEditTg: (tg: AdminTalkgroup) => void;
+  onDeleteTg: (tg: AdminTalkgroup) => void;
+  onCreateTg: () => void;
+  onEditUnit: (u: AdminUnit) => void;
+  onDeleteUnit: (u: AdminUnit) => void;
+  onCreateUnit: () => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: system.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
   return (
-    <tr ref={setNodeRef} style={style}>
-      <td className="w-8">
-        <button
-          className="btn btn-ghost btn-xs cursor-grab"
-          {...attributes}
-          {...listeners}
-          aria-label="Drag to reorder"
-        >
-          <GripVertical className="w-4 h-4" />
-        </button>
-      </td>
-      <td className="w-8">
-        <button className="btn btn-ghost btn-xs" onClick={onToggle}>
-          {expanded ? (
-            <ChevronDown className="w-4 h-4" />
-          ) : (
-            <ChevronRight className="w-4 h-4" />
-          )}
-        </button>
-      </td>
-      <td>{system.systemId}</td>
-      <td>{system.label}</td>
-      <td>
-        <input
-          type="checkbox"
-          className="toggle toggle-primary toggle-sm"
-          checked={system.autoPopulate === 1}
-          onChange={onToggleAutoPopulate}
-        />
-      </td>
-      <td>{system.order}</td>
-      <td className="flex gap-1">
-        <button
-          className="btn btn-ghost btn-xs"
-          onClick={onEdit}
-          aria-label="Edit system"
-        >
-          <Pencil className="w-4 h-4" />
-        </button>
-        <button
-          className="btn btn-ghost btn-xs"
-          onClick={onDelete}
-          aria-label="Delete system"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </td>
-    </tr>
+    <div className="card bg-base-200">
+      <div className="card-body p-4">
+        {/* Header row — always visible */}
+        <div className="flex items-center justify-between gap-4">
+          <button
+            className="flex items-center gap-3 flex-1 min-w-0 text-left cursor-pointer"
+            onClick={onToggle}
+          >
+            <ChevronDown
+              className={`w-5 h-5 shrink-0 transition-transform ${expanded ? "" : "-rotate-90"}`}
+            />
+            <div className="min-w-0">
+              <span className="font-semibold text-base">{system.label}</span>
+              <span className="text-sm text-base-content/60 ml-2">
+                ID {system.systemId}
+              </span>
+            </div>
+          </button>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2 text-xs text-base-content/60">
+              <Radio className="w-3.5 h-3.5" />
+              {talkgroups.length}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-base-content/60">
+              <Users className="w-3.5 h-3.5" />
+              {units.length}
+            </div>
+            <label className="flex items-center gap-1 cursor-pointer">
+              <span className="text-xs text-base-content/60">Auto-pop</span>
+              <input
+                type="checkbox"
+                className="toggle toggle-primary toggle-xs"
+                checked={system.autoPopulate === 1}
+                onChange={onToggleAutoPopulate}
+              />
+            </label>
+            <button
+              className="btn btn-ghost btn-sm btn-square"
+              onClick={onEdit}
+              aria-label="Edit system"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+            <button
+              className="btn btn-ghost btn-sm btn-square"
+              onClick={onDelete}
+              aria-label="Delete system"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Expanded content */}
+        {expanded && (
+          <div className="mt-4 flex flex-col gap-6">
+            {/* Talkgroups */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold text-sm flex items-center gap-2">
+                  <Radio className="w-4 h-4" />
+                  Talkgroups ({talkgroups.length})
+                </h4>
+                <button className="btn btn-primary btn-xs" onClick={onCreateTg}>
+                  <Plus className="w-3 h-3" />
+                  Add
+                </button>
+              </div>
+              <TalkgroupList
+                talkgroups={talkgroups}
+                onEdit={onEditTg}
+                onDelete={onDeleteTg}
+              />
+            </div>
+
+            {/* Units */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold text-sm flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Units ({units.length})
+                </h4>
+                <button
+                  className="btn btn-primary btn-xs"
+                  onClick={onCreateUnit}
+                >
+                  <Plus className="w-3 h-3" />
+                  Add
+                </button>
+              </div>
+              {units.length === 0 ? (
+                <p className="text-sm opacity-60 py-2">No units</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="table table-zebra table-xs w-full">
+                    <thead>
+                      <tr>
+                        <th>Unit ID</th>
+                        <th>Label</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {units.map((u) => (
+                        <tr key={u.id}>
+                          <td>{u.unitId}</td>
+                          <td>{u.label ?? "—"}</td>
+                          <td className="flex gap-1">
+                            <button
+                              className="btn btn-ghost btn-xs"
+                              onClick={() => onEditUnit(u)}
+                              aria-label="Edit unit"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button
+                              className="btn btn-ghost btn-xs"
+                              onClick={() => onDeleteUnit(u)}
+                              aria-label="Delete unit"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -324,7 +388,6 @@ export default function SystemsPanel() {
 
   const [createSystem] = useCreateSystemMutation();
   const [updateSystem] = useUpdateSystemMutation();
-  const [reorderSystems] = useReorderSystemsMutation();
   const [deleteSystem] = useDeleteSystemMutation();
   const [createTalkgroup] = useCreateTalkgroupMutation();
   const [updateTalkgroup] = useUpdateTalkgroupMutation();
@@ -369,11 +432,6 @@ export default function SystemsPanel() {
     label: "",
   });
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor),
-  );
-
   const showError = useCallback((msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 5000);
@@ -417,33 +475,6 @@ export default function SystemsPanel() {
       else next.add(id);
       return next;
     });
-  };
-
-  // ── Drag to reorder ──
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id || !sortedSystems.length) return;
-
-    const oldIndex = sortedSystems.findIndex((s) => s.id === active.id);
-    const newIndex = sortedSystems.findIndex((s) => s.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const reordered = arrayMove(sortedSystems, oldIndex, newIndex);
-
-    // Submit one bulk reorder request to avoid N per-row updates.
-    try {
-      const changed = reordered
-        .map((sys, idx) => ({ id: sys.id, order: idx, oldOrder: sys.order }))
-        .filter((s) => s.oldOrder !== s.order)
-        .map(({ id, order }) => ({ id, order }));
-
-      if (changed.length === 0) return;
-
-      await reorderSystems(changed).unwrap();
-    } catch {
-      showError("Failed to reorder systems");
-    }
   };
 
   // ── System CRUD ──
@@ -694,74 +725,39 @@ export default function SystemsPanel() {
       <p className="text-sm text-base-content/70 mb-4">
         Define radio systems and their talkgroups. Systems represent a radio
         network (e.g. a county or agency). Each system contains talkgroups and
-        units. Drag rows to reorder how they appear in the scanner.
+        units. Click a system to manage its talkgroups and units.
       </p>
-      <div className="card bg-base-200">
-        <div className="card-body">
-          <div className="overflow-x-auto">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={sortedSystems.map((s) => s.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <table className="table table-zebra w-full">
-                  <thead>
-                    <tr>
-                      <th className="w-8" />
-                      <th className="w-8" />
-                      <th>System ID</th>
-                      <th>Label</th>
-                      <th>Auto-populate</th>
-                      <th>Order</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedSystems.map((sys) => (
-                      <SystemRowGroup
-                        key={sys.id}
-                        system={sys}
-                        expanded={expandedIds.has(sys.id)}
-                        onToggle={() => toggleExpand(sys.id)}
-                        onEdit={() => openEditSystem(sys)}
-                        onDelete={() => handleDeleteSystem(sys)}
-                        onToggleAutoPopulate={() =>
-                          handleToggleAutoPopulate(sys)
-                        }
-                        talkgroups={tgBySystem.get(sys.id) ?? []}
-                        units={unitsBySystem.get(sys.id) ?? []}
-                        onEditTg={openEditTg}
-                        onDeleteTg={handleDeleteTg}
-                        onCreateTg={() => openCreateTg(sys.id)}
-                        onEditUnit={openEditUnit}
-                        onDeleteUnit={handleDeleteUnit}
-                        onCreateUnit={() => openCreateUnit(sys.id)}
-                      />
-                    ))}
-                    {sortedSystems.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="text-center opacity-60">
-                          No systems found
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </SortableContext>
-            </DndContext>
-          </div>
 
-          <div className="mt-4">
-            <button className="btn btn-primary" onClick={openCreateSystem}>
-              <Plus className="w-4 h-4" />
-              Add System
-            </button>
-          </div>
-        </div>
+      <div className="flex flex-col gap-3">
+        {sortedSystems.map((sys) => (
+          <SystemCard
+            key={sys.id}
+            system={sys}
+            expanded={expandedIds.has(sys.id)}
+            onToggle={() => toggleExpand(sys.id)}
+            onEdit={() => openEditSystem(sys)}
+            onDelete={() => handleDeleteSystem(sys)}
+            onToggleAutoPopulate={() => handleToggleAutoPopulate(sys)}
+            talkgroups={tgBySystem.get(sys.id) ?? []}
+            units={unitsBySystem.get(sys.id) ?? []}
+            onEditTg={openEditTg}
+            onDeleteTg={handleDeleteTg}
+            onCreateTg={() => openCreateTg(sys.id)}
+            onEditUnit={openEditUnit}
+            onDeleteUnit={handleDeleteUnit}
+            onCreateUnit={() => openCreateUnit(sys.id)}
+          />
+        ))}
+        {sortedSystems.length === 0 && (
+          <p className="text-center opacity-60 py-8">No systems found</p>
+        )}
+      </div>
+
+      <div className="mt-4">
+        <button className="btn btn-primary" onClick={openCreateSystem}>
+          <Plus className="w-4 h-4" />
+          Add System
+        </button>
       </div>
 
       {/* System Modal */}
@@ -1043,135 +1039,5 @@ export default function SystemsPanel() {
         </div>
       )}
     </div>
-  );
-}
-
-// ─── SystemRowGroup: sortable row + expandable details ───
-
-function SystemRowGroup({
-  system,
-  expanded,
-  onToggle,
-  onEdit,
-  onDelete,
-  onToggleAutoPopulate,
-  talkgroups,
-  units,
-  onEditTg,
-  onDeleteTg,
-  onCreateTg,
-  onEditUnit,
-  onDeleteUnit,
-  onCreateUnit,
-}: {
-  system: AdminSystem;
-  expanded: boolean;
-  onToggle: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  onToggleAutoPopulate: () => void;
-  talkgroups: AdminTalkgroup[];
-  units: AdminUnit[];
-  onEditTg: (tg: AdminTalkgroup) => void;
-  onDeleteTg: (tg: AdminTalkgroup) => void;
-  onCreateTg: () => void;
-  onEditUnit: (u: AdminUnit) => void;
-  onDeleteUnit: (u: AdminUnit) => void;
-  onCreateUnit: () => void;
-}) {
-  return (
-    <>
-      <SortableSystemRow
-        system={system}
-        expanded={expanded}
-        onToggle={onToggle}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        onToggleAutoPopulate={onToggleAutoPopulate}
-      />
-      {expanded && (
-        <tr>
-          <td colSpan={7} className="bg-base-300 p-4">
-            <div className="flex flex-col gap-6">
-              {/* Talkgroups */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-sm">
-                    Talkgroups ({talkgroups.length})
-                  </h4>
-                  <button
-                    className="btn btn-primary btn-xs"
-                    onClick={onCreateTg}
-                  >
-                    <Plus className="w-3 h-3" />
-                    Add
-                  </button>
-                </div>
-                <TalkgroupList
-                  talkgroups={talkgroups}
-                  onEdit={onEditTg}
-                  onDelete={onDeleteTg}
-                />
-              </div>
-
-              {/* Units */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-sm">
-                    Units ({units.length})
-                  </h4>
-                  <button
-                    className="btn btn-primary btn-xs"
-                    onClick={onCreateUnit}
-                  >
-                    <Plus className="w-3 h-3" />
-                    Add
-                  </button>
-                </div>
-                {units.length === 0 ? (
-                  <p className="text-sm opacity-60 py-2">No units</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="table table-zebra table-xs w-full">
-                      <thead>
-                        <tr>
-                          <th>Unit ID</th>
-                          <th>Label</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {units.map((u) => (
-                          <tr key={u.id}>
-                            <td>{u.unitId}</td>
-                            <td>{u.label ?? "—"}</td>
-                            <td className="flex gap-1">
-                              <button
-                                className="btn btn-ghost btn-xs"
-                                onClick={() => onEditUnit(u)}
-                                aria-label="Edit unit"
-                              >
-                                <Pencil className="w-3 h-3" />
-                              </button>
-                              <button
-                                className="btn btn-ghost btn-xs"
-                                onClick={() => onDeleteUnit(u)}
-                                aria-label="Delete unit"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
   );
 }
