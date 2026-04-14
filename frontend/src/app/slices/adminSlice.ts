@@ -509,7 +509,10 @@ const adminApi = api.injectEndpoints({
     }),
 
     // ── Import / Export ──
-    importTalkgroups: builder.mutation<void, FormData>({
+    importTalkgroups: builder.mutation<
+      { inserted: number; updated: number; skipped: number },
+      FormData
+    >({
       query: (body) => ({
         url: "/admin/import/talkgroups",
         method: "POST",

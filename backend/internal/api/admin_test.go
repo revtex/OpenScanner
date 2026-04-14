@@ -1160,9 +1160,13 @@ func TestImportTalkgroups_CSV(t *testing.T) {
 	}
 	var resp map[string]any
 	decodeJSON(t, w, &resp)
-	imported, _ := resp["imported"].(float64)
-	if int(imported) != 2 {
-		t.Errorf("imported = %v, want 2", resp["imported"])
+	inserted, _ := resp["inserted"].(float64)
+	updated, _ := resp["updated"].(float64)
+	skipped, _ := resp["skipped"].(float64)
+	totalInserted := int(inserted) + int(updated)
+	if totalInserted != 2 {
+		t.Errorf("inserted+updated = %d, want 2 (inserted=%v, updated=%v, skipped=%v)",
+			totalInserted, inserted, updated, skipped)
 	}
 }
 

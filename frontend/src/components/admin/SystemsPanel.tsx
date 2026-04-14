@@ -38,6 +38,8 @@ function SystemCard({
   onCreateUnit,
   unitSearchFilter,
   onUnitSearchChange,
+  talkgroupSearchFilter,
+  onTalkgroupSearchChange,
 }: {
   system: AdminSystem;
   expanded: boolean;
@@ -55,6 +57,8 @@ function SystemCard({
   onCreateUnit: () => void;
   unitSearchFilter: string;
   onUnitSearchChange: (value: string) => void;
+  talkgroupSearchFilter: string;
+  onTalkgroupSearchChange: (value: string) => void;
 }) {
   return (
     <div className="card bg-base-200">
@@ -134,10 +138,20 @@ function SystemCard({
                   Add
                 </button>
               </div>
+              <div className="mb-3">
+                <input
+                  type="text"
+                  placeholder="Search by talkgroup ID..."
+                  value={talkgroupSearchFilter}
+                  onChange={(e) => onTalkgroupSearchChange(e.target.value)}
+                  className="input input-sm input-bordered w-full"
+                />
+              </div>
               <TalkgroupList
                 talkgroups={talkgroups}
                 onEdit={onEditTg}
                 onDelete={onDeleteTg}
+                searchFilter={talkgroupSearchFilter}
               />
             </div>
 
@@ -224,10 +238,12 @@ function TalkgroupList({
   talkgroups,
   onEdit,
   onDelete,
+  searchFilter,
 }: {
   talkgroups: AdminTalkgroup[];
   onEdit: (tg: AdminTalkgroup) => void;
   onDelete: (tg: AdminTalkgroup) => void;
+  searchFilter: string;
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -260,36 +276,42 @@ function TalkgroupList({
             </tr>
           </thead>
           <tbody>
-            {talkgroups.map((tg) => (
-              <tr key={tg.id}>
-                <td>{tg.talkgroupId}</td>
-                <td>{tg.label ?? "—"}</td>
-                <td>{tg.name ?? "—"}</td>
-                <td>
-                  {tg.frequency != null
-                    ? `${(tg.frequency / 1e6).toFixed(4)} MHz`
-                    : "—"}
-                </td>
-                <td>{tg.groupId ?? "—"}</td>
-                <td>{tg.tagId ?? "—"}</td>
-                <td className="flex gap-1">
-                  <button
-                    className="btn btn-ghost btn-xs"
-                    onClick={() => onEdit(tg)}
-                    aria-label="Edit talkgroup"
-                  >
-                    <Pencil className="w-3 h-3" />
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-xs"
-                    onClick={() => onDelete(tg)}
-                    aria-label="Delete talkgroup"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {talkgroups
+              .filter(
+                (tg) =>
+                  searchFilter === "" ||
+                  String(tg.talkgroupId).includes(searchFilter),
+              )
+              .map((tg) => (
+                <tr key={tg.id}>
+                  <td>{tg.talkgroupId}</td>
+                  <td>{tg.label ?? "—"}</td>
+                  <td>{tg.name ?? "—"}</td>
+                  <td>
+                    {tg.frequency != null
+                      ? `${(tg.frequency / 1e6).toFixed(4)} MHz`
+                      : "—"}
+                  </td>
+                  <td>{tg.groupId ?? "—"}</td>
+                  <td>{tg.tagId ?? "—"}</td>
+                  <td className="flex gap-1">
+                    <button
+                      className="btn btn-ghost btn-xs"
+                      onClick={() => onEdit(tg)}
+                      aria-label="Edit talkgroup"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-xs"
+                      onClick={() => onDelete(tg)}
+                      aria-label="Delete talkgroup"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
@@ -426,6 +448,9 @@ export default function SystemsPanel() {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const [unitSearchFilters, setUnitSearchFilters] = useState<
+    Map<number, string>
+  >(new Map());
+  const [talkgroupSearchFilters, setTalkgroupSearchFilters] = useState<
     Map<number, string>
   >(new Map());
 
@@ -785,6 +810,16 @@ export default function SystemsPanel() {
                 next.set(sys.id, value);
               }
               setUnitSearchFilters(next);
+            }}
+            talkgroupSearchFilter={talkgroupSearchFilters.get(sys.id) ?? ""}
+            onTalkgroupSearchChange={(value) => {
+              const next = new Map(talkgroupSearchFilters);
+              if (value === "") {
+                next.delete(sys.id);
+              } else {
+                next.set(sys.id, value);
+              }
+              setTalkgroupSearchFilters(next);
             }}
           />
         ))}

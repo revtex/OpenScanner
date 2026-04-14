@@ -16,16 +16,17 @@ import (
 )
 
 // ImportTalkgroups handles POST /api/admin/import/talkgroups.
-// Accepts a multipart CSV file and a system_id form field.
+// Accepts a multipart CSV file, a system_id form field, and an optional mode field.
 //
 // @Summary      Import talkgroups from CSV
-// @Description  Accepts a multipart CSV file with talkgroup data and a system_id form field. Columns: talkgroup_id, label, name, tag_id, group_id, frequency, led, order. Header rows are auto-skipped.
+// @Description  Accepts a multipart CSV file with talkgroup data and a system_id form field. Columns: talkgroup_id, label, name, tag_id, group_id, frequency, led, order. Header rows are auto-skipped. Use mode=overwrite (default) to update existing talkgroups or mode=skip to leave existing talkgroups unchanged.
 // @Tags         Admin
 // @Accept       multipart/form-data
 // @Produce      json
-// @Param        system_id  formData  int   true  "System ID to import talkgroups into"
-// @Param        file       formData  file  true  "CSV file"
-// @Success      200  {object}  object  "imported: count"
+// @Param        system_id  formData  int     true   "System ID to import talkgroups into"
+// @Param        file       formData  file    true   "CSV file"
+// @Param        mode       formData  string  false  "Duplicate handling: overwrite (default) or skip"
+// @Success      200  {object}  object  "inserted, updated, skipped counts"
 // @Failure      400  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Security     BearerAuth
@@ -50,6 +51,12 @@ func (h *AdminHandler) ImportTalkgroups(c *gin.Context) {
 		return
 	}
 
+	mode := c.DefaultPostForm("mode", "overwrite")
+	if mode != "overwrite" && mode != "skip" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "mode must be 'overwrite' or 'skip'"})
+		return
+	}
+
 	file, _, err := c.Request.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
@@ -61,7 +68,8 @@ func (h *AdminHandler) ImportTalkgroups(c *gin.Context) {
 	reader.FieldsPerRecord = -1 // allow variable number of fields
 	reader.TrimLeadingSpace = true
 
-	imported := 0
+	var inserted, updated, skipped int
+	headerSkipped := false
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
@@ -78,16 +86,33 @@ func (h *AdminHandler) ImportTalkgroups(c *gin.Context) {
 			continue
 		}
 
-		// Skip header row: if first field starts with a non-numeric character.
+		// Skip header row.
 		col0 := strings.TrimSpace(record[0])
-		if imported == 0 && len(col0) > 0 && !unicode.IsDigit(rune(col0[0])) {
+		if !headerSkipped && len(col0) > 0 && !unicode.IsDigit(rune(col0[0])) {
+			headerSkipped = true
 			continue
 		}
+		headerSkipped = true
 
 		// talkgroup_id is required.
 		tgID, err := strconv.ParseInt(col0, 10, 64)
 		if err != nil {
 			continue // skip rows with invalid talkgroup_id
+		}
+
+		// Check if talkgroup already exists.
+		_, existsErr := h.queries.GetTalkgroupBySystemAndTGID(ctx, db.GetTalkgroupBySystemAndTGIDParams{
+			SystemID:    systemID,
+			TalkgroupID: tgID,
+		})
+		exists := !errors.Is(existsErr, sql.ErrNoRows)
+
+		if exists && mode == "skip" {
+			skipped++
+			if inserted+updated+skipped >= maxImportRows {
+				break
+			}
+			continue
 		}
 
 		params := db.UpsertTalkgroupParams{
@@ -130,15 +155,24 @@ func (h *AdminHandler) ImportTalkgroups(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 			return
 		}
-		imported++
-		if imported >= maxImportRows {
+		if exists {
+			updated++
+		} else {
+			inserted++
+		}
+		if inserted+updated+skipped >= maxImportRows {
 			slog.Warn("CSV import row limit reached", "limit", maxImportRows)
 			break
 		}
 	}
 
-	slog.Info("talkgroups imported", "system_id", systemID, "count", imported)
-	c.JSON(http.StatusOK, gin.H{"imported": imported})
+	slog.Info("talkgroups imported", "system_id", systemID,
+		"inserted", inserted, "updated", updated, "skipped", skipped)
+	c.JSON(http.StatusOK, gin.H{
+		"inserted": inserted,
+		"updated":  updated,
+		"skipped":  skipped,
+	})
 }
 
 // ImportUnits handles POST /api/admin/import/units.

@@ -32,7 +32,11 @@ export default function ToolsPanel() {
   const tgFileRef = useRef<HTMLInputElement>(null);
   const unitFileRef = useRef<HTMLInputElement>(null);
   const configFileRef = useRef<HTMLInputElement>(null);
-  const [selectedSystemId, setSelectedSystemId] = useState<string>("");
+  const [selectedTgSystemId, setSelectedTgSystemId] = useState<string>("");
+  const [tgImportMode, setTgImportMode] = useState<"overwrite" | "skip">(
+    "overwrite",
+  );
+  const [selectedUnitSystemId, setSelectedUnitSystemId] = useState<string>("");
   const [unitImportMode, setUnitImportMode] = useState<"overwrite" | "skip">(
     "overwrite",
   );
@@ -57,11 +61,18 @@ export default function ToolsPanel() {
   const handleImportTalkgroups = async () => {
     const file = tgFileRef.current?.files?.[0];
     if (!file) return;
+    if (!selectedTgSystemId) {
+      showToast("Please select a system");
+      return;
+    }
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("system_id", selectedTgSystemId);
+    formData.append("mode", tgImportMode);
     try {
-      await importTalkgroups(formData).unwrap();
-      showToast("Talkgroups imported successfully", "success");
+      const result = await importTalkgroups(formData).unwrap();
+      const msg = `Talkgroups imported: ${result.inserted} inserted, ${result.updated} updated, ${result.skipped} skipped`;
+      showToast(msg, "success");
       if (tgFileRef.current) tgFileRef.current.value = "";
     } catch {
       showToast("Failed to import talkgroups");
@@ -71,13 +82,13 @@ export default function ToolsPanel() {
   const handleImportUnits = async () => {
     const file = unitFileRef.current?.files?.[0];
     if (!file) return;
-    if (!selectedSystemId) {
+    if (!selectedUnitSystemId) {
       showToast("Please select a system");
       return;
     }
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("system_id", selectedSystemId);
+    formData.append("system_id", selectedUnitSystemId);
     formData.append("mode", unitImportMode);
     try {
       const result = await importUnits(formData).unwrap();
@@ -205,18 +216,59 @@ export default function ToolsPanel() {
           <h2 className="card-title text-base">
             <Upload className="w-4 h-4" /> Import Talkgroups (CSV)
           </h2>
-          <div className="flex items-center gap-3">
-            <input
-              ref={tgFileRef}
-              type="file"
-              accept=".csv"
-              className="file-input file-input-sm"
-            />
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="label">
+                  <span className="label-text text-sm">System</span>
+                </label>
+                <select
+                  value={selectedTgSystemId}
+                  onChange={(e) => setSelectedTgSystemId(e.target.value)}
+                  className="select select-bordered select-sm w-full"
+                >
+                  <option value="">--- Select a system ---</option>
+                  {systems?.map((sys) => (
+                    <option key={sys.id} value={sys.id}>
+                      {sys.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">
+                  <span className="label-text text-sm">Duplicate Mode</span>
+                </label>
+                <select
+                  value={tgImportMode}
+                  onChange={(e) =>
+                    setTgImportMode(e.target.value as "overwrite" | "skip")
+                  }
+                  className="select select-bordered select-sm w-full"
+                >
+                  <option value="overwrite">Overwrite (update existing)</option>
+                  <option value="skip">Skip (keep existing)</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <input
+                  ref={tgFileRef}
+                  type="file"
+                  accept=".csv"
+                  className="file-input file-input-bordered file-input-sm w-full"
+                />
+              </div>
+            </div>
+            <div className="text-xs text-base-content/70">
+              CSV format: talkgroup_id, label (optional), name, tag_id, group_id,
+              frequency, led, order. Mode: "Overwrite" updates existing talkgroup
+              properties, "Skip" ignores duplicates.
+            </div>
             <button
-              className="btn btn-primary btn-sm"
+              className="btn btn-primary btn-sm w-full"
               onClick={handleImportTalkgroups}
             >
-              Upload
+              Upload Talkgroups
             </button>
           </div>
         </div>
@@ -235,8 +287,8 @@ export default function ToolsPanel() {
                   <span className="label-text text-sm">System</span>
                 </label>
                 <select
-                  value={selectedSystemId}
-                  onChange={(e) => setSelectedSystemId(e.target.value)}
+                  value={selectedUnitSystemId}
+                  onChange={(e) => setSelectedUnitSystemId(e.target.value)}
                   className="select select-bordered select-sm w-full"
                 >
                   <option value="">--- Select a system ---</option>
