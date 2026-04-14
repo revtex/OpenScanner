@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import { Lock } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
+import { useGetSetupStatusQuery } from "@/app/api";
 import {
   setCredentials,
   selectToken,
@@ -23,6 +24,7 @@ export default function Login() {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const token = useAppSelector(selectToken);
+  const { data: setupStatus, isLoading: setupLoading } = useGetSetupStatusQuery();
   const [postLogin, { isLoading }] = usePostLoginMutation();
   const [changePassword] = useChangePasswordMutation();
 
@@ -35,6 +37,19 @@ export default function Login() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const from = (location.state as LoginLocationState | null)?.from;
+
+  if (setupLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <span className="loading loading-spinner loading-lg" />
+      </div>
+    );
+  }
+
+  // While first-login setup is active, login should be unreachable.
+  if (setupStatus?.needsSetup) {
+    return <Navigate to="/setup" replace />;
+  }
 
   // Already authenticated — redirect away without touching credentials.
   if (token && !needChange) {

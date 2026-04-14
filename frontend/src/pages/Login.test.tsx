@@ -28,10 +28,12 @@ vi.mock("react-router-dom", async () => {
 
 const mockPostLogin = vi.fn();
 const mockChangePassword = vi.fn();
+const mockUseGetSetupStatusQuery = vi.fn();
 vi.mock("@/app/api", async () => {
   const actual = await vi.importActual<typeof import("@/app/api")>("@/app/api");
   return {
     ...actual,
+    useGetSetupStatusQuery: () => mockUseGetSetupStatusQuery(),
   };
 });
 vi.mock("@/app/slices/authSlice", async () => {
@@ -77,6 +79,20 @@ describe("Login", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockLocationState = null;
+    mockUseGetSetupStatusQuery.mockReturnValue({
+      data: { needsSetup: false, publicAccess: false },
+      isLoading: false,
+    });
+  });
+
+  it("redirects to /setup while initial setup is active", () => {
+    mockUseGetSetupStatusQuery.mockReturnValue({
+      data: { needsSetup: true, publicAccess: false },
+      isLoading: false,
+    });
+
+    renderLogin();
+    expect(screen.queryByPlaceholderText("Username")).not.toBeInTheDocument();
   });
 
   it("renders login form", () => {
