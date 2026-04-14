@@ -73,16 +73,22 @@ function SystemCard({
           </button>
 
           <div className="flex items-center gap-3 shrink-0">
-            <div className="flex items-center gap-2 text-xs text-base-content/60">
+            <div
+              className="tooltip tooltip-bottom flex items-center gap-2 text-xs text-base-content/60"
+              data-tip="Talkgroups"
+            >
               <Radio className="w-3.5 h-3.5" />
               {talkgroups.length}
             </div>
-            <div className="flex items-center gap-2 text-xs text-base-content/60">
+            <div
+              className="tooltip tooltip-bottom flex items-center gap-2 text-xs text-base-content/60"
+              data-tip="Units"
+            >
               <Users className="w-3.5 h-3.5" />
               {units.length}
             </div>
             <label className="flex items-center gap-1 cursor-pointer">
-              <span className="text-xs text-base-content/60">Auto-pop</span>
+              <span className="text-xs text-base-content/60">Auto Populate</span>
               <input
                 type="checkbox"
                 className="toggle toggle-primary toggle-xs"
@@ -769,6 +775,10 @@ export default function SystemsPanel() {
           <form onSubmit={handleSystemSubmit} className="flex flex-col gap-3">
             <label className="flex flex-col w-full">
               <span className="text-sm">System ID</span>
+              <span className="text-xs text-base-content/60">
+                Numeric identifier matching your radio recorder&apos;s system
+                number
+              </span>
               <input
                 type="number"
                 className="input w-full"
@@ -781,6 +791,10 @@ export default function SystemsPanel() {
             </label>
             <label className="flex flex-col w-full">
               <span className="text-sm">Label</span>
+              <span className="text-xs text-base-content/60">
+                Display name shown in the scanner (e.g. &quot;Lake County
+                Fire&quot;)
+              </span>
               <input
                 type="text"
                 className="input w-full"
@@ -857,6 +871,9 @@ export default function SystemsPanel() {
           <form onSubmit={handleTgSubmit} className="flex flex-col gap-3">
             <label className="flex flex-col w-full">
               <span className="text-sm">Talkgroup ID</span>
+              <span className="text-xs text-base-content/60">
+                Numeric ID matching the talkgroup in your radio system
+              </span>
               <input
                 type="number"
                 className="input w-full"
@@ -869,6 +886,10 @@ export default function SystemsPanel() {
             </label>
             <label className="flex flex-col w-full">
               <span className="text-sm">Label</span>
+              <span className="text-xs text-base-content/60">
+                Short label shown in the scanner display (e.g. &quot;FD
+                Dispatch&quot;)
+              </span>
               <input
                 type="text"
                 className="input w-full"
@@ -880,6 +901,10 @@ export default function SystemsPanel() {
             </label>
             <label className="flex flex-col w-full">
               <span className="text-sm">Name</span>
+              <span className="text-xs text-base-content/60">
+                Full descriptive name (e.g. &quot;Fire Department
+                Dispatch&quot;)
+              </span>
               <input
                 type="text"
                 className="input w-full"
@@ -891,6 +916,10 @@ export default function SystemsPanel() {
             </label>
             <label className="flex flex-col w-full">
               <span className="text-sm">Group</span>
+              <span className="text-xs text-base-content/60">
+                Category for organizing talkgroups in the scanner (e.g.
+                &quot;Fire&quot;, &quot;Police&quot;)
+              </span>
               <select
                 className="select w-full"
                 value={tgForm.groupId}
@@ -908,6 +937,10 @@ export default function SystemsPanel() {
             </label>
             <label className="flex flex-col w-full">
               <span className="text-sm">Tag</span>
+              <span className="text-xs text-base-content/60">
+                Secondary classification for filtering (e.g. &quot;Law
+                Dispatch&quot;, &quot;EMS&quot;)
+              </span>
               <select
                 className="select w-full"
                 value={tgForm.tagId}
@@ -946,7 +979,8 @@ export default function SystemsPanel() {
             <label className="flex flex-col w-full">
               <span className="text-sm">Frequency (Hz)</span>
               <span className="text-xs text-base-content/60">
-                Display-only fake frequency
+                Cosmetic frequency shown in the scanner display, not used for
+                tuning
               </span>
               <input
                 type="number"
