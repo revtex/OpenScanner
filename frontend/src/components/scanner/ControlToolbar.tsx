@@ -3,26 +3,20 @@ import {
   Pause,
   SkipForward,
   RotateCcw,
-  Download,
   Star,
   Volume2,
   VolumeX,
-  MoreHorizontal,
   Radio,
   Lock,
   Ban,
   List,
   Search,
-  Keyboard,
-  Maximize,
-  Minimize,
 } from "lucide-react";
-import { useState, useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { playBeep } from "@/services/beepPlayer";
 import type { AvoidEntry } from "@/types";
 
 interface ControlToolbarProps {
-  isPlaying: boolean;
   isPaused: boolean;
   isLive: boolean;
   volume: number;
@@ -34,7 +28,6 @@ interface ControlToolbarProps {
   onToggleLive: () => void;
   onSkip: () => void;
   onReplay: () => void;
-  onDownload: () => void;
   onSetVolume: (v: number) => void;
   onHoldSystem: (id: number | null) => void;
   onHoldTG: (id: number | null) => void;
@@ -46,7 +39,6 @@ interface ControlToolbarProps {
 }
 
 export function ControlToolbar({
-  isPlaying,
   isPaused,
   isLive,
   volume,
@@ -58,7 +50,6 @@ export function ControlToolbar({
   onToggleLive,
   onSkip,
   onReplay,
-  onDownload,
   onSetVolume,
   onHoldSystem,
   onHoldTG,
@@ -74,28 +65,12 @@ export function ControlToolbar({
 
   const isMuted = volume === 0;
   const isHolding = heldSystem !== null || heldTG !== null;
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const handleAvoid = (minutes: number) => {
     if (!currentCallTgId) return;
     const expiresAt = minutes === 0 ? 0 : Date.now() + minutes * 60 * 1000;
     onAddAvoid({ talkgroupId: currentCallTgId, expiresAt });
   };
-
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      document.documentElement.requestFullscreen();
-    }
-  }, []);
-
-  useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
 
   return (
     <div className="mt-4 space-y-2">
@@ -104,7 +79,7 @@ export function ControlToolbar({
         {/* Play/Pause */}
         <div
           className="tooltip tooltip-bottom"
-          data-tip={isPaused ? "Resume (Space)" : "Pause (Space)"}
+          data-tip={isPaused ? "Resume" : "Pause"}
         >
           <button
             className={`btn btn-circle w-11 h-11 ${isPaused ? "btn-warning" : "btn-primary"}`}
@@ -123,7 +98,7 @@ export function ControlToolbar({
         </div>
 
         {/* Skip */}
-        <div className="tooltip tooltip-bottom" data-tip="Skip (S)">
+        <div className="tooltip tooltip-bottom" data-tip="Skip">
           <button
             className="btn btn-circle btn-ghost w-9 h-9"
             onClick={() => {
@@ -137,7 +112,7 @@ export function ControlToolbar({
         </div>
 
         {/* Replay */}
-        <div className="tooltip tooltip-bottom" data-tip="Replay (R)">
+        <div className="tooltip tooltip-bottom" data-tip="Replay">
           <button
             className="btn btn-circle btn-ghost w-9 h-9"
             onClick={() => {
@@ -205,25 +180,9 @@ export function ControlToolbar({
           </div>
         </div>
 
-        <div className="divider divider-horizontal mx-0" />
-
-        {/* Download */}
-        <div className="tooltip tooltip-bottom" data-tip="Download (D)">
-          <button
-            className="btn btn-circle btn-ghost w-9 h-9"
-            onClick={() => {
-              beep();
-              onDownload();
-            }}
-            aria-label="Download"
-          >
-            <Download className="w-4 h-4" />
-          </button>
-        </div>
-
         {/* Bookmarks panel toggle */}
         {onToggleBookmarks && (
-          <div className="tooltip tooltip-bottom" data-tip="Bookmarks (B)">
+          <div className="tooltip tooltip-bottom" data-tip="Bookmarks">
             <button
               className="btn btn-circle btn-ghost w-9 h-9"
               onClick={() => {
@@ -239,33 +198,34 @@ export function ControlToolbar({
       </div>
 
       {/* Row 2 — Mode Toggles */}
-      <div className="flex items-center justify-center gap-2 flex-wrap">
+      <div className="grid grid-cols-5 gap-1 sm:gap-2 w-full items-center">
         {/* LIVE */}
-        <div className="tooltip tooltip-bottom" data-tip="Live Mode (L)">
+        <div className="tooltip tooltip-bottom" data-tip="Live Mode">
           <button
-            className={`btn btn-sm gap-1 ${isLive ? "btn-primary" : "btn-ghost"}`}
+            className={`btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 ${
+              isLive ? "btn-success" : "btn-ghost text-base-content"
+            }`}
             onClick={() => {
               beep();
               onToggleLive();
             }}
           >
-            <Radio className="w-3.5 h-3.5" />
+            <Radio className="hidden sm:inline w-3.5 h-3.5" />
             LIVE
-            {isLive && isPlaying && (
-              <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-            )}
           </button>
         </div>
 
-        {/* HOLD ▾ */}
-        <div className="dropdown dropdown-bottom">
+        {/* HOLD */}
+        <div className="dropdown dropdown-top w-full">
           <div
             tabIndex={0}
             role="button"
-            className={`btn btn-sm ${isHolding ? "btn-secondary" : "btn-ghost"}`}
+            className={`btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 ${
+              isHolding ? "btn-secondary" : "btn-ghost"
+            }`}
           >
-            <Lock className="w-3.5 h-3.5" />
-            HOLD▾
+            <Lock className="hidden sm:inline w-3.5 h-3.5" />
+            HOLD
           </div>
           <ul
             tabIndex={0}
@@ -294,15 +254,15 @@ export function ControlToolbar({
           </ul>
         </div>
 
-        {/* AVOID ▾ */}
-        <div className="dropdown dropdown-bottom">
+        {/* AVOID */}
+        <div className="dropdown dropdown-top w-full">
           <div
             tabIndex={0}
             role="button"
-            className="btn btn-sm gap-1 btn-ghost"
+            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-ghost"
           >
-            <Ban className="w-3.5 h-3.5" />
-            AVOID▾
+            <Ban className="hidden sm:inline w-3.5 h-3.5" />
+            AVOID
           </div>
           <ul
             tabIndex={0}
@@ -326,101 +286,31 @@ export function ControlToolbar({
         {/* SELECT */}
         <div className="tooltip tooltip-bottom" data-tip="Select Talkgroups">
           <button
-            className="btn btn-sm btn-ghost"
+            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-ghost"
             onClick={() => {
               beep();
               onToggleSelectTG();
             }}
           >
-            <List className="w-3.5 h-3.5" />
-            SELECT▾
+            <List className="hidden sm:inline w-3.5 h-3.5" />
+            SELECT
           </button>
         </div>
 
         {/* SEARCH */}
         <div className="tooltip tooltip-bottom" data-tip="Search Calls">
           <button
-            className="btn btn-sm btn-ghost"
+            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-ghost"
             onClick={() => {
               beep();
               onToggleSearch();
             }}
           >
-            <Search className="w-3.5 h-3.5" />
+            <Search className="hidden sm:inline w-3.5 h-3.5" />
             SEARCH
           </button>
         </div>
-
-        {/* Overflow ⋯ */}
-        <div className="dropdown dropdown-bottom dropdown-end">
-          <div tabIndex={0} role="button" className="btn btn-sm btn-ghost">
-            <MoreHorizontal className="w-4 h-4" />
-          </div>
-          <ul
-            tabIndex={0}
-            className="dropdown-content menu p-2 shadow bg-base-200 rounded-box w-52 z-50"
-          >
-            <li>
-              <button onClick={toggleFullscreen}>
-                {isFullscreen ? (
-                  <Minimize className="w-4 h-4" />
-                ) : (
-                  <Maximize className="w-4 h-4" />
-                )}{" "}
-                {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-              </button>
-            </li>
-            <li>
-              <button onClick={() => setShortcutsOpen(true)}>
-                <Keyboard className="w-4 h-4" /> Keyboard Shortcuts
-              </button>
-            </li>
-          </ul>
-        </div>
       </div>
-
-      {/* Keyboard Shortcuts Modal */}
-      {shortcutsOpen && (
-        <dialog
-          className="modal modal-open"
-          onClick={() => setShortcutsOpen(false)}
-        >
-          <div
-            className="modal-box max-w-md"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="font-semibold text-lg mb-4">Keyboard Shortcuts</h3>
-            <div className="space-y-2 text-sm">
-              {[
-                ["Space", "Pause / Resume"],
-                ["S", "Skip next"],
-                ["R", "Replay last"],
-                ["H", "Hold current TG"],
-                ["J", "Hold current system"],
-                ["A", "Avoid (cycle 30/60/120 min)"],
-                ["F", "Toggle fullscreen"],
-                ["← / →", "Volume down / up"],
-                ["?", "Show shortcuts"],
-                ["B", "Bookmark current call"],
-                ["Esc", "Close any open panel"],
-              ].map(([key, desc]) => (
-                <div key={key} className="flex items-center justify-between">
-                  <span>{desc}</span>
-                  <kbd className="kbd kbd-sm">{key}</kbd>
-                </div>
-              ))}
-            </div>
-            <div className="modal-action">
-              <button
-                className="btn btn-sm"
-                onClick={() => setShortcutsOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </dialog>
-      )}
     </div>
   );
 }

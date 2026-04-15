@@ -4,7 +4,6 @@ import { ControlToolbar } from "@/components/scanner/ControlToolbar";
 
 function defaultProps() {
   return {
-    isPlaying: false,
     isPaused: false,
     isLive: true,
     volume: 0.8,
@@ -16,7 +15,6 @@ function defaultProps() {
     onToggleLive: vi.fn(),
     onSkip: vi.fn(),
     onReplay: vi.fn(),
-    onDownload: vi.fn(),
     onSetVolume: vi.fn(),
     onHoldSystem: vi.fn(),
     onHoldTG: vi.fn(),
@@ -68,12 +66,12 @@ describe("ControlToolbar", () => {
     expect(props.onToggleLive).toHaveBeenCalledOnce();
   });
 
-  it("LIVE button has active style when isLive is true", () => {
+  it("LIVE button has success style when isLive is true", () => {
     const props = defaultProps();
     props.isLive = true;
     render(<ControlToolbar {...props} />);
     const liveBtn = screen.getByText("LIVE").closest("button")!;
-    expect(liveBtn.className).toContain("btn-primary");
+    expect(liveBtn.className).toContain("btn-success");
   });
 
   it("LIVE button has ghost style when isLive is false", () => {
@@ -165,20 +163,5 @@ describe("ControlToolbar", () => {
       talkgroupId: 200,
       expiresAt: 0,
     });
-  });
-
-  it("renders Download button", () => {
-    const props = defaultProps();
-    render(<ControlToolbar {...props} />);
-    expect(
-      screen.getByRole("button", { name: "Download" }),
-    ).toBeInTheDocument();
-  });
-
-  it("calls onDownload when Download button clicked", () => {
-    const props = defaultProps();
-    render(<ControlToolbar {...props} />);
-    fireEvent.click(screen.getByRole("button", { name: "Download" }));
-    expect(props.onDownload).toHaveBeenCalledOnce();
   });
 });

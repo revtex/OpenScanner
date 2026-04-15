@@ -38,6 +38,15 @@ function formatCountdown(expiresAt: number, now: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function formatTalkgroupLabelName(label?: string, name?: string): string {
+  const cleanLabel = (label ?? "").trim();
+  const cleanName = (name ?? "").trim();
+  if (cleanLabel && cleanName && cleanLabel !== cleanName) {
+    return `${cleanLabel} - ${cleanName}`;
+  }
+  return cleanLabel || cleanName || "(Unnamed Talkgroup)";
+}
+
 // ---------- Section: a collapsible accordion row ----------
 
 interface SectionProps {
@@ -152,7 +161,7 @@ function Section({
                     />
                   )}
                   <span className="text-sm truncate flex-1">
-                    {tg.label || tg.name}
+                    {formatTalkgroupLabelName(tg.label, tg.name)}
                   </span>
                   {isHeld && (
                     <span className="badge badge-xs badge-secondary">HELD</span>

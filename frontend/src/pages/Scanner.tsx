@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGetSetupStatusQuery } from "@/app/api";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { setSetupStatus, selectToken } from "@/app/slices/authSlice";
 import { expireAvoids, setPaused } from "@/app/slices/scannerSlice";
 import { useScanner } from "@/hooks/useScanner";
-import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { LEDPanel } from "@/components/scanner/LEDPanel";
 import { DisplayPanel } from "@/components/scanner/DisplayPanel";
 import { ControlToolbar } from "@/components/scanner/ControlToolbar";
@@ -34,37 +33,6 @@ export default function Scanner() {
     setSearchOpen((prev) => !prev);
     setSelectTGOpen(false);
   }, []);
-
-  const handleCloseAllPanels = useCallback(() => {
-    setSelectTGOpen(false);
-    setSearchOpen(false);
-  }, []);
-
-  const kbCallbacks = useMemo(
-    () => ({
-      onSkip: scanner.skip,
-      onReplay: scanner.replay,
-      onSetVolume: scanner.setVolume,
-      onToggleSelectTG: handleToggleSelectTG,
-      onToggleSearch: handleToggleSearch,
-      onToggleShortcutsModal: () => {
-        /* handled inside ControlToolbar */
-      },
-      onCloseAllPanels: handleCloseAllPanels,
-      volume: scanner.volume,
-    }),
-    [
-      scanner.skip,
-      scanner.replay,
-      scanner.setVolume,
-      scanner.volume,
-      handleToggleSelectTG,
-      handleToggleSearch,
-      handleCloseAllPanels,
-    ],
-  );
-
-  useKeyboardShortcuts(kbCallbacks);
 
   useEffect(() => {
     if (setupStatus) {
@@ -110,7 +78,6 @@ export default function Scanner() {
         isAuthenticated={!!token}
       />
       <ControlToolbar
-        isPlaying={scanner.isPlaying}
         isPaused={scanner.isPaused}
         isLive={scanner.isLive}
         volume={scanner.volume}
@@ -122,7 +89,6 @@ export default function Scanner() {
         onToggleLive={scanner.toggleLive}
         onSkip={scanner.skip}
         onReplay={scanner.replay}
-        onDownload={scanner.download}
         onSetVolume={scanner.setVolume}
         onHoldSystem={scanner.holdSystem}
         onHoldTG={scanner.holdTG}

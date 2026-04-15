@@ -59,16 +59,20 @@ export function LEDPanel() {
   const branding = config?.branding?.trim() || "OPENSCANNER";
 
   // LED color logic:
-  // Paused:            orange + blink (always)
+  // Live off:          off gray (always)
+  // Paused (live on):  orange + blink
   // Live + receiving:  green (or TG custom color) with glow
   // Live + idle:       green, dimmer (no glow)
   // Playback/archive:  orange (or TG custom color)
   // No link:           off gray
   let ledColor: string;
   let dimmed: boolean;
-  const shouldBlink = isPaused;
+  const shouldBlink = isLive && isPaused;
 
-  if (isPaused) {
+  if (!isLive) {
+    ledColor = "#505050"; // off when live mode is disabled
+    dimmed = true;
+  } else if (isPaused) {
     ledColor = "#ff9100"; // orange blink when paused
     dimmed = false;
   } else if (currentCall?.talkgroupLedColor) {

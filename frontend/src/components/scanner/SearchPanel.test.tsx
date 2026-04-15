@@ -156,10 +156,9 @@ describe("SearchPanel", () => {
       expect(screen.getByText("Search Calls")).toBeInTheDocument();
     });
 
-    it("has -translate-x-full class when isOpen is false", () => {
+    it("is not rendered when isOpen is false", () => {
       const { container } = renderPanel({ scanner: scannerState() }, false);
-      const panel = container.querySelector(".-translate-x-full");
-      expect(panel).toBeInTheDocument();
+      expect(container).toBeEmptyDOMElement();
     });
 
     it("clicking close button calls onClose", () => {
@@ -169,13 +168,10 @@ describe("SearchPanel", () => {
       expect(onClose).toHaveBeenCalledOnce();
     });
 
-    it("clicking backdrop calls onClose", () => {
-      const onClose = vi.fn();
-      renderPanel({ scanner: scannerState() }, true, onClose);
+    it("does not render a backdrop in full-screen mode", () => {
+      renderPanel({ scanner: scannerState() }, true);
       const backdrop = document.querySelector(".bg-black\\/50");
-      expect(backdrop).toBeTruthy();
-      fireEvent.click(backdrop!);
-      expect(onClose).toHaveBeenCalledOnce();
+      expect(backdrop).toBeNull();
     });
   });
 
@@ -296,7 +292,7 @@ describe("SearchPanel", () => {
         isFetching: false,
       });
       renderPanel({ scanner: scannerState() });
-      expect(screen.getByText("Talkgroup One")).toBeInTheDocument();
+      expect(screen.getByText("TG1 - Talkgroup One")).toBeInTheDocument();
       expect(screen.getByText("Sys1")).toBeInTheDocument();
     });
   });

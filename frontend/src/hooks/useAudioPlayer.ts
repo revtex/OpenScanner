@@ -3,18 +3,11 @@ import { useAppDispatch, useAppSelector } from "@/app/store";
 import { store } from "@/app/store";
 import { audioPlayer } from "@/services/audioPlayer";
 import { wsClient } from "@/services/wsClient";
-import {
-  setCurrentCall,
-  clearCurrentCall,
-  toggleLive,
-} from "@/app/slices/scannerSlice";
+import { setCurrentCall, clearCurrentCall } from "@/app/slices/scannerSlice";
 
 export function useAudioPlayer() {
   const dispatch = useAppDispatch();
   const isLive = useAppSelector((s) => s.scanner.isLive);
-  const playbackGoesLive = useAppSelector(
-    (s) => s.scanner.config?.playbackGoesLive ?? false,
-  );
   const heldTG = useAppSelector((s) => s.scanner.heldTG);
   const heldSystem = useAppSelector((s) => s.scanner.heldSystem);
   const [volume, setVolumeState] = useState(() => audioPlayer.getVolume());
@@ -41,6 +34,16 @@ export function useAudioPlayer() {
     });
 
     wsClient.onAudioReceived((call, audioUrl) => {
+      // LIVE mode gates only streaming WS audio. Manual playback
+      // (Search/Bookmarks) uses audioPlayer.playNow and remains available.
+      if (!store.getState().scanner.isLive) {
+        try {
+          URL.revokeObjectURL(audioUrl);
+        } catch {
+          // ignore
+        }
+        return;
+      }
       audioPlayer.play(call, audioUrl);
     });
 
@@ -103,12 +106,14 @@ export function useAudioPlayer() {
     }
   }, [heldTG, heldSystem]);
 
-  // When playback ends and queue is empty, auto-switch to live if configured.
+  // LIVE off behaves like radio power off for stream playback:
+  // stop current audio immediately and clear any queued stream calls.
   useEffect(() => {
-    if (!playing && pendingCount === 0 && !isLive && playbackGoesLive) {
-      dispatch(toggleLive());
+    if (!isLive) {
+      audioPlayer.clearQueue();
+      setPlaying(false);
     }
-  }, [playing, pendingCount, isLive, playbackGoesLive, dispatch]);
+  }, [isLive]);
 
   const skip = useCallback(() => {
     audioPlayer.skip();

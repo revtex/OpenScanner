@@ -33,8 +33,10 @@ export function HistoryPanel({ history, time12hFormat }: HistoryPanelProps) {
             </span>
           </div>
           {/* Line 2: system · UID · TGID · freq MHz */}
-          <div className="flex items-center gap-1 text-[10px] opacity-40">
-            <span className="truncate">{call.systemLabel ?? ""}</span>
+          <div className="flex items-center gap-1 text-[10px] opacity-40 whitespace-nowrap overflow-hidden">
+            <span className="min-w-0 flex-1 truncate">
+              {call.systemLabel ?? ""}
+            </span>
             {call.source != null && call.source > 0 && (
               <>
                 <span>·</span>

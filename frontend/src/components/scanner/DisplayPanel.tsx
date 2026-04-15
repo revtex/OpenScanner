@@ -161,16 +161,22 @@ export function DisplayPanel({
       {/* Row 1: clock, listeners, queue */}
       <div className="flex justify-between">
         <span>{formatClock(clock, time12hFormat)}</span>
-        {showListenersCount && <span>L: {listenerCount}</span>}
-        <span>Q: {queueCount}</span>
+        <div className="flex items-center gap-4">
+          {showListenersCount && <span>L: {listenerCount}</span>}
+          <span>Q: {queueCount}</span>
+        </div>
       </div>
 
       {currentCall ? (
         <>
           {/* Row 3: system label, tag */}
-          <div className="flex justify-between">
-            <span className="truncate">{currentCall.systemLabel ?? ""}</span>
-            <span className="opacity-60">{currentCall.talkgroupTag ?? ""}</span>
+          <div className="flex items-center justify-between gap-2">
+            <span className="min-w-0 flex-1 truncate">
+              {currentCall.systemLabel ?? ""}
+            </span>
+            <span className="shrink-0 whitespace-nowrap opacity-60">
+              {currentCall.talkgroupTag ?? ""}
+            </span>
           </div>
 
           {/* Row 4: TG group/label, call time */}
