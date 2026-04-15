@@ -69,6 +69,7 @@ const callsApi = api.injectEndpoints({
           bookmarked_only: params.bookmarkedOnly ? "true" : undefined,
         },
       }),
+      providesTags: [{ type: "Calls", id: "LIST" }],
     }),
   }),
 });

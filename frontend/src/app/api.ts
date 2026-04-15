@@ -48,6 +48,7 @@ export const api = createApi({
     "Webhooks",
     "Config",
     "Logs",
+    "Calls",
     "Bookmarks",
     "Setup",
     "SharedLinks",
