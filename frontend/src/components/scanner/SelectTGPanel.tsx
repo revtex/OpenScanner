@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  X,
-  ChevronDown,
-  ChevronRight,
-  Search,
-  Check,
-  Minus,
-} from "lucide-react";
+import { X, ChevronDown, ChevronRight, Search } from "lucide-react";
 import { useAppSelector, useAppDispatch } from "@/app/store";
 import {
   toggleTG,
@@ -63,48 +56,52 @@ function Section({
   return (
     <div className="border-b border-base-300">
       {/* Header */}
-      <button
-        className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-base-200 transition-colors"
-        onClick={onToggleExpand}
-      >
-        {expanded ? (
-          <ChevronDown size={16} className="shrink-0 text-base-content/50" />
-        ) : (
-          <ChevronRight size={16} className="shrink-0 text-base-content/50" />
-        )}
-        {/* Tri-state check icon */}
-        <span className="shrink-0">
-          {allOn ? (
-            <Check size={16} className="text-primary" />
-          ) : allOff ? (
-            <span className="inline-block w-4 h-4 rounded border border-base-content/30" />
+      <div className="flex w-full items-center gap-2 px-4 py-3 hover:bg-base-200 transition-colors">
+        {/* LED indicator — click to toggle all */}
+        <button
+          className="shrink-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleAll(!allOn);
+          }}
+          aria-label={allOn ? "Turn all off" : "Turn all on"}
+        >
+          <span
+            className={`inline-block w-3 h-3 rounded-full shadow-sm ${
+              allOn
+                ? "bg-green-500 shadow-green-500/50"
+                : allOff
+                  ? "bg-red-500 shadow-red-500/50"
+                  : "bg-yellow-500 shadow-yellow-500/50"
+            }`}
+          />
+        </button>
+        {/* Expand/collapse — click row */}
+        <button
+          className="flex flex-1 items-center gap-2 text-left min-w-0"
+          onClick={onToggleExpand}
+        >
+          {expanded ? (
+            <ChevronDown
+              size={16}
+              className="shrink-0 text-base-content/50"
+            />
           ) : (
-            <Minus size={16} className="text-primary" />
+            <ChevronRight
+              size={16}
+              className="shrink-0 text-base-content/50"
+            />
           )}
-        </span>
-        <span className="flex-1 font-medium text-sm truncate">{label}</span>
-        <span className="badge badge-sm badge-ghost">
-          {activeCount}/{total}
-        </span>
-      </button>
+          <span className="flex-1 font-medium text-sm truncate">{label}</span>
+          <span className="badge badge-sm badge-ghost">
+            {activeCount}/{total}
+          </span>
+        </button>
+      </div>
 
       {/* Expanded talkgroup list */}
       {expanded && (
         <div className="bg-base-200/40 px-4 py-2">
-          <div className="flex gap-2 mb-2">
-            <button
-              className="btn btn-xs btn-outline"
-              onClick={() => onToggleAll(true)}
-            >
-              All On
-            </button>
-            <button
-              className="btn btn-xs btn-outline"
-              onClick={() => onToggleAll(false)}
-            >
-              All Off
-            </button>
-          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
             {talkgroups.map((tg) => {
               const enabled = tgSelection[tg.id] !== false;
@@ -334,27 +331,13 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">
         <h2 className="text-lg font-semibold">Select Talkgroups</h2>
-        <div className="flex items-center gap-2">
-          <button
-            className="btn btn-xs btn-outline"
-            onClick={() => dispatch(setAllTGs(true))}
-          >
-            All On
-          </button>
-          <button
-            className="btn btn-xs btn-outline"
-            onClick={() => dispatch(setAllTGs(false))}
-          >
-            All Off
-          </button>
-          <button
-            className="btn btn-ghost btn-sm btn-circle"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
-        </div>
+        <button
+          className="btn btn-ghost btn-sm btn-circle"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {/* Search bar + stats */}
@@ -397,6 +380,31 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
 
       {/* Content */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        {/* Global All On/Off toggle row */}
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-base-300 bg-base-200/60">
+          <button
+            className="shrink-0"
+            onClick={() => dispatch(setAllTGs(activeCount < totalCount))}
+            aria-label={
+              activeCount === totalCount ? "Turn all off" : "Turn all on"
+            }
+          >
+            <span
+              className={`inline-block w-3 h-3 rounded-full shadow-sm ${
+                activeCount === totalCount
+                  ? "bg-green-500 shadow-green-500/50"
+                  : activeCount === 0
+                    ? "bg-red-500 shadow-red-500/50"
+                    : "bg-yellow-500 shadow-yellow-500/50"
+              }`}
+            />
+          </button>
+          <span className="text-sm font-medium">All Talkgroups</span>
+          <span className="badge badge-sm badge-ghost ml-auto">
+            {activeCount}/{totalCount}
+          </span>
+        </div>
+
         {activeTab === "groups" &&
           [...groupMap.entries()]
             .filter(([label, tgs]) => matchesSection(label, tgs))
