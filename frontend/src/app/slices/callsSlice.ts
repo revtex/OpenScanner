@@ -37,6 +37,9 @@ export interface CallSearchResponse {
 export interface CallSearchParams {
   systemId?: number;
   talkgroupId?: number;
+  groupFilter?: string;
+  tagFilter?: string;
+  transcript?: string;
   dateFrom?: number;
   dateTo?: number;
   page?: number;
@@ -55,6 +58,9 @@ const callsApi = api.injectEndpoints({
         params: {
           system_id: params.systemId,
           talkgroup_id: params.talkgroupId,
+          group: params.groupFilter,
+          tag: params.tagFilter,
+          transcript: params.transcript,
           date_from: params.dateFrom,
           date_to: params.dateTo,
           page: params.page,

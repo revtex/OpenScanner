@@ -93,6 +93,9 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     const params: Record<string, number | string | boolean | undefined> = {
       systemId: filters.systemId,
       talkgroupId: filters.talkgroupId,
+      groupFilter: filters.groupFilter,
+      tagFilter: filters.tagFilter,
+      transcript: filters.transcript,
       page: filters.page,
       limit: filters.limit,
       sort: filters.sort,
