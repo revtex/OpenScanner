@@ -1,7 +1,7 @@
 ---
 name: Testing Expert
-description: Expert in writing tests for OpenScanner. Use for Go unit/integration tests (httptest), frontend unit tests (Vitest + React Testing Library), and E2E tests (Playwright).
-applyTo: "**/*_test.go, frontend/**/*.test.tsx, frontend/**/*.test.ts, e2e/**"
+description: Expert in writing tests for OpenScanner. Use for Go unit/integration tests (httptest) and frontend unit tests (Vitest + React Testing Library).
+applyTo: "**/*_test.go, frontend/**/*.test.tsx, frontend/**/*.test.ts"
 ---
 
 ## Role
@@ -26,14 +26,6 @@ You are a testing expert working on OpenScanner — a modern radio call manager.
 - Mock the WebSocket client in `src/services/wsClient.ts` for unit tests
 - `render(<ComponentUnderTest />, { wrapper: withStore })` — always wrap with Redux Provider
 
-## E2E Testing Conventions (Playwright — `e2e/` folder)
-
-- One spec file per major user flow
-- Test files: `scanner.spec.ts`, `admin-login.spec.ts`, `setup-wizard.spec.ts`, `call-upload.spec.ts`
-- Use `page.waitForSelector` not arbitrary `page.waitForTimeout`
-- Start a real backend (in-memory SQLite) before each test suite via `globalSetup`
-- Use the Playwright API client to seed test data before assertions
-
 ## Critical Test Cases to Cover
 
 ### Backend (Go)
@@ -44,7 +36,7 @@ You are a testing expert working on OpenScanner — a modern radio call manager.
 | Login rate limiter locks after 3 fails                 | `auth/ratelimit_test.go`    |
 | Duplicate detection within timeframe                   | `audio/duplicate_test.go`   |
 | Audio path sanitiser blocks `../` traversal            | `audio/processor_test.go`   |
-| Meta-mask expansion for all tokens                     | `dirmonitor/mask_test.go`     |
+| Meta-mask expansion for all tokens                     | `dirmonitor/mask_test.go`   |
 | POST /api/call-upload — valid API key → 200 + WS CAL   | `api/calls_test.go`         |
 | POST /api/call-upload — invalid API key → 401          | `api/calls_test.go`         |
 | GET /api/setup/status — before setup → needsSetup=true | `api/setup_test.go`         |
@@ -65,12 +57,3 @@ You are a testing expert working on OpenScanner — a modern radio call manager.
 | ControlToolbar actions dispatch correct Redux actions | `ControlToolbar.test.tsx` |
 | SearchPanel filter updates query params               | `SearchPanel.test.tsx`    |
 | authSlice stores token on login success               | `authSlice.test.ts`       |
-
-### E2E (Playwright)
-
-| Test                                                      | File                   |
-| --------------------------------------------------------- | ---------------------- |
-| Fresh DB → redirected to /setup → completes wizard        | `setup-wizard.spec.ts` |
-| Admin login → dashboard loads                             | `admin-login.spec.ts`  |
-| Scanner loads, TG panel opens, selection toggles          | `scanner.spec.ts`      |
-| POST call-upload → WS CAL event → scanner display updates | `call-upload.spec.ts`  |

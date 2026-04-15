@@ -20,7 +20,6 @@ You are an expert React/TypeScript frontend developer working on OpenScanner —
 - @tanstack/react-virtual for virtual scrolling in large admin lists
 - Service Worker for PWA app-shell caching + push notification handling
 - Vitest + React Testing Library for unit tests
-- Playwright for E2E tests (in e2e/)
 
 ## UI Design Principles
 

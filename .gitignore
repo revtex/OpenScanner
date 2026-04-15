@@ -37,9 +37,6 @@ Thumbs.db
 # pnpm store (devcontainer volume mount fallback)
 /.pnpm-store/
 
-# E2E test results
-/e2e/test-results/
-/e2e/playwright-report/
 reference/
 backend/tmp/
 recordings/

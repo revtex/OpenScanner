@@ -29,7 +29,6 @@ OpenScanner is a modern reimplementation of [rdio-scanner](https://github.com/ch
 | Virtual scrolling  | @tanstack/react-virtual (long admin lists)                       |
 | PWA                | Service Worker (app-shell cache + push notifications) + manifest |
 | Frontend tests     | Vitest + React Testing Library                                   |
-| E2E tests          | Playwright                                                       |
 | Dev tooling        | air (Go hot-reload) + Vite proxy (single `make dev`)             |
 
 ---
@@ -194,14 +193,6 @@ openscanner/                     ← monorepo root
 │   ├── admin-guide.md           ← UI walkthrough
 │   ├── deployment.md            ← bare metal, Docker, reverse proxy
 │   └── recorder-integration.md ← per-recorder setup instructions
-├── e2e/
-│   ├── playwright.config.ts
-│   ├── package.json
-│   └── specs/
-│       ├── setup-wizard.spec.ts
-│       ├── admin-login.spec.ts
-│       ├── scanner.spec.ts
-│       └── call-upload.spec.ts
 ├── .github/
 │   ├── copilot-instructions.md
 │   ├── agents/
@@ -225,14 +216,14 @@ openscanner/                     ← monorepo root
 
 Six agent definition files live in `.github/agents/`. Each scopes itself to a domain:
 
-| Agent                     | Domain                                                                | Scope                                              |
-| ------------------------- | --------------------------------------------------------------------- | -------------------------------------------------- |
-| `go-expert.agent.md`      | Go, Gin, sqlc, coder/websocket, kardianos/service, FFmpeg, Go testing | `backend/**`                                       |
-| `react-expert.agent.md`   | React 18, TypeScript, DaisyUI, Tailwind, Redux Toolkit, RTK Query     | `frontend/**`                                      |
-| `db-expert.agent.md`      | SQLite schema, sqlc queries, migrations, indexing                     | `backend/migrations/**`, `backend/sqlc/**`         |
-| `docs-expert.agent.md`    | OpenAPI, Markdown, Mermaid architecture diagrams                      | `docs/**`                                          |
-| `reviewer.agent.md`       | Security (OWASP Top 10), code quality, race conditions, performance   | `**`                                               |
-| `testing-expert.agent.md` | Go `httptest`, Vitest, React Testing Library, Playwright              | `**/*_test.go`, `frontend/**/*.test.tsx`, `e2e/**` |
+| Agent                     | Domain                                                                | Scope                                      |
+| ------------------------- | --------------------------------------------------------------------- | ------------------------------------------ |
+| `go-expert.agent.md`      | Go, Gin, sqlc, coder/websocket, kardianos/service, FFmpeg, Go testing | `backend/**`                               |
+| `react-expert.agent.md`   | React 18, TypeScript, DaisyUI, Tailwind, Redux Toolkit, RTK Query     | `frontend/**`                              |
+| `db-expert.agent.md`      | SQLite schema, sqlc queries, migrations, indexing                     | `backend/migrations/**`, `backend/sqlc/**` |
+| `docs-expert.agent.md`    | OpenAPI, Markdown, Mermaid architecture diagrams                      | `docs/**`                                  |
+| `reviewer.agent.md`       | Security (OWASP Top 10), code quality, race conditions, performance   | `**`                                       |
+| `testing-expert.agent.md` | Go `httptest`, Vitest, React Testing Library                          | `**/*_test.go`, `frontend/**/*.test.tsx`   |
 
 ---
 
@@ -1843,25 +1834,12 @@ All extended features are **configurable** — disabled by default (except keybo
 | `BookmarkButton.test.tsx`    | Toggle dispatches bookmark API call, star icon reflects state     |
 | `useTheme.test.ts`           | Theme toggle updates data-theme, persists to localStorage         |
 
-#### E2E Tests (Playwright)
-
-| Spec file                    | Covers                                                                                                                                    |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `setup-wizard.spec.ts`       | Fresh DB → `/setup` redirect; wizard creates admin user; setup disabled after                                                             |
-| `admin-login.spec.ts`        | Correct credentials → dashboard; wrong password → error; 3× wrong → 429; `passwordNeedChange` redirect; listener user cannot access admin |
-| `scanner.spec.ts`            | Page loads; LIVE FEED toggle; SELECT TG panel; selection persists after reload; SEARCH panel filters                                      |
-| `call-upload.spec.ts`        | `POST /api/call-upload` → WS CAL received → scanner display updates; history panel shows call; invalid key → 401                          |
-| `keyboard-shortcuts.spec.ts` | Space pauses, S skips, R replays, ? shows help modal                                                                                      |
-| `share-call.spec.ts`         | Share URL renders player with audio and metadata; 404 when feature disabled                                                               |
-| `theme-toggle.spec.ts`       | Toggle switches theme; persists after reload                                                                                              |
-
 #### CI Pipeline (`.github/workflows/ci.yml`)
 
 - `go test ./...` on every push
 - `vitest run` on every push
-- Playwright on every push (after backend + frontend pass)
 
-**Agents:** Testing Expert (all Go unit/integration tests, Vitest tests, Playwright E2E specs, CI pipeline), Go Expert (Go test helpers, httptest setup), React Expert (React Testing Library component tests).
+**Agents:** Testing Expert (all Go unit/integration tests, Vitest tests, CI pipeline), Go Expert (Go test helpers, httptest setup), React Expert (React Testing Library component tests).
 
 **References:** [Verification Checklist](#verification-checklist) (35 acceptance criteria), [API Surface](#api-surface) (all endpoints for integration tests).
 
@@ -2018,16 +1996,15 @@ Each phase is complete when all of the following pass:
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | `go test ./...` from `backend/` — all tests green                                                                                                        |
 | 2   | `pnpm test -- --run` from `frontend/` — all Vitest tests green                                                                                           |
-| 3   | `pnpm playwright test` from `e2e/` — all E2E tests green                                                                                                 |
-| 4   | `POST /api/call-upload` with valid `X-API-Key` → 200; connected WS client receives `CAL` within 500ms                                                    |
-| 5   | Fresh SQLite DB → `GET /api/setup/status` → `{needsSetup: true}`                                                                                         |
-| 6   | After `POST /api/setup` with `{username, password}` → admin user created; `GET /api/setup/status` → `{needsSetup: false}`; `/setup` page returns 403     |
-| 7   | Admin wrong password 3× → next attempt returns 429 for 10 minutes                                                                                        |
-| 8   | `PUT /api/admin/config` → all connected admin WS clients receive `CFG` event                                                                             |
-| 9   | Drop Trunk Recorder file into DirWatch directory → call appears in scanner within polling delay                                                          |
-| 10  | Configure a downstream → upload a call → downstream instance DB contains the call                                                                        |
-| 11  | CLI `login` → `config-get` → exports valid JSON; `config-set` → imports it back                                                                          |
-| 12  | `--service install` registers system service on Linux/macOS/Windows                                                                                      |
+| 3   | `POST /api/call-upload` with valid `X-API-Key` → 200; connected WS client receives `CAL` within 500ms                                                    |
+| 4   | Fresh SQLite DB → `GET /api/setup/status` → `{needsSetup: true}`                                                                                         |
+| 5   | After `POST /api/setup` with `{username, password}` → admin user created; `GET /api/setup/status` → `{needsSetup: false}`; `/setup` page returns 403     |
+| 6   | Admin wrong password 3× → next attempt returns 429 for 10 minutes                                                                                        |
+| 7   | `PUT /api/admin/config` → all connected admin WS clients receive `CFG` event                                                                             |
+| 8   | Drop Trunk Recorder file into DirWatch directory → call appears in scanner within polling delay                                                          |
+| 9   | Configure a downstream → upload a call → downstream instance DB contains the call                                                                        |
+| 10  | CLI `login` → `config-get` → exports valid JSON; `config-set` → imports it back                                                                          |
+| 11  | `--service install` registers system service on Linux/macOS/Windows                                                                                      |
 | 13  | `docker build -t openscanner .` succeeds; `docker run -p 3000:3000 openscanner` → app at `:3000`                                                         |
 | 14  | After server restart, all settings from SQLite persist (spot-check `pruneDays`, custom TG labels)                                                        |
 | 15  | Swagger UI reachable at `/api/admin/docs` after calling `/api/admin/docs/session` as an authenticated admin                                              |

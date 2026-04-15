@@ -15,10 +15,5 @@ echo "==> Installing frontend dependencies..."
 cd /workspaces/openscanner/frontend
 pnpm install
 
-echo "==> Installing E2E dependencies..."
-cd /workspaces/openscanner/e2e
-pnpm install
-npx -y playwright install --with-deps chromium
-
 echo ""
 echo "✔ Dev container ready. Run 'make dev' from the workspace root to start."

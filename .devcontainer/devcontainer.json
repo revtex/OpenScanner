@@ -35,7 +35,7 @@
           "editor.defaultFormatter": "mtxr.sqltools"
         },
         "typescript.tsdk": "frontend/node_modules/typescript/lib",
-        "eslint.workingDirectories": ["frontend", "e2e"],
+        "eslint.workingDirectories": ["frontend"],
         "tailwindCSS.experimental.classRegex": [
           ["className\\s*[:=]\\s*['\"]([^'\"]*)['\"]"]
         ]
@@ -52,8 +52,6 @@
         "mtxr.sqltools-driver-sqlite",
         // Docker
         "ms-azuretools.vscode-docker",
-        // Testing
-        "ms-playwright.playwright",
         // General
         "editorconfig.editorconfig",
         "github.copilot",

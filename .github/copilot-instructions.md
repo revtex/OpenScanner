@@ -21,7 +21,6 @@ openscanner/
   backend/     ← Go backend
   frontend/    ← React frontend
   docs/        ← Documentation
-  e2e/         ← Playwright E2E tests
   .github/agents/  ← Expert agents for each domain
 ```
 
