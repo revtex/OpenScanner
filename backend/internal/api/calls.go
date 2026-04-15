@@ -98,6 +98,10 @@ func (h *CallHandler) getLimiter(apiKeyID int64, rateLimit int) *apiKeyLimiter {
 			rateLimit:   rateLimit,
 		}
 		h.limiters[apiKeyID] = l
+	} else {
+		l.mu.Lock()
+		l.rateLimit = rateLimit
+		l.mu.Unlock()
 	}
 	return l
 }
