@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
+  RefreshCw,
 } from "lucide-react";
 import { useAppSelector, useAppDispatch } from "@/app/store";
 import {
@@ -93,6 +94,9 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     const params: Record<string, number | string | boolean | undefined> = {
       systemId: filters.systemId,
       talkgroupId: filters.talkgroupId,
+      groupFilter: filters.groupFilter,
+      tagFilter: filters.tagFilter,
+      transcript: filters.transcript,
       page: filters.page,
       limit: filters.limit,
       sort: filters.sort,
@@ -112,7 +116,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     return params;
   }, [filters]);
 
-  const { data, isFetching } = useSearchCallsQuery(queryParams, {
+  const { data, isFetching, refetch } = useSearchCallsQuery(queryParams, {
     skip: !isOpen,
   });
 
@@ -186,7 +190,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
           transcript: call.transcript,
         };
 
-        audioPlayer.play(playCall, audioUrl);
+        audioPlayer.playNow(playCall, audioUrl);
       } catch (err) {
         console.error("failed to play call", call.id, err);
       }
@@ -244,13 +248,26 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">
           <h2 className="text-lg font-semibold">Search Calls</h2>
-          <button
-            className="btn btn-ghost btn-sm btn-circle"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              className="btn btn-ghost btn-sm btn-circle"
+              onClick={() => refetch()}
+              aria-label="Refresh"
+              disabled={isFetching}
+            >
+              <RefreshCw
+                size={16}
+                className={isFetching ? "animate-spin" : ""}
+              />
+            </button>
+            <button
+              className="btn btn-ghost btn-sm btn-circle"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Results list */}
@@ -314,6 +331,11 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                     <span className="text-[11px] text-base-content/60">
                       {formatDate(call.dateTime)} {formatTime(call.dateTime)}
                     </span>
+                    {call.duration > 0 && (
+                      <span className="text-[11px] text-base-content/40">
+                        {call.duration}s
+                      </span>
+                    )}
                     <div className="flex items-center gap-0.5">
                       <button
                         onClick={() => void handleRowClick(call)}

@@ -480,7 +480,7 @@ func TestRadioReference_Apply_UnknownGroup(t *testing.T) {
 	reqBody := fmt.Sprintf(`{
 		"systemId": %d,
 		"candidates": [
-			{"row":1, "talkgroupId":1001, "group":"NonexistentGroup"}
+			{"row":1, "talkgroupId":1001, "group":"NewAutoGroup"}
 		],
 		"mergeMode": "fill_missing"
 	}`, sysID)
@@ -493,8 +493,23 @@ func TestRadioReference_Apply_UnknownGroup(t *testing.T) {
 	var resp map[string]any
 	decodeJSON(t, w, &resp)
 
-	if int(resp["errors"].(float64)) != 1 {
-		t.Errorf("errors = %v, want 1", resp["errors"])
+	// Unknown group should be auto-created, not trigger an error.
+	if int(resp["errors"].(float64)) != 0 {
+		t.Errorf("errors = %v, want 0 (unknown group auto-created)", resp["errors"])
+	}
+	if int(resp["updated"].(float64)) != 1 {
+		t.Errorf("updated = %v, want 1", resp["updated"])
+	}
+
+	// Verify the auto-created group is now assigned to the talkgroup.
+	tg, err := queries.GetTalkgroupBySystemAndTGID(context.Background(), db.GetTalkgroupBySystemAndTGIDParams{
+		SystemID: sysID, TalkgroupID: 1001,
+	})
+	if err != nil {
+		t.Fatalf("GetTalkgroupBySystemAndTGID: %v", err)
+	}
+	if !tg.GroupID.Valid {
+		t.Errorf("expected talkgroup GroupID to be set after auto-create, got NULL")
 	}
 }
 

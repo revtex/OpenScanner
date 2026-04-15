@@ -43,6 +43,25 @@ class AudioPlayer {
     }
   }
 
+  /**
+   * Interrupt current playback to play a call immediately.
+   * The interrupted call is pushed to the front of the queue
+   * so it resumes after the new call finishes.
+   */
+  playNow(call: Call, audioUrl: string): void {
+    const item: QueueItem = { call, audioUrl };
+    if (!this.currentItem) {
+      this.startPlayback(item);
+      return;
+    }
+    // Push interrupted call to front of queue so it plays next
+    this.audio.pause();
+    this.queue.unshift(this.currentItem);
+    this.currentItem = null;
+    this.queueChangeCb?.(this.queue.length);
+    this.startPlayback(item);
+  }
+
   skip(): void {
     this.audio.pause();
     if (this.currentItem) {

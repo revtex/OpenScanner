@@ -540,6 +540,14 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		return
 	}
 
+	// If the recorder didn't supply a duration, probe the stored file.
+	if !duration.Valid {
+		absPath := filepath.Join(h.processor.RecordingsDir(), relPath)
+		if d := audio.ProbeDuration(ctx, absPath); d > 0 {
+			duration = sql.NullInt64{Int64: d, Valid: true}
+		}
+	}
+
 	// Determine audio MIME type.
 	// When conversion is enabled the output is always AAC.
 	// Otherwise validate the client-supplied Content-Type against an allowlist
@@ -840,13 +848,15 @@ type CallSearchResponse struct {
 //	@Security		BearerAuth
 //	@Param			system_id		query	int		false	"Filter by system DB ID"
 //	@Param			talkgroup_id	query	int		false	"Filter by talkgroup DB ID"
+//	@Param			group			query	string	false	"Filter by group label"
+//	@Param			tag				query	string	false	"Filter by tag label"
 //	@Param			date_from		query	int		false	"Unix timestamp lower bound"
 //	@Param			date_to			query	int		false	"Unix timestamp upper bound"
 //	@Param			sort			query	string	false	"Sort order: asc or desc"	Enums(asc, desc)	default(desc)
 //	@Param			page			query	int		false	"Page number (1-based)"		default(1)
 //	@Param			limit			query	int		false	"Results per page (max 100)"	default(25)
 //	@Param			bookmarked_only	query	bool	false	"Show only bookmarked calls"
-//	@Param			transcript		query	string	false	"Filter by transcript text"
+//	@Param			transcript		query	string	false	"Filter by transcript text (partial match)"
 //	@Success		200	{object}	CallSearchResponse	"Paginated call results"
 //	@Failure		400	{object}	ErrorResponse		"Invalid query parameter"
 //	@Failure		500	{object}	ErrorResponse		"Internal server error"
@@ -871,6 +881,31 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 			return
 		}
 		talkgroupID = n
+	}
+
+	// Group and tag filters: look up by label, silently return empty if not found.
+	var groupID, tagID interface{}
+	if v := c.Query("group"); v != "" {
+		if g, err := h.queries.GetGroupByLabel(ctx, v); err == nil {
+			groupID = g.ID
+		} else {
+			// Group label doesn't exist → no calls can match; return empty.
+			c.JSON(http.StatusOK, CallSearchResponse{Calls: []CallSearchResult{}, Total: 0})
+			return
+		}
+	}
+	if v := c.Query("tag"); v != "" {
+		if t, err := h.queries.GetTagByLabel(ctx, v); err == nil {
+			tagID = t.ID
+		} else {
+			c.JSON(http.StatusOK, CallSearchResponse{Calls: []CallSearchResult{}, Total: 0})
+			return
+		}
+	}
+
+	var transcript interface{}
+	if v := c.Query("transcript"); v != "" {
+		transcript = v
 	}
 
 	var dateFrom, dateTo interface{}
@@ -940,9 +975,12 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 	total, err := h.queries.CountCallsFiltered(ctx, db.CountCallsFilteredParams{
 		SystemID:       systemID,
 		TalkgroupID:    talkgroupID,
+		GroupID:        groupID,
+		TagID:          tagID,
 		DateFrom:       dateFrom,
 		DateTo:         dateTo,
 		BookmarkUserID: bookmarkUserID,
+		Transcript:     transcript,
 	})
 	if err != nil {
 		slog.Error("failed to count calls", "error", err)
@@ -955,9 +993,12 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 	listParams := db.ListCallsParams{
 		SystemID:       systemID,
 		TalkgroupID:    talkgroupID,
+		GroupID:        groupID,
+		TagID:          tagID,
 		DateFrom:       dateFrom,
 		DateTo:         dateTo,
 		BookmarkUserID: bookmarkUserID,
+		Transcript:     transcript,
 		PageOffset:     sql.NullInt64{Int64: offset, Valid: true},
 		PageSize:       sql.NullInt64{Int64: limit, Valid: true},
 	}
