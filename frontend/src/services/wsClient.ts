@@ -14,6 +14,7 @@ import { audioPlayer } from "@/services/audioPlayer";
 const MAX_BACKOFF = 30_000;
 
 type AudioReceivedCallback = (call: Call, audioUrl: string) => void;
+type CallFilter = (call: Call) => boolean;
 
 interface WsAuth {
   token?: string;
@@ -28,6 +29,7 @@ class WsClient {
   private auth: WsAuth = {};
   private pendingAudioForCall: Call | null = null;
   private audioCallback: AudioReceivedCallback | null = null;
+  private callFilter: CallFilter | null = null;
   private intentionalClose = false;
 
   connect(dispatch: AppDispatch, auth: WsAuth = {}): void {
@@ -61,6 +63,10 @@ class WsClient {
 
   onAudioReceived(cb: AudioReceivedCallback): void {
     this.audioCallback = cb;
+  }
+
+  setCallFilter(filter: CallFilter): void {
+    this.callFilter = filter;
   }
 
   private doConnect(): void {
@@ -133,6 +139,12 @@ class WsClient {
           "dateTime" in payload
         ) {
           const call = payload as Call;
+          // Apply client-side talkgroup filter — if rejected, discard
+          // the call (and the binary audio frame that follows).
+          if (this.callFilter && !this.callFilter(call)) {
+            this.pendingAudioForCall = null;
+            break;
+          }
           this.pendingAudioForCall = call;
           this.dispatch?.(callReceived(call));
         }

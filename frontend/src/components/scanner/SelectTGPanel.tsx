@@ -1,24 +1,154 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { X, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  X,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  Check,
+  Minus,
+} from "lucide-react";
 import { useAppSelector, useAppDispatch } from "@/app/store";
 import {
   toggleTG,
   setAllTGs,
   setTGsBySystem,
+  setTGsByGroup,
+  setTGsByTag,
   restoreTGSelection,
 } from "@/app/slices/scannerSlice";
-import type { TalkgroupConfig, SystemConfig } from "@/types";
+import type { TalkgroupConfig } from "@/types";
 
 interface SelectTGPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+type TabId = "groups" | "tags" | "systems";
+
 function storageKey(instanceId: string): string {
   return `openscanner-tg-selection-${instanceId}`;
 }
+
+// ---------- Section: a collapsible accordion row ----------
+
+interface SectionProps {
+  label: string;
+  talkgroups: TalkgroupConfig[];
+  tgSelection: Record<number, boolean>;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onToggleAll: (enabled: boolean) => void;
+  onToggleTG: (id: number) => void;
+  secondaryLabels?: Record<number, string>;
+}
+
+function Section({
+  label,
+  talkgroups,
+  tgSelection,
+  expanded,
+  onToggleExpand,
+  onToggleAll,
+  onToggleTG,
+  secondaryLabels,
+}: SectionProps) {
+  const activeCount = talkgroups.filter(
+    (tg) => tgSelection[tg.id] !== false,
+  ).length;
+  const total = talkgroups.length;
+  const allOn = activeCount === total;
+  const allOff = activeCount === 0;
+
+  return (
+    <div className="border-b border-base-300">
+      {/* Header */}
+      <button
+        className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-base-200 transition-colors"
+        onClick={onToggleExpand}
+      >
+        {expanded ? (
+          <ChevronDown size={16} className="shrink-0 text-base-content/50" />
+        ) : (
+          <ChevronRight size={16} className="shrink-0 text-base-content/50" />
+        )}
+        {/* Tri-state check icon */}
+        <span className="shrink-0">
+          {allOn ? (
+            <Check size={16} className="text-primary" />
+          ) : allOff ? (
+            <span className="inline-block w-4 h-4 rounded border border-base-content/30" />
+          ) : (
+            <Minus size={16} className="text-primary" />
+          )}
+        </span>
+        <span className="flex-1 font-medium text-sm truncate">{label}</span>
+        <span className="badge badge-sm badge-ghost">
+          {activeCount}/{total}
+        </span>
+      </button>
+
+      {/* Expanded talkgroup list */}
+      {expanded && (
+        <div className="bg-base-200/40 px-4 py-2">
+          <div className="flex gap-2 mb-2">
+            <button
+              className="btn btn-xs btn-outline"
+              onClick={() => onToggleAll(true)}
+            >
+              All On
+            </button>
+            <button
+              className="btn btn-xs btn-outline"
+              onClick={() => onToggleAll(false)}
+            >
+              All Off
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
+            {talkgroups.map((tg) => {
+              const enabled = tgSelection[tg.id] !== false;
+              const secondary = secondaryLabels?.[tg.id];
+              return (
+                <label
+                  key={tg.id}
+                  className={`flex items-center gap-2 rounded px-2 py-1.5 cursor-pointer transition-colors ${
+                    enabled
+                      ? "bg-primary/10 hover:bg-primary/20"
+                      : "hover:bg-base-300"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="checkbox checkbox-xs checkbox-primary"
+                    checked={enabled}
+                    onChange={() => onToggleTG(tg.id)}
+                  />
+                  {tg.ledColor && (
+                    <span
+                      className="inline-block w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: tg.ledColor }}
+                    />
+                  )}
+                  <span className="text-sm truncate flex-1">
+                    {tg.label || tg.name}
+                  </span>
+                  {secondary && (
+                    <span className="text-[11px] text-base-content/40 truncate max-w-24">
+                      {secondary}
+                    </span>
+                  )}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- Main panel ----------
 
 export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
   const dispatch = useAppDispatch();
@@ -27,34 +157,104 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
 
   const config = useAppSelector((s) => s.scanner.config);
   const tgSelection = useAppSelector((s) => s.scanner.tgSelection);
-  const avoidList = useAppSelector((s) => s.scanner.avoidList);
 
-  const [expandedSystems, setExpandedSystems] = useState<
-    Record<number, boolean>
+  const [activeTab, setActiveTab] = useState<TabId>("groups");
+  const [search, setSearch] = useState("");
+  const [expandedSections, setExpandedSections] = useState<
+    Record<string, boolean>
   >({});
 
-  const avoidSet = useMemo(
-    () => new Set(avoidList.map((a) => a.talkgroupId)),
-    [avoidList],
-  );
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const systems = useMemo(() => config?.systems ?? [], [config]);
+  const allTalkgroups = useMemo(
+    () => systems.flatMap((s) => s.talkgroups ?? []),
+    [systems],
+  );
 
-  // Derive unique groups across all talkgroups
-  const groups = useMemo(() => {
-    const groupMap = new Map<string, TalkgroupConfig[]>();
+  // Build lookups for secondary labels
+  const tgSystemLabel = useMemo(() => {
+    const map: Record<number, string> = {};
     for (const sys of systems) {
       for (const tg of sys.talkgroups ?? []) {
-        const list = groupMap.get(tg.group);
-        if (list) {
-          list.push(tg);
-        } else {
-          groupMap.set(tg.group, [tg]);
-        }
+        map[tg.id] = sys.label;
       }
     }
-    return groupMap;
+    return map;
   }, [systems]);
+
+  const tgGroupLabel = useMemo(() => {
+    const map: Record<number, string> = {};
+    for (const tg of allTalkgroups) {
+      map[tg.id] = tg.group;
+    }
+    return map;
+  }, [allTalkgroups]);
+
+  const tgTagLabel = useMemo(() => {
+    const map: Record<number, string> = {};
+    for (const tg of allTalkgroups) {
+      map[tg.id] = tg.tag;
+    }
+    return map;
+  }, [allTalkgroups]);
+
+  // Derive grouped data
+  const groupMap = useMemo(() => {
+    const map = new Map<string, TalkgroupConfig[]>();
+    for (const tg of allTalkgroups) {
+      const key = tg.group || "(No Group)";
+      const list = map.get(key);
+      if (list) list.push(tg);
+      else map.set(key, [tg]);
+    }
+    return new Map([...map.entries()].sort((a, b) => a[0].localeCompare(b[0])));
+  }, [allTalkgroups]);
+
+  const tagMap = useMemo(() => {
+    const map = new Map<string, TalkgroupConfig[]>();
+    for (const tg of allTalkgroups) {
+      const key = tg.tag || "(No Tag)";
+      const list = map.get(key);
+      if (list) list.push(tg);
+      else map.set(key, [tg]);
+    }
+    return new Map([...map.entries()].sort((a, b) => a[0].localeCompare(b[0])));
+  }, [allTalkgroups]);
+
+  // Search filtering
+  const searchLower = search.toLowerCase();
+
+  const matchesTG = useCallback(
+    (tg: TalkgroupConfig) => {
+      if (!searchLower) return true;
+      return (
+        tg.label.toLowerCase().includes(searchLower) ||
+        tg.name.toLowerCase().includes(searchLower) ||
+        tg.group.toLowerCase().includes(searchLower) ||
+        tg.tag.toLowerCase().includes(searchLower) ||
+        String(tg.talkgroupId).includes(searchLower)
+      );
+    },
+    [searchLower],
+  );
+
+  const matchesSection = useCallback(
+    (label: string, tgs: TalkgroupConfig[]) => {
+      if (!searchLower) return true;
+      if (label.toLowerCase().includes(searchLower)) return true;
+      return tgs.some(matchesTG);
+    },
+    [searchLower, matchesTG],
+  );
+
+  const filterTGs = useCallback(
+    (tgs: TalkgroupConfig[]) => {
+      if (!searchLower) return tgs;
+      return tgs.filter(matchesTG);
+    },
+    [searchLower, matchesTG],
+  );
 
   // Restore tgSelection from localStorage on mount / config load
   useEffect(() => {
@@ -63,7 +263,6 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
     if (!raw) return;
     try {
       const saved = JSON.parse(raw) as Record<string, unknown>;
-      // Build a validated selection map from saved data
       const restored: Record<number, boolean> = {};
       for (const sys of config.systems) {
         for (const tg of sys.talkgroups ?? []) {
@@ -83,80 +282,71 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
     localStorage.setItem(storageKey(instanceId), JSON.stringify(tgSelection));
   }, [tgSelection, instanceId, config]);
 
-  // Group chip state
-  const groupState = useCallback(
-    (tgs: TalkgroupConfig[]): "on" | "off" | "partial" => {
-      let onCount = 0;
-      for (const tg of tgs) {
-        if (tgSelection[tg.id] !== false) onCount++;
-      }
-      if (onCount === tgs.length) return "on";
-      if (onCount === 0) return "off";
-      return "partial";
-    },
-    [tgSelection],
-  );
-
-  const handleGroupToggle = useCallback(
-    (tgs: TalkgroupConfig[]) => {
-      const state = groupState(tgs);
-      // ON → OFF, OFF → ON, PARTIAL → ON
-      const enable = state !== "on";
-      for (const tg of tgs) {
-        const current = tgSelection[tg.id] !== false;
-        if (current !== enable) {
-          dispatch(toggleTG(tg.id));
+  // Auto-expand sections matching search
+  useEffect(() => {
+    if (!searchLower) return;
+    const expanded: Record<string, boolean> = {};
+    const entries =
+      activeTab === "groups" ? groupMap : activeTab === "tags" ? tagMap : null;
+    if (entries) {
+      for (const [label, tgs] of entries) {
+        if (matchesSection(label, tgs)) {
+          expanded[`${activeTab}-${label}`] = true;
         }
       }
-    },
-    [groupState, tgSelection, dispatch],
-  );
+    }
+    if (activeTab === "systems") {
+      for (const sys of systems) {
+        if (matchesSection(sys.label, sys.talkgroups ?? [])) {
+          expanded[`systems-${sys.id}`] = true;
+        }
+      }
+    }
+    setExpandedSections(expanded);
+  }, [searchLower, activeTab, groupMap, tagMap, systems, matchesSection]);
 
-  const toggleSystem = useCallback((sysId: number) => {
-    setExpandedSystems((prev) => ({ ...prev, [sysId]: !prev[sysId] }));
+  const toggleExpand = useCallback((key: string) => {
+    setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  // Virtual scrolling for systems list
-  const parentRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line react-hooks/incompatible-library
-  const virtualizer = useVirtualizer({
-    count: systems.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 52, // collapsed height estimate
-    overscan: 3,
-  });
+  // Stats
+  const totalCount = allTalkgroups.length;
+  const activeCount = allTalkgroups.filter(
+    (tg) => tgSelection[tg.id] !== false,
+  ).length;
 
-  const activeCount = useCallback(
-    (sys: SystemConfig) => {
-      let count = 0;
-      for (const tg of sys.talkgroups ?? []) {
-        if (tgSelection[tg.id] !== false) count++;
-      }
-      return count;
-    },
-    [tgSelection],
-  );
+  // Reset search when closing
+  useEffect(() => {
+    if (!isOpen) {
+      setSearch("");
+    }
+  }, [isOpen]);
+
+  // Scroll to top on tab change
+  useEffect(() => {
+    scrollRef.current?.scrollTo(0, 0);
+  }, [activeTab]);
+
+  if (!isOpen) return null;
 
   return (
-    <>
-      {/* Backdrop */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50"
-          onClick={onClose}
-          aria-hidden
-        />
-      )}
-
-      {/* Panel */}
-      <div
-        className={`fixed top-0 right-0 z-50 flex h-full w-full flex-col bg-base-100 transition-transform duration-300 ease-in-out sm:w-100 ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">
-          <h2 className="text-lg font-semibold">Select Talkgroups</h2>
+    <div className="fixed inset-0 z-50 flex flex-col bg-base-100">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">
+        <h2 className="text-lg font-semibold">Select Talkgroups</h2>
+        <div className="flex items-center gap-2">
+          <button
+            className="btn btn-xs btn-outline"
+            onClick={() => dispatch(setAllTGs(true))}
+          >
+            All On
+          </button>
+          <button
+            className="btn btn-xs btn-outline"
+            onClick={() => dispatch(setAllTGs(false))}
+          >
+            All Off
+          </button>
           <button
             className="btn btn-ghost btn-sm btn-circle"
             onClick={onClose}
@@ -165,143 +355,114 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
             <X size={18} />
           </button>
         </div>
-
-        {/* Group chips + global actions */}
-        <div className="border-b border-base-300 px-4 py-3">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-base-content/60">
-            Groups
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {[...groups.entries()].map(([name, tgs]) => {
-              const state = groupState(tgs);
-              const cls =
-                state === "on"
-                  ? "btn-primary"
-                  : state === "partial"
-                    ? "btn-outline btn-primary"
-                    : "btn-ghost";
-              return (
-                <button
-                  key={`group-${name}`}
-                  className={`btn btn-xs ${cls}`}
-                  onClick={() => handleGroupToggle(tgs)}
-                >
-                  {name}
-                  {state === "on" && " ✔"}
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-2 flex gap-2">
-            <button
-              className="btn btn-xs btn-outline"
-              onClick={() => dispatch(setAllTGs(false))}
-            >
-              All Off
-            </button>
-            <button
-              className="btn btn-xs btn-outline"
-              onClick={() => dispatch(setAllTGs(true))}
-            >
-              All On
-            </button>
-          </div>
-        </div>
-
-        {/* Systems list (virtualized) */}
-        <div ref={parentRef} className="flex-1 overflow-y-auto">
-          <div
-            className="relative w-full"
-            style={{ height: virtualizer.getTotalSize() }}
-          >
-            {virtualizer.getVirtualItems().map((virtualRow) => {
-              const sys = systems[virtualRow.index];
-              const expanded = !!expandedSystems[sys.id];
-              const active = activeCount(sys);
-              const total = (sys.talkgroups ?? []).length;
-
-              return (
-                <div
-                  key={sys.id}
-                  data-index={virtualRow.index}
-                  ref={virtualizer.measureElement}
-                  className="absolute left-0 w-full"
-                  style={{ top: virtualRow.start }}
-                >
-                  {/* System header */}
-                  <button
-                    className="flex w-full items-center gap-2 bg-base-200 px-4 py-3 text-left hover:bg-base-300"
-                    onClick={() => toggleSystem(sys.id)}
-                  >
-                    {expanded ? (
-                      <ChevronDown size={16} />
-                    ) : (
-                      <ChevronRight size={16} />
-                    )}
-                    <span className="flex-1 font-medium">{sys.label}</span>
-                    <span className="badge badge-sm">
-                      {active}/{total}
-                    </span>
-                  </button>
-
-                  {/* Expanded TG list */}
-                  {expanded && (
-                    <div className="bg-base-100 px-4 py-2">
-                      <div className="flex flex-wrap gap-2">
-                        {(sys.talkgroups ?? []).map((tg) => {
-                          const enabled = tgSelection[tg.id] !== false;
-                          const avoided = avoidSet.has(tg.talkgroupId);
-                          return (
-                            <button
-                              key={`${sys.id}-${tg.id}-${tg.talkgroupId}`}
-                              className={`btn btn-xs ${enabled ? "btn-primary" : "btn-ghost"} ${avoided ? "animate-pulse" : ""}`}
-                              style={{
-                                borderLeft: `6px solid ${tg.ledColor || "transparent"}`,
-                              }}
-                              onClick={() => dispatch(toggleTG(tg.id))}
-                            >
-                              {tg.label}
-                              {enabled && " ✔"}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="mt-2 flex gap-2">
-                        <button
-                          className="btn btn-xs btn-outline"
-                          onClick={() =>
-                            dispatch(
-                              setTGsBySystem({
-                                systemId: sys.id,
-                                enabled: false,
-                              }),
-                            )
-                          }
-                        >
-                          Off
-                        </button>
-                        <button
-                          className="btn btn-xs btn-outline"
-                          onClick={() =>
-                            dispatch(
-                              setTGsBySystem({
-                                systemId: sys.id,
-                                enabled: true,
-                              }),
-                            )
-                          }
-                        >
-                          On
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </div>
-    </>
+
+      {/* Search bar + stats */}
+      <div className="flex items-center gap-3 border-b border-base-300 px-4 py-2">
+        <div className="relative flex-1">
+          <Search
+            size={16}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-base-content/40"
+          />
+          <input
+            type="text"
+            className="input input-sm w-full pl-8"
+            placeholder="Search talkgroups..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            autoFocus
+          />
+        </div>
+        <span className="text-sm text-base-content/60 whitespace-nowrap">
+          {activeCount}/{totalCount} active
+        </span>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-base-300">
+        {(["groups", "tags", "systems"] as TabId[]).map((tab) => (
+          <button
+            key={tab}
+            className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === tab
+                ? "border-b-2 border-primary text-primary"
+                : "text-base-content/60 hover:text-base-content"
+            }`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        {activeTab === "groups" &&
+          [...groupMap.entries()]
+            .filter(([label, tgs]) => matchesSection(label, tgs))
+            .map(([group, tgs]) => {
+              const key = `groups-${group}`;
+              return (
+                <Section
+                  key={key}
+                  label={group}
+                  talkgroups={filterTGs(tgs)}
+                  tgSelection={tgSelection}
+                  expanded={!!expandedSections[key]}
+                  onToggleExpand={() => toggleExpand(key)}
+                  onToggleAll={(enabled) =>
+                    dispatch(setTGsByGroup({ group, enabled }))
+                  }
+                  onToggleTG={(id) => dispatch(toggleTG(id))}
+                  secondaryLabels={tgSystemLabel}
+                />
+              );
+            })}
+
+        {activeTab === "tags" &&
+          [...tagMap.entries()]
+            .filter(([label, tgs]) => matchesSection(label, tgs))
+            .map(([tag, tgs]) => {
+              const key = `tags-${tag}`;
+              return (
+                <Section
+                  key={key}
+                  label={tag}
+                  talkgroups={filterTGs(tgs)}
+                  tgSelection={tgSelection}
+                  expanded={!!expandedSections[key]}
+                  onToggleExpand={() => toggleExpand(key)}
+                  onToggleAll={(enabled) =>
+                    dispatch(setTGsByTag({ tag, enabled }))
+                  }
+                  onToggleTG={(id) => dispatch(toggleTG(id))}
+                  secondaryLabels={tgGroupLabel}
+                />
+              );
+            })}
+
+        {activeTab === "systems" &&
+          systems
+            .filter((sys) => matchesSection(sys.label, sys.talkgroups ?? []))
+            .map((sys) => {
+              const key = `systems-${sys.id}`;
+              return (
+                <Section
+                  key={key}
+                  label={sys.label}
+                  talkgroups={filterTGs(sys.talkgroups ?? [])}
+                  tgSelection={tgSelection}
+                  expanded={!!expandedSections[key]}
+                  onToggleExpand={() => toggleExpand(key)}
+                  onToggleAll={(enabled) =>
+                    dispatch(setTGsBySystem({ systemId: sys.id, enabled }))
+                  }
+                  onToggleTG={(id) => dispatch(toggleTG(id))}
+                  secondaryLabels={tgTagLabel}
+                />
+              );
+            })}
+      </div>
+    </div>
   );
 }

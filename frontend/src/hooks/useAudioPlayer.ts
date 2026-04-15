@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
+import { store } from "@/app/store";
 import { audioPlayer } from "@/services/audioPlayer";
 import { wsClient } from "@/services/wsClient";
 import {
@@ -35,6 +36,15 @@ export function useAudioPlayer() {
 
     wsClient.onAudioReceived((call, audioUrl) => {
       audioPlayer.play(call, audioUrl);
+    });
+
+    // Client-side talkgroup selection filter — reads live Redux state
+    // each time a CAL arrives so toggling takes effect immediately.
+    wsClient.setCallFilter((call) => {
+      const { tgSelection } = store.getState().scanner;
+      // tgSelection uses the DB talkgroup row ID (call.talkgroup).
+      // undefined = enabled (default on); only explicit false rejects.
+      return tgSelection[call.talkgroup] !== false;
     });
   }, [dispatch]);
 

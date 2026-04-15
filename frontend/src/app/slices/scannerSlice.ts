@@ -187,6 +187,34 @@ export const scannerSlice = createSlice({
         }
       }
     },
+    setTGsByGroup(
+      state,
+      action: PayloadAction<{ group: string; enabled: boolean }>,
+    ) {
+      const { group, enabled } = action.payload;
+      if (!state.config) return;
+      for (const sys of state.config.systems) {
+        for (const tg of sys.talkgroups) {
+          if (tg.group === group) {
+            state.tgSelection[tg.id] = enabled;
+          }
+        }
+      }
+    },
+    setTGsByTag(
+      state,
+      action: PayloadAction<{ tag: string; enabled: boolean }>,
+    ) {
+      const { tag, enabled } = action.payload;
+      if (!state.config) return;
+      for (const sys of state.config.systems) {
+        for (const tg of sys.talkgroups) {
+          if (tg.tag === tag) {
+            state.tgSelection[tg.id] = enabled;
+          }
+        }
+      }
+    },
     expireAvoids(state) {
       const now = Date.now();
       state.avoidList = state.avoidList.filter(
@@ -230,5 +258,7 @@ export const {
   restoreTGSelection,
   setAllTGs,
   setTGsBySystem,
+  setTGsByGroup,
+  setTGsByTag,
   transcriptReceived,
 } = scannerSlice.actions;
