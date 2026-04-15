@@ -208,6 +208,7 @@ func (h *CallHandler) getSettingValue(c *gin.Context, key string) string {
 //	@Failure		429	{object}	ErrorResponse			"Rate limit exceeded"
 //	@Failure		500	{object}	ErrorResponse			"Internal server error"
 //	@Router			/call-upload [post]
+//	@Router			/trunk-recorder-call-upload [post]
 func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	// Retrieve API key ID injected by APIKeyAuth middleware.
 	apiKeyIDVal, exists := c.Get("apiKeyID")
@@ -764,7 +765,6 @@ type CallSearchResult struct {
 //	@Description	Stream the audio file for a specific call. Requires authentication or public access mode.
 //	@Tags			Calls
 //	@Produce		application/octet-stream
-//	@Security		BearerAuth
 //	@Param			id	path	int	true	"Call ID"
 //	@Success		200	{file}	binary			"Audio file"
 //	@Failure		400	{object}	ErrorResponse	"Invalid call ID"
@@ -856,11 +856,14 @@ type CallSearchResponse struct {
 //	@Description	Paginated search of the call archive with optional filters.
 //	@Tags			Calls
 //	@Produce		json
-//	@Security		BearerAuth
-//	@Param			system_id		query	int		false	"Filter by system DB ID"
-//	@Param			talkgroup_id	query	int		false	"Filter by talkgroup DB ID"
-//	@Param			group			query	string	false	"Filter by group label"
-//	@Param			tag				query	string	false	"Filter by tag label"
+//	@Param			system_ids		query	string	false	"CSV system DB IDs (e.g. 1,2,3)"
+//	@Param			talkgroup_ids	query	string	false	"CSV talkgroup DB IDs (e.g. 10,11)"
+//	@Param			groups			query	string	false	"CSV group labels (e.g. Police,Fire)"
+//	@Param			tags				query	string	false	"CSV tag labels (e.g. Law,EMS)"
+//	@Param			system_id		query	int		false	"Legacy single system DB ID"
+//	@Param			talkgroup_id	query	int		false	"Legacy single talkgroup DB ID"
+//	@Param			group			query	string	false	"Legacy single group label"
+//	@Param			tag				query	string	false	"Legacy single tag label"
 //	@Param			date_from		query	int		false	"Unix timestamp lower bound"
 //	@Param			date_to			query	int		false	"Unix timestamp upper bound"
 //	@Param			sort			query	string	false	"Sort order: asc or desc"	Enums(asc, desc)	default(desc)

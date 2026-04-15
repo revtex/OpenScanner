@@ -574,7 +574,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
         <div
           className={`${
             showFilters ? "flex" : "hidden"
-          } md:flex flex-col w-full md:w-80 xl:w-[34rem] 2xl:w-[36rem] shrink-0 border-b md:border-b-0 md:border-r border-base-300 overflow-y-auto`}
+          } md:flex flex-col w-full md:w-80 xl:w-136 2xl:w-xl shrink-0 border-b md:border-b-0 md:border-r border-base-300 overflow-y-auto`}
         >
           <div className="p-4 space-y-5">
             {/* Transcript */}

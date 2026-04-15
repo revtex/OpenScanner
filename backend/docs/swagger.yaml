@@ -1666,6 +1666,24 @@ paths:
       summary: Update a directory monitor
       tags:
       - Admin
+  /admin/docs/session:
+    post:
+      description: Issues a short-lived HTTP-only cookie used to access /api/admin/docs.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              ok:
+                type: boolean
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create Swagger docs session cookie
+      tags:
+      - Admin
   /admin/downstreams:
     get:
       description: Returns all downstream push targets.
@@ -3680,19 +3698,35 @@ paths:
     get:
       description: Paginated search of the call archive with optional filters.
       parameters:
-      - description: Filter by system DB ID
+      - description: CSV system DB IDs (e.g. 1,2,3)
+        in: query
+        name: system_ids
+        type: string
+      - description: CSV talkgroup DB IDs (e.g. 10,11)
+        in: query
+        name: talkgroup_ids
+        type: string
+      - description: CSV group labels (e.g. Police,Fire)
+        in: query
+        name: groups
+        type: string
+      - description: CSV tag labels (e.g. Law,EMS)
+        in: query
+        name: tags
+        type: string
+      - description: Legacy single system DB ID
         in: query
         name: system_id
         type: integer
-      - description: Filter by talkgroup DB ID
+      - description: Legacy single talkgroup DB ID
         in: query
         name: talkgroup_id
         type: integer
-      - description: Filter by group label
+      - description: Legacy single group label
         in: query
         name: group
         type: string
-      - description: Filter by tag label
+      - description: Legacy single tag label
         in: query
         name: tag
         type: string
@@ -3745,8 +3779,6 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
       summary: Search calls
       tags:
       - Calls
@@ -3783,8 +3815,6 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
       summary: Get call audio file
       tags:
       - Calls
@@ -3799,10 +3829,19 @@ paths:
         required: true
         type: integer
       responses:
-        "204":
-          description: No content
+        "200":
+          description: OK
+          schema:
+            properties:
+              shared:
+                type: boolean
+            type: object
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Forbidden
           schema:
             $ref: '#/definitions/ErrorResponse'
         "404":
@@ -3982,6 +4021,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/ShareResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -4009,6 +4052,10 @@ paths:
           description: OK
           schema:
             type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -4020,6 +4067,129 @@ paths:
       summary: Get shared call audio
       tags:
       - Sharing
+  /trunk-recorder-call-upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Ingest a radio call with audio and metadata. Requires a valid API
+        key.
+      parameters:
+      - description: Audio file
+        in: formData
+        name: audio
+        required: true
+        type: file
+      - description: Unix timestamp of the call
+        in: formData
+        name: dateTime
+        required: true
+        type: integer
+      - description: Radio system ID
+        in: formData
+        name: systemId
+        required: true
+        type: integer
+      - description: Talkgroup ID
+        in: formData
+        name: talkgroupId
+        required: true
+        type: integer
+      - description: Source unit ID
+        in: formData
+        name: source
+        type: integer
+      - description: Frequency in Hz
+        in: formData
+        name: frequency
+        type: integer
+      - description: Call duration in seconds
+        in: formData
+        name: duration
+        type: number
+      - description: Talkgroup label for auto-populate
+        in: formData
+        name: talkgroupLabel
+        type: string
+      - description: Talkgroup tag name
+        in: formData
+        name: talkgroupTag
+        type: string
+      - description: Talkgroup group name
+        in: formData
+        name: talkgroupGroup
+        type: string
+      - description: Talkgroup display name
+        in: formData
+        name: talkgroupName
+        type: string
+      - description: System label
+        in: formData
+        name: systemLabel
+        type: string
+      - description: JSON array of patched talkgroup IDs
+        in: formData
+        name: patches
+        type: string
+      - description: Original audio file name
+        in: formData
+        name: audioName
+        type: string
+      - description: Audio MIME type
+        in: formData
+        name: audioType
+        type: string
+      - description: Site identifier
+        in: formData
+        name: site
+        type: string
+      - description: Channel identifier
+        in: formData
+        name: channel
+        type: string
+      - description: Decoder software name
+        in: formData
+        name: decoder
+        type: string
+      - description: Decoding error count
+        in: formData
+        name: errorCount
+        type: integer
+      - description: Signal spike count
+        in: formData
+        name: spikeCount
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Call ingested successfully
+          schema:
+            properties:
+              id:
+                format: int64
+                type: integer
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: API key required
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - APIKeyAuth: []
+      summary: Upload a call recording
+      tags:
+      - Upload
 securityDefinitions:
   APIKeyAuth:
     description: API key for call upload endpoints

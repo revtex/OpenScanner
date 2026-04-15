@@ -120,8 +120,9 @@ func (h *CallHandler) PostShareCall(c *gin.Context) {
 // @Tags         Sharing
 // @Security     BearerAuth
 // @Param        id   path      int  true  "Call ID"
-// @Success      204  "No content"
+// @Success      200  {object}  object{shared=bool}
 // @Failure      400  {object}  ErrorResponse
+// @Failure      403  {object}  ErrorResponse
 // @Failure      404  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /calls/{id}/share [delete]
@@ -170,6 +171,7 @@ func (h *CallHandler) DeleteShareCall(c *gin.Context) {
 // @Description  Returns call metadata as JSON for public viewing. No authentication required.
 // @Tags         Sharing
 // @Param        token  path      string  true  "Share token"
+// @Failure      400    {object}  ErrorResponse
 // @Success      200    {object}  ShareResponse
 // @Failure      404    {object}  ErrorResponse
 // @Failure      500    {object}  ErrorResponse
@@ -223,6 +225,7 @@ func (h *CallHandler) GetSharedCallByToken(c *gin.Context) {
 // @Tags         Sharing
 // @Produce      application/octet-stream
 // @Param        token  path      string  true  "Share token"
+// @Failure      400    {object}  ErrorResponse
 // @Success      200    {file}    binary
 // @Failure      404    {object}  ErrorResponse
 // @Failure      500    {object}  ErrorResponse

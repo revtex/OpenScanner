@@ -684,6 +684,36 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/docs/session": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Issues a short-lived HTTP-only cookie used to access /api/admin/docs.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Create Swagger docs session cookie",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "ok": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/downstreams": {
             "get": {
                 "security": [
@@ -3810,11 +3840,6 @@ const docTemplate = `{
         },
         "/calls": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Paginated search of the call archive with optional filters.",
                 "produces": [
                     "application/json"
@@ -3825,26 +3850,50 @@ const docTemplate = `{
                 "summary": "Search calls",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "CSV system DB IDs (e.g. 1,2,3)",
+                        "name": "system_ids",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSV talkgroup DB IDs (e.g. 10,11)",
+                        "name": "talkgroup_ids",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSV group labels (e.g. Police,Fire)",
+                        "name": "groups",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSV tag labels (e.g. Law,EMS)",
+                        "name": "tags",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
-                        "description": "Filter by system DB ID",
+                        "description": "Legacy single system DB ID",
                         "name": "system_id",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Filter by talkgroup DB ID",
+                        "description": "Legacy single talkgroup DB ID",
                         "name": "talkgroup_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Filter by group label",
+                        "description": "Legacy single group label",
                         "name": "group",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Filter by tag label",
+                        "description": "Legacy single tag label",
                         "name": "tag",
                         "in": "query"
                     },
@@ -3922,11 +3971,6 @@ const docTemplate = `{
         },
         "/calls/{id}/audio": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Stream the audio file for a specific call. Requires authentication or public access mode.",
                 "produces": [
                     "application/octet-stream"
@@ -4112,11 +4156,25 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "No content"
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "shared": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/ErrorResponse"
                         }
@@ -4270,6 +4328,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/ShareResponse"
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -4311,6 +4375,12 @@ const docTemplate = `{
                             "type": "file"
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -4319,6 +4389,190 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/trunk-recorder-call-upload": {
+            "post": {
+                "security": [
+                    {
+                        "APIKeyAuth": []
+                    }
+                ],
+                "description": "Ingest a radio call with audio and metadata. Requires a valid API key.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Upload"
+                ],
+                "summary": "Upload a call recording",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Audio file",
+                        "name": "audio",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Unix timestamp of the call",
+                        "name": "dateTime",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Radio system ID",
+                        "name": "systemId",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Talkgroup ID",
+                        "name": "talkgroupId",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Source unit ID",
+                        "name": "source",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Frequency in Hz",
+                        "name": "frequency",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Call duration in seconds",
+                        "name": "duration",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Talkgroup label for auto-populate",
+                        "name": "talkgroupLabel",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Talkgroup tag name",
+                        "name": "talkgroupTag",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Talkgroup group name",
+                        "name": "talkgroupGroup",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Talkgroup display name",
+                        "name": "talkgroupName",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "System label",
+                        "name": "systemLabel",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "JSON array of patched talkgroup IDs",
+                        "name": "patches",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Original audio file name",
+                        "name": "audioName",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Audio MIME type",
+                        "name": "audioType",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Site identifier",
+                        "name": "site",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Channel identifier",
+                        "name": "channel",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Decoder software name",
+                        "name": "decoder",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Decoding error count",
+                        "name": "errorCount",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Signal spike count",
+                        "name": "spikeCount",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Call ingested successfully",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer",
+                                    "format": "int64"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "API key required",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/ErrorResponse"
                         }

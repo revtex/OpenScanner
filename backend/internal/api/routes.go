@@ -223,11 +223,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 
 		// Swagger: issue a short-lived HTTP-only cookie so Swagger UI
 		// can be opened in a new browser tab without exposing the JWT.
-		admin.POST("/docs/session", func(c *gin.Context) {
-			secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
-			auth.SetSwaggerCookie(c, secure)
-			c.JSON(200, gin.H{"ok": true})
-		})
+		admin.POST("/docs/session", postDocsSession)
 	}
 
 	// Swagger API documentation — protected by the HTTP-only cookie
@@ -283,4 +279,19 @@ func serveFrontend(r *gin.Engine) {
 		c.Request.URL.Path = "/"
 		fileServer.ServeHTTP(c.Writer, c.Request)
 	})
+}
+
+// postDocsSession handles POST /api/admin/docs/session.
+//
+// @Summary      Create Swagger docs session cookie
+// @Description  Issues a short-lived HTTP-only cookie used to access /api/admin/docs.
+// @Tags         Admin
+// @Produce      json
+// @Success      200  {object}  object{ok=bool}
+// @Security     BearerAuth
+// @Router       /admin/docs/session [post]
+func postDocsSession(c *gin.Context) {
+	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
+	auth.SetSwaggerCookie(c, secure)
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
