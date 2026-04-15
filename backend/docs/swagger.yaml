@@ -651,13 +651,6 @@ definitions:
       updated:
         type: integer
     type: object
-  RRLoginRequest:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    type: object
   RRPreviewResponse:
     properties:
       errors:
@@ -2212,95 +2205,6 @@ paths:
       summary: Apply RadioReference enrichment
       tags:
       - Admin - RadioReference
-  /admin/radioreference/counties:
-    get:
-      description: Returns the list of counties for a given state.
-      parameters:
-      - description: State ID from RadioReference
-        in: query
-        name: stateId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of counties
-          schema:
-            items:
-              type: object
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-        "501":
-          description: Not Implemented
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List RadioReference counties
-      tags:
-      - Admin - RadioReference
-  /admin/radioreference/countries:
-    get:
-      description: Returns the list of countries available in RadioReference.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of countries
-          schema:
-            items:
-              type: object
-            type: array
-        "501":
-          description: Not Implemented
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List RadioReference countries
-      tags:
-      - Admin - RadioReference
-  /admin/radioreference/login:
-    post:
-      consumes:
-      - application/json
-      description: Validate RadioReference credentials for the current admin session.
-        Credentials are not persisted.
-      parameters:
-      - description: RadioReference credentials
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/RRLoginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Login successful
-          schema:
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-        "501":
-          description: Not Implemented
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Login to RadioReference
-      tags:
-      - Admin - RadioReference
   /admin/radioreference/preview/csv:
     post:
       consumes:
@@ -2333,68 +2237,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Preview RadioReference CSV enrichment
-      tags:
-      - Admin - RadioReference
-  /admin/radioreference/states:
-    get:
-      description: Returns the list of states/provinces for a given country.
-      parameters:
-      - description: Country ID from RadioReference
-        in: query
-        name: countryId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of states
-          schema:
-            items:
-              type: object
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-        "501":
-          description: Not Implemented
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List RadioReference states
-      tags:
-      - Admin - RadioReference
-  /admin/radioreference/systems:
-    get:
-      description: Returns the list of radio systems for a given county.
-      parameters:
-      - description: County ID from RadioReference
-        in: query
-        name: countyId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of systems
-          schema:
-            items:
-              type: object
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-        "501":
-          description: Not Implemented
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: List RadioReference systems
       tags:
       - Admin - RadioReference
   /admin/shared-links:

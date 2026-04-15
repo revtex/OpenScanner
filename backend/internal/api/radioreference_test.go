@@ -71,17 +71,6 @@ func seedTag(t *testing.T, q *db.Queries, label string) int64 {
 	return id
 }
 
-func seedRRAppKey(t *testing.T, q *db.Queries) {
-	t.Helper()
-	err := q.UpsertSetting(context.Background(), db.UpsertSettingParams{
-		Key:   "radioReferenceAppKey",
-		Value: "test-app-key-12345",
-	})
-	if err != nil {
-		t.Fatalf("UpsertSetting(radioReferenceAppKey): %v", err)
-	}
-}
-
 func multipartCSV(t *testing.T, systemID string, csvContent string) (*bytes.Buffer, string) {
 	t.Helper()
 	body := &bytes.Buffer{}
@@ -111,13 +100,7 @@ func TestRadioReference_NoJWT(t *testing.T) {
 		method string
 		path   string
 	}{
-		{http.MethodPost, "/api/admin/radioreference/login"},
-		{http.MethodGet, "/api/admin/radioreference/countries"},
-		{http.MethodGet, "/api/admin/radioreference/states"},
-		{http.MethodGet, "/api/admin/radioreference/counties"},
-		{http.MethodGet, "/api/admin/radioreference/systems"},
 		{http.MethodPost, "/api/admin/radioreference/preview/csv"},
-		{http.MethodPost, "/api/admin/radioreference/preview/api"},
 		{http.MethodPost, "/api/admin/radioreference/apply"},
 	}
 
@@ -142,13 +125,7 @@ func TestRadioReference_ListenerJWT(t *testing.T) {
 		method string
 		path   string
 	}{
-		{http.MethodPost, "/api/admin/radioreference/login"},
-		{http.MethodGet, "/api/admin/radioreference/countries"},
-		{http.MethodGet, "/api/admin/radioreference/states"},
-		{http.MethodGet, "/api/admin/radioreference/counties"},
-		{http.MethodGet, "/api/admin/radioreference/systems"},
 		{http.MethodPost, "/api/admin/radioreference/preview/csv"},
-		{http.MethodPost, "/api/admin/radioreference/preview/api"},
 		{http.MethodPost, "/api/admin/radioreference/apply"},
 	}
 
@@ -170,7 +147,7 @@ func TestRadioReference_PreviewCSV_Success(t *testing.T) {
 	tok := adminToken(t, uid, "admin1")
 
 	sysID := seedSystem(t, queries, 100, "Test System")
-	seedTalkgroup(t, queries, sysID, 1001, "", "")  // empty label/name → fill_missing would update
+	seedTalkgroup(t, queries, sysID, 1001, "", "")   // empty label/name → fill_missing would update
 	seedTalkgroup(t, queries, sysID, 1002, "E", "N") // already has values → no update in fill_missing
 
 	csv := "Talkgroup ID,Alpha Tag,Description,Group,Tag\n1001,Engine1,Fire Engine 1,Fire,Dispatch\n1002,Medic,Medic Unit,EMS,Dispatch\n9999,Ghost,Not in system,Law,Tactical\n"

@@ -29,7 +29,7 @@ OpenScanner is designed to sit between your recorder(s) and your listeners:
 - Call archive search by system, talkgroup, date range, and sort direction
 - Role-based auth with admin and listener permissions
 - Admin CRUD for users, systems, talkgroups, units, groups, tags, API keys, dirmonitors, downstreams, and webhooks
-- Tools for CSV import, full JSON config import/export, and missing-audio cleanup
+- Tools for CSV import, full JSON config import/export, missing-audio cleanup, and RadioReference talkgroup enrichment
 - Configurable public access mode for listener endpoint behavior
 - Built-in health endpoint for orchestration checks
 
@@ -72,6 +72,7 @@ The admin UI is available at /admin and includes:
 - API key management for recorder uploads
 - DirMonitor and downstream configuration
 - Settings, logs, and maintenance tools
+- RadioReference talkgroup enrichment (CSV upload)
 
 See [docs/admin-guide.md](docs/admin-guide.md) for a full walkthrough.
 

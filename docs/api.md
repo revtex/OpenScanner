@@ -94,6 +94,11 @@ This page intentionally focuses on behavior, access model, and workflow guidance
 - `/api/admin/import/config`
 - `/api/admin/shared-links`
 
+### RadioReference enrichment
+
+- `POST /api/admin/radioreference/preview/csv`
+- `POST /api/admin/radioreference/apply`
+
 ### Swagger access
 
 - `POST /api/admin/docs/session`
@@ -121,6 +126,13 @@ This page intentionally focuses on behavior, access model, and workflow guidance
 1. Authenticated user creates share token for a call.
 2. Public clients read shared metadata and audio through token endpoints.
 3. Share can be removed by owner or admin.
+
+### RadioReference enrichment flow
+
+1. Admin uploads a RadioReference CSV export with a system ID to `POST /api/admin/radioreference/preview/csv`.
+2. Server parses headers (flexible naming), matches talkgroups by ID, and returns a preview with per-row match status plus match/skip/update counts.
+3. Admin reviews the preview, selects merge mode (`fill_missing` or `overwrite_selected`) and field toggles, then calls `POST /api/admin/radioreference/apply` with the candidate list.
+4. Server updates matched talkgroups in the database. Frequency fields are never updated (defense-in-depth). Per-row errors (e.g., unknown group name) are returned in the response.
 
 ## WebSocket model
 

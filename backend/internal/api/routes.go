@@ -204,13 +204,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		admin.POST("/import/config", adminHandler.ImportConfig)
 
 		// RadioReference
-		admin.POST("/radioreference/login", adminHandler.RadioReferenceLogin)
-		admin.GET("/radioreference/countries", adminHandler.RadioReferenceCountries)
-		admin.GET("/radioreference/states", adminHandler.RadioReferenceStates)
-		admin.GET("/radioreference/counties", adminHandler.RadioReferenceCounties)
-		admin.GET("/radioreference/systems", adminHandler.RadioReferenceSystems)
 		admin.POST("/radioreference/preview/csv", adminHandler.RadioReferencePreviewCSV)
-		admin.POST("/radioreference/preview/api", adminHandler.RadioReferencePreviewAPI)
 		admin.POST("/radioreference/apply", adminHandler.RadioReferenceApply)
 
 		// Logs
