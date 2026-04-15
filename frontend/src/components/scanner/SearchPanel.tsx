@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
+  RefreshCw,
 } from "lucide-react";
 import { useAppSelector, useAppDispatch } from "@/app/store";
 import {
@@ -115,7 +116,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     return params;
   }, [filters]);
 
-  const { data, isFetching } = useSearchCallsQuery(queryParams, {
+  const { data, isFetching, refetch } = useSearchCallsQuery(queryParams, {
     skip: !isOpen,
   });
 
@@ -247,13 +248,26 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">
           <h2 className="text-lg font-semibold">Search Calls</h2>
-          <button
-            className="btn btn-ghost btn-sm btn-circle"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              className="btn btn-ghost btn-sm btn-circle"
+              onClick={() => refetch()}
+              aria-label="Refresh"
+              disabled={isFetching}
+            >
+              <RefreshCw
+                size={16}
+                className={isFetching ? "animate-spin" : ""}
+              />
+            </button>
+            <button
+              className="btn btn-ghost btn-sm btn-circle"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Results list */}
