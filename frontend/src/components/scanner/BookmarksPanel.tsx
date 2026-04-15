@@ -98,7 +98,7 @@ export default function BookmarksPanel({
       const blob = await resp.blob();
       const audioUrl = URL.createObjectURL(blob);
       const call = bookmarkCallToCall(bc);
-      audioPlayer.play(call, audioUrl);
+      audioPlayer.playNow(call, audioUrl);
     } catch (err) {
       console.error("failed to play bookmark", bc.id, err);
     }

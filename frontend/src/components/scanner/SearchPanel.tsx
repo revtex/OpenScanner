@@ -190,7 +190,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
           transcript: call.transcript,
         };
 
-        audioPlayer.play(playCall, audioUrl);
+        audioPlayer.playNow(playCall, audioUrl);
       } catch (err) {
         console.error("failed to play call", call.id, err);
       }
