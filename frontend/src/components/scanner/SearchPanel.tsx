@@ -331,6 +331,11 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                     <span className="text-[11px] text-base-content/60">
                       {formatDate(call.dateTime)} {formatTime(call.dateTime)}
                     </span>
+                    {call.duration > 0 && (
+                      <span className="text-[11px] text-base-content/40">
+                        {call.duration}s
+                      </span>
+                    )}
                     <div className="flex items-center gap-0.5">
                       <button
                         onClick={() => void handleRowClick(call)}
