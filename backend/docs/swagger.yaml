@@ -619,6 +619,121 @@ definitions:
       totalCalls:
         type: integer
     type: object
+  RRApplyRequest:
+    properties:
+      candidates:
+        items:
+          $ref: '#/definitions/RRTalkgroupCandidate'
+        type: array
+      mergeMode:
+        type: string
+      selectedFields:
+        items:
+          type: string
+        type: array
+      systemId:
+        type: integer
+    type: object
+  RRApplyResponse:
+    properties:
+      errors:
+        type: integer
+      matched:
+        type: integer
+      processed:
+        type: integer
+      rowErrors:
+        items:
+          $ref: '#/definitions/RRRowError'
+        type: array
+      skipped:
+        type: integer
+      updated:
+        type: integer
+    type: object
+  RRLoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  RRPreviewResponse:
+    properties:
+      errors:
+        type: integer
+      matched:
+        type: integer
+      processed:
+        type: integer
+      rowErrors:
+        items:
+          $ref: '#/definitions/RRRowError'
+        type: array
+      rows:
+        items:
+          $ref: '#/definitions/RRPreviewRow'
+        type: array
+      skipped:
+        type: integer
+      wouldUpdate:
+        type: integer
+    type: object
+  RRPreviewRow:
+    properties:
+      group:
+        type: string
+      label:
+        type: string
+      led:
+        type: string
+      matched:
+        type: boolean
+      name:
+        type: string
+      order:
+        type: integer
+      row:
+        type: integer
+      skipReason:
+        type: string
+      tag:
+        type: string
+      talkgroupId:
+        type: integer
+      wouldUpdate:
+        type: boolean
+      wouldUpdateFields:
+        items:
+          type: string
+        type: array
+    type: object
+  RRRowError:
+    properties:
+      reason:
+        type: string
+      row:
+        type: integer
+    type: object
+  RRTalkgroupCandidate:
+    properties:
+      group:
+        type: string
+      label:
+        type: string
+      led:
+        type: string
+      name:
+        type: string
+      order:
+        type: integer
+      row:
+        type: integer
+      tag:
+        type: string
+      talkgroupId:
+        type: integer
+    type: object
   ReorderAPIKeyItem:
     properties:
       id:
@@ -2063,6 +2178,225 @@ paths:
       summary: List logs
       tags:
       - Admin
+  /admin/radioreference/apply:
+    post:
+      consumes:
+      - application/json
+      description: Apply previously previewed RadioReference talkgroup enrichment
+        candidates. Supports fill_missing (default) and overwrite_selected merge modes
+        with per-field toggles. Frequency is never updated.
+      parameters:
+      - description: Candidates and merge options
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/RRApplyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/RRApplyResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Apply RadioReference enrichment
+      tags:
+      - Admin - RadioReference
+  /admin/radioreference/counties:
+    get:
+      description: Returns the list of counties for a given state.
+      parameters:
+      - description: State ID from RadioReference
+        in: query
+        name: stateId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of counties
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List RadioReference counties
+      tags:
+      - Admin - RadioReference
+  /admin/radioreference/countries:
+    get:
+      description: Returns the list of countries available in RadioReference.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of countries
+          schema:
+            items:
+              type: object
+            type: array
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List RadioReference countries
+      tags:
+      - Admin - RadioReference
+  /admin/radioreference/login:
+    post:
+      consumes:
+      - application/json
+      description: Validate RadioReference credentials for the current admin session.
+        Credentials are not persisted.
+      parameters:
+      - description: RadioReference credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/RRLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Login to RadioReference
+      tags:
+      - Admin - RadioReference
+  /admin/radioreference/preview/csv:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Upload a RadioReference CSV export and preview which local talkgroups
+        would be enriched. Frequency is never updated. Columns: talkgroup id (decimal/tgid),
+        alpha tag, description, group/category, tag/service type, led, order.'
+      parameters:
+      - description: Local system ID to match talkgroups against
+        in: formData
+        name: system_id
+        required: true
+        type: integer
+      - description: RadioReference CSV file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/RRPreviewResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Preview RadioReference CSV enrichment
+      tags:
+      - Admin - RadioReference
+  /admin/radioreference/states:
+    get:
+      description: Returns the list of states/provinces for a given country.
+      parameters:
+      - description: Country ID from RadioReference
+        in: query
+        name: countryId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of states
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List RadioReference states
+      tags:
+      - Admin - RadioReference
+  /admin/radioreference/systems:
+    get:
+      description: Returns the list of radio systems for a given county.
+      parameters:
+      - description: County ID from RadioReference
+        in: query
+        name: countyId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of systems
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List RadioReference systems
+      tags:
+      - Admin - RadioReference
   /admin/shared-links:
     get:
       description: Returns all shared links with associated call metadata.

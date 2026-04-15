@@ -16,6 +16,15 @@ import type {
   ConfigResponse,
   CreateUserPayload,
   UpdateUserPayload,
+  RRPreviewResponse,
+  RRApplyRequest,
+  RRApplyResponse,
+  RRCountry,
+  RRState,
+  RRCounty,
+  RRSystem,
+  RRLoginResponse,
+  RRAPIPreviewRequest,
 } from "@/types";
 
 // --- Generic CRUD payload types ---
@@ -593,6 +602,68 @@ const adminApi = api.injectEndpoints({
         body,
       }),
     }),
+
+    // ── RadioReference ──
+    rrPreviewCSV: builder.mutation<RRPreviewResponse, FormData>({
+      query: (body) => ({
+        url: "/admin/radioreference/preview/csv",
+        method: "POST",
+        body,
+      }),
+    }),
+    rrApply: builder.mutation<RRApplyResponse, RRApplyRequest>({
+      query: (body) => ({
+        url: "/admin/radioreference/apply",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Talkgroups"],
+    }),
+    rrLogin: builder.mutation<
+      RRLoginResponse,
+      { username: string; password: string }
+    >({
+      query: (body) => ({
+        url: "/admin/radioreference/login",
+        method: "POST",
+        body,
+      }),
+    }),
+    rrCountries: builder.query<RRCountry[], void>({
+      query: () => "/admin/radioreference/countries",
+    }),
+    rrStates: builder.query<RRState[], { countryId: number; rrSession: string }>({
+      query: ({ countryId, rrSession }) => ({
+        url: "/admin/radioreference/states",
+        params: { countryId },
+        headers: { "X-RR-Session": rrSession },
+      }),
+    }),
+    rrCounties: builder.query<RRCounty[], { stateId: number; rrSession: string }>({
+      query: ({ stateId, rrSession }) => ({
+        url: "/admin/radioreference/counties",
+        params: { stateId },
+        headers: { "X-RR-Session": rrSession },
+      }),
+    }),
+    rrSystems: builder.query<RRSystem[], { countyId: number; rrSession: string }>({
+      query: ({ countyId, rrSession }) => ({
+        url: "/admin/radioreference/systems",
+        params: { countyId },
+        headers: { "X-RR-Session": rrSession },
+      }),
+    }),
+    rrPreviewAPI: builder.mutation<
+      RRPreviewResponse,
+      { body: RRAPIPreviewRequest; rrSession: string }
+    >({
+      query: ({ body, rrSession }) => ({
+        url: "/admin/radioreference/preview/api",
+        method: "POST",
+        body,
+        headers: { "X-RR-Session": rrSession },
+      }),
+    }),
   }),
 });
 
@@ -667,4 +738,13 @@ export const {
   useImportConfigMutation,
   useLazyGetMissingAudioCallsQuery,
   useCleanupMissingAudioCallsMutation,
+  // RadioReference
+  useRrPreviewCSVMutation,
+  useRrApplyMutation,
+  useRrLoginMutation,
+  useLazyRrCountriesQuery,
+  useLazyRrStatesQuery,
+  useLazyRrCountiesQuery,
+  useLazyRrSystemsQuery,
+  useRrPreviewAPIMutation,
 } = adminApi;

@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
+	"github.com/openscanner/openscanner/internal/radioref"
 	"github.com/openscanner/openscanner/internal/ws"
 )
 
@@ -37,6 +38,7 @@ type AdminHandler struct {
 	recordingsDir    string
 	ffmpegAvailable  bool
 	whisperAvailable bool
+	rrSessions       *radioref.SessionStore
 }
 
 // NewAdminHandler constructs an AdminHandler.
@@ -45,7 +47,7 @@ func NewAdminHandler(queries *db.Queries, hub *ws.Hub, sqlDB *sql.DB, dwReload D
 	if len(recordingsDir) > 0 && strings.TrimSpace(recordingsDir[0]) != "" {
 		rd = recordingsDir[0]
 	}
-	return &AdminHandler{queries: queries, hub: hub, sqlDB: sqlDB, dwReload: dwReload, dsReload: dsReload, recordingsDir: rd}
+	return &AdminHandler{queries: queries, hub: hub, sqlDB: sqlDB, dwReload: dwReload, dsReload: dsReload, recordingsDir: rd, rrSessions: radioref.NewSessionStore()}
 }
 
 // parseID extracts and parses the :id path parameter.

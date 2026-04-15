@@ -45,6 +45,7 @@ var allowedSettingKeys = map[string]bool{
 	"vapidPrivateKey":             true,
 	"vapidPublicKey":              true,
 	"webhooksEnabled":             true,
+	"radioReferenceAppKey":        true,
 }
 
 // GetConfig handles GET /api/admin/config.

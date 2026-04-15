@@ -1520,6 +1520,345 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/radioreference/apply": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Apply previously previewed RadioReference talkgroup enrichment candidates. Supports fill_missing (default) and overwrite_selected merge modes with per-field toggles. Frequency is never updated.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - RadioReference"
+                ],
+                "summary": "Apply RadioReference enrichment",
+                "parameters": [
+                    {
+                        "description": "Candidates and merge options",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RRApplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/RRApplyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/radioreference/counties": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the list of counties for a given state.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - RadioReference"
+                ],
+                "summary": "List RadioReference counties",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "State ID from RadioReference",
+                        "name": "stateId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of counties",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/radioreference/countries": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the list of countries available in RadioReference.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - RadioReference"
+                ],
+                "summary": "List RadioReference countries",
+                "responses": {
+                    "200": {
+                        "description": "List of countries",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/radioreference/login": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Validate RadioReference credentials for the current admin session. Credentials are not persisted.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - RadioReference"
+                ],
+                "summary": "Login to RadioReference",
+                "parameters": [
+                    {
+                        "description": "RadioReference credentials",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RRLoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/radioreference/preview/csv": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upload a RadioReference CSV export and preview which local talkgroups would be enriched. Frequency is never updated. Columns: talkgroup id (decimal/tgid), alpha tag, description, group/category, tag/service type, led, order.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - RadioReference"
+                ],
+                "summary": "Preview RadioReference CSV enrichment",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Local system ID to match talkgroups against",
+                        "name": "system_id",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "RadioReference CSV file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/RRPreviewResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/radioreference/states": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the list of states/provinces for a given country.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - RadioReference"
+                ],
+                "summary": "List RadioReference states",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Country ID from RadioReference",
+                        "name": "countryId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of states",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/radioreference/systems": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the list of radio systems for a given county.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - RadioReference"
+                ],
+                "summary": "List RadioReference systems",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "County ID from RadioReference",
+                        "name": "countyId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of systems",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/shared-links": {
             "get": {
                 "security": [
@@ -5061,6 +5400,182 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "totalCalls": {
+                    "type": "integer"
+                }
+            }
+        },
+        "RRApplyRequest": {
+            "type": "object",
+            "properties": {
+                "candidates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RRTalkgroupCandidate"
+                    }
+                },
+                "mergeMode": {
+                    "type": "string"
+                },
+                "selectedFields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "systemId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "RRApplyResponse": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "integer"
+                },
+                "matched": {
+                    "type": "integer"
+                },
+                "processed": {
+                    "type": "integer"
+                },
+                "rowErrors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RRRowError"
+                    }
+                },
+                "skipped": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "RRLoginRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "RRPreviewResponse": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "integer"
+                },
+                "matched": {
+                    "type": "integer"
+                },
+                "processed": {
+                    "type": "integer"
+                },
+                "rowErrors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RRRowError"
+                    }
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RRPreviewRow"
+                    }
+                },
+                "skipped": {
+                    "type": "integer"
+                },
+                "wouldUpdate": {
+                    "type": "integer"
+                }
+            }
+        },
+        "RRPreviewRow": {
+            "type": "object",
+            "properties": {
+                "group": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "led": {
+                    "type": "string"
+                },
+                "matched": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "row": {
+                    "type": "integer"
+                },
+                "skipReason": {
+                    "type": "string"
+                },
+                "tag": {
+                    "type": "string"
+                },
+                "talkgroupId": {
+                    "type": "integer"
+                },
+                "wouldUpdate": {
+                    "type": "boolean"
+                },
+                "wouldUpdateFields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "RRRowError": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                },
+                "row": {
+                    "type": "integer"
+                }
+            }
+        },
+        "RRTalkgroupCandidate": {
+            "type": "object",
+            "properties": {
+                "group": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "led": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "row": {
+                    "type": "integer"
+                },
+                "tag": {
+                    "type": "string"
+                },
+                "talkgroupId": {
                     "type": "integer"
                 }
             }

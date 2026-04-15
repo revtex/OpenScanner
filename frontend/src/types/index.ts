@@ -267,3 +267,91 @@ export interface AdminDirMonitor {
   talkgroupId: number | null;
   order: number;
 }
+
+// --- RadioReference enrichment types ---
+
+export interface RRTalkgroupCandidate {
+  row: number;
+  talkgroupId: number;
+  label?: string;
+  name?: string;
+  group?: string;
+  tag?: string;
+  led?: string;
+  order?: number;
+}
+
+export interface RRPreviewRow extends RRTalkgroupCandidate {
+  matched: boolean;
+  wouldUpdate: boolean;
+  wouldUpdateFields: string[];
+  skipReason?: string;
+}
+
+export interface RRRowError {
+  row: number;
+  reason: string;
+}
+
+export interface RRPreviewResponse {
+  processed: number;
+  matched: number;
+  wouldUpdate: number;
+  skipped: number;
+  errors: number;
+  rowErrors: RRRowError[];
+  rows: RRPreviewRow[];
+}
+
+export interface RRApplyRequest {
+  systemId: number;
+  candidates: RRTalkgroupCandidate[];
+  mergeMode: string;
+  selectedFields: string[];
+}
+
+export interface RRApplyResponse {
+  processed: number;
+  matched: number;
+  updated: number;
+  skipped: number;
+  errors: number;
+  rowErrors: RRRowError[];
+}
+
+// --- RadioReference API mode types ---
+
+export interface RRCountry {
+  coid: number;
+  countryName: string;
+  countryCode: string;
+}
+
+export interface RRState {
+  stid: number;
+  stateName: string;
+  stateCode: string;
+}
+
+export interface RRCounty {
+  ctid: number;
+  countyName: string;
+  countyHeader: string;
+}
+
+export interface RRSystem {
+  sid: number;
+  sName: string;
+  sCity: string;
+}
+
+export interface RRLoginResponse {
+  rrSession: string;
+  username: string;
+  subExpireDate: string;
+}
+
+export interface RRAPIPreviewRequest {
+  rrSystemId: number;
+  systemId: number;
+}
