@@ -35,10 +35,10 @@ export interface CallSearchResponse {
 }
 
 export interface CallSearchParams {
-  systemId?: number;
-  talkgroupId?: number;
-  groupFilter?: string;
-  tagFilter?: string;
+  systemIds?: number[];
+  talkgroupIds?: number[];
+  groupFilters?: string[];
+  tagFilters?: string[];
   transcript?: string;
   dateFrom?: number;
   dateTo?: number;
@@ -56,10 +56,22 @@ const callsApi = api.injectEndpoints({
       query: (params) => ({
         url: "/calls",
         params: {
-          system_id: params.systemId,
-          talkgroup_id: params.talkgroupId,
-          group: params.groupFilter,
-          tag: params.tagFilter,
+          system_ids:
+            params.systemIds && params.systemIds.length > 0
+              ? params.systemIds.join(",")
+              : undefined,
+          talkgroup_ids:
+            params.talkgroupIds && params.talkgroupIds.length > 0
+              ? params.talkgroupIds.join(",")
+              : undefined,
+          groups:
+            params.groupFilters && params.groupFilters.length > 0
+              ? params.groupFilters.join(",")
+              : undefined,
+          tags:
+            params.tagFilters && params.tagFilters.length > 0
+              ? params.tagFilters.join(",")
+              : undefined,
           transcript: params.transcript,
           date_from: params.dateFrom,
           date_to: params.dateTo,
@@ -79,10 +91,10 @@ export const { useSearchCallsQuery } = callsApi;
 // --- Search filter state slice ---
 
 interface SearchFilters {
-  systemId?: number;
-  talkgroupId?: number;
-  groupFilter?: string;
-  tagFilter?: string;
+  systemIds: number[];
+  talkgroupIds: number[];
+  groupFilters: string[];
+  tagFilters: string[];
   dateFrom?: string;
   dateTo?: string;
   sort: "asc" | "desc";
@@ -94,6 +106,10 @@ interface SearchFilters {
 }
 
 const initialState: SearchFilters = {
+  systemIds: [],
+  talkgroupIds: [],
+  groupFilters: [],
+  tagFilters: [],
   sort: "desc",
   page: 1,
   limit: 25,
@@ -105,21 +121,56 @@ export const callsSlice = createSlice({
   name: "calls",
   initialState,
   reducers: {
-    setSystemFilter(state, action: PayloadAction<number | undefined>) {
-      state.systemId = action.payload;
-      state.talkgroupId = undefined;
+    toggleSystemFilter(state, action: PayloadAction<number>) {
+      const id = action.payload;
+      if (state.systemIds.includes(id)) {
+        state.systemIds = state.systemIds.filter((v) => v !== id);
+      } else {
+        state.systemIds.push(id);
+      }
       state.page = 1;
     },
-    setTalkgroupFilter(state, action: PayloadAction<number | undefined>) {
-      state.talkgroupId = action.payload;
+    toggleTalkgroupFilter(state, action: PayloadAction<number>) {
+      const id = action.payload;
+      if (state.talkgroupIds.includes(id)) {
+        state.talkgroupIds = state.talkgroupIds.filter((v) => v !== id);
+      } else {
+        state.talkgroupIds.push(id);
+      }
       state.page = 1;
     },
-    setGroupFilter(state, action: PayloadAction<string | undefined>) {
-      state.groupFilter = action.payload;
+    toggleGroupFilter(state, action: PayloadAction<string>) {
+      const label = action.payload;
+      if (state.groupFilters.includes(label)) {
+        state.groupFilters = state.groupFilters.filter((v) => v !== label);
+      } else {
+        state.groupFilters.push(label);
+      }
       state.page = 1;
     },
-    setTagFilter(state, action: PayloadAction<string | undefined>) {
-      state.tagFilter = action.payload;
+    toggleTagFilter(state, action: PayloadAction<string>) {
+      const label = action.payload;
+      if (state.tagFilters.includes(label)) {
+        state.tagFilters = state.tagFilters.filter((v) => v !== label);
+      } else {
+        state.tagFilters.push(label);
+      }
+      state.page = 1;
+    },
+    setSystemFilters(state, action: PayloadAction<number[]>) {
+      state.systemIds = [...action.payload];
+      state.page = 1;
+    },
+    setTalkgroupFilters(state, action: PayloadAction<number[]>) {
+      state.talkgroupIds = [...action.payload];
+      state.page = 1;
+    },
+    setGroupFilters(state, action: PayloadAction<string[]>) {
+      state.groupFilters = [...action.payload];
+      state.page = 1;
+    },
+    setTagFilters(state, action: PayloadAction<string[]>) {
+      state.tagFilters = [...action.payload];
       state.page = 1;
     },
     setDateFrom(state, action: PayloadAction<string | undefined>) {
@@ -159,10 +210,14 @@ export const callsSlice = createSlice({
 });
 
 export const {
-  setSystemFilter,
-  setTalkgroupFilter,
-  setGroupFilter,
-  setTagFilter,
+  toggleSystemFilter,
+  toggleTalkgroupFilter,
+  toggleGroupFilter,
+  toggleTagFilter,
+  setSystemFilters,
+  setTalkgroupFilters,
+  setGroupFilters,
+  setTagFilters,
   setDateFrom,
   setDateTo,
   setSort,

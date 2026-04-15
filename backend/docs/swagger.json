@@ -3391,6 +3391,103 @@
                 }
             }
         },
+        "/auth/tg-selection": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Return the authenticated user's disabled talkgroup IDs.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get talkgroup selection",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/TGSelectionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Save the authenticated user's disabled talkgroup IDs.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Update talkgroup selection",
+                "parameters": [
+                    {
+                        "description": "Disabled talkgroup IDs",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/TGSelectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "ok": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/bookmarks": {
             "get": {
                 "security": [
@@ -5578,6 +5675,40 @@
                 }
             }
         },
+        "TGSelectionRequest": {
+            "type": "object",
+            "properties": {
+                "avoidList": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_api.avoidTGEntry"
+                    }
+                },
+                "disabledTGs": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "TGSelectionResponse": {
+            "type": "object",
+            "properties": {
+                "avoidList": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_api.avoidTGEntry"
+                    }
+                },
+                "disabledTGs": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "Tag": {
             "type": "object",
             "properties": {
@@ -6069,6 +6200,17 @@
                 },
                 "url": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_api.avoidTGEntry": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "type": "integer"
+                },
+                "talkgroupId": {
+                    "type": "integer"
                 }
             }
         }

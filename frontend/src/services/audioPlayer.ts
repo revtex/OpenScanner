@@ -14,6 +14,7 @@ class AudioPlayer {
   private volume = 1;
   private queue: QueueItem[] = [];
   private currentItem: QueueItem | null = null;
+  private _paused = false;
   private callStartCb: ((call: Call) => void) | null = null;
   private callEndCb: (() => void) | null = null;
   private queueChangeCb: ((length: number) => void) | null = null;
@@ -34,6 +35,11 @@ class AudioPlayer {
 
   play(call: Call, audioUrl: string): void {
     const item: QueueItem = { call, audioUrl };
+    if (this._paused) {
+      this.queue.push(item);
+      this.queueChangeCb?.(this.queue.length);
+      return;
+    }
     if (!this.currentItem) {
       this.startPlayback(item);
     } else {
@@ -79,13 +85,17 @@ class AudioPlayer {
   }
 
   pause(): void {
+    this._paused = true;
     this.audio.pause();
   }
 
   resume(): void {
+    this._paused = false;
     if (this.currentItem) {
       this.resumeAudioContext();
       this.audio.play().catch(() => {});
+    } else if (this.queue.length > 0) {
+      this.playNext();
     }
   }
 
@@ -144,6 +154,24 @@ class AudioPlayer {
     this.callEndCb?.();
   }
 
+  filterQueue(predicate: (call: Call) => boolean): void {
+    const kept: QueueItem[] = [];
+    for (const item of this.queue) {
+      if (predicate(item.call)) {
+        kept.push(item);
+      } else {
+        this.cleanup(item.audioUrl);
+      }
+    }
+    this.queue = kept;
+    this.queueChangeCb?.(this.queue.length);
+    this.preloadNext();
+  }
+
+  getCurrentCall(): Call | null {
+    return this.currentItem?.call ?? null;
+  }
+
   private startPlayback(item: QueueItem): void {
     this.currentItem = item;
     this.audio.src = item.audioUrl;
@@ -154,14 +182,10 @@ class AudioPlayer {
         this.callStartCb?.(item.call);
       },
       () => {
-        // Autoplay blocked or playback failed — skip to next call so the
-        // player doesn't hang forever waiting for the "ended" event.
-        console.warn("[AudioPlayer] play() rejected, skipping call");
-        if (this.currentItem === item) {
-          this.cleanup(item.audioUrl);
-          this.currentItem = null;
-          this.playNext();
-        }
+        // Autoplay blocked — keep the call so resume() can play it.
+        // Subsequent play() calls will queue behind it normally.
+        // Show the call in the UI so the user knows what's pending.
+        this.callStartCb?.(item.call);
       },
     );
     this.preloadNext();

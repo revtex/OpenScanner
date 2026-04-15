@@ -128,6 +128,7 @@ type Querier interface {
 	UpdateUnit(ctx context.Context, arg UpdateUnitParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
+	UpdateUserTGSelection(ctx context.Context, arg UpdateUserTGSelectionParams) error
 	UpdateWebhook(ctx context.Context, arg UpdateWebhookParams) error
 	UpsertSetting(ctx context.Context, arg UpsertSettingParams) error
 	UpsertTalkgroup(ctx context.Context, arg UpsertTalkgroupParams) error

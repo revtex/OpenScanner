@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     expiration           INTEGER,
     "limit"              INTEGER,
     password_need_change INTEGER NOT NULL DEFAULT 0,
+    tg_selection_json    TEXT,
     created_at           INTEGER NOT NULL,
     updated_at           INTEGER NOT NULL
 );

@@ -77,7 +77,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, username, password_hash, role, disabled, systems_json, expiration, "limit", password_need_change, created_at, updated_at FROM users WHERE id = ? LIMIT 1
+SELECT id, username, password_hash, role, disabled, systems_json, expiration, "limit", password_need_change, tg_selection_json, created_at, updated_at FROM users WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
@@ -93,6 +93,7 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 		&i.Expiration,
 		&i.Limit,
 		&i.PasswordNeedChange,
+		&i.TgSelectionJson,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -100,7 +101,7 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, password_hash, role, disabled, systems_json, expiration, "limit", password_need_change, created_at, updated_at FROM users WHERE username = ? LIMIT 1
+SELECT id, username, password_hash, role, disabled, systems_json, expiration, "limit", password_need_change, tg_selection_json, created_at, updated_at FROM users WHERE username = ? LIMIT 1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -116,6 +117,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.Expiration,
 		&i.Limit,
 		&i.PasswordNeedChange,
+		&i.TgSelectionJson,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -123,7 +125,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, username, password_hash, role, disabled, systems_json, expiration, "limit", password_need_change, created_at, updated_at FROM users ORDER BY id ASC
+SELECT id, username, password_hash, role, disabled, systems_json, expiration, "limit", password_need_change, tg_selection_json, created_at, updated_at FROM users ORDER BY id ASC
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -145,6 +147,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.Expiration,
 			&i.Limit,
 			&i.PasswordNeedChange,
+			&i.TgSelectionJson,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -214,5 +217,23 @@ type UpdateUserPasswordParams struct {
 
 func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
 	_, err := q.db.ExecContext(ctx, updateUserPassword, arg.PasswordHash, arg.UpdatedAt, arg.ID)
+	return err
+}
+
+const updateUserTGSelection = `-- name: UpdateUserTGSelection :exec
+UPDATE users SET
+    tg_selection_json = ?1,
+    updated_at        = ?2
+WHERE id = ?3
+`
+
+type UpdateUserTGSelectionParams struct {
+	TgSelectionJson sql.NullString `db:"tg_selection_json" json:"tg_selection_json"`
+	UpdatedAt       int64          `db:"updated_at" json:"updated_at"`
+	ID              int64          `db:"id" json:"id"`
+}
+
+func (q *Queries) UpdateUserTGSelection(ctx context.Context, arg UpdateUserTGSelectionParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserTGSelection, arg.TgSelectionJson, arg.UpdatedAt, arg.ID)
 	return err
 }

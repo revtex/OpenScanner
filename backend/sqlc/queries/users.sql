@@ -52,3 +52,9 @@ WHERE id = :id;
 
 -- name: DeleteUser :exec
 DELETE FROM users WHERE id = ?;
+
+-- name: UpdateUserTGSelection :exec
+UPDATE users SET
+    tg_selection_json = :tg_selection_json,
+    updated_at        = :updated_at
+WHERE id = :id;

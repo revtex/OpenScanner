@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { store } from "@/app/store";
 import { audioPlayer } from "@/services/audioPlayer";
@@ -15,9 +15,15 @@ export function useAudioPlayer() {
   const playbackGoesLive = useAppSelector(
     (s) => s.scanner.config?.playbackGoesLive ?? false,
   );
+  const heldTG = useAppSelector((s) => s.scanner.heldTG);
+  const heldSystem = useAppSelector((s) => s.scanner.heldSystem);
   const [volume, setVolumeState] = useState(() => audioPlayer.getVolume());
   const [playing, setPlaying] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+
+  // Track previous hold values to detect activation
+  const prevHeldTG = useRef(heldTG);
+  const prevHeldSystem = useRef(heldSystem);
 
   useEffect(() => {
     audioPlayer.setOnCallStart((call) => {
@@ -38,15 +44,64 @@ export function useAudioPlayer() {
       audioPlayer.play(call, audioUrl);
     });
 
-    // Client-side talkgroup selection filter — reads live Redux state
-    // each time a CAL arrives so toggling takes effect immediately.
+    // If restored as paused (e.g. after refresh), tell audioPlayer so
+    // incoming calls queue instead of trying to auto-play.
+    if (store.getState().scanner.isPaused) {
+      audioPlayer.pause();
+    }
+
+    // Client-side filter — checks hold, avoid, and tgSelection each
+    // time a CAL arrives so changes take effect immediately.
     wsClient.setCallFilter((call) => {
-      const { tgSelection } = store.getState().scanner;
-      // tgSelection uses the DB talkgroup row ID (call.talkgroup).
-      // undefined = enabled (default on); only explicit false rejects.
+      const { heldTG, heldSystem, avoidList, tgSelection } =
+        store.getState().scanner;
+
+      // Hold: if a talkgroup is held, only that TG plays
+      if (heldTG !== null) return call.talkgroup === heldTG;
+
+      // Hold: if a system is held, only calls from that system play
+      if (heldSystem !== null) {
+        if (call.system !== heldSystem) return false;
+      }
+
+      // Avoid: block avoided talkgroups
+      const now = Date.now();
+      for (const entry of avoidList) {
+        if (entry.talkgroupId === call.talkgroup) {
+          if (entry.expiresAt === 0 || entry.expiresAt > now) return false;
+        }
+      }
+
+      // tgSelection: undefined = enabled; only explicit false rejects
       return tgSelection[call.talkgroup] !== false;
     });
   }, [dispatch]);
+
+  // Flush queue + skip current when hold activates
+  useEffect(() => {
+    const tgActivated = prevHeldTG.current === null && heldTG !== null;
+    const sysActivated = prevHeldSystem.current === null && heldSystem !== null;
+
+    prevHeldTG.current = heldTG;
+    prevHeldSystem.current = heldSystem;
+
+    if (tgActivated && heldTG !== null) {
+      // Keep only the held TG in queue
+      audioPlayer.filterQueue((call) => call.talkgroup === heldTG);
+      // Skip current if it doesn't match
+      const current = audioPlayer.getCurrentCall();
+      if (current && current.talkgroup !== heldTG) {
+        audioPlayer.skip();
+      }
+    } else if (sysActivated && heldSystem !== null) {
+      // Keep only calls from the held system
+      audioPlayer.filterQueue((call) => call.system === heldSystem);
+      const current = audioPlayer.getCurrentCall();
+      if (current && current.system !== heldSystem) {
+        audioPlayer.skip();
+      }
+    }
+  }, [heldTG, heldSystem]);
 
   // When playback ends and queue is empty, auto-switch to live if configured.
   useEffect(() => {

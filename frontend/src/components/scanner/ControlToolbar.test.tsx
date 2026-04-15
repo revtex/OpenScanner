@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ControlToolbar } from "@/components/scanner/ControlToolbar";
-import type { AvoidEntry } from "@/types";
 
 function defaultProps() {
   return {
@@ -11,7 +10,6 @@ function defaultProps() {
     volume: 0.8,
     heldSystem: null as number | null,
     heldTG: null as number | null,
-    avoidList: [] as AvoidEntry[],
     currentCallTgId: undefined as number | undefined,
     currentCallSystemId: undefined as number | undefined,
     onTogglePause: vi.fn(),
@@ -23,7 +21,6 @@ function defaultProps() {
     onHoldSystem: vi.fn(),
     onHoldTG: vi.fn(),
     onAddAvoid: vi.fn(),
-    onClearAvoids: vi.fn(),
     onToggleSelectTG: vi.fn(),
     onToggleSearch: vi.fn(),
   };
@@ -168,37 +165,6 @@ describe("ControlToolbar", () => {
       talkgroupId: 200,
       expiresAt: 0,
     });
-  });
-
-  it("shows Clear All in AVOID when avoidList is non-empty", () => {
-    const props = defaultProps();
-    props.avoidList = [{ talkgroupId: 10, expiresAt: 0 }];
-    render(<ControlToolbar {...props} />);
-    expect(screen.getByText("Clear All")).toBeInTheDocument();
-  });
-
-  it("does not show Clear All in AVOID when avoidList is empty", () => {
-    const props = defaultProps();
-    render(<ControlToolbar {...props} />);
-    expect(screen.queryByText("Clear All")).toBeNull();
-  });
-
-  it("calls onClearAvoids when Clear All clicked", () => {
-    const props = defaultProps();
-    props.avoidList = [{ talkgroupId: 10, expiresAt: 0 }];
-    render(<ControlToolbar {...props} />);
-    fireEvent.click(screen.getByText("Clear All"));
-    expect(props.onClearAvoids).toHaveBeenCalledOnce();
-  });
-
-  it("shows avoid count badge when avoidList is non-empty", () => {
-    const props = defaultProps();
-    props.avoidList = [
-      { talkgroupId: 10, expiresAt: 0 },
-      { talkgroupId: 20, expiresAt: 0 },
-    ];
-    render(<ControlToolbar {...props} />);
-    expect(screen.getByText("2")).toBeInTheDocument();
   });
 
   it("renders Download button", () => {

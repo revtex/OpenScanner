@@ -883,6 +883,28 @@ definitions:
       systemId:
         type: integer
     type: object
+  TGSelectionRequest:
+    properties:
+      avoidList:
+        items:
+          $ref: '#/definitions/internal_api.avoidTGEntry'
+        type: array
+      disabledTGs:
+        items:
+          type: integer
+        type: array
+    type: object
+  TGSelectionResponse:
+    properties:
+      avoidList:
+        items:
+          $ref: '#/definitions/internal_api.avoidTGEntry'
+        type: array
+      disabledTGs:
+        items:
+          type: integer
+        type: array
+    type: object
   Tag:
     properties:
       id:
@@ -1205,6 +1227,13 @@ definitions:
         type: string
       url:
         type: string
+    type: object
+  internal_api.avoidTGEntry:
+    properties:
+      expiresAt:
+        type: integer
+      talkgroupId:
+        type: integer
     type: object
 info:
   contact: {}
@@ -3378,6 +3407,67 @@ paths:
       security:
       - BearerAuth: []
       summary: Change password
+      tags:
+      - Auth
+  /auth/tg-selection:
+    get:
+      description: Return the authenticated user's disabled talkgroup IDs.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/TGSelectionResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get talkgroup selection
+      tags:
+      - Auth
+    put:
+      consumes:
+      - application/json
+      description: Save the authenticated user's disabled talkgroup IDs.
+      parameters:
+      - description: Disabled talkgroup IDs
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/TGSelectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              ok:
+                type: boolean
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update talkgroup selection
       tags:
       - Auth
   /bookmarks:

@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { api } from "@/app/api";
+import type { AvoidEntry } from "@/types";
 import type {
   SetupStatus,
   LoginResponse,
@@ -123,7 +124,28 @@ const authApi = api.injectEndpoints({
         body,
       }),
     }),
+    getTGSelection: builder.query<
+      { disabledTGs: number[]; avoidList?: AvoidEntry[] },
+      void
+    >({
+      query: () => "/auth/tg-selection",
+    }),
+    updateTGSelection: builder.mutation<
+      { ok: boolean },
+      { disabledTGs: number[]; avoidList: AvoidEntry[] }
+    >({
+      query: (body) => ({
+        url: "/auth/tg-selection",
+        method: "PUT",
+        body,
+      }),
+    }),
   }),
 });
 
-export const { usePostLoginMutation, useChangePasswordMutation } = authApi;
+export const {
+  usePostLoginMutation,
+  useChangePasswordMutation,
+  useGetTGSelectionQuery,
+  useUpdateTGSelectionMutation,
+} = authApi;

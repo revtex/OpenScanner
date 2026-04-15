@@ -180,15 +180,10 @@ describe("SearchPanel", () => {
   });
 
   describe("filter controls", () => {
-    it("system dropdown populated from config", () => {
+    it("system checkbox filters are populated from config", () => {
       renderPanel({ scanner: scannerState() });
-      const systemSelect = screen.getByDisplayValue("All Systems");
-      expect(systemSelect).toBeInTheDocument();
-      // The options include "All Systems" plus both systems
-      const options = systemSelect.querySelectorAll("option");
-      expect(options).toHaveLength(3); // All + 2 systems
-      expect(options[1].textContent).toBe("System Alpha");
-      expect(options[2].textContent).toBe("System Beta");
+      expect(screen.getByText("System Alpha")).toBeInTheDocument();
+      expect(screen.getByText("System Beta")).toBeInTheDocument();
     });
 
     it("sort dropdown has 'Newest first' and 'Oldest first' options", () => {
@@ -211,7 +206,7 @@ describe("SearchPanel", () => {
       fireEvent.click(screen.getByText("Reset filters"));
       const state = store.getState();
       expect(state.calls.sort).toBe("desc");
-      expect(state.calls.systemId).toBeUndefined();
+      expect(state.calls.systemIds).toEqual([]);
       expect(state.calls.page).toBe(1);
     });
   });
@@ -221,15 +216,18 @@ describe("SearchPanel", () => {
       renderPanel({
         scanner: scannerState(),
         calls: {
+          systemIds: [1],
+          talkgroupIds: [],
+          groupFilters: [],
+          tagFilters: [],
           sort: "desc",
           page: 1,
           limit: 25,
           bookmarkedOnly: true,
           downloadMode: false,
-          systemId: 1,
         },
       });
-      // systemId + bookmarkedOnly = 2 active filters
+      // systemIds + bookmarkedOnly = 2 active filters
       expect(screen.getByText("2")).toBeInTheDocument();
     });
   });

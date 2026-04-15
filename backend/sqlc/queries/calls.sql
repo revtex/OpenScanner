@@ -16,10 +16,10 @@ FROM calls c
 LEFT JOIN talkgroups tg ON tg.id = c.talkgroup_id
 LEFT JOIN transcriptions tr ON tr.call_id = c.id
 WHERE
-    (sqlc.narg('system_id')        IS NULL OR c.system_id    = sqlc.narg('system_id'))
-    AND (sqlc.narg('talkgroup_id') IS NULL OR c.talkgroup_id = sqlc.narg('talkgroup_id'))
-    AND (sqlc.narg('group_id')     IS NULL OR tg.group_id    = sqlc.narg('group_id'))
-    AND (sqlc.narg('tag_id')       IS NULL OR tg.tag_id      = sqlc.narg('tag_id'))
+    (sqlc.narg('system_ids_csv') IS NULL OR instr(',' || sqlc.narg('system_ids_csv') || ',', ',' || c.system_id || ',') > 0)
+    AND (sqlc.narg('talkgroup_ids_csv') IS NULL OR instr(',' || sqlc.narg('talkgroup_ids_csv') || ',', ',' || c.talkgroup_id || ',') > 0)
+    AND (sqlc.narg('group_ids_csv') IS NULL OR instr(',' || sqlc.narg('group_ids_csv') || ',', ',' || tg.group_id || ',') > 0)
+    AND (sqlc.narg('tag_ids_csv') IS NULL OR instr(',' || sqlc.narg('tag_ids_csv') || ',', ',' || tg.tag_id || ',') > 0)
     AND (sqlc.narg('date_from')    IS NULL OR c.date_time    >= sqlc.narg('date_from'))
     AND (sqlc.narg('date_to')      IS NULL OR c.date_time    <= sqlc.narg('date_to'))
     AND (sqlc.narg('bookmark_user_id') IS NULL OR EXISTS (
@@ -36,10 +36,10 @@ FROM calls c
 LEFT JOIN talkgroups tg ON tg.id = c.talkgroup_id
 LEFT JOIN transcriptions tr ON tr.call_id = c.id
 WHERE
-    (sqlc.narg('system_id')        IS NULL OR c.system_id    = sqlc.narg('system_id'))
-    AND (sqlc.narg('talkgroup_id') IS NULL OR c.talkgroup_id = sqlc.narg('talkgroup_id'))
-    AND (sqlc.narg('group_id')     IS NULL OR tg.group_id    = sqlc.narg('group_id'))
-    AND (sqlc.narg('tag_id')       IS NULL OR tg.tag_id      = sqlc.narg('tag_id'))
+    (sqlc.narg('system_ids_csv') IS NULL OR instr(',' || sqlc.narg('system_ids_csv') || ',', ',' || c.system_id || ',') > 0)
+    AND (sqlc.narg('talkgroup_ids_csv') IS NULL OR instr(',' || sqlc.narg('talkgroup_ids_csv') || ',', ',' || c.talkgroup_id || ',') > 0)
+    AND (sqlc.narg('group_ids_csv') IS NULL OR instr(',' || sqlc.narg('group_ids_csv') || ',', ',' || tg.group_id || ',') > 0)
+    AND (sqlc.narg('tag_ids_csv') IS NULL OR instr(',' || sqlc.narg('tag_ids_csv') || ',', ',' || tg.tag_id || ',') > 0)
     AND (sqlc.narg('date_from')    IS NULL OR c.date_time    >= sqlc.narg('date_from'))
     AND (sqlc.narg('date_to')      IS NULL OR c.date_time    <= sqlc.narg('date_to'))
     AND (sqlc.narg('bookmark_user_id') IS NULL OR EXISTS (
@@ -56,10 +56,10 @@ FROM calls c
 LEFT JOIN talkgroups tg ON tg.id = c.talkgroup_id
 LEFT JOIN transcriptions tr ON tr.call_id = c.id
 WHERE
-    (sqlc.narg('system_id')        IS NULL OR c.system_id    = sqlc.narg('system_id'))
-    AND (sqlc.narg('talkgroup_id') IS NULL OR c.talkgroup_id = sqlc.narg('talkgroup_id'))
-    AND (sqlc.narg('group_id')     IS NULL OR tg.group_id    = sqlc.narg('group_id'))
-    AND (sqlc.narg('tag_id')       IS NULL OR tg.tag_id      = sqlc.narg('tag_id'))
+    (sqlc.narg('system_ids_csv') IS NULL OR instr(',' || sqlc.narg('system_ids_csv') || ',', ',' || c.system_id || ',') > 0)
+    AND (sqlc.narg('talkgroup_ids_csv') IS NULL OR instr(',' || sqlc.narg('talkgroup_ids_csv') || ',', ',' || c.talkgroup_id || ',') > 0)
+    AND (sqlc.narg('group_ids_csv') IS NULL OR instr(',' || sqlc.narg('group_ids_csv') || ',', ',' || tg.group_id || ',') > 0)
+    AND (sqlc.narg('tag_ids_csv') IS NULL OR instr(',' || sqlc.narg('tag_ids_csv') || ',', ',' || tg.tag_id || ',') > 0)
     AND (sqlc.narg('date_from')    IS NULL OR c.date_time    >= sqlc.narg('date_from'))
     AND (sqlc.narg('date_to')      IS NULL OR c.date_time    <= sqlc.narg('date_to'))
     AND (sqlc.narg('bookmark_user_id') IS NULL OR EXISTS (

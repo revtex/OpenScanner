@@ -1,10 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
   callsSlice,
-  setSystemFilter,
-  setTalkgroupFilter,
-  setGroupFilter,
-  setTagFilter,
+  toggleSystemFilter,
+  toggleTalkgroupFilter,
+  toggleGroupFilter,
+  toggleTagFilter,
+  setSystemFilters,
+  setTalkgroupFilters,
+  setGroupFilters,
+  setTagFilters,
   setDateFrom,
   setDateTo,
   setSort,
@@ -19,66 +23,82 @@ import {
 const reducer = callsSlice.reducer;
 
 describe("callsSlice", () => {
-  describe("setSystemFilter", () => {
-    it("sets the systemId filter", () => {
-      const state = reducer(undefined, setSystemFilter(42));
-      expect(state.systemId).toBe(42);
+  describe("toggleSystemFilter / setSystemFilters", () => {
+    it("toggles system IDs", () => {
+      let state = reducer(undefined, toggleSystemFilter(42));
+      expect(state.systemIds).toEqual([42]);
+      state = reducer(state, toggleSystemFilter(42));
+      expect(state.systemIds).toEqual([]);
     });
 
-    it("clears talkgroupId when system changes", () => {
-      let state = reducer(undefined, setTalkgroupFilter(10));
-      state = reducer(state, setSystemFilter(42));
-      expect(state.talkgroupId).toBeUndefined();
+    it("sets system IDs in bulk", () => {
+      const state = reducer(undefined, setSystemFilters([1, 2, 3]));
+      expect(state.systemIds).toEqual([1, 2, 3]);
     });
 
     it("resets page to 1", () => {
       let state = reducer(undefined, setPage(5));
-      state = reducer(state, setSystemFilter(42));
+      state = reducer(state, toggleSystemFilter(42));
       expect(state.page).toBe(1);
-    });
-
-    it("clears systemId with undefined", () => {
-      let state = reducer(undefined, setSystemFilter(42));
-      state = reducer(state, setSystemFilter(undefined));
-      expect(state.systemId).toBeUndefined();
     });
   });
 
-  describe("setTalkgroupFilter", () => {
-    it("sets the talkgroupId filter", () => {
-      const state = reducer(undefined, setTalkgroupFilter(99));
-      expect(state.talkgroupId).toBe(99);
+  describe("toggleTalkgroupFilter / setTalkgroupFilters", () => {
+    it("toggles talkgroup IDs", () => {
+      let state = reducer(undefined, toggleTalkgroupFilter(99));
+      expect(state.talkgroupIds).toEqual([99]);
+      state = reducer(state, toggleTalkgroupFilter(99));
+      expect(state.talkgroupIds).toEqual([]);
+    });
+
+    it("sets talkgroup IDs in bulk", () => {
+      const state = reducer(undefined, setTalkgroupFilters([11, 22]));
+      expect(state.talkgroupIds).toEqual([11, 22]);
     });
 
     it("resets page to 1", () => {
       let state = reducer(undefined, setPage(3));
-      state = reducer(state, setTalkgroupFilter(99));
+      state = reducer(state, toggleTalkgroupFilter(99));
       expect(state.page).toBe(1);
     });
   });
 
-  describe("setGroupFilter", () => {
-    it("sets the group filter", () => {
-      const state = reducer(undefined, setGroupFilter("Police"));
-      expect(state.groupFilter).toBe("Police");
+  describe("toggleGroupFilter / setGroupFilters", () => {
+    it("toggles group filters", () => {
+      let state = reducer(undefined, toggleGroupFilter("Police"));
+      expect(state.groupFilters).toEqual(["Police"]);
+      state = reducer(state, toggleGroupFilter("Police"));
+      expect(state.groupFilters).toEqual([]);
+    });
+
+    it("sets group filters in bulk", () => {
+      const state = reducer(undefined, setGroupFilters(["Police", "Fire"]));
+      expect(state.groupFilters).toEqual(["Police", "Fire"]);
     });
 
     it("resets page to 1", () => {
       let state = reducer(undefined, setPage(4));
-      state = reducer(state, setGroupFilter("Fire"));
+      state = reducer(state, toggleGroupFilter("Fire"));
       expect(state.page).toBe(1);
     });
   });
 
-  describe("setTagFilter", () => {
-    it("sets the tag filter", () => {
-      const state = reducer(undefined, setTagFilter("Law"));
-      expect(state.tagFilter).toBe("Law");
+  describe("toggleTagFilter / setTagFilters", () => {
+    it("toggles tag filters", () => {
+      let state = reducer(undefined, toggleTagFilter("Law"));
+      expect(state.tagFilters).toEqual(["Law"]);
+      state = reducer(state, toggleTagFilter("Law"));
+      expect(state.tagFilters).toEqual([]);
+    });
+
+    it("sets tag filters in bulk", () => {
+      const state = reducer(undefined, setTagFilters(["Law", "EMS"]));
+      expect(state.tagFilters).toEqual(["Law", "EMS"]);
     });
 
     it("resets page to 1", () => {
       let state = reducer(undefined, setPage(2));
-      state = reducer(state, setTagFilter("EMS"));
+      state = reducer(state, toggleTagFilter("EMS"));
       expect(state.page).toBe(1);
     });
   });
@@ -211,8 +231,10 @@ describe("callsSlice", () => {
 
   describe("resetFilters", () => {
     it("resets all filters to initial state", () => {
-      let state = reducer(undefined, setSystemFilter(1));
-      state = reducer(state, setTalkgroupFilter(2));
+      let state = reducer(undefined, toggleSystemFilter(1));
+      state = reducer(state, toggleTalkgroupFilter(2));
+      state = reducer(state, toggleGroupFilter("Police"));
+      state = reducer(state, toggleTagFilter("Law"));
       state = reducer(state, setDateFrom("2025-01-01"));
       state = reducer(state, setDateTo("2025-12-31"));
       state = reducer(state, setSort("asc"));
@@ -221,8 +243,8 @@ describe("callsSlice", () => {
       state = reducer(state, setTranscript("test"));
       state = reducer(state, resetFilters());
 
-      expect(state.systemId).toBeUndefined();
-      expect(state.talkgroupId).toBeUndefined();
+      expect(state.systemIds).toEqual([]);
+      expect(state.talkgroupIds).toEqual([]);
       expect(state.dateFrom).toBeUndefined();
       expect(state.dateTo).toBeUndefined();
       expect(state.sort).toBe("desc");
@@ -231,8 +253,8 @@ describe("callsSlice", () => {
       expect(state.bookmarkedOnly).toBe(false);
       expect(state.downloadMode).toBe(false);
       expect(state.transcript).toBeUndefined();
-      expect(state.groupFilter).toBeUndefined();
-      expect(state.tagFilter).toBeUndefined();
+      expect(state.groupFilters).toEqual([]);
+      expect(state.tagFilters).toEqual([]);
     });
   });
 });

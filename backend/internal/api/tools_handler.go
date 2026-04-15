@@ -102,12 +102,16 @@ func (h *AdminHandler) GetMissingAudioCalls(c *gin.Context) {
 	}
 
 	calls, err := h.queries.ListCalls(ctx, db.ListCallsParams{
-		SystemID:    nil,
-		TalkgroupID: nil,
-		DateFrom:    nil,
-		DateTo:      nil,
-		PageOffset:  sql.NullInt64{Int64: offset, Valid: true},
-		PageSize:    sql.NullInt64{Int64: limit, Valid: true},
+		SystemIdsCsv:    nil,
+		TalkgroupIdsCsv: nil,
+		GroupIdsCsv:     nil,
+		TagIdsCsv:       nil,
+		DateFrom:        nil,
+		DateTo:          nil,
+		BookmarkUserID:  nil,
+		Transcript:      nil,
+		PageOffset:      sql.NullInt64{Int64: offset, Valid: true},
+		PageSize:        sql.NullInt64{Int64: limit, Valid: true},
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list calls"})

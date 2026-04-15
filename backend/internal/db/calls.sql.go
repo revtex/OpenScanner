@@ -27,10 +27,10 @@ FROM calls c
 LEFT JOIN talkgroups tg ON tg.id = c.talkgroup_id
 LEFT JOIN transcriptions tr ON tr.call_id = c.id
 WHERE
-    (?1        IS NULL OR c.system_id    = ?1)
-    AND (?2 IS NULL OR c.talkgroup_id = ?2)
-    AND (?3     IS NULL OR tg.group_id    = ?3)
-    AND (?4       IS NULL OR tg.tag_id      = ?4)
+    (?1 IS NULL OR instr(',' || ?1 || ',', ',' || c.system_id || ',') > 0)
+    AND (?2 IS NULL OR instr(',' || ?2 || ',', ',' || c.talkgroup_id || ',') > 0)
+    AND (?3 IS NULL OR instr(',' || ?3 || ',', ',' || tg.group_id || ',') > 0)
+    AND (?4 IS NULL OR instr(',' || ?4 || ',', ',' || tg.tag_id || ',') > 0)
     AND (?5    IS NULL OR c.date_time    >= ?5)
     AND (?6      IS NULL OR c.date_time    <= ?6)
     AND (?7 IS NULL OR EXISTS (
@@ -40,22 +40,22 @@ WHERE
 `
 
 type CountCallsFilteredParams struct {
-	SystemID       interface{} `db:"system_id" json:"system_id"`
-	TalkgroupID    interface{} `db:"talkgroup_id" json:"talkgroup_id"`
-	GroupID        interface{} `db:"group_id" json:"group_id"`
-	TagID          interface{} `db:"tag_id" json:"tag_id"`
-	DateFrom       interface{} `db:"date_from" json:"date_from"`
-	DateTo         interface{} `db:"date_to" json:"date_to"`
-	BookmarkUserID interface{} `db:"bookmark_user_id" json:"bookmark_user_id"`
-	Transcript     interface{} `db:"transcript" json:"transcript"`
+	SystemIdsCsv    interface{} `db:"system_ids_csv" json:"system_ids_csv"`
+	TalkgroupIdsCsv interface{} `db:"talkgroup_ids_csv" json:"talkgroup_ids_csv"`
+	GroupIdsCsv     interface{} `db:"group_ids_csv" json:"group_ids_csv"`
+	TagIdsCsv       interface{} `db:"tag_ids_csv" json:"tag_ids_csv"`
+	DateFrom        interface{} `db:"date_from" json:"date_from"`
+	DateTo          interface{} `db:"date_to" json:"date_to"`
+	BookmarkUserID  interface{} `db:"bookmark_user_id" json:"bookmark_user_id"`
+	Transcript      interface{} `db:"transcript" json:"transcript"`
 }
 
 func (q *Queries) CountCallsFiltered(ctx context.Context, arg CountCallsFilteredParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countCallsFiltered,
-		arg.SystemID,
-		arg.TalkgroupID,
-		arg.GroupID,
-		arg.TagID,
+		arg.SystemIdsCsv,
+		arg.TalkgroupIdsCsv,
+		arg.GroupIdsCsv,
+		arg.TagIdsCsv,
 		arg.DateFrom,
 		arg.DateTo,
 		arg.BookmarkUserID,
@@ -334,10 +334,10 @@ FROM calls c
 LEFT JOIN talkgroups tg ON tg.id = c.talkgroup_id
 LEFT JOIN transcriptions tr ON tr.call_id = c.id
 WHERE
-    (?1        IS NULL OR c.system_id    = ?1)
-    AND (?2 IS NULL OR c.talkgroup_id = ?2)
-    AND (?3     IS NULL OR tg.group_id    = ?3)
-    AND (?4       IS NULL OR tg.tag_id      = ?4)
+    (?1 IS NULL OR instr(',' || ?1 || ',', ',' || c.system_id || ',') > 0)
+    AND (?2 IS NULL OR instr(',' || ?2 || ',', ',' || c.talkgroup_id || ',') > 0)
+    AND (?3 IS NULL OR instr(',' || ?3 || ',', ',' || tg.group_id || ',') > 0)
+    AND (?4 IS NULL OR instr(',' || ?4 || ',', ',' || tg.tag_id || ',') > 0)
     AND (?5    IS NULL OR c.date_time    >= ?5)
     AND (?6      IS NULL OR c.date_time    <= ?6)
     AND (?7 IS NULL OR EXISTS (
@@ -350,24 +350,24 @@ OFFSET ?9
 `
 
 type ListCallsParams struct {
-	SystemID       interface{}   `db:"system_id" json:"system_id"`
-	TalkgroupID    interface{}   `db:"talkgroup_id" json:"talkgroup_id"`
-	GroupID        interface{}   `db:"group_id" json:"group_id"`
-	TagID          interface{}   `db:"tag_id" json:"tag_id"`
-	DateFrom       interface{}   `db:"date_from" json:"date_from"`
-	DateTo         interface{}   `db:"date_to" json:"date_to"`
-	BookmarkUserID interface{}   `db:"bookmark_user_id" json:"bookmark_user_id"`
-	Transcript     interface{}   `db:"transcript" json:"transcript"`
-	PageOffset     sql.NullInt64 `db:"page_offset" json:"page_offset"`
-	PageSize       sql.NullInt64 `db:"page_size" json:"page_size"`
+	SystemIdsCsv    interface{}   `db:"system_ids_csv" json:"system_ids_csv"`
+	TalkgroupIdsCsv interface{}   `db:"talkgroup_ids_csv" json:"talkgroup_ids_csv"`
+	GroupIdsCsv     interface{}   `db:"group_ids_csv" json:"group_ids_csv"`
+	TagIdsCsv       interface{}   `db:"tag_ids_csv" json:"tag_ids_csv"`
+	DateFrom        interface{}   `db:"date_from" json:"date_from"`
+	DateTo          interface{}   `db:"date_to" json:"date_to"`
+	BookmarkUserID  interface{}   `db:"bookmark_user_id" json:"bookmark_user_id"`
+	Transcript      interface{}   `db:"transcript" json:"transcript"`
+	PageOffset      sql.NullInt64 `db:"page_offset" json:"page_offset"`
+	PageSize        sql.NullInt64 `db:"page_size" json:"page_size"`
 }
 
 func (q *Queries) ListCalls(ctx context.Context, arg ListCallsParams) ([]Call, error) {
 	rows, err := q.db.QueryContext(ctx, listCalls,
-		arg.SystemID,
-		arg.TalkgroupID,
-		arg.GroupID,
-		arg.TagID,
+		arg.SystemIdsCsv,
+		arg.TalkgroupIdsCsv,
+		arg.GroupIdsCsv,
+		arg.TagIdsCsv,
 		arg.DateFrom,
 		arg.DateTo,
 		arg.BookmarkUserID,
@@ -422,10 +422,10 @@ FROM calls c
 LEFT JOIN talkgroups tg ON tg.id = c.talkgroup_id
 LEFT JOIN transcriptions tr ON tr.call_id = c.id
 WHERE
-    (?1        IS NULL OR c.system_id    = ?1)
-    AND (?2 IS NULL OR c.talkgroup_id = ?2)
-    AND (?3     IS NULL OR tg.group_id    = ?3)
-    AND (?4       IS NULL OR tg.tag_id      = ?4)
+    (?1 IS NULL OR instr(',' || ?1 || ',', ',' || c.system_id || ',') > 0)
+    AND (?2 IS NULL OR instr(',' || ?2 || ',', ',' || c.talkgroup_id || ',') > 0)
+    AND (?3 IS NULL OR instr(',' || ?3 || ',', ',' || tg.group_id || ',') > 0)
+    AND (?4 IS NULL OR instr(',' || ?4 || ',', ',' || tg.tag_id || ',') > 0)
     AND (?5    IS NULL OR c.date_time    >= ?5)
     AND (?6      IS NULL OR c.date_time    <= ?6)
     AND (?7 IS NULL OR EXISTS (
@@ -438,24 +438,24 @@ OFFSET ?9
 `
 
 type ListCallsAscParams struct {
-	SystemID       interface{}   `db:"system_id" json:"system_id"`
-	TalkgroupID    interface{}   `db:"talkgroup_id" json:"talkgroup_id"`
-	GroupID        interface{}   `db:"group_id" json:"group_id"`
-	TagID          interface{}   `db:"tag_id" json:"tag_id"`
-	DateFrom       interface{}   `db:"date_from" json:"date_from"`
-	DateTo         interface{}   `db:"date_to" json:"date_to"`
-	BookmarkUserID interface{}   `db:"bookmark_user_id" json:"bookmark_user_id"`
-	Transcript     interface{}   `db:"transcript" json:"transcript"`
-	PageOffset     sql.NullInt64 `db:"page_offset" json:"page_offset"`
-	PageSize       sql.NullInt64 `db:"page_size" json:"page_size"`
+	SystemIdsCsv    interface{}   `db:"system_ids_csv" json:"system_ids_csv"`
+	TalkgroupIdsCsv interface{}   `db:"talkgroup_ids_csv" json:"talkgroup_ids_csv"`
+	GroupIdsCsv     interface{}   `db:"group_ids_csv" json:"group_ids_csv"`
+	TagIdsCsv       interface{}   `db:"tag_ids_csv" json:"tag_ids_csv"`
+	DateFrom        interface{}   `db:"date_from" json:"date_from"`
+	DateTo          interface{}   `db:"date_to" json:"date_to"`
+	BookmarkUserID  interface{}   `db:"bookmark_user_id" json:"bookmark_user_id"`
+	Transcript      interface{}   `db:"transcript" json:"transcript"`
+	PageOffset      sql.NullInt64 `db:"page_offset" json:"page_offset"`
+	PageSize        sql.NullInt64 `db:"page_size" json:"page_size"`
 }
 
 func (q *Queries) ListCallsAsc(ctx context.Context, arg ListCallsAscParams) ([]Call, error) {
 	rows, err := q.db.QueryContext(ctx, listCallsAsc,
-		arg.SystemID,
-		arg.TalkgroupID,
-		arg.GroupID,
-		arg.TagID,
+		arg.SystemIdsCsv,
+		arg.TalkgroupIdsCsv,
+		arg.GroupIdsCsv,
+		arg.TagIdsCsv,
 		arg.DateFrom,
 		arg.DateTo,
 		arg.BookmarkUserID,

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   X,
@@ -13,11 +13,16 @@ import {
 import { useAppSelector, useAppDispatch } from "@/app/store";
 import {
   useSearchCallsQuery,
+  type CallSearchParams,
   type CallSearchResult,
-  setSystemFilter,
-  setTalkgroupFilter,
-  setGroupFilter,
-  setTagFilter,
+  toggleSystemFilter,
+  toggleTalkgroupFilter,
+  toggleGroupFilter,
+  toggleTagFilter,
+  setSystemFilters,
+  setTalkgroupFilters,
+  setGroupFilters,
+  setTagFilters,
   setDateFrom,
   setDateTo,
   setSort,
@@ -62,40 +67,195 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
 
   const systems = useMemo(() => config?.systems ?? [], [config]);
 
-  // Derive talkgroups filtered by selected system
-  const talkgroups = useMemo(() => {
-    if (filters.systemId) {
-      const sys = systems.find((s) => s.id === filters.systemId);
-      return sys?.talkgroups ?? [];
-    }
-    return systems.flatMap((s) => s.talkgroups ?? []);
-  }, [systems, filters.systemId]);
+  const allTalkgroups = useMemo(() => {
+    return systems.flatMap((sys) =>
+      (sys.talkgroups ?? []).map((tg) => ({
+        ...tg,
+        systemId: sys.id,
+        systemLabel: sys.label,
+      })),
+    );
+  }, [systems]);
 
-  // Derive unique groups
-  const groups = useMemo(() => {
-    const set = new Set<string>();
-    for (const tg of talkgroups) {
-      if (tg.group) set.add(tg.group);
-    }
-    return [...set].sort();
-  }, [talkgroups]);
+  const filterRows = useMemo(
+    () =>
+      allTalkgroups.map((tg) => ({
+        systemId: tg.systemId,
+        talkgroupId: tg.id,
+        group: tg.group ?? "",
+        tag: tg.tag ?? "",
+      })),
+    [allTalkgroups],
+  );
 
-  // Derive unique tags
-  const tags = useMemo(() => {
-    const set = new Set<string>();
-    for (const tg of talkgroups) {
-      if (tg.tag) set.add(tg.tag);
+  const selectedSystemIds = filters.systemIds;
+  const selectedTalkgroupIds = filters.talkgroupIds;
+  const selectedGroups = filters.groupFilters;
+  const selectedTags = filters.tagFilters;
+
+  const matchWith = useCallback(
+    (
+      row: {
+        systemId: number;
+        talkgroupId: number;
+        group: string;
+        tag: string;
+      },
+      opts: {
+        systemIds?: number[];
+        talkgroupIds?: number[];
+        groups?: string[];
+        tags?: string[];
+      },
+    ) => {
+      if (opts.systemIds && opts.systemIds.length > 0) {
+        if (!opts.systemIds.includes(row.systemId)) return false;
+      }
+      if (opts.talkgroupIds && opts.talkgroupIds.length > 0) {
+        if (!opts.talkgroupIds.includes(row.talkgroupId)) return false;
+      }
+      if (opts.groups && opts.groups.length > 0) {
+        if (!opts.groups.includes(row.group)) return false;
+      }
+      if (opts.tags && opts.tags.length > 0) {
+        if (!opts.tags.includes(row.tag)) return false;
+      }
+      return true;
+    },
+    [],
+  );
+
+  const availableSystemIds = useMemo(() => {
+    const out = new Set<number>();
+    for (const row of filterRows) {
+      if (
+        matchWith(row, {
+          talkgroupIds: selectedTalkgroupIds,
+          groups: selectedGroups,
+          tags: selectedTags,
+        })
+      ) {
+        out.add(row.systemId);
+      }
     }
-    return [...set].sort();
-  }, [talkgroups]);
+    return out;
+  }, [
+    filterRows,
+    matchWith,
+    selectedTalkgroupIds,
+    selectedGroups,
+    selectedTags,
+  ]);
+
+  const availableTalkgroupIds = useMemo(() => {
+    const out = new Set<number>();
+    for (const row of filterRows) {
+      if (
+        matchWith(row, {
+          systemIds: selectedSystemIds,
+          groups: selectedGroups,
+          tags: selectedTags,
+        })
+      ) {
+        out.add(row.talkgroupId);
+      }
+    }
+    return out;
+  }, [filterRows, matchWith, selectedSystemIds, selectedGroups, selectedTags]);
+
+  const availableGroups = useMemo(() => {
+    const out = new Set<string>();
+    for (const row of filterRows) {
+      if (
+        matchWith(row, {
+          systemIds: selectedSystemIds,
+          talkgroupIds: selectedTalkgroupIds,
+          tags: selectedTags,
+        })
+      ) {
+        if (row.group) out.add(row.group);
+      }
+    }
+    return [...out].sort((a, b) => a.localeCompare(b));
+  }, [
+    filterRows,
+    matchWith,
+    selectedSystemIds,
+    selectedTalkgroupIds,
+    selectedTags,
+  ]);
+
+  const availableTags = useMemo(() => {
+    const out = new Set<string>();
+    for (const row of filterRows) {
+      if (
+        matchWith(row, {
+          systemIds: selectedSystemIds,
+          talkgroupIds: selectedTalkgroupIds,
+          groups: selectedGroups,
+        })
+      ) {
+        if (row.tag) out.add(row.tag);
+      }
+    }
+    return [...out].sort((a, b) => a.localeCompare(b));
+  }, [
+    filterRows,
+    matchWith,
+    selectedSystemIds,
+    selectedTalkgroupIds,
+    selectedGroups,
+  ]);
+
+  const availableSystems = useMemo(
+    () => systems.filter((sys) => availableSystemIds.has(sys.id)),
+    [systems, availableSystemIds],
+  );
+  const availableTalkgroups = useMemo(
+    () => allTalkgroups.filter((tg) => availableTalkgroupIds.has(tg.id)),
+    [allTalkgroups, availableTalkgroupIds],
+  );
+
+  // Keep selected filters valid when options are narrowed by other selections.
+  useEffect(() => {
+    const cleaned = selectedSystemIds.filter((id) =>
+      availableSystemIds.has(id),
+    );
+    if (cleaned.length !== selectedSystemIds.length) {
+      dispatch(setSystemFilters(cleaned));
+    }
+  }, [dispatch, selectedSystemIds, availableSystemIds]);
+
+  useEffect(() => {
+    const cleaned = selectedTalkgroupIds.filter((id) =>
+      availableTalkgroupIds.has(id),
+    );
+    if (cleaned.length !== selectedTalkgroupIds.length) {
+      dispatch(setTalkgroupFilters(cleaned));
+    }
+  }, [dispatch, selectedTalkgroupIds, availableTalkgroupIds]);
+
+  useEffect(() => {
+    const cleaned = selectedGroups.filter((g) => availableGroups.includes(g));
+    if (cleaned.length !== selectedGroups.length) {
+      dispatch(setGroupFilters(cleaned));
+    }
+  }, [dispatch, selectedGroups, availableGroups]);
+
+  useEffect(() => {
+    const cleaned = selectedTags.filter((t) => availableTags.includes(t));
+    if (cleaned.length !== selectedTags.length) {
+      dispatch(setTagFilters(cleaned));
+    }
+  }, [dispatch, selectedTags, availableTags]);
 
   // Build query params
   const queryParams = useMemo(() => {
-    const params: Record<string, number | string | boolean | undefined> = {
-      systemId: filters.systemId,
-      talkgroupId: filters.talkgroupId,
-      groupFilter: filters.groupFilter,
-      tagFilter: filters.tagFilter,
+    const params: CallSearchParams = {
+      systemIds: filters.systemIds,
+      talkgroupIds: filters.talkgroupIds,
+      groupFilters: filters.groupFilters,
+      tagFilters: filters.tagFilters,
       transcript: filters.transcript,
       page: filters.page,
       limit: filters.limit,
@@ -135,10 +295,10 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   // Count active filters
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    if (filters.systemId) count++;
-    if (filters.talkgroupId) count++;
-    if (filters.groupFilter) count++;
-    if (filters.tagFilter) count++;
+    if (filters.systemIds.length > 0) count++;
+    if (filters.talkgroupIds.length > 0) count++;
+    if (filters.groupFilters.length > 0) count++;
+    if (filters.tagFilters.length > 0) count++;
     if (filters.dateFrom) count++;
     if (filters.dateTo) count++;
     if (filters.bookmarkedOnly) count++;
@@ -439,88 +599,126 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
               </label>
 
               {/* System */}
-              <label className="flex flex-col w-full">
-                <span className="text-xs">System</span>
-                <select
-                  className="select select-sm w-full"
-                  value={filters.systemId ?? ""}
-                  onChange={(e) =>
-                    dispatch(
-                      setSystemFilter(
-                        e.target.value ? Number(e.target.value) : undefined,
-                      ),
-                    )
-                  }
-                >
-                  <option value="">All Systems</option>
-                  {systems.map((sys) => (
-                    <option key={sys.id} value={sys.id}>
-                      {sys.label}
-                    </option>
+              <div className="flex flex-col w-full gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">System</span>
+                  <button
+                    className="btn btn-ghost btn-xs"
+                    onClick={() => dispatch(setSystemFilters([]))}
+                    disabled={filters.systemIds.length === 0}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="max-h-28 overflow-y-auto rounded border border-base-300 p-2 space-y-1">
+                  {availableSystems.map((sys) => (
+                    <label
+                      key={sys.id}
+                      className="label cursor-pointer justify-start gap-2 py-0.5"
+                    >
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-xs"
+                        checked={filters.systemIds.includes(sys.id)}
+                        onChange={() => dispatch(toggleSystemFilter(sys.id))}
+                      />
+                      <span className="label-text text-xs">{sys.label}</span>
+                    </label>
                   ))}
-                </select>
-              </label>
+                </div>
+              </div>
 
               {/* Talkgroup */}
-              <label className="flex flex-col w-full">
-                <span className="text-xs">Talkgroup</span>
-                <select
-                  className="select select-sm w-full"
-                  value={filters.talkgroupId ?? ""}
-                  onChange={(e) =>
-                    dispatch(
-                      setTalkgroupFilter(
-                        e.target.value ? Number(e.target.value) : undefined,
-                      ),
-                    )
-                  }
-                >
-                  <option value="">All Talkgroups</option>
-                  {talkgroups.map((tg) => (
-                    <option key={tg.id} value={tg.id}>
-                      {tg.label} — {tg.name}
-                    </option>
+              <div className="flex flex-col w-full gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">Talkgroup</span>
+                  <button
+                    className="btn btn-ghost btn-xs"
+                    onClick={() => dispatch(setTalkgroupFilters([]))}
+                    disabled={filters.talkgroupIds.length === 0}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="max-h-36 overflow-y-auto rounded border border-base-300 p-2 space-y-1">
+                  {availableTalkgroups.map((tg) => (
+                    <label
+                      key={tg.id}
+                      className="label cursor-pointer justify-start gap-2 py-0.5"
+                    >
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-xs"
+                        checked={filters.talkgroupIds.includes(tg.id)}
+                        onChange={() => dispatch(toggleTalkgroupFilter(tg.id))}
+                      />
+                      <span className="label-text text-xs truncate">
+                        {tg.label} — {tg.name}
+                      </span>
+                    </label>
                   ))}
-                </select>
-              </label>
+                </div>
+              </div>
 
               {/* Group */}
-              <label className="flex flex-col w-full">
-                <span className="text-xs">Group</span>
-                <select
-                  className="select select-sm w-full"
-                  value={filters.groupFilter ?? ""}
-                  onChange={(e) =>
-                    dispatch(setGroupFilter(e.target.value || undefined))
-                  }
-                >
-                  <option value="">All Groups</option>
-                  {groups.map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
+              <div className="flex flex-col w-full gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">Group</span>
+                  <button
+                    className="btn btn-ghost btn-xs"
+                    onClick={() => dispatch(setGroupFilters([]))}
+                    disabled={filters.groupFilters.length === 0}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="max-h-28 overflow-y-auto rounded border border-base-300 p-2 space-y-1">
+                  {availableGroups.map((g) => (
+                    <label
+                      key={g}
+                      className="label cursor-pointer justify-start gap-2 py-0.5"
+                    >
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-xs"
+                        checked={filters.groupFilters.includes(g)}
+                        onChange={() => dispatch(toggleGroupFilter(g))}
+                      />
+                      <span className="label-text text-xs">{g}</span>
+                    </label>
                   ))}
-                </select>
-              </label>
+                </div>
+              </div>
 
               {/* Tag */}
-              <label className="flex flex-col w-full">
-                <span className="text-xs">Tag</span>
-                <select
-                  className="select select-sm w-full"
-                  value={filters.tagFilter ?? ""}
-                  onChange={(e) =>
-                    dispatch(setTagFilter(e.target.value || undefined))
-                  }
-                >
-                  <option value="">All Tags</option>
-                  {tags.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
+              <div className="flex flex-col w-full gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">Tag</span>
+                  <button
+                    className="btn btn-ghost btn-xs"
+                    onClick={() => dispatch(setTagFilters([]))}
+                    disabled={filters.tagFilters.length === 0}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="max-h-28 overflow-y-auto rounded border border-base-300 p-2 space-y-1">
+                  {availableTags.map((t) => (
+                    <label
+                      key={t}
+                      className="label cursor-pointer justify-start gap-2 py-0.5"
+                    >
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-xs"
+                        checked={filters.tagFilters.includes(t)}
+                        onChange={() => dispatch(toggleTagFilter(t))}
+                      />
+                      <span className="label-text text-xs">{t}</span>
+                    </label>
                   ))}
-                </select>
-              </label>
+                </div>
+              </div>
 
               {/* Date from */}
               <label className="flex flex-col w-full">

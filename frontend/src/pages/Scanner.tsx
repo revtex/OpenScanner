@@ -116,8 +116,7 @@ export default function Scanner() {
         volume={scanner.volume}
         heldSystem={scanner.heldSystem}
         heldTG={scanner.heldTG}
-        avoidList={scanner.avoidList}
-        currentCallTgId={scanner.currentCall?.talkgroupId}
+        currentCallTgId={scanner.currentCall?.talkgroup}
         currentCallSystemId={scanner.currentCall?.system}
         onTogglePause={scanner.togglePause}
         onToggleLive={scanner.toggleLive}
@@ -128,7 +127,6 @@ export default function Scanner() {
         onHoldSystem={scanner.holdSystem}
         onHoldTG={scanner.holdTG}
         onAddAvoid={scanner.addAvoid}
-        onClearAvoids={scanner.clearAvoids}
         onToggleSelectTG={handleToggleSelectTG}
         onToggleSearch={handleToggleSearch}
         onToggleBookmarks={

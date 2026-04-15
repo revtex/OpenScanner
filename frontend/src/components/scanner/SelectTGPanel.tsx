@@ -9,8 +9,16 @@ import {
   setTGsByGroup,
   setTGsByTag,
   restoreTGSelection,
+  restoreFromDisabledTGs,
+  restoreAvoidList,
+  removeAvoid,
 } from "@/app/slices/scannerSlice";
-import type { TalkgroupConfig } from "@/types";
+import { selectToken } from "@/app/slices/authSlice";
+import {
+  useGetTGSelectionQuery,
+  useUpdateTGSelectionMutation,
+} from "@/app/slices/authSlice";
+import type { TalkgroupConfig, AvoidEntry } from "@/types";
 
 interface SelectTGPanelProps {
   isOpen: boolean;
@@ -23,12 +31,22 @@ function storageKey(instanceId: string): string {
   return `openscanner-tg-selection-${instanceId}`;
 }
 
+function formatCountdown(expiresAt: number, now: number): string {
+  const remaining = Math.max(0, Math.ceil((expiresAt - now) / 1000));
+  const m = Math.floor(remaining / 60);
+  const s = remaining % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 // ---------- Section: a collapsible accordion row ----------
 
 interface SectionProps {
   label: string;
   talkgroups: TalkgroupConfig[];
   tgSelection: Record<number, boolean>;
+  avoidMap: Map<number, AvoidEntry>;
+  heldTGs: Set<number>;
+  now: number;
   expanded: boolean;
   onToggleExpand: () => void;
   onToggleAll: (enabled: boolean) => void;
@@ -40,18 +58,25 @@ function Section({
   label,
   talkgroups,
   tgSelection,
+  avoidMap,
+  heldTGs,
+  now,
   expanded,
   onToggleExpand,
   onToggleAll,
   onToggleTG,
   secondaryLabels,
 }: SectionProps) {
-  const activeCount = talkgroups.filter(
-    (tg) => tgSelection[tg.id] !== false,
-  ).length;
+  // Count effective state: a TG is "off" if deselected OR avoided
+  const effectiveActiveCount = talkgroups.filter((tg) => {
+    if (tgSelection[tg.id] === false) return false;
+    const avoid = avoidMap.get(tg.id);
+    if (avoid && (avoid.expiresAt === 0 || avoid.expiresAt > now)) return false;
+    return true;
+  }).length;
   const total = talkgroups.length;
-  const allOn = activeCount === total;
-  const allOff = activeCount === 0;
+  const allOn = effectiveActiveCount === total;
+  const allOff = effectiveActiveCount === 0;
 
   return (
     <div className="border-b border-base-300">
@@ -82,19 +107,13 @@ function Section({
           onClick={onToggleExpand}
         >
           {expanded ? (
-            <ChevronDown
-              size={16}
-              className="shrink-0 text-base-content/50"
-            />
+            <ChevronDown size={16} className="shrink-0 text-base-content/50" />
           ) : (
-            <ChevronRight
-              size={16}
-              className="shrink-0 text-base-content/50"
-            />
+            <ChevronRight size={16} className="shrink-0 text-base-content/50" />
           )}
           <span className="flex-1 font-medium text-sm truncate">{label}</span>
           <span className="badge badge-sm badge-ghost">
-            {activeCount}/{total}
+            {effectiveActiveCount}/{total}
           </span>
         </button>
       </div>
@@ -106,11 +125,16 @@ function Section({
             {talkgroups.map((tg) => {
               const enabled = tgSelection[tg.id] !== false;
               const secondary = secondaryLabels?.[tg.id];
+              const avoid = avoidMap.get(tg.id);
+              const isAvoided =
+                avoid !== undefined &&
+                (avoid.expiresAt === 0 || avoid.expiresAt > now);
+              const isHeld = heldTGs.has(tg.id);
               return (
                 <label
                   key={tg.id}
                   className={`flex items-center gap-2 rounded px-2 py-1.5 cursor-pointer transition-colors ${
-                    enabled
+                    enabled && !isAvoided
                       ? "bg-primary/10 hover:bg-primary/20"
                       : "hover:bg-base-300"
                   }`}
@@ -130,7 +154,18 @@ function Section({
                   <span className="text-sm truncate flex-1">
                     {tg.label || tg.name}
                   </span>
-                  {secondary && (
+                  {isHeld && (
+                    <span className="badge badge-xs badge-secondary">HELD</span>
+                  )}
+                  {isAvoided && avoid.expiresAt === 0 && (
+                    <span className="badge badge-xs badge-error">AVOID</span>
+                  )}
+                  {isAvoided && avoid.expiresAt > 0 && (
+                    <span className="badge badge-xs badge-warning">
+                      AVOID {formatCountdown(avoid.expiresAt, now)}
+                    </span>
+                  )}
+                  {secondary && !isAvoided && !isHeld && (
                     <span className="text-[11px] text-base-content/40 truncate max-w-24">
                       {secondary}
                     </span>
@@ -154,12 +189,16 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
 
   const config = useAppSelector((s) => s.scanner.config);
   const tgSelection = useAppSelector((s) => s.scanner.tgSelection);
+  const avoidList = useAppSelector((s) => s.scanner.avoidList);
+  const heldTG = useAppSelector((s) => s.scanner.heldTG);
+  const heldSystem = useAppSelector((s) => s.scanner.heldSystem);
 
   const [activeTab, setActiveTab] = useState<TabId>("groups");
   const [search, setSearch] = useState("");
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
   >({});
+  const [now, setNow] = useState(Date.now());
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -167,6 +206,60 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
   const allTalkgroups = useMemo(
     () => systems.flatMap((s) => s.talkgroups ?? []),
     [systems],
+  );
+
+  // Avoid lookup: tgId → AvoidEntry
+  const avoidMap = useMemo(() => {
+    const map = new Map<number, AvoidEntry>();
+    for (const entry of avoidList) {
+      map.set(entry.talkgroupId, entry);
+    }
+    return map;
+  }, [avoidList]);
+
+  // Held TGs set — includes all TGs in a held system
+  const heldTGs = useMemo(() => {
+    const set = new Set<number>();
+    if (heldTG !== null) set.add(heldTG);
+    if (heldSystem !== null) {
+      const sys = systems.find((s) => s.id === heldSystem);
+      if (sys) {
+        for (const tg of sys.talkgroups) set.add(tg.id);
+      }
+    }
+    return set;
+  }, [heldTG, heldSystem, systems]);
+
+  // Has any timed avoids? Drive 1-second timer only when needed + panel open
+  const hasTimedAvoids = avoidList.some((a) => a.expiresAt > 0);
+  useEffect(() => {
+    if (!isOpen || !hasTimedAvoids) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [isOpen, hasTimedAvoids]);
+
+  // Toggle handler: if TG has an active avoid, clicking clears the avoid
+  // (and re-enables in tgSelection if it was a permanent avoid).
+  // Otherwise, normal toggle behavior.
+  const handleToggleTG = useCallback(
+    (id: number) => {
+      const avoid = avoidMap.get(id);
+      const isAvoided =
+        avoid !== undefined &&
+        (avoid.expiresAt === 0 || avoid.expiresAt > Date.now());
+
+      if (isAvoided) {
+        // Clear the avoid entry
+        dispatch(removeAvoid(id));
+        // If permanent avoid also turned off tgSelection, re-enable it
+        if (tgSelection[id] === false) {
+          dispatch(toggleTG(id));
+        }
+      } else {
+        dispatch(toggleTG(id));
+      }
+    },
+    [dispatch, tgSelection, avoidMap],
   );
 
   // Build lookups for secondary labels
@@ -253,31 +346,89 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
     [searchLower, matchesTG],
   );
 
-  // Restore tgSelection from localStorage on mount / config load
-  useEffect(() => {
-    if (!config) return;
-    const raw = localStorage.getItem(storageKey(instanceId));
-    if (!raw) return;
-    try {
-      const saved = JSON.parse(raw) as Record<string, unknown>;
-      const restored: Record<number, boolean> = {};
-      for (const sys of config.systems) {
-        for (const tg of sys.talkgroups ?? []) {
-          const savedVal = saved[String(tg.id)];
-          restored[tg.id] = typeof savedVal === "boolean" ? savedVal : true;
-        }
-      }
-      dispatch(restoreTGSelection(restored));
-    } catch {
-      // ignore malformed data
-    }
-  }, [config, instanceId, dispatch]);
+  const token = useAppSelector(selectToken);
+  const isAuthenticated = !!token;
 
-  // Persist tgSelection to localStorage on change
+  // RTK Query: only fetch when authenticated and config is ready
+  const { data: tgSelectionData } = useGetTGSelectionQuery(undefined, {
+    skip: !isAuthenticated || !config,
+  });
+  const [saveTGSelection] = useUpdateTGSelectionMutation();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restoredRef = useRef(false);
+
+  // Reset restored flag when auth state changes
+  useEffect(() => {
+    restoredRef.current = false;
+  }, [isAuthenticated]);
+
+  // Restore tgSelection from API (authenticated) or localStorage (anonymous)
   useEffect(() => {
     if (!config) return;
-    localStorage.setItem(storageKey(instanceId), JSON.stringify(tgSelection));
-  }, [tgSelection, instanceId, config]);
+
+    if (isAuthenticated) {
+      // Wait for API data to arrive
+      if (!tgSelectionData) return;
+      dispatch(restoreFromDisabledTGs(tgSelectionData.disabledTGs));
+      dispatch(restoreAvoidList(tgSelectionData.avoidList ?? []));
+      restoredRef.current = true;
+    } else {
+      // Anonymous: use localStorage
+      const raw = localStorage.getItem(storageKey(instanceId));
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw) as Record<string, unknown>;
+        const restored: Record<number, boolean> = {};
+        for (const sys of config.systems) {
+          for (const tg of sys.talkgroups ?? []) {
+            const savedVal = saved[String(tg.id)];
+            restored[tg.id] = typeof savedVal === "boolean" ? savedVal : true;
+          }
+        }
+        dispatch(restoreTGSelection(restored));
+      } catch {
+        // ignore malformed data
+      }
+      restoredRef.current = true;
+    }
+  }, [config, instanceId, dispatch, isAuthenticated, tgSelectionData]);
+
+  // Persist tgSelection: API (authenticated) or localStorage (anonymous)
+  useEffect(() => {
+    if (!config || !restoredRef.current) return;
+
+    if (isAuthenticated) {
+      // Debounce API writes
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        const disabledTGs: number[] = [];
+        for (const sys of config.systems) {
+          for (const tg of sys.talkgroups ?? []) {
+            if (tgSelection[tg.id] === false) {
+              disabledTGs.push(tg.id);
+            }
+          }
+        }
+        const now = Date.now();
+        const activeAvoids = avoidList.filter(
+          (a) => a.expiresAt === 0 || a.expiresAt > now,
+        );
+        saveTGSelection({ disabledTGs, avoidList: activeAvoids });
+      }, 500);
+      return () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+      };
+    } else {
+      localStorage.setItem(storageKey(instanceId), JSON.stringify(tgSelection));
+    }
+  }, [
+    tgSelection,
+    avoidList,
+    instanceId,
+    config,
+    isAuthenticated,
+    saveTGSelection,
+  ]);
 
   // Auto-expand sections matching search
   useEffect(() => {
@@ -306,11 +457,17 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
     setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  // Stats
+  // Stats — effective count accounts for avoids
   const totalCount = allTalkgroups.length;
   const activeCount = allTalkgroups.filter(
     (tg) => tgSelection[tg.id] !== false,
   ).length;
+  const effectiveActiveCount = allTalkgroups.filter((tg) => {
+    if (tgSelection[tg.id] === false) return false;
+    const avoid = avoidMap.get(tg.id);
+    if (avoid && (avoid.expiresAt === 0 || avoid.expiresAt > now)) return false;
+    return true;
+  }).length;
 
   // Reset search when closing
   useEffect(() => {
@@ -357,7 +514,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
           />
         </div>
         <span className="text-sm text-base-content/60 whitespace-nowrap">
-          {activeCount}/{totalCount} active
+          {effectiveActiveCount}/{totalCount} active
         </span>
       </div>
 
@@ -391,9 +548,9 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
           >
             <span
               className={`inline-block w-3 h-3 rounded-full shadow-sm ${
-                activeCount === totalCount
+                effectiveActiveCount === totalCount
                   ? "bg-green-500 shadow-green-500/50"
-                  : activeCount === 0
+                  : effectiveActiveCount === 0
                     ? "bg-red-500 shadow-red-500/50"
                     : "bg-yellow-500 shadow-yellow-500/50"
               }`}
@@ -401,7 +558,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
           </button>
           <span className="text-sm font-medium">All Talkgroups</span>
           <span className="badge badge-sm badge-ghost ml-auto">
-            {activeCount}/{totalCount}
+            {effectiveActiveCount}/{totalCount}
           </span>
         </div>
 
@@ -416,12 +573,15 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
                   label={group}
                   talkgroups={filterTGs(tgs)}
                   tgSelection={tgSelection}
+                  avoidMap={avoidMap}
+                  heldTGs={heldTGs}
+                  now={now}
                   expanded={!!expandedSections[key]}
                   onToggleExpand={() => toggleExpand(key)}
                   onToggleAll={(enabled) =>
                     dispatch(setTGsByGroup({ group, enabled }))
                   }
-                  onToggleTG={(id) => dispatch(toggleTG(id))}
+                  onToggleTG={handleToggleTG}
                   secondaryLabels={tgSystemLabel}
                 />
               );
@@ -438,12 +598,15 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
                   label={tag}
                   talkgroups={filterTGs(tgs)}
                   tgSelection={tgSelection}
+                  avoidMap={avoidMap}
+                  heldTGs={heldTGs}
+                  now={now}
                   expanded={!!expandedSections[key]}
                   onToggleExpand={() => toggleExpand(key)}
                   onToggleAll={(enabled) =>
                     dispatch(setTGsByTag({ tag, enabled }))
                   }
-                  onToggleTG={(id) => dispatch(toggleTG(id))}
+                  onToggleTG={handleToggleTG}
                   secondaryLabels={tgGroupLabel}
                 />
               );
@@ -460,12 +623,15 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
                   label={sys.label}
                   talkgroups={filterTGs(sys.talkgroups ?? [])}
                   tgSelection={tgSelection}
+                  avoidMap={avoidMap}
+                  heldTGs={heldTGs}
+                  now={now}
                   expanded={!!expandedSections[key]}
                   onToggleExpand={() => toggleExpand(key)}
                   onToggleAll={(enabled) =>
                     dispatch(setTGsBySystem({ systemId: sys.id, enabled }))
                   }
-                  onToggleTG={(id) => dispatch(toggleTG(id))}
+                  onToggleTG={handleToggleTG}
                   secondaryLabels={tgTagLabel}
                 />
               );

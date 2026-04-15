@@ -24,7 +24,9 @@ interface ScannerState {
 
 const initialState: ScannerState = {
   isLive: true,
-  isPaused: false,
+  isPaused:
+    typeof sessionStorage !== "undefined" &&
+    sessionStorage.getItem("openscanner-paused") === "true",
   heldSystem: null,
   heldTG: null,
   avoidList: [],
@@ -91,9 +93,19 @@ export const scannerSlice = createSlice({
     },
     togglePause(state) {
       state.isPaused = !state.isPaused;
+      try {
+        sessionStorage.setItem("openscanner-paused", String(state.isPaused));
+      } catch {
+        /* quota exceeded or SSR */
+      }
     },
     setPaused(state, action: PayloadAction<boolean>) {
       state.isPaused = action.payload;
+      try {
+        sessionStorage.setItem("openscanner-paused", String(state.isPaused));
+      } catch {
+        /* quota exceeded or SSR */
+      }
     },
     toggleLive(state) {
       state.isLive = !state.isLive;
@@ -110,6 +122,8 @@ export const scannerSlice = createSlice({
         (a) => a.talkgroupId !== action.payload.talkgroupId,
       );
       state.avoidList.push(action.payload);
+      // Avoided talkgroups are filtered talkgroups: mark unchecked.
+      state.tgSelection[action.payload.talkgroupId] = false;
     },
     removeAvoid(state, action: PayloadAction<number>) {
       state.avoidList = state.avoidList.filter(
@@ -117,6 +131,9 @@ export const scannerSlice = createSlice({
       );
     },
     clearAvoids(state) {
+      for (const entry of state.avoidList) {
+        state.tgSelection[entry.talkgroupId] = true;
+      }
       state.avoidList = [];
     },
     setListenerCount(state, action: PayloadAction<number>) {
@@ -164,6 +181,28 @@ export const scannerSlice = createSlice({
     },
     restoreTGSelection(state, action: PayloadAction<Record<number, boolean>>) {
       state.tgSelection = action.payload;
+    },
+    restoreFromDisabledTGs(state, action: PayloadAction<number[]>) {
+      const disabled = new Set(action.payload);
+      const selection: Record<number, boolean> = {};
+      if (state.config) {
+        for (const sys of state.config.systems) {
+          for (const tg of sys.talkgroups) {
+            selection[tg.id] = !disabled.has(tg.id);
+          }
+        }
+      }
+      state.tgSelection = selection;
+    },
+    restoreAvoidList(state, action: PayloadAction<AvoidEntry[]>) {
+      const now = Date.now();
+      state.avoidList = action.payload.filter(
+        (a) => a.expiresAt === 0 || a.expiresAt > now,
+      );
+      // Ensure active avoids are reflected as unchecked.
+      for (const entry of state.avoidList) {
+        state.tgSelection[entry.talkgroupId] = false;
+      }
     },
     setAllTGs(state, action: PayloadAction<boolean>) {
       const enabled = action.payload;
@@ -217,9 +256,16 @@ export const scannerSlice = createSlice({
     },
     expireAvoids(state) {
       const now = Date.now();
-      state.avoidList = state.avoidList.filter(
-        (a) => a.expiresAt === 0 || a.expiresAt > now,
-      );
+      const kept: AvoidEntry[] = [];
+      for (const entry of state.avoidList) {
+        if (entry.expiresAt === 0 || entry.expiresAt > now) {
+          kept.push(entry);
+        } else {
+          // Timed avoid expired: auto re-enable the talkgroup.
+          state.tgSelection[entry.talkgroupId] = true;
+        }
+      }
+      state.avoidList = kept;
     },
     transcriptReceived(
       state,
@@ -256,6 +302,8 @@ export const {
   setBranding,
   toggleTG,
   restoreTGSelection,
+  restoreFromDisabledTGs,
+  restoreAvoidList,
   setAllTGs,
   setTGsBySystem,
   setTGsByGroup,

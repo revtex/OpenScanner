@@ -3,6 +3,8 @@ package api
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
@@ -251,4 +253,118 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 		Username: uname,
 		Role:     roleStr,
 	})
+}
+
+type tgSelectionResponse struct {
+	DisabledTGs []int64        `json:"disabledTGs"`
+	AvoidList   []avoidTGEntry `json:"avoidList"`
+} // @name TGSelectionResponse
+
+type tgSelectionRequest struct {
+	DisabledTGs []int64        `json:"disabledTGs"`
+	AvoidList   []avoidTGEntry `json:"avoidList"`
+} // @name TGSelectionRequest
+
+type avoidTGEntry struct {
+	TalkgroupID int64 `json:"talkgroupId"`
+	ExpiresAt   int64 `json:"expiresAt"`
+}
+
+// GetTGSelection handles GET /api/auth/tg-selection (JWT required).
+// Returns the list of talkgroup IDs the user has disabled.
+//
+// @Summary      Get talkgroup selection
+// @Description  Return the authenticated user's disabled talkgroup IDs.
+// @Tags         Auth
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  tgSelectionResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /auth/tg-selection [get]
+func (h *AuthHandler) GetTGSelection(c *gin.Context) {
+	userIDVal, _ := c.Get("userID")
+	userID, _ := userIDVal.(int64)
+
+	user, err := h.queries.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load user"})
+		return
+	}
+
+	resp := tgSelectionResponse{DisabledTGs: []int64{}, AvoidList: []avoidTGEntry{}}
+	if user.TgSelectionJson.Valid && user.TgSelectionJson.String != "" {
+		raw := []byte(user.TgSelectionJson.String)
+
+		// Current format: { disabledTGs: number[], avoidList: [{talkgroupId, expiresAt}] }
+		if err := json.Unmarshal(raw, &resp); err != nil {
+			// Backward compatibility: legacy format was a bare number[]
+			var legacyDisabled []int64
+			if legacyErr := json.Unmarshal(raw, &legacyDisabled); legacyErr != nil {
+				slog.Warn("malformed tg_selection_json", "userId", userID, "error", err)
+				// Return empty lists rather than failing
+			} else {
+				resp.DisabledTGs = legacyDisabled
+			}
+		}
+
+		if resp.DisabledTGs == nil {
+			resp.DisabledTGs = []int64{}
+		}
+		if resp.AvoidList == nil {
+			resp.AvoidList = []avoidTGEntry{}
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// PutTGSelection handles PUT /api/auth/tg-selection (JWT required).
+// Saves the list of talkgroup IDs the user wants disabled.
+//
+// @Summary      Update talkgroup selection
+// @Description  Save the authenticated user's disabled talkgroup IDs.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      tgSelectionRequest  true  "Disabled talkgroup IDs"
+// @Success      200   {object}  object{ok=bool}
+// @Failure      400   {object}  ErrorResponse
+// @Failure      401   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Router       /auth/tg-selection [put]
+func (h *AuthHandler) PutTGSelection(c *gin.Context) {
+	userIDVal, _ := c.Get("userID")
+	userID, _ := userIDVal.(int64)
+
+	var req tgSelectionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	if req.DisabledTGs == nil {
+		req.DisabledTGs = []int64{}
+	}
+	if req.AvoidList == nil {
+		req.AvoidList = []avoidTGEntry{}
+	}
+
+	jsonBytes, err := json.Marshal(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encode selection"})
+		return
+	}
+
+	if err := h.queries.UpdateUserTGSelection(c.Request.Context(), db.UpdateUserTGSelectionParams{
+		TgSelectionJson: sql.NullString{String: string(jsonBytes), Valid: true},
+		UpdatedAt:       time.Now().Unix(),
+		ID:              userID,
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save selection"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

@@ -90,6 +90,8 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		authRequired.POST("/logout", authHandler.PostLogout)
 		authRequired.PUT("/password", authHandler.PutPassword)
 		authRequired.GET("/me", authHandler.GetMe)
+		authRequired.GET("/tg-selection", authHandler.GetTGSelection)
+		authRequired.PUT("/tg-selection", authHandler.PutTGSelection)
 	}
 
 	// Call search — public access with optional auth for bookmarks.

@@ -28,7 +28,6 @@ interface ControlToolbarProps {
   volume: number;
   heldSystem: number | null;
   heldTG: number | null;
-  avoidList: AvoidEntry[];
   currentCallTgId?: number;
   currentCallSystemId?: number;
   onTogglePause: () => void;
@@ -40,7 +39,6 @@ interface ControlToolbarProps {
   onHoldSystem: (id: number | null) => void;
   onHoldTG: (id: number | null) => void;
   onAddAvoid: (entry: AvoidEntry) => void;
-  onClearAvoids: () => void;
   onToggleSelectTG: () => void;
   onToggleSearch: () => void;
   onToggleBookmarks?: () => void;
@@ -54,7 +52,6 @@ export function ControlToolbar({
   volume,
   heldSystem,
   heldTG,
-  avoidList,
   currentCallTgId,
   currentCallSystemId,
   onTogglePause,
@@ -66,7 +63,6 @@ export function ControlToolbar({
   onHoldSystem,
   onHoldTG,
   onAddAvoid,
-  onClearAvoids,
   onToggleSelectTG,
   onToggleSearch,
   onToggleBookmarks,
@@ -78,7 +74,6 @@ export function ControlToolbar({
 
   const isMuted = volume === 0;
   const isHolding = heldSystem !== null || heldTG !== null;
-  const avoidCount = avoidList.length;
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -304,13 +299,10 @@ export function ControlToolbar({
           <div
             tabIndex={0}
             role="button"
-            className={`btn btn-sm gap-1 ${avoidCount > 0 ? "btn-warning" : "btn-ghost"}`}
+            className="btn btn-sm gap-1 btn-ghost"
           >
             <Ban className="w-3.5 h-3.5" />
             AVOID▾
-            {avoidCount > 0 && (
-              <span className="badge badge-xs">{avoidCount}</span>
-            )}
           </div>
           <ul
             tabIndex={0}
@@ -328,16 +320,6 @@ export function ControlToolbar({
             <li>
               <button onClick={() => handleAvoid(0)}>Permanent</button>
             </li>
-            {avoidCount > 0 && (
-              <>
-                <li className="menu-title">
-                  <span>—</span>
-                </li>
-                <li>
-                  <button onClick={onClearAvoids}>Clear All</button>
-                </li>
-              </>
-            )}
           </ul>
         </div>
 

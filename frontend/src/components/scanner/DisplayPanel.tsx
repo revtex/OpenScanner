@@ -11,14 +11,14 @@ import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { useShareCallMutation } from "@/app/slices/shareSlice";
 import { HistoryPanel } from "@/components/scanner/HistoryPanel";
 import { TranscriptPanel } from "@/components/scanner/TranscriptPanel";
-import type { Call } from "@/types";
+import type { AvoidEntry, Call } from "@/types";
 
 interface DisplayPanelProps {
   currentCall: Call | null;
   history: Call[];
   listenerCount: number;
   queueCount: number;
-  avoidList: { talkgroupId: number }[];
+  avoidList: AvoidEntry[];
   time12hFormat: boolean;
   showListenersCount: boolean;
   shareableLinks: boolean;
@@ -149,7 +149,11 @@ export function DisplayPanel({
   );
 
   const isAvoided = currentCall
-    ? avoidList.some((a) => a.talkgroupId === currentCall.talkgroupId)
+    ? avoidList.some(
+        (a) =>
+          a.talkgroupId === currentCall.talkgroup &&
+          (a.expiresAt === 0 || a.expiresAt > Date.now()),
+      )
     : false;
 
   const displayContent = (

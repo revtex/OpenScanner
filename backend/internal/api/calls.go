@@ -875,44 +875,130 @@ type CallSearchResponse struct {
 func (h *CallHandler) GetCalls(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// Parse query parameters.
-	var systemID, talkgroupID interface{}
-	if v := c.Query("system_id"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 64)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid system_id"})
-			return
+	parseCSVInt64 := func(raw string) ([]int64, error) {
+		if strings.TrimSpace(raw) == "" {
+			return nil, nil
 		}
-		systemID = n
-	}
-	if v := c.Query("talkgroup_id"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 64)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid talkgroup_id"})
-			return
+		parts := strings.Split(raw, ",")
+		vals := make([]int64, 0, len(parts))
+		seen := make(map[int64]struct{})
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			n, err := strconv.ParseInt(part, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			if _, ok := seen[n]; ok {
+				continue
+			}
+			seen[n] = struct{}{}
+			vals = append(vals, n)
 		}
-		talkgroupID = n
+		if len(vals) == 0 {
+			return nil, nil
+		}
+		return vals, nil
 	}
 
-	// Group and tag filters: look up by label, silently return empty if not found.
-	var groupID, tagID interface{}
-	if v := c.Query("group"); v != "" {
-		if g, err := h.queries.GetGroupByLabel(ctx, v); err == nil {
-			groupID = g.ID
-		} else {
-			// Group label doesn't exist → no calls can match; return empty.
-			c.JSON(http.StatusOK, CallSearchResponse{Calls: []CallSearchResult{}, Total: 0})
-			return
+	parseCSVStrings := func(raw string) []string {
+		if strings.TrimSpace(raw) == "" {
+			return nil
+		}
+		parts := strings.Split(raw, ",")
+		vals := make([]string, 0, len(parts))
+		seen := make(map[string]struct{})
+		for _, part := range parts {
+			v := strings.TrimSpace(part)
+			if v == "" {
+				continue
+			}
+			if _, ok := seen[v]; ok {
+				continue
+			}
+			seen[v] = struct{}{}
+			vals = append(vals, v)
+		}
+		if len(vals) == 0 {
+			return nil
+		}
+		return vals
+	}
+
+	toCSVFilter := func(vals []int64) interface{} {
+		if len(vals) == 0 {
+			return nil
+		}
+		parts := make([]string, 0, len(vals))
+		for _, v := range vals {
+			parts = append(parts, strconv.FormatInt(v, 10))
+		}
+		return strings.Join(parts, ",")
+	}
+
+	// Parse multi-select IDs (new CSV params) with single-select fallback.
+	rawSystemIDs := c.Query("system_ids")
+	if rawSystemIDs == "" {
+		rawSystemIDs = c.Query("system_id")
+	}
+	rawTalkgroupIDs := c.Query("talkgroup_ids")
+	if rawTalkgroupIDs == "" {
+		rawTalkgroupIDs = c.Query("talkgroup_id")
+	}
+
+	systemIDs, err := parseCSVInt64(rawSystemIDs)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid system_ids"})
+		return
+	}
+	talkgroupIDs, err := parseCSVInt64(rawTalkgroupIDs)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid talkgroup_ids"})
+		return
+	}
+
+	// Parse multi-select labels (new CSV params) with single-select fallback.
+	rawGroups := c.Query("groups")
+	if rawGroups == "" {
+		rawGroups = c.Query("group")
+	}
+	rawTags := c.Query("tags")
+	if rawTags == "" {
+		rawTags = c.Query("tag")
+	}
+	groupLabels := parseCSVStrings(rawGroups)
+	tagLabels := parseCSVStrings(rawTags)
+
+	groupIDs := make([]int64, 0, len(groupLabels))
+	for _, label := range groupLabels {
+		g, err := h.queries.GetGroupByLabel(ctx, label)
+		if err == nil {
+			groupIDs = append(groupIDs, g.ID)
 		}
 	}
-	if v := c.Query("tag"); v != "" {
-		if t, err := h.queries.GetTagByLabel(ctx, v); err == nil {
-			tagID = t.ID
-		} else {
-			c.JSON(http.StatusOK, CallSearchResponse{Calls: []CallSearchResult{}, Total: 0})
-			return
+	if len(groupLabels) > 0 && len(groupIDs) == 0 {
+		c.JSON(http.StatusOK, CallSearchResponse{Calls: []CallSearchResult{}, Total: 0})
+		return
+	}
+
+	tagIDs := make([]int64, 0, len(tagLabels))
+	for _, label := range tagLabels {
+		t, err := h.queries.GetTagByLabel(ctx, label)
+		if err == nil {
+			tagIDs = append(tagIDs, t.ID)
 		}
 	}
+	if len(tagLabels) > 0 && len(tagIDs) == 0 {
+		c.JSON(http.StatusOK, CallSearchResponse{Calls: []CallSearchResult{}, Total: 0})
+		return
+	}
+
+	systemIDsCSV := toCSVFilter(systemIDs)
+	talkgroupIDsCSV := toCSVFilter(talkgroupIDs)
+	groupIDsCSV := toCSVFilter(groupIDs)
+	tagIDsCSV := toCSVFilter(tagIDs)
 
 	var transcript interface{}
 	if v := c.Query("transcript"); v != "" {
@@ -984,14 +1070,14 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 
 	// Count total matching calls.
 	total, err := h.queries.CountCallsFiltered(ctx, db.CountCallsFilteredParams{
-		SystemID:       systemID,
-		TalkgroupID:    talkgroupID,
-		GroupID:        groupID,
-		TagID:          tagID,
-		DateFrom:       dateFrom,
-		DateTo:         dateTo,
-		BookmarkUserID: bookmarkUserID,
-		Transcript:     transcript,
+		SystemIdsCsv:    systemIDsCSV,
+		TalkgroupIdsCsv: talkgroupIDsCSV,
+		GroupIdsCsv:     groupIDsCSV,
+		TagIdsCsv:       tagIDsCSV,
+		DateFrom:        dateFrom,
+		DateTo:          dateTo,
+		BookmarkUserID:  bookmarkUserID,
+		Transcript:      transcript,
 	})
 	if err != nil {
 		slog.Error("failed to count calls", "error", err)
@@ -1002,16 +1088,16 @@ func (h *CallHandler) GetCalls(c *gin.Context) {
 	// Fetch calls page.
 	var calls []db.Call
 	listParams := db.ListCallsParams{
-		SystemID:       systemID,
-		TalkgroupID:    talkgroupID,
-		GroupID:        groupID,
-		TagID:          tagID,
-		DateFrom:       dateFrom,
-		DateTo:         dateTo,
-		BookmarkUserID: bookmarkUserID,
-		Transcript:     transcript,
-		PageOffset:     sql.NullInt64{Int64: offset, Valid: true},
-		PageSize:       sql.NullInt64{Int64: limit, Valid: true},
+		SystemIdsCsv:    systemIDsCSV,
+		TalkgroupIdsCsv: talkgroupIDsCSV,
+		GroupIdsCsv:     groupIDsCSV,
+		TagIdsCsv:       tagIDsCSV,
+		DateFrom:        dateFrom,
+		DateTo:          dateTo,
+		BookmarkUserID:  bookmarkUserID,
+		Transcript:      transcript,
+		PageOffset:      sql.NullInt64{Int64: offset, Valid: true},
+		PageSize:        sql.NullInt64{Int64: limit, Valid: true},
 	}
 	if sortOrder == "asc" {
 		calls, err = h.queries.ListCallsAsc(ctx, db.ListCallsAscParams(listParams))
