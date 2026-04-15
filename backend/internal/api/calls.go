@@ -540,6 +540,14 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		return
 	}
 
+	// If the recorder didn't supply a duration, probe the stored file.
+	if !duration.Valid {
+		absPath := filepath.Join(h.processor.RecordingsDir(), relPath)
+		if d := audio.ProbeDuration(ctx, absPath); d > 0 {
+			duration = sql.NullInt64{Int64: d, Valid: true}
+		}
+	}
+
 	// Determine audio MIME type.
 	// When conversion is enabled the output is always AAC.
 	// Otherwise validate the client-supplied Content-Type against an allowlist

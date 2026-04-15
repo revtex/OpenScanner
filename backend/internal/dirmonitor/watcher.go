@@ -584,6 +584,12 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 	var dur sql.NullInt64
 	if parsed.Duration > 0 {
 		dur = sql.NullInt64{Int64: parsed.Duration, Valid: true}
+	} else {
+		// Parser didn't supply a duration — probe the stored file.
+		absPath := filepath.Join(s.processor.RecordingsDir(), relPath)
+		if d := audio.ProbeDuration(ctx, absPath); d > 0 {
+			dur = sql.NullInt64{Int64: d, Valid: true}
+		}
 	}
 	var src sql.NullInt64
 	if parsed.Source > 0 {
