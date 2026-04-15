@@ -53,6 +53,7 @@ class AudioPlayer {
 
   replay(): void {
     if (this.currentItem) {
+      this.resumeAudioContext();
       this.audio.currentTime = 0;
       this.audio.play().catch(() => {});
     }
@@ -64,6 +65,7 @@ class AudioPlayer {
 
   resume(): void {
     if (this.currentItem) {
+      this.resumeAudioContext();
       this.audio.play().catch(() => {});
     }
   }
@@ -127,25 +129,46 @@ class AudioPlayer {
     this.currentItem = item;
     this.audio.src = item.audioUrl;
 
-    this.ensureAudioContext();
-    this.audio.play().catch(() => {});
-    this.callStartCb?.(item.call);
+    this.resumeAudioContext();
+    this.audio.play().then(
+      () => {
+        this.callStartCb?.(item.call);
+      },
+      () => {
+        // Autoplay blocked or playback failed — skip to next call so the
+        // player doesn't hang forever waiting for the "ended" event.
+        console.warn("[AudioPlayer] play() rejected, skipping call");
+        if (this.currentItem === item) {
+          this.cleanup(item.audioUrl);
+          this.currentItem = null;
+          this.playNext();
+        }
+      },
+    );
     this.preloadNext();
   }
 
-  private ensureAudioContext(): void {
-    if (this.audioContext) return;
+  /** Create the Web Audio graph if needed and resume a suspended context. */
+  private resumeAudioContext(): void {
+    if (!this.audioContext) {
+      try {
+        this.audioContext = new AudioContext();
+        this.sourceNode = this.audioContext.createMediaElementSource(
+          this.audio,
+        );
+        this.gainNode = this.audioContext.createGain();
+        this.gainNode.gain.value = this.volume;
+        this.sourceNode.connect(this.gainNode);
+        this.gainNode.connect(this.audioContext.destination);
+      } catch {
+        // Fallback to HTML volume if Web Audio not available
+        this.audio.volume = this.volume;
+        return;
+      }
+    }
 
-    try {
-      this.audioContext = new AudioContext();
-      this.sourceNode = this.audioContext.createMediaElementSource(this.audio);
-      this.gainNode = this.audioContext.createGain();
-      this.gainNode.gain.value = this.volume;
-      this.sourceNode.connect(this.gainNode);
-      this.gainNode.connect(this.audioContext.destination);
-    } catch {
-      // Fallback to HTML volume if Web Audio not available
-      this.audio.volume = this.volume;
+    if (this.audioContext.state === "suspended") {
+      this.audioContext.resume().catch(() => {});
     }
   }
 

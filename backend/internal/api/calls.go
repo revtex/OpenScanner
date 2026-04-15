@@ -593,6 +593,18 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		upsertUnitsFromSources(ctx, h.queries, system.ID, sourcesJSON.String)
 	}
 
+	// Map talkerAlias to the source unit as a label (e.g. P25 radios broadcasting a name).
+	if source.Valid && talkerAliasCol.Valid {
+		if err := h.queries.UpsertUnit(ctx, db.UpsertUnitParams{
+			SystemID: system.ID,
+			UnitID:   source.Int64,
+			Label:    sql.NullString{String: talkerAliasCol.String, Valid: true},
+		}); err != nil {
+			slog.Warn("failed to upsert unit from talkerAlias",
+				"unit_id", source.Int64, "talkerAlias", talkerAliasCol.String, "error", err)
+		}
+	}
+
 	// Broadcast to WebSocket listeners.
 	if h.hub != nil {
 		calPayload := map[string]any{
