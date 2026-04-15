@@ -1423,12 +1423,13 @@ func (h *AdminHandler) UpdateAPIKey(c *gin.Context) {
 	}
 
 	err = h.queries.UpdateAPIKey(c.Request.Context(), db.UpdateAPIKeyParams{
-		ID:          id,
-		Key:         keyHash,
-		Ident:       ptrToNullStr(req.Ident),
-		Disabled:    req.Disabled,
-		SystemsJson: ptrToNullStr(req.SystemsJson),
-		Order:       req.Order,
+		ID:            id,
+		Key:           keyHash,
+		Ident:         ptrToNullStr(req.Ident),
+		Disabled:      req.Disabled,
+		SystemsJson:   ptrToNullStr(req.SystemsJson),
+		CallRateLimit: ptrToNullInt(req.CallRateLimit),
+		Order:         req.Order,
 	})
 	if isUniqueViolation(err) {
 		c.JSON(http.StatusConflict, gin.H{"error": "API key already exists"})

@@ -29,6 +29,7 @@ type CreateApiKeyPayload = {
   ident: string | null;
   disabled: number;
   systemsJson: string | null;
+  callRateLimit: number | null;
   order: number;
   key?: string | null;
 };
@@ -36,6 +37,7 @@ type UpdateApiKeyPayload = {
   ident: string | null;
   disabled: number;
   systemsJson: string | null;
+  callRateLimit: number | null;
   order: number;
   key?: string | null;
 };

@@ -16,22 +16,25 @@ INSERT INTO api_keys (
     ident,
     disabled,
     systems_json,
+    call_rate_limit,
     "order"
 ) VALUES (
     ?1,
     ?2,
     ?3,
     ?4,
-    ?5
+    ?5,
+    ?6
 ) RETURNING id
 `
 
 type CreateAPIKeyParams struct {
-	Key         string         `db:"key" json:"key"`
-	Ident       sql.NullString `db:"ident" json:"ident"`
-	Disabled    int64          `db:"disabled" json:"disabled"`
-	SystemsJson sql.NullString `db:"systems_json" json:"systems_json"`
-	Order       int64          `db:"order" json:"order"`
+	Key           string         `db:"key" json:"key"`
+	Ident         sql.NullString `db:"ident" json:"ident"`
+	Disabled      int64          `db:"disabled" json:"disabled"`
+	SystemsJson   sql.NullString `db:"systems_json" json:"systems_json"`
+	CallRateLimit sql.NullInt64  `db:"call_rate_limit" json:"call_rate_limit"`
+	Order         int64          `db:"order" json:"order"`
 }
 
 func (q *Queries) CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (int64, error) {
@@ -40,6 +43,7 @@ func (q *Queries) CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (int
 		arg.Ident,
 		arg.Disabled,
 		arg.SystemsJson,
+		arg.CallRateLimit,
 		arg.Order,
 	)
 	var id int64
@@ -57,7 +61,7 @@ func (q *Queries) DeleteAPIKey(ctx context.Context, id int64) error {
 }
 
 const getAPIKey = `-- name: GetAPIKey :one
-SELECT id, "key", ident, disabled, systems_json, "order" FROM api_keys WHERE id = ? LIMIT 1
+SELECT id, "key", ident, disabled, systems_json, call_rate_limit, "order" FROM api_keys WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetAPIKey(ctx context.Context, id int64) (ApiKey, error) {
@@ -69,13 +73,14 @@ func (q *Queries) GetAPIKey(ctx context.Context, id int64) (ApiKey, error) {
 		&i.Ident,
 		&i.Disabled,
 		&i.SystemsJson,
+		&i.CallRateLimit,
 		&i.Order,
 	)
 	return i, err
 }
 
 const getAPIKeyByKey = `-- name: GetAPIKeyByKey :one
-SELECT id, "key", ident, disabled, systems_json, "order" FROM api_keys WHERE key = ? LIMIT 1
+SELECT id, "key", ident, disabled, systems_json, call_rate_limit, "order" FROM api_keys WHERE key = ? LIMIT 1
 `
 
 func (q *Queries) GetAPIKeyByKey(ctx context.Context, key string) (ApiKey, error) {
@@ -87,13 +92,14 @@ func (q *Queries) GetAPIKeyByKey(ctx context.Context, key string) (ApiKey, error
 		&i.Ident,
 		&i.Disabled,
 		&i.SystemsJson,
+		&i.CallRateLimit,
 		&i.Order,
 	)
 	return i, err
 }
 
 const listAPIKeys = `-- name: ListAPIKeys :many
-SELECT id, "key", ident, disabled, systems_json, "order" FROM api_keys ORDER BY "order" ASC, id ASC
+SELECT id, "key", ident, disabled, systems_json, call_rate_limit, "order" FROM api_keys ORDER BY "order" ASC, id ASC
 `
 
 func (q *Queries) ListAPIKeys(ctx context.Context) ([]ApiKey, error) {
@@ -111,6 +117,7 @@ func (q *Queries) ListAPIKeys(ctx context.Context) ([]ApiKey, error) {
 			&i.Ident,
 			&i.Disabled,
 			&i.SystemsJson,
+			&i.CallRateLimit,
 			&i.Order,
 		); err != nil {
 			return nil, err
@@ -132,17 +139,19 @@ UPDATE api_keys SET
     ident        = ?2,
     disabled     = ?3,
     systems_json = ?4,
-    "order"      = ?5
-WHERE id = ?6
+    call_rate_limit = ?5,
+    "order"      = ?6
+WHERE id = ?7
 `
 
 type UpdateAPIKeyParams struct {
-	Key         string         `db:"key" json:"key"`
-	Ident       sql.NullString `db:"ident" json:"ident"`
-	Disabled    int64          `db:"disabled" json:"disabled"`
-	SystemsJson sql.NullString `db:"systems_json" json:"systems_json"`
-	Order       int64          `db:"order" json:"order"`
-	ID          int64          `db:"id" json:"id"`
+	Key           string         `db:"key" json:"key"`
+	Ident         sql.NullString `db:"ident" json:"ident"`
+	Disabled      int64          `db:"disabled" json:"disabled"`
+	SystemsJson   sql.NullString `db:"systems_json" json:"systems_json"`
+	CallRateLimit sql.NullInt64  `db:"call_rate_limit" json:"call_rate_limit"`
+	Order         int64          `db:"order" json:"order"`
+	ID            int64          `db:"id" json:"id"`
 }
 
 func (q *Queries) UpdateAPIKey(ctx context.Context, arg UpdateAPIKeyParams) error {
@@ -151,6 +160,7 @@ func (q *Queries) UpdateAPIKey(ctx context.Context, arg UpdateAPIKeyParams) erro
 		arg.Ident,
 		arg.Disabled,
 		arg.SystemsJson,
+		arg.CallRateLimit,
 		arg.Order,
 		arg.ID,
 	)

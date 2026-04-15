@@ -14,8 +14,8 @@ You are a security and code quality expert reviewing OpenScanner — a Go + Reac
 
 - [ ] All admin endpoints require valid JWT in `Authorization: Bearer <token>` header
 - [ ] All call-upload endpoints require valid `X-API-Key` header
-- [ ] Setup endpoints are disabled once `admin.setup_complete = 1`
-- [ ] WebSocket connections verify access code before sending any data
+- [ ] Setup endpoints are disabled once `app_state.setup_complete = 1`
+- [ ] WebSocket listener auth is enforced via access code OR listener JWT, except when `publicAccess` is enabled
 - [ ] Per-access-code system/talkgroup grants are enforced — never leak calls outside granted scope
 - [ ] Audio file paths are sanitised — no directory traversal (`../`) allowed
 - [ ] Downstream HTTP client disables redirect following (SSRF protection)

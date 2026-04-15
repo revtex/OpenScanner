@@ -163,29 +163,32 @@ func (r updateUnitRequest) toParams(id int64) db.UpdateUnitParams {
 // ── API Key requests ──
 
 type createAPIKeyRequest struct {
-	Key         *string `json:"key"`
-	Ident       *string `json:"ident"`
-	Disabled    int64   `json:"disabled"`
-	SystemsJson *string `json:"systemsJson"`
-	Order       int64   `json:"order"`
+	Key           *string `json:"key"`
+	Ident         *string `json:"ident"`
+	Disabled      int64   `json:"disabled"`
+	SystemsJson   *string `json:"systemsJson"`
+	CallRateLimit *int64  `json:"callRateLimit"`
+	Order         int64   `json:"order"`
 } // @name CreateAPIKeyRequest
 
 func (r createAPIKeyRequest) toParams(hashedKey string) db.CreateAPIKeyParams {
 	return db.CreateAPIKeyParams{
-		Key:         hashedKey,
-		Ident:       ptrToNullStr(r.Ident),
-		Disabled:    r.Disabled,
-		SystemsJson: ptrToNullStr(r.SystemsJson),
-		Order:       r.Order,
+		Key:           hashedKey,
+		Ident:         ptrToNullStr(r.Ident),
+		Disabled:      r.Disabled,
+		SystemsJson:   ptrToNullStr(r.SystemsJson),
+		CallRateLimit: ptrToNullInt(r.CallRateLimit),
+		Order:         r.Order,
 	}
 }
 
 type updateAPIKeyRequest struct {
-	Key         *string `json:"key"`
-	Ident       *string `json:"ident"`
-	Disabled    int64   `json:"disabled"`
-	SystemsJson *string `json:"systemsJson"`
-	Order       int64   `json:"order"`
+	Key           *string `json:"key"`
+	Ident         *string `json:"ident"`
+	Disabled      int64   `json:"disabled"`
+	SystemsJson   *string `json:"systemsJson"`
+	CallRateLimit *int64  `json:"callRateLimit"`
+	Order         int64   `json:"order"`
 } // @name UpdateAPIKeyRequest
 
 type reorderAPIKeyItem struct {

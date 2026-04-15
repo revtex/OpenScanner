@@ -13,12 +13,14 @@ INSERT INTO api_keys (
     ident,
     disabled,
     systems_json,
+    call_rate_limit,
     "order"
 ) VALUES (
     :key,
     :ident,
     :disabled,
     :systems_json,
+    :call_rate_limit,
     :order
 ) RETURNING id;
 
@@ -28,6 +30,7 @@ UPDATE api_keys SET
     ident        = :ident,
     disabled     = :disabled,
     systems_json = :systems_json,
+    call_rate_limit = :call_rate_limit,
     "order"      = :order
 WHERE id = :id;
 

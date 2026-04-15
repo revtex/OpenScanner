@@ -161,6 +161,7 @@ export interface AdminApiKey {
   ident: string | null;
   disabled: number;
   systemsJson: string | null;
+  callRateLimit: number | null;
   order: number;
 }
 

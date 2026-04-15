@@ -165,12 +165,13 @@ func toUnitResponses(units []db.Unit) []unitResponse {
 // ── API Key ──
 
 type apiKeyResponse struct {
-	ID          int64   `json:"id"`
-	Fingerprint string  `json:"fingerprint"`
-	Ident       *string `json:"ident"`
-	Disabled    int64   `json:"disabled"`
-	SystemsJson *string `json:"systemsJson"`
-	Order       int64   `json:"order"`
+	ID            int64   `json:"id"`
+	Fingerprint   string  `json:"fingerprint"`
+	Ident         *string `json:"ident"`
+	Disabled      int64   `json:"disabled"`
+	SystemsJson   *string `json:"systemsJson"`
+	CallRateLimit *int64  `json:"callRateLimit"`
+	Order         int64   `json:"order"`
 } // @name ApiKeyResponse
 
 type apiKeyCreateResponse struct {
@@ -184,12 +185,13 @@ func toAPIKeyResponse(k db.ApiKey) apiKeyResponse {
 		fingerprint = fingerprint[:12]
 	}
 	return apiKeyResponse{
-		ID:          k.ID,
-		Fingerprint: fingerprint,
-		Ident:       nullStr(k.Ident),
-		Disabled:    k.Disabled,
-		SystemsJson: nullStr(k.SystemsJson),
-		Order:       k.Order,
+		ID:            k.ID,
+		Fingerprint:   fingerprint,
+		Ident:         nullStr(k.Ident),
+		Disabled:      k.Disabled,
+		SystemsJson:   nullStr(k.SystemsJson),
+		CallRateLimit: nullInt(k.CallRateLimit),
+		Order:         k.Order,
 	}
 }
 

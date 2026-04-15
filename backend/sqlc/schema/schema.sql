@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     ident        TEXT,
     disabled     INTEGER NOT NULL DEFAULT 0,
     systems_json TEXT,
+    call_rate_limit INTEGER,
     "order"      INTEGER NOT NULL DEFAULT 0
 );
 

@@ -15,12 +15,14 @@ interface ApiKeyFormState {
   ident: string;
   disabled: number;
   systemsJson: string;
+  callRateLimit: string;
 }
 
 const emptyForm: ApiKeyFormState = {
   ident: "",
   disabled: 0,
   systemsJson: "",
+  callRateLimit: "",
 };
 
 // ─── Copy button ───
@@ -86,6 +88,10 @@ export default function ApiKeysPanel() {
       ident: ak.ident ?? "",
       disabled: ak.disabled,
       systemsJson: ak.systemsJson ?? "",
+      callRateLimit:
+        ak.callRateLimit != null && ak.callRateLimit > 0
+          ? String(ak.callRateLimit)
+          : "",
     });
     setModalOpen(true);
   };
@@ -99,6 +105,7 @@ export default function ApiKeysPanel() {
           ident: form.ident || null,
           disabled: form.disabled,
           systemsJson: form.systemsJson || null,
+          callRateLimit: form.callRateLimit ? Number(form.callRateLimit) : null,
           order: sortedKeys.find((k) => k.id === editingId)?.order ?? 0,
         }).unwrap();
       } else {
@@ -106,6 +113,7 @@ export default function ApiKeysPanel() {
           ident: form.ident || null,
           disabled: form.disabled,
           systemsJson: form.systemsJson || null,
+          callRateLimit: form.callRateLimit ? Number(form.callRateLimit) : null,
           order: sortedKeys.length,
         }).unwrap();
         setCreatedKey(created.createdKey);
@@ -135,6 +143,7 @@ export default function ApiKeysPanel() {
         ident: ak.ident,
         disabled: ak.disabled ? 0 : 1,
         systemsJson: ak.systemsJson,
+        callRateLimit: ak.callRateLimit,
         order: ak.order,
       }).unwrap();
     } catch {
@@ -194,6 +203,7 @@ export default function ApiKeysPanel() {
                 <tr>
                   <th>Fingerprint</th>
                   <th>Ident</th>
+                  <th>Rate Limit</th>
                   <th>Disabled</th>
                   <th>Systems</th>
                   <th>Actions</th>
@@ -216,6 +226,11 @@ export default function ApiKeysPanel() {
                     <tr key={ak.id}>
                       <td className="font-mono text-sm">{ak.fingerprint}</td>
                       <td>{ak.ident ?? "—"}</td>
+                      <td>
+                        {ak.callRateLimit != null
+                          ? `${ak.callRateLimit}/min`
+                          : "Default"}
+                      </td>
                       <td>
                         <input
                           type="checkbox"
@@ -246,7 +261,7 @@ export default function ApiKeysPanel() {
                 })}
                 {sortedKeys.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="text-center opacity-60">
+                    <td colSpan={6} className="text-center opacity-60">
                       No API keys yet
                     </td>
                   </tr>
@@ -302,6 +317,23 @@ export default function ApiKeysPanel() {
                 </div>
               </div>
             )}
+
+            <div className="flex flex-col">
+              <span className="text-sm">Call Rate Limit (per minute)</span>
+              <input
+                type="number"
+                min={1}
+                max={600}
+                className="input w-full"
+                value={form.callRateLimit}
+                onChange={(e) => updateField("callRateLimit", e.target.value)}
+                placeholder="Leave blank to use global default"
+              />
+              <span className="text-xs text-base-content/60 mt-1">
+                Set per-key inbound call upload limit. Blank uses global
+                setting.
+              </span>
+            </div>
 
             <div className="modal-action">
               <button

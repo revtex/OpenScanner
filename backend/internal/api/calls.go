@@ -219,8 +219,15 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 
 	// Per-API-key rate limiting.
 	rateLimit := defaultCallRatePerMin
+	apiKeyRateOverride := false
+	if apiKeyRateVal, ok := c.Get("apiKeyCallRate"); ok {
+		if apiKeyRate, ok := apiKeyRateVal.(int64); ok && apiKeyRate > 0 {
+			rateLimit = int(apiKeyRate)
+			apiKeyRateOverride = true
+		}
+	}
 	if rStr := h.getSettingValue(c, "apiKeyCallRate"); rStr != "" {
-		if r, err := strconv.Atoi(rStr); err == nil && r > 0 {
+		if r, err := strconv.Atoi(rStr); err == nil && r > 0 && !apiKeyRateOverride {
 			rateLimit = r
 		}
 	}

@@ -9,12 +9,13 @@ import (
 )
 
 type ApiKey struct {
-	ID          int64          `db:"id" json:"id"`
-	Key         string         `db:"key" json:"key"`
-	Ident       sql.NullString `db:"ident" json:"ident"`
-	Disabled    int64          `db:"disabled" json:"disabled"`
-	SystemsJson sql.NullString `db:"systems_json" json:"systems_json"`
-	Order       int64          `db:"order" json:"order"`
+	ID            int64          `db:"id" json:"id"`
+	Key           string         `db:"key" json:"key"`
+	Ident         sql.NullString `db:"ident" json:"ident"`
+	Disabled      int64          `db:"disabled" json:"disabled"`
+	SystemsJson   sql.NullString `db:"systems_json" json:"systems_json"`
+	CallRateLimit sql.NullInt64  `db:"call_rate_limit" json:"call_rate_limit"`
+	Order         int64          `db:"order" json:"order"`
 }
 
 type AppState struct {
