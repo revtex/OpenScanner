@@ -107,12 +107,35 @@ Virtualized log viewer for application logs.
 
 ### Tools
 
-Utility operations for import, export, and account management.
+Utility operations for import, export, enrichment, and account management.
 
 - **CSV Import** — Upload talkgroup or unit CSV files
 - **JSON Export** — Download full application config as JSON
 - **JSON Import** — Upload a JSON config file (transactional; duplicates skipped)
 - **Missing Audio Audit** — Scan all systems for call records whose audio files are missing from disk; delete orphaned rows
+- **RadioReference Enrichment** — Enrich local talkgroup details from RadioReference data (see below)
+
+### RadioReference Enrichment
+
+The RadioReference card in the Tools panel allows admins to fill in or update talkgroup metadata (label, name, group, tag, LED color, display order) using a RadioReference CSV export.
+
+#### CSV Upload Mode
+
+1. Select a local system from the dropdown
+2. Upload a RadioReference CSV export file (max 5 MiB)
+3. The parser recognizes flexible header names (`DEC`, `TGID`, `Decimal` for talkgroup ID; `Alpha Tag`, `Alpha`, `Label` for label; etc.)
+4. A preview table shows which talkgroups matched, what would be updated, and which were skipped (unmatched or no changes)
+
+#### Merge Controls
+
+CSV enrichment uses the same merge and apply workflow:
+
+- **Fill missing** (default) — Only populates fields that are currently empty on the local talkgroup
+- **Overwrite selected** — Overwrites the selected fields on matched talkgroups, even if they already have values
+- **Field toggles** — Choose which fields to update (label, name, group, tag, LED, order)
+- **Frequency is never updated** — Defense-in-depth protection; frequency values are excluded from enrichment regardless of settings
+
+After reviewing the preview, click **Apply** to write changes to the database. A result summary shows how many talkgroups were updated, skipped, or had errors (e.g., unknown group/tag names).
 
 ### Shareable Links
 
@@ -147,7 +170,7 @@ Each resource supports **GET** (list), **POST** (create), **PUT /:id** (update),
 | Groups      | `/api/admin/groups`      |
 | Tags        | `/api/admin/tags`        |
 | API Keys    | `/api/admin/apikeys`     |
-| DirMonitors  | `/api/admin/dirmonitors`  |
+| DirMonitors | `/api/admin/dirmonitors` |
 | Downstreams | `/api/admin/downstreams` |
 | Webhooks    | `/api/admin/webhooks`    |
 
@@ -163,4 +186,6 @@ Each resource supports **GET** (list), **POST** (create), **PUT /:id** (update),
 - **POST /api/admin/import/config** — Config JSON import (transactional)
 - **GET /api/admin/tools/audio-missing** — Find call rows whose audio files are missing
 - **POST /api/admin/tools/audio-missing/cleanup** — Delete confirmed missing-audio call rows
+- **POST /api/admin/radioreference/preview/csv** — Preview enrichment from CSV upload
+- **POST /api/admin/radioreference/apply** — Apply enrichment changes to talkgroups
 - **GET /api/admin/ws** — Admin WebSocket endpoint

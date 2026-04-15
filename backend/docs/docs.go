@@ -1520,6 +1520,107 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/radioreference/apply": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Apply previously previewed RadioReference talkgroup enrichment candidates. Supports fill_missing (default) and overwrite_selected merge modes with per-field toggles. Frequency is never updated.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - RadioReference"
+                ],
+                "summary": "Apply RadioReference enrichment",
+                "parameters": [
+                    {
+                        "description": "Candidates and merge options",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RRApplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/RRApplyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/radioreference/preview/csv": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upload a RadioReference CSV export and preview which local talkgroups would be enriched. Frequency is never updated. Columns: talkgroup id (decimal/tgid), alpha tag, description, group/category, tag/service type, led, order.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin - RadioReference"
+                ],
+                "summary": "Preview RadioReference CSV enrichment",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Local system ID to match talkgroups against",
+                        "name": "system_id",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "RadioReference CSV file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/RRPreviewResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/shared-links": {
             "get": {
                 "security": [
@@ -5061,6 +5162,171 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "totalCalls": {
+                    "type": "integer"
+                }
+            }
+        },
+        "RRApplyRequest": {
+            "type": "object",
+            "properties": {
+                "candidates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RRTalkgroupCandidate"
+                    }
+                },
+                "mergeMode": {
+                    "type": "string"
+                },
+                "selectedFields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "systemId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "RRApplyResponse": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "integer"
+                },
+                "matched": {
+                    "type": "integer"
+                },
+                "processed": {
+                    "type": "integer"
+                },
+                "rowErrors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RRRowError"
+                    }
+                },
+                "skipped": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "RRPreviewResponse": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "integer"
+                },
+                "matched": {
+                    "type": "integer"
+                },
+                "processed": {
+                    "type": "integer"
+                },
+                "rowErrors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RRRowError"
+                    }
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RRPreviewRow"
+                    }
+                },
+                "skipped": {
+                    "type": "integer"
+                },
+                "wouldUpdate": {
+                    "type": "integer"
+                }
+            }
+        },
+        "RRPreviewRow": {
+            "type": "object",
+            "properties": {
+                "group": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "led": {
+                    "type": "string"
+                },
+                "matched": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "row": {
+                    "type": "integer"
+                },
+                "skipReason": {
+                    "type": "string"
+                },
+                "tag": {
+                    "type": "string"
+                },
+                "talkgroupId": {
+                    "type": "integer"
+                },
+                "wouldUpdate": {
+                    "type": "boolean"
+                },
+                "wouldUpdateFields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "RRRowError": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                },
+                "row": {
+                    "type": "integer"
+                }
+            }
+        },
+        "RRTalkgroupCandidate": {
+            "type": "object",
+            "properties": {
+                "group": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "led": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "row": {
+                    "type": "integer"
+                },
+                "tag": {
+                    "type": "string"
+                },
+                "talkgroupId": {
                     "type": "integer"
                 }
             }

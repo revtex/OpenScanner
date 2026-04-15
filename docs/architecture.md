@@ -1,6 +1,6 @@
 # OpenScanner — Architecture
 
-> **Implementation status:** Phases 1–12 are complete (Foundation through CLI/Daemon/SSL/Docker/Deployment). Phases 13+ remain planned and are documented for future work. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
+> **Implementation status:** Phases 1–12 and Phase 19 (RadioReference Enrichment) are complete. Phases 13–18 remain planned and are documented for future work. Packages marked _(stub)_ below exist as empty package declarations and will be implemented in later phases.
 
 ## Overview
 
@@ -59,7 +59,7 @@ graph TD
 ### Implemented
 
 - **backend/cmd/server** — Application entry point; loads config, opens DB, runs migrations, seeds defaults, starts Gin HTTP server with timeouts (`ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, `IdleTimeout`); graceful shutdown via `signal.NotifyContext` + error channel
-- **backend/internal/api** — Gin route handlers: health check (`GET /api/health`), first-run setup (`GET /api/setup/status`, `POST /api/setup`), auth (`POST /api/auth/login`, `POST /api/auth/logout`, `PUT /api/auth/password`, `GET /api/auth/me`), bookmarks (`GET /api/bookmarks`, `POST /api/bookmarks` — JWT required), admin CRUD (full CRUD for users, systems, talkgroups, units, groups, tags, apikeys, dirwatches, downstreams, webhooks), admin config (`GET/PUT /api/admin/config`), admin logs (`GET /api/admin/logs`), CSV import (`POST /api/admin/import/talkgroups`, `POST /api/admin/import/units`), JSON config export/import (`GET /api/admin/export/config`, `POST /api/admin/import/config`), system/apikey reorder (`PUT /api/admin/systems/reorder`, `PUT /api/admin/apikeys/reorder`), directory listing (`GET /api/admin/fs/directories`), missing audio tools (`GET /api/admin/tools/audio-missing`, `POST /api/admin/tools/audio-missing/cleanup`); response DTOs use pointer fields (`*string`/`*int64`) for proper JSON serialization of nullable values; API keys are stored hashed (SHA-256) and returned as truncated fingerprints
+- **backend/internal/api** — Gin route handlers: health check (`GET /api/health`), first-run setup (`GET /api/setup/status`, `POST /api/setup`), auth (`POST /api/auth/login`, `POST /api/auth/logout`, `PUT /api/auth/password`, `GET /api/auth/me`), bookmarks (`GET /api/bookmarks`, `POST /api/bookmarks` — JWT required), admin CRUD (full CRUD for users, systems, talkgroups, units, groups, tags, apikeys, dirwatches, downstreams, webhooks), admin config (`GET/PUT /api/admin/config`), admin logs (`GET /api/admin/logs`), CSV import (`POST /api/admin/import/talkgroups`, `POST /api/admin/import/units`), JSON config export/import (`GET /api/admin/export/config`, `POST /api/admin/import/config`), system/apikey reorder (`PUT /api/admin/systems/reorder`, `PUT /api/admin/apikeys/reorder`), directory listing (`GET /api/admin/fs/directories`), missing audio tools (`GET /api/admin/tools/audio-missing`, `POST /api/admin/tools/audio-missing/cleanup`), RadioReference enrichment (CSV preview and apply endpoints — see `radioreference.go`); response DTOs use pointer fields (`*string`/`*int64`) for proper JSON serialization of nullable values; API keys are stored hashed (SHA-256) and returned as truncated fingerprints
 - **backend/internal/auth** — JWT HS256 (32-byte random secret, 24h expiry, UUID v4 JTI); bcrypt cost 12; `TokenTracker` with max-5 tokens per user (oldest evicted); `RateLimiter` (3 failures → 10-min lockout per IP); timing-safe login with `DummyHash`
 - **backend/internal/config** — Server startup configuration (CLI flags, env vars, optional INI file); precedence: CLI > env > INI > defaults
 - **backend/internal/middleware** — Gin middleware: `RequestID` (UUID v4), `Logger` (structured slog), `CORS` (same-origin with localhost dev exception), `JWTAuth` (validates token + checks revocation), `OptionalJWTAuth` (extracts JWT if present but allows unauthenticated access for public endpoints), `RequireAdmin` (role-based 403), `APIKeyAuth` (header or query param), `RateLimit` (429 on lockout), `MaxBodySize` (request body size limiter)
@@ -192,25 +192,25 @@ Scanner.tsx (lazy-loaded page)
 
 #### State Management
 
-- **frontend/src/app/slices/adminSlice.ts** — RTK Query endpoints for all admin CRUD operations (Users, Systems, Talkgroups, Units, Groups, Tags, ApiKeys, Dirwatches, Downstreams, Webhooks, Config, Logs, Import/Export, Password, server directory listing, missing audio tools); tag-based cache invalidation
+- **frontend/src/app/slices/adminSlice.ts** — RTK Query endpoints for all admin CRUD operations (Users, Systems, Talkgroups, Units, Groups, Tags, ApiKeys, Dirwatches, Downstreams, Webhooks, Config, Logs, Import/Export, Password, server directory listing, missing audio tools, RadioReference enrichment — CSV preview and apply); tag-based cache invalidation
 - **frontend/src/app/slices/authSlice.ts** — Added `selectToken`, `selectRole`, `selectUsername` selectors
 - **frontend/src/app/api.ts** — Extended `tagTypes` for admin cache invalidation
-- **frontend/src/types/index.ts** — 15 admin types (`AdminUser`, `AdminSystem`, `AdminTalkgroup`, `AdminUnit`, `AdminGroup`, `AdminTag`, `AdminApiKey`, `AdminApiKeyCreateResponse`, `AdminDirwatch`, `AdminDownstream`, `AdminWebhook`, `AdminSetting`, `AdminLog`, `ChangePasswordRequest`, `CreateUserPayload`, `UpdateUserPayload`)
+- **frontend/src/types/index.ts** — 20 admin types (`AdminUser`, `AdminSystem`, `AdminTalkgroup`, `AdminUnit`, `AdminGroup`, `AdminTag`, `AdminApiKey`, `AdminApiKeyCreateResponse`, `AdminDirwatch`, `AdminDownstream`, `AdminWebhook`, `AdminSetting`, `AdminLog`, `ChangePasswordRequest`, `CreateUserPayload`, `UpdateUserPayload`, `RRPreviewResponse`, `RRPreviewRow`, `RRTalkgroupCandidate`, `RRApplyResponse`)
 
 #### Admin Panels
 
-| Panel              | Key Features                                                                                               |
-| ------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `UsersPanel`       | CRUD table, role badges, disabled toggle, expiration, create/edit modal                                    |
-| `SystemsPanel`     | Drag-to-reorder (`@dnd-kit`), expandable rows with nested talkgroups (`@tanstack/react-virtual`) and units |
-| `GroupsTagsPanel`  | Two side-by-side CRUD tables                                                                               |
-| `OptionsPanel`     | Settings form with 6 sections, boolean toggles, conditional transcription fields                           |
-| `ApiKeysPanel`     | Drag-to-reorder, copy-to-clipboard, UUID generation                                                        |
-| `DirWatchPanel`    | Directory watches CRUD with type dropdown                                                                  |
-| `DownstreamsPanel` | Downstream servers CRUD                                                                                    |
-| `LogsPanel`        | Virtualized log viewer (`@tanstack/react-virtual`) with date/level filters                                 |
-| `ToolsPanel`       | CSV import (`talkgroups`/`units`), JSON config export/import, password change, missing-audio audit/cleanup |
-| `WebhooksPanel`    | Webhooks CRUD with type badges                                                                             |
+| Panel              | Key Features                                                                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `UsersPanel`       | CRUD table, role badges, disabled toggle, expiration, create/edit modal                                                                                                              |
+| `SystemsPanel`     | Drag-to-reorder (`@dnd-kit`), expandable rows with nested talkgroups (`@tanstack/react-virtual`) and units                                                                           |
+| `GroupsTagsPanel`  | Two side-by-side CRUD tables                                                                                                                                                         |
+| `OptionsPanel`     | Settings form with 6 sections, boolean toggles, conditional transcription fields                                                                                                     |
+| `ApiKeysPanel`     | Drag-to-reorder, copy-to-clipboard, UUID generation                                                                                                                                  |
+| `DirWatchPanel`    | Directory watches CRUD with type dropdown                                                                                                                                            |
+| `DownstreamsPanel` | Downstream servers CRUD                                                                                                                                                              |
+| `LogsPanel`        | Virtualized log viewer (`@tanstack/react-virtual`) with date/level filters                                                                                                           |
+| `ToolsPanel`       | CSV import (`talkgroups`/`units`), JSON config export/import, password change, missing-audio audit/cleanup, RadioReference enrichment (CSV upload with preview/merge/apply workflow) |
+| `WebhooksPanel`    | Webhooks CRUD with type badges                                                                                                                                                       |
 
 #### Dependencies
 

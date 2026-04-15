@@ -16,6 +16,9 @@ import type {
   ConfigResponse,
   CreateUserPayload,
   UpdateUserPayload,
+  RRPreviewResponse,
+  RRApplyRequest,
+  RRApplyResponse,
 } from "@/types";
 
 // --- Generic CRUD payload types ---
@@ -593,6 +596,23 @@ const adminApi = api.injectEndpoints({
         body,
       }),
     }),
+
+    // ── RadioReference ──
+    rrPreviewCSV: builder.mutation<RRPreviewResponse, FormData>({
+      query: (body) => ({
+        url: "/admin/radioreference/preview/csv",
+        method: "POST",
+        body,
+      }),
+    }),
+    rrApply: builder.mutation<RRApplyResponse, RRApplyRequest>({
+      query: (body) => ({
+        url: "/admin/radioreference/apply",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Talkgroups"],
+    }),
   }),
 });
 
@@ -667,4 +687,7 @@ export const {
   useImportConfigMutation,
   useLazyGetMissingAudioCallsQuery,
   useCleanupMissingAudioCallsMutation,
+  // RadioReference
+  useRrPreviewCSVMutation,
+  useRrApplyMutation,
 } = adminApi;

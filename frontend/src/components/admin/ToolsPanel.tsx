@@ -14,6 +14,7 @@ import {
 } from "@/app/slices/adminSlice";
 import { selectToken } from "@/app/slices/authSlice";
 import { useAppSelector } from "@/app/store";
+import RadioReferenceCard from "@/components/admin/RadioReferenceCard";
 
 const SWAGGER_URL = "/api/admin/docs/index.html";
 
@@ -382,6 +383,9 @@ export default function ToolsPanel() {
           </div>
         </div>
       </div>
+
+      {/* RadioReference Enrichment */}
+      <RadioReferenceCard />
 
       {/* CSV Export: Talkgroups */}
       <div className="card bg-base-200 mb-4">

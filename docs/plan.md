@@ -1981,6 +1981,35 @@ All extended features are **configurable** — disabled by default (except keybo
 
 ---
 
+### Phase 19 — RadioReference Talkgroup Enrichment ✅ COMPLETE
+
+**Goal:** Allow admins to enrich local talkgroup metadata (label, name, group, tag, LED, order) using RadioReference CSV exports.
+
+**Implemented:**
+
+1. `internal/api/radioreference.go` — CSV enrichment endpoints:
+
+- `POST /api/admin/radioreference/preview/csv` — Preview enrichment from CSV upload (5 MiB limit, flexible header normalization)
+- `POST /api/admin/radioreference/apply` — Apply enrichment with `fill_missing` or `overwrite_selected` merge modes; frequency never updated (defense-in-depth)
+
+2. `frontend/src/components/admin/RadioReferenceCard.tsx` — CSV-only UI card in Tools panel:
+
+- File upload + local system selector → preview table
+- Shared merge controls: per-field checkboxes, apply button with result summary
+
+3. Frontend types (`RRPreviewResponse`, `RRPreviewRow`, `RRTalkgroupCandidate`, `RRApplyResponse`) and RTK Query endpoints in `adminSlice.ts`
+
+**Security hardening:**
+
+- CSV upload bounded by `io.LimitReader` (5 MiB)
+- Frequency field explicitly excluded from enrichment updates (defense-in-depth)
+
+**Tests:** API handler tests cover auth enforcement, CSV preview, apply with both merge modes, frequency exclusion, group/tag resolution, header normalization, and preview→apply round-trip. All pass.
+
+**Agents used:** Go Expert, React Expert, Reviewer, Testing Expert.
+
+---
+
 ## Verification Checklist
 
 Each phase is complete when all of the following pass:
