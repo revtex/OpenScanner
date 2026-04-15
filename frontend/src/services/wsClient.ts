@@ -8,6 +8,7 @@ import {
   transcriptReceived,
 } from "@/app/slices/scannerSlice";
 import { clearCredentials } from "@/app/slices/authSlice";
+import { api } from "@/app/api";
 import type { Call, WsCommand } from "@/types";
 import { audioPlayer } from "@/services/audioPlayer";
 
@@ -135,6 +136,7 @@ class WsClient {
           const call = payload as Call;
           this.pendingAudioForCall = call;
           this.dispatch?.(callReceived(call));
+          this.dispatch?.(api.util.invalidateTags([{ type: "Calls", id: "LIST" }]));
         }
         break;
       case "CFG":

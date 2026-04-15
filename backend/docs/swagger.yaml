@@ -3589,6 +3589,14 @@ paths:
         in: query
         name: talkgroup_id
         type: integer
+      - description: Filter by group label
+        in: query
+        name: group
+        type: string
+      - description: Filter by tag label
+        in: query
+        name: tag
+        type: string
       - description: Unix timestamp lower bound
         in: query
         name: date_from
@@ -3619,7 +3627,7 @@ paths:
         in: query
         name: bookmarked_only
         type: boolean
-      - description: Filter by transcript text
+      - description: Filter by transcript text (partial match)
         in: query
         name: transcript
         type: string

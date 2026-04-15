@@ -207,17 +207,6 @@ export const scannerSlice = createSlice({
       }
     },
   },
-  extraReducers: (builder) => {
-    builder.addCase(callReceived, () => {
-      // Invalidate the search calls cache when a new call arrives.
-      // Use dynamic import + setTimeout to avoid synchronous RTK Query calls during reducer execution.
-      setTimeout(() => {
-        import("@/app/api").then(({ api }) => {
-          api.util.invalidateTags([{ type: "Calls", id: "LIST" }]);
-        });
-      }, 0);
-    });
-  },
 });
 
 export const {

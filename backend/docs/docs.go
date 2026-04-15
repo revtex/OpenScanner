@@ -3739,6 +3739,18 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Filter by group label",
+                        "name": "group",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by tag label",
+                        "name": "tag",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Unix timestamp lower bound",
                         "name": "date_from",
@@ -3783,7 +3795,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filter by transcript text",
+                        "description": "Filter by transcript text (partial match)",
                         "name": "transcript",
                         "in": "query"
                     }
