@@ -138,7 +138,8 @@ func TestPostCallUpload_InvalidKey(t *testing.T) {
 }
 
 // TestPostCallUpload_MissingAudio checks that a request with a valid API key
-// and all required form fields but no audio file is rejected with 400.
+// and all required form fields but no audio file returns 417 with an
+// rdio-scanner-compatible "Incomplete call data" plain-text message.
 func TestPostCallUpload_MissingAudio(t *testing.T) {
 	engine, queries := newTestEngineWithCalls(t)
 	ctx := context.Background()
@@ -161,8 +162,11 @@ func TestPostCallUpload_MissingAudio(t *testing.T) {
 	w := httptest.NewRecorder()
 	engine.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400; body: %s", w.Code, w.Body.String())
+	if w.Code != http.StatusExpectationFailed {
+		t.Errorf("status = %d, want 417; body: %s", w.Code, w.Body.String())
+	}
+	if got := w.Body.String(); got != "Incomplete call data: no audio\n" {
+		t.Errorf("body = %q, want %q", got, "Incomplete call data: no audio\n")
 	}
 }
 
@@ -288,8 +292,36 @@ func TestPostCallUpload_TestConnection(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body: %s", w.Code, w.Body.String())
 	}
-	if got := w.Body.String(); got != "incomplete call data: no talkgroup" {
-		t.Errorf("body = %q, want \"incomplete call data: no talkgroup\"", got)
+	if got := w.Body.String(); got != "Incomplete call data: no talkgroup\n" {
+		t.Errorf("body = %q, want %q", got, "Incomplete call data: no talkgroup\n")
+	}
+}
+
+// TestPostCallUpload_SDRTrunkConnectivity checks that SDRTrunk's implicit
+// connectivity test (multipart POST with only `key`, no test=1 flag) returns
+// an rdio-scanner-compatible "Incomplete call data: no talkgroup" response at
+// 417. SDRTrunk explicitly checks for this prefix to confirm connectivity.
+func TestPostCallUpload_SDRTrunkConnectivity(t *testing.T) {
+	engine, queries := newTestEngineWithCalls(t)
+	seedAPIKey(t, queries, "key-sdrtrunk")
+
+	// SDRTrunk sends only the API key field — no dateTime, system, talkgroup, or audio.
+	body, ct := buildCallUpload(t, map[string]string{}, false)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/call-upload", body)
+	req.Header.Set("Content-Type", ct)
+	req.Header.Set("X-API-Key", "key-sdrtrunk")
+	w := httptest.NewRecorder()
+	engine.ServeHTTP(w, req)
+
+	if w.Code != http.StatusExpectationFailed {
+		t.Fatalf("status = %d, want 417; body: %s", w.Code, w.Body.String())
+	}
+	// rdio-scanner's IsValid() checks all fields without early returns; the
+	// last failing check wins. With no talkgroup the last error is always
+	// "no talkgroup", which SDRTrunk checks via startsWith().
+	if got := w.Body.String(); got != "Incomplete call data: no talkgroup\n" {
+		t.Errorf("body = %q, want %q", got, "Incomplete call data: no talkgroup\n")
 	}
 }
 

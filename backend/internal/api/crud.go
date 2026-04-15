@@ -29,12 +29,14 @@ var validRoles = map[string]bool{
 
 // AdminHandler handles admin CRUD endpoints.
 type AdminHandler struct {
-	queries       *db.Queries
-	hub           *ws.Hub
-	sqlDB         *sql.DB
-	dwReload      DirMonitorReloader
-	dsReload      DownstreamReloader
-	recordingsDir string
+	queries          *db.Queries
+	hub              *ws.Hub
+	sqlDB            *sql.DB
+	dwReload         DirMonitorReloader
+	dsReload         DownstreamReloader
+	recordingsDir    string
+	ffmpegAvailable  bool
+	whisperAvailable bool
 }
 
 // NewAdminHandler constructs an AdminHandler.

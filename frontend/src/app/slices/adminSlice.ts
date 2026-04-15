@@ -13,6 +13,7 @@ import type {
   AdminWebhook,
   AdminSetting,
   AdminLog,
+  ConfigResponse,
   CreateUserPayload,
   UpdateUserPayload,
 } from "@/types";
@@ -486,7 +487,7 @@ const adminApi = api.injectEndpoints({
     }),
 
     // ── Config (Settings) ──
-    getConfig: builder.query<AdminSetting[], void>({
+    getConfig: builder.query<ConfigResponse, void>({
       query: () => "/admin/config",
       providesTags: ["Config"],
     }),

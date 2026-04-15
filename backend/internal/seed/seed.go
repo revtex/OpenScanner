@@ -72,7 +72,7 @@ func seedSettings(ctx context.Context, tx *sql.Tx) (bool, error) {
 		{"duplicateDetectionTimeFrame", "500"},
 		{"disableDuplicateDetection", "false"},
 		{"sortTalkgroups", "false"},
-		{"audioConversion", "1"},
+		{"audioConversion", "0"},
 		{"showListenersCount", "false"},
 		{"tagsToggle", "false"},
 		{"playbackGoesLive", "false"},

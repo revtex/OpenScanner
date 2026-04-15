@@ -197,9 +197,21 @@ func (p *program) run() {
 	rateLimiter := auth.NewRateLimiter(ctx)
 
 	// Set up bounded FFmpeg worker pool and audio processor.
-	audio.CheckFFmpeg()
+	hasFFmpeg := audio.CheckFFmpeg()
 	pool := audio.NewWorkerPool(ctx)
 	processor := audio.NewProcessor(cfg.RecordingsDir, pool)
+
+	// If ffmpeg is not available, force audioConversion to disabled in the DB.
+	if !hasFFmpeg {
+		if err := queries.UpsertSetting(context.Background(), db.UpsertSettingParams{
+			Key: "audioConversion", Value: "0",
+		}); err != nil {
+			slog.Error("failed to force-disable audioConversion", "error", err)
+		}
+	}
+
+	// Check whisper availability.
+	hasWhisper := checkWhisper()
 
 	// Start background call pruner.
 	go audio.PruneLoop(ctx, queries, cfg.RecordingsDir)
@@ -221,10 +233,12 @@ func (p *program) run() {
 		Processor:          processor,
 		Hub:                hub,
 		SQLDB:              sqlDB,
-		DirMonitorReloader:   dwService,
+		DirMonitorReloader: dwService,
 		DownstreamReloader: dsService,
 		DownstreamNotifier: dsService,
 		Version:            config.Version,
+		FFmpegAvailable:    hasFFmpeg,
+		WhisperAvailable:   hasWhisper,
 	})
 
 	// Create HTTP server.
@@ -358,10 +372,15 @@ func (p *program) startAutoCertServer(cfg *config.Config, handler http.Handler, 
 
 // checkExternalTools logs warnings if optional external tools are not available.
 func checkExternalTools() {
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		slog.Warn("ffmpeg not found on PATH, audio conversion disabled")
-	}
+	// Startup-only advisory messages; actual enforcement is in audio.CheckFFmpeg
+	// and checkWhisper which return booleans used to gate features.
+}
+
+// checkWhisper returns true if a whisper binary is on PATH.
+func checkWhisper() bool {
 	if _, err := exec.LookPath("whisper"); err != nil {
 		slog.Warn("whisper not found on PATH, transcription disabled")
+		return false
 	}
+	return true
 }

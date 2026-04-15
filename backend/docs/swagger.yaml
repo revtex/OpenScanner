@@ -122,6 +122,8 @@ definitions:
         type: integer
       systemLabel:
         type: string
+      talkerAlias:
+        type: string
       talkgroupGroup:
         type: string
       talkgroupId:
@@ -177,9 +179,9 @@ definitions:
         items:
           $ref: '#/definitions/ExportAPIKey'
         type: array
-      dirwatches:
+      dirmonitors:
         items:
-          $ref: '#/definitions/Dirwatch'
+          $ref: '#/definitions/DirMonitor'
         type: array
       downstreams:
         items:
@@ -224,9 +226,9 @@ definitions:
         items:
           $ref: '#/definitions/ApiKey'
         type: array
-      dirwatches:
+      dirmonitors:
         items:
-          $ref: '#/definitions/Dirwatch'
+          $ref: '#/definitions/DirMonitor'
         type: array
       downstreams:
         items:
@@ -274,7 +276,7 @@ definitions:
       systemsJson:
         type: string
     type: object
-  CreateDirwatchRequest:
+  CreateDirMonitorRequest:
     properties:
       delay:
         type: integer
@@ -393,7 +395,7 @@ definitions:
       url:
         type: string
     type: object
-  Dirwatch:
+  DirMonitor:
     properties:
       delay:
         type: integer
@@ -422,7 +424,7 @@ definitions:
       use_polling:
         type: integer
     type: object
-  DirwatchResponse:
+  DirMonitorResponse:
     properties:
       delay:
         type: integer
@@ -897,7 +899,7 @@ definitions:
       systemsJson:
         type: string
     type: object
-  UpdateDirwatchRequest:
+  UpdateDirMonitorRequest:
     properties:
       delay:
         type: integer
@@ -1383,9 +1385,9 @@ paths:
       summary: Update settings
       tags:
       - Admin
-  /admin/dirwatches:
+  /admin/dirmonitors:
     get:
-      description: Returns all directory watches.
+      description: Returns all directory monitors.
       produces:
       - application/json
       responses:
@@ -1393,7 +1395,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/DirwatchResponse'
+              $ref: '#/definitions/DirMonitorResponse'
             type: array
         "500":
           description: Internal Server Error
@@ -1401,7 +1403,7 @@ paths:
             $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
-      summary: List directory watches
+      summary: List directory monitors
       tags:
       - Admin
     post:
@@ -1409,19 +1411,19 @@ paths:
       - application/json
       description: Creates a new directory watch.
       parameters:
-      - description: Dirwatch to create
+      - description: DirMonitor to create
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/CreateDirwatchRequest'
+          $ref: '#/definitions/CreateDirMonitorRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/DirwatchResponse'
+            $ref: '#/definitions/DirMonitorResponse'
         "400":
           description: Bad Request
           schema:
@@ -1439,11 +1441,11 @@ paths:
       summary: Create a directory watch
       tags:
       - Admin
-  /admin/dirwatches/{id}:
+  /admin/dirmonitors/{id}:
     delete:
-      description: Deletes a directory watch by ID.
+      description: Deletes a directory monitor by ID.
       parameters:
-      - description: Dirwatch ID
+      - description: DirMonitor ID
         in: path
         name: id
         required: true
@@ -1472,32 +1474,32 @@ paths:
             $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Delete a directory watch
+      summary: Delete a directory monitor
       tags:
       - Admin
     put:
       consumes:
       - application/json
-      description: Updates an existing directory watch by ID.
+      description: Updates an existing directory monitor by ID.
       parameters:
-      - description: Dirwatch ID
+      - description: DirMonitor ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Dirwatch fields to update
+      - description: DirMonitor fields to update
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/UpdateDirwatchRequest'
+          $ref: '#/definitions/UpdateDirMonitorRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/DirwatchResponse'
+            $ref: '#/definitions/DirMonitorResponse'
         "400":
           description: Bad Request
           schema:
@@ -1516,7 +1518,7 @@ paths:
             $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Update a directory watch
+      summary: Update a directory monitor
       tags:
       - Admin
   /admin/downstreams:
@@ -1673,6 +1675,64 @@ paths:
       security:
       - BearerAuth: []
       summary: Export full configuration
+      tags:
+      - Admin
+  /admin/export/talkgroups:
+    get:
+      description: Downloads a CSV file of all talkgroups for the given system. Accepts
+        an optional system_id query param; if omitted, all systems are exported.
+      parameters:
+      - description: Filter by system ID (row ID)
+        in: query
+        name: system_id
+        type: integer
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV data
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Export talkgroups as CSV
+      tags:
+      - Admin
+  /admin/export/units:
+    get:
+      description: Downloads a CSV file of all units for the given system. Accepts
+        an optional system_id query param; if omitted, all systems are exported.
+      parameters:
+      - description: Filter by system ID (row ID)
+        in: query
+        name: system_id
+        type: integer
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV data
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Export units as CSV
       tags:
       - Admin
   /admin/fs/directories:
@@ -1850,7 +1910,7 @@ paths:
       consumes:
       - application/json
       description: Imports settings, groups, tags, systems, talkgroups, units, API
-        keys, dirwatches, downstreams, and webhooks from a JSON body. Existing records
+        keys, dirmonitors, downstreams, and webhooks from a JSON body. Existing records
         are upserted or skipped on conflict.
       parameters:
       - description: Configuration data to import
@@ -1885,7 +1945,8 @@ paths:
       - multipart/form-data
       description: 'Accepts a multipart CSV file with talkgroup data and a system_id
         form field. Columns: talkgroup_id, label, name, tag_id, group_id, frequency,
-        led, order. Header rows are auto-skipped.'
+        led, order. Header rows are auto-skipped. Use mode=overwrite (default) to
+        update existing talkgroups or mode=skip to leave existing talkgroups unchanged.'
       parameters:
       - description: System ID to import talkgroups into
         in: formData
@@ -1897,11 +1958,15 @@ paths:
         name: file
         required: true
         type: file
+      - description: 'Duplicate handling: overwrite (default) or skip'
+        in: formData
+        name: mode
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: 'imported: count'
+          description: inserted, updated, skipped counts
           schema:
             type: object
         "400":
@@ -1922,7 +1987,8 @@ paths:
       consumes:
       - multipart/form-data
       description: 'Accepts a multipart CSV file with unit data and a system_id form
-        field. Columns: unit_id, label, order. Header rows are auto-skipped.'
+        field. Columns: unit_id, label, order. Header rows are auto-skipped. Use mode=overwrite
+        (default) to update existing units or mode=skip to leave existing units unchanged.'
       parameters:
       - description: System ID to import units into
         in: formData
@@ -1934,11 +2000,15 @@ paths:
         name: file
         required: true
         type: file
+      - description: 'Duplicate handling: overwrite (default) or skip'
+        in: formData
+        name: mode
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: 'imported: count'
+          description: inserted, updated, skipped counts
           schema:
             type: object
         "400":
@@ -2570,7 +2640,17 @@ paths:
       - Admin
   /admin/units:
     get:
-      description: Returns all units.
+      description: Returns all units, optionally filtered by system_id and/or unit_id
+        pattern.
+      parameters:
+      - description: Filter by system_id
+        in: query
+        name: system_id
+        type: integer
+      - description: Search by unit_id (numeric, prefix matching)
+        in: query
+        name: unit_id
+        type: string
       produces:
       - application/json
       responses:

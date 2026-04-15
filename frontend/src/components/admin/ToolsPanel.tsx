@@ -129,8 +129,7 @@ export default function ToolsPanel() {
         exportTgSystemId ? { systemId: Number(exportTgSystemId) } : {},
       ).unwrap();
       const systemLabel =
-        systems?.find((s) => String(s.id) === exportTgSystemId)?.label ??
-        "all";
+        systems?.find((s) => String(s.id) === exportTgSystemId)?.label ?? "all";
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

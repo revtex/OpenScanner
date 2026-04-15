@@ -924,31 +924,46 @@ func TestConfig_GetPut(t *testing.T) {
 		Key: "audioConversion", Value: "0",
 	})
 
-	// GET
+	// GET — response shape: { settings: [...], capabilities: {...} }
 	w := doRequest(engine, http.MethodGet, "/api/admin/config", nil, hdrs)
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET status = %d; body: %s", w.Code, w.Body.String())
 	}
-	var config []map[string]string
-	decodeJSON(t, w, &config)
+	var resp struct {
+		Settings     []map[string]string `json:"settings"`
+		Capabilities map[string]bool     `json:"capabilities"`
+	}
+	decodeJSON(t, w, &resp)
 	found := false
-	for _, s := range config {
+	for _, s := range resp.Settings {
 		if s["key"] == "audioConversion" && s["value"] == "0" {
 			found = true
 		}
 	}
 	if !found {
-		t.Errorf("audioConversion not found or not 0 in %v", config)
+		t.Errorf("audioConversion not found or not 0 in %v", resp.Settings)
+	}
+	// Capabilities should report ffmpeg unavailable in test env.
+	if resp.Capabilities["ffmpeg"] {
+		t.Error("expected capabilities.ffmpeg = false in test env")
 	}
 
-	// PUT
+	// PUT — audioConversion=1 should be rejected because ffmpeg is not available.
 	putBody := jsonBody(t, []map[string]string{
 		{"key": "audioConversion", "value": "1"},
+	})
+	w = doRequest(engine, http.MethodPut, "/api/admin/config", putBody, hdrs)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("PUT audioConversion=1 without ffmpeg: status = %d, want 400; body: %s", w.Code, w.Body.String())
+	}
+
+	// PUT — branding should work fine.
+	putBody = jsonBody(t, []map[string]string{
 		{"key": "branding", "value": "hello"},
 	})
 	w = doRequest(engine, http.MethodPut, "/api/admin/config", putBody, hdrs)
 	if w.Code != http.StatusOK {
-		t.Fatalf("PUT status = %d; body: %s", w.Code, w.Body.String())
+		t.Fatalf("PUT branding status = %d; body: %s", w.Code, w.Body.String())
 	}
 
 	// Verify via GET.
@@ -956,14 +971,13 @@ func TestConfig_GetPut(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET after PUT status = %d", w.Code)
 	}
-	var config2 []map[string]string
-	decodeJSON(t, w, &config2)
-	configMap := make(map[string]string)
-	for _, s := range config2 {
-		configMap[s["key"]] = s["value"]
+	var resp2 struct {
+		Settings []map[string]string `json:"settings"`
 	}
-	if configMap["audioConversion"] != "1" {
-		t.Errorf("audioConversion after PUT = %q, want 1", configMap["audioConversion"])
+	decodeJSON(t, w, &resp2)
+	configMap := make(map[string]string)
+	for _, s := range resp2.Settings {
+		configMap[s["key"]] = s["value"]
 	}
 	if configMap["branding"] != "hello" {
 		t.Errorf("branding = %q, want hello", configMap["branding"])

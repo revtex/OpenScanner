@@ -470,28 +470,28 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/dirwatches": {
+        "/admin/dirmonitors": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns all directory watches.",
+                "description": "Returns all directory monitors.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Admin"
                 ],
-                "summary": "List directory watches",
+                "summary": "List directory monitors",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/DirwatchResponse"
+                                "$ref": "#/definitions/DirMonitorResponse"
                             }
                         }
                     },
@@ -522,12 +522,12 @@ const docTemplate = `{
                 "summary": "Create a directory watch",
                 "parameters": [
                     {
-                        "description": "Dirwatch to create",
+                        "description": "DirMonitor to create",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/CreateDirwatchRequest"
+                            "$ref": "#/definitions/CreateDirMonitorRequest"
                         }
                     }
                 ],
@@ -535,7 +535,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/DirwatchResponse"
+                            "$ref": "#/definitions/DirMonitorResponse"
                         }
                     },
                     "400": {
@@ -559,14 +559,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/dirwatches/{id}": {
+        "/admin/dirmonitors/{id}": {
             "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Updates an existing directory watch by ID.",
+                "description": "Updates an existing directory monitor by ID.",
                 "consumes": [
                     "application/json"
                 ],
@@ -576,22 +576,22 @@ const docTemplate = `{
                 "tags": [
                     "Admin"
                 ],
-                "summary": "Update a directory watch",
+                "summary": "Update a directory monitor",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Dirwatch ID",
+                        "description": "DirMonitor ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Dirwatch fields to update",
+                        "description": "DirMonitor fields to update",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/UpdateDirwatchRequest"
+                            "$ref": "#/definitions/UpdateDirMonitorRequest"
                         }
                     }
                 ],
@@ -599,7 +599,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/DirwatchResponse"
+                            "$ref": "#/definitions/DirMonitorResponse"
                         }
                     },
                     "400": {
@@ -634,18 +634,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deletes a directory watch by ID.",
+                "description": "Deletes a directory monitor by ID.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Admin"
                 ],
-                "summary": "Delete a directory watch",
+                "summary": "Delete a directory monitor",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Dirwatch ID",
+                        "description": "DirMonitor ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -918,6 +918,96 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/ConfigExport"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/export/talkgroups": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Downloads a CSV file of all talkgroups for the given system. Accepts an optional system_id query param; if omitted, all systems are exported.",
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Export talkgroups as CSV",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Filter by system ID (row ID)",
+                        "name": "system_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "CSV data",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/export/units": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Downloads a CSV file of all units for the given system. Accepts an optional system_id query param; if omitted, all systems are exported.",
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Export units as CSV",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Filter by system ID (row ID)",
+                        "name": "system_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "CSV data",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
@@ -1202,7 +1292,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Imports settings, groups, tags, systems, talkgroups, units, API keys, dirwatches, downstreams, and webhooks from a JSON body. Existing records are upserted or skipped on conflict.",
+                "description": "Imports settings, groups, tags, systems, talkgroups, units, API keys, dirmonitors, downstreams, and webhooks from a JSON body. Existing records are upserted or skipped on conflict.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1253,7 +1343,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Accepts a multipart CSV file with talkgroup data and a system_id form field. Columns: talkgroup_id, label, name, tag_id, group_id, frequency, led, order. Header rows are auto-skipped.",
+                "description": "Accepts a multipart CSV file with talkgroup data and a system_id form field. Columns: talkgroup_id, label, name, tag_id, group_id, frequency, led, order. Header rows are auto-skipped. Use mode=overwrite (default) to update existing talkgroups or mode=skip to leave existing talkgroups unchanged.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -1278,11 +1368,17 @@ const docTemplate = `{
                         "name": "file",
                         "in": "formData",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Duplicate handling: overwrite (default) or skip",
+                        "name": "mode",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "imported: count",
+                        "description": "inserted, updated, skipped counts",
                         "schema": {
                             "type": "object"
                         }
@@ -1309,7 +1405,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Accepts a multipart CSV file with unit data and a system_id form field. Columns: unit_id, label, order. Header rows are auto-skipped.",
+                "description": "Accepts a multipart CSV file with unit data and a system_id form field. Columns: unit_id, label, order. Header rows are auto-skipped. Use mode=overwrite (default) to update existing units or mode=skip to leave existing units unchanged.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -1334,11 +1430,17 @@ const docTemplate = `{
                         "name": "file",
                         "in": "formData",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Duplicate handling: overwrite (default) or skip",
+                        "name": "mode",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "imported: count",
+                        "description": "inserted, updated, skipped counts",
                         "schema": {
                             "type": "object"
                         }
@@ -2329,7 +2431,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns all units.",
+                "description": "Returns all units, optionally filtered by system_id and/or unit_id pattern.",
                 "produces": [
                     "application/json"
                 ],
@@ -2337,6 +2439,20 @@ const docTemplate = `{
                     "Admin"
                 ],
                 "summary": "List units",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Filter by system_id",
+                        "name": "system_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by unit_id (numeric, prefix matching)",
+                        "name": "unit_id",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -4188,6 +4304,9 @@ const docTemplate = `{
                 "systemLabel": {
                     "type": "string"
                 },
+                "talkerAlias": {
+                    "type": "string"
+                },
                 "talkgroupGroup": {
                     "type": "string"
                 },
@@ -4273,10 +4392,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/ExportAPIKey"
                     }
                 },
-                "dirwatches": {
+                "dirmonitors": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/Dirwatch"
+                        "$ref": "#/definitions/DirMonitor"
                     }
                 },
                 "downstreams": {
@@ -4344,10 +4463,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/ApiKey"
                     }
                 },
-                "dirwatches": {
+                "dirmonitors": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/Dirwatch"
+                        "$ref": "#/definitions/DirMonitor"
                     }
                 },
                 "downstreams": {
@@ -4420,7 +4539,7 @@ const docTemplate = `{
                 }
             }
         },
-        "CreateDirwatchRequest": {
+        "CreateDirMonitorRequest": {
             "type": "object",
             "properties": {
                 "delay": {
@@ -4602,7 +4721,7 @@ const docTemplate = `{
                 }
             }
         },
-        "Dirwatch": {
+        "DirMonitor": {
             "type": "object",
             "properties": {
                 "delay": {
@@ -4646,7 +4765,7 @@ const docTemplate = `{
                 }
             }
         },
-        "DirwatchResponse": {
+        "DirMonitorResponse": {
             "type": "object",
             "properties": {
                 "delay": {
@@ -5377,7 +5496,7 @@ const docTemplate = `{
                 }
             }
         },
-        "UpdateDirwatchRequest": {
+        "UpdateDirMonitorRequest": {
             "type": "object",
             "properties": {
                 "delay": {

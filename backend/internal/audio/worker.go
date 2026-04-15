@@ -101,9 +101,11 @@ func ffmpegArgs(input, output string, mode ConversionMode) []string {
 	}
 }
 
-// CheckFFmpeg logs a warning at startup if ffmpeg is not found on PATH.
-func CheckFFmpeg() {
+// CheckFFmpeg reports whether ffmpeg is available on PATH.
+func CheckFFmpeg() bool {
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		slog.Warn("ffmpeg not found on PATH — audio conversion will fail if enabled")
+		return false
 	}
+	return true
 }

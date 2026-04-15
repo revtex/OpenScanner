@@ -49,6 +49,8 @@ type Deps struct {
 	DownstreamReloader DownstreamReloader
 	DownstreamNotifier DownstreamNotifier
 	Version            string
+	FFmpegAvailable    bool
+	WhisperAvailable   bool
 }
 
 // RegisterRoutes wires all API routes onto the Gin engine.
@@ -62,6 +64,8 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		recordingsDir = deps.Processor.RecordingsDir()
 	}
 	adminHandler := NewAdminHandler(deps.Queries, deps.Hub, deps.SQLDB, deps.DirMonitorReloader, deps.DownstreamReloader, recordingsDir)
+	adminHandler.ffmpegAvailable = deps.FFmpegAvailable
+	adminHandler.whisperAvailable = deps.WhisperAvailable
 
 	// Global middleware applied to every request.
 	r.Use(middleware.RequestID())

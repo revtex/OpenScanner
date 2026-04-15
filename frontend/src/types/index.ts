@@ -208,6 +208,16 @@ export interface AdminSetting {
   value: string;
 }
 
+export interface Capabilities {
+  ffmpeg: boolean;
+  whisper: boolean;
+}
+
+export interface ConfigResponse {
+  settings: AdminSetting[];
+  capabilities: Capabilities;
+}
+
 export interface AdminLog {
   id: number;
   dateTime: number;
@@ -240,4 +250,20 @@ export interface UpdateUserPayload {
   systemsJson?: string | null;
   expiration?: number | null;
   limit?: number | null;
+}
+
+export interface AdminDirMonitor {
+  id: number;
+  directory: string;
+  type: string;
+  mask: string | null;
+  extension: string | null;
+  frequency: number | null;
+  delay: number | null;
+  deleteAfter: number;
+  usePolling: number;
+  disabled: number;
+  systemId: number | null;
+  talkgroupId: number | null;
+  order: number;
 }

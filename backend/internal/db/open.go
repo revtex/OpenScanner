@@ -16,7 +16,7 @@ import (
 // foreign keys, applies any pending embedded migrations, and returns the
 // *sql.DB ready for use.
 func Open(path string) (*sql.DB, error) {
-	dsn := path + "?_journal_mode=WAL&_foreign_keys=on"
+	dsn := path + "?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)"
 	sqlDB, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite %q: %w", path, err)

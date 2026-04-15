@@ -3,6 +3,7 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/openscanner/openscanner/internal/db"
@@ -65,7 +66,13 @@ func (h *AdminHandler) GetConfig(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, toSettingResponses(settings))
+	c.JSON(http.StatusOK, gin.H{
+		"settings": toSettingResponses(settings),
+		"capabilities": gin.H{
+			"ffmpeg":  h.ffmpegAvailable,
+			"whisper": h.whisperAvailable,
+		},
+	})
 }
 
 // PutConfig handles PUT /api/admin/config.
@@ -99,6 +106,16 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 		if !allowedSettingKeys[s.Key] {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown setting key: " + s.Key})
 			return
+		}
+	}
+
+	// Reject enabling audio conversion when ffmpeg is not installed.
+	for _, s := range settings {
+		if s.Key == "audioConversion" {
+			if v, err := strconv.Atoi(s.Value); err == nil && v != 0 && !h.ffmpegAvailable {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "ffmpeg is not installed — install it and restart the service to enable audio conversion"})
+				return
+			}
 		}
 	}
 

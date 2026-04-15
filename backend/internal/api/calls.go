@@ -233,19 +233,52 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		return
 	}
 
-	// SDRTrunk sends test=1 to verify the API key and connection.
-	// Respond with the string it expects so it reports CONNECTED.
+	// SDRTrunk and other rdio-scanner-compatible clients may send a POST with
+	// partial data to verify the API key. rdio-scanner responds with plain-text
+	// "Incomplete call data: <reason>" (status 417) which SDRTrunk treats as a
+	// successful connection test. We replicate that behavior: parse all fields
+	// first, then return the same message format for missing required fields.
+	dateTimeStr := c.PostForm("dateTime")
+	systemIDStr := c.PostForm("systemId")
+	if systemIDStr == "" {
+		systemIDStr = c.PostForm("system")
+	}
+	talkgroupIDStr := c.PostForm("talkgroupId")
+	if talkgroupIDStr == "" {
+		talkgroupIDStr = c.PostForm("talkgroup")
+	}
+	_, audioErr := c.FormFile("audio")
+
+	// Check for test=1 explicitly (Trunk Recorder).
 	if c.PostForm("test") == "1" {
-		c.String(http.StatusOK, "incomplete call data: no talkgroup")
+		c.String(http.StatusOK, "Incomplete call data: no talkgroup\n")
 		return
 	}
 
-	// Parse required fields.
-	dateTimeStr := c.PostForm("dateTime")
+	// rdio-scanner's IsValid() checks all fields WITHOUT early returns and
+	// overwrites the error each time, so the LAST failing check wins.
+	// SDRTrunk sends system=<id> but no audio/dateTime/talkgroup, so the last
+	// error is always "no talkgroup" — which SDRTrunk explicitly checks for.
+	// We replicate this behavior: collect the last error, then return it.
+	var incompleteReason string
+	if audioErr != nil {
+		incompleteReason = "no audio"
+	}
 	if dateTimeStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "dateTime is required"})
+		incompleteReason = "no datetime"
+	}
+	if systemIDStr == "" {
+		incompleteReason = "no system"
+	}
+	if talkgroupIDStr == "" {
+		incompleteReason = "no talkgroup"
+	}
+	if incompleteReason != "" {
+		c.String(http.StatusExpectationFailed, "Incomplete call data: %s\n", incompleteReason)
 		return
 	}
+
+	// Parse dateTime.
 	// Try unix timestamp first (Trunk Recorder, SDRTrunk), then ISO 8601 (voxcall).
 	var dateTimeUnix int64
 	if n, err := strconv.ParseInt(dateTimeStr, 10, 64); err == nil {
@@ -263,29 +296,14 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	// Trunk Recorder's rdioscanner_uploader plugin sends "system" and
 	// "talkgroup" while our canonical field names are "systemId" and
 	// "talkgroupId". Accept both for backward compatibility.
-	systemIDStr := c.PostForm("systemId")
-	if systemIDStr == "" {
-		systemIDStr = c.PostForm("system")
-	}
-	if systemIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "systemId is required"})
-		return
-	}
+	// (Already parsed above for the connectivity check.)
 	systemIDRaw, err := strconv.ParseInt(systemIDStr, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid systemId"})
 		return
 	}
 
-	tgIDStr := c.PostForm("talkgroupId")
-	if tgIDStr == "" {
-		tgIDStr = c.PostForm("talkgroup")
-	}
-	if tgIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "talkgroupId is required"})
-		return
-	}
-	talkgroupIDRaw, err := strconv.ParseInt(tgIDStr, 10, 64)
+	talkgroupIDRaw, err := strconv.ParseInt(talkgroupIDStr, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid talkgroupId"})
 		return
@@ -507,7 +525,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	}
 
 	// Resolve audio conversion mode from settings.
-	convMode := audio.ConversionEnabled
+	convMode := audio.ConversionDisabled
 	if mStr := h.getSettingValue(c, "audioConversion"); mStr != "" {
 		if m, err := strconv.Atoi(mStr); err == nil {
 			convMode = audio.ConversionMode(m)

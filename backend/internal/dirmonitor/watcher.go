@@ -555,7 +555,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 	}
 
 	// ── Resolve conversion mode ─────────────────────────────────────────────
-	convMode := audio.ConversionEnabled
+	convMode := audio.ConversionDisabled
 	if mStr := getSetting("audioConversion"); mStr != "" {
 		if m, err := strconv.Atoi(mStr); err == nil {
 			convMode = audio.ConversionMode(m)

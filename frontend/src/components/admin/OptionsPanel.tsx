@@ -169,6 +169,9 @@ export default function OptionsPanel() {
   const { data: config, isLoading } = useGetConfigQuery();
   const [updateConfig] = useUpdateConfigMutation();
 
+  const capabilities = config?.capabilities;
+  const settings = config?.settings;
+
   const [localSettings, setLocalSettings] = useState<Record<string, string>>(
     {},
   );
@@ -181,17 +184,17 @@ export default function OptionsPanel() {
   // Build a map of original server values for dirty comparison.
   const serverSettings = useMemo(() => {
     const map: Record<string, string> = {};
-    if (config) {
-      for (const s of config) {
+    if (settings) {
+      for (const s of settings) {
         map[s.key] = s.value;
       }
     }
     return map;
-  }, [config]);
+  }, [settings]);
 
-  if (config && !configLoaded) {
+  if (settings && !configLoaded) {
     const map: Record<string, string> = {};
-    for (const s of config) {
+    for (const s of settings) {
       map[s.key] = s.value;
     }
     setLocalSettings(map);
@@ -268,9 +271,7 @@ export default function OptionsPanel() {
               }
             />
             <div>
-              <span className="text-sm font-medium">
-                {LABELS[key] ?? key}
-              </span>
+              <span className="text-sm font-medium">{LABELS[key] ?? key}</span>
               {DESCRIPTIONS[key] && (
                 <p className="text-xs text-base-content/60 mt-0.5">
                   {DESCRIPTIONS[key]}
@@ -292,6 +293,7 @@ export default function OptionsPanel() {
     ) : null;
 
     if (key === "audioConversion") {
+      const ffmpegMissing = capabilities && !capabilities.ffmpeg;
       return (
         <div className="flex flex-col">
           {label}
@@ -300,6 +302,7 @@ export default function OptionsPanel() {
             className="select w-full max-w-xs"
             value={value}
             onChange={(e) => updateSetting(key, e.target.value)}
+            disabled={!!ffmpegMissing}
           >
             {Object.entries(AUDIO_CONVERSION_MODES).map(([val, lbl]) => (
               <option key={val} value={val}>
@@ -307,6 +310,12 @@ export default function OptionsPanel() {
               </option>
             ))}
           </select>
+          {ffmpegMissing && (
+            <p className="text-xs text-warning mt-1">
+              FFmpeg is not installed. Install it and restart the service to
+              enable audio conversion.
+            </p>
+          )}
         </div>
       );
     }
