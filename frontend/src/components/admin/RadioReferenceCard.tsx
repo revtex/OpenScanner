@@ -279,6 +279,8 @@ function MergeControls({
   );
 }
 
+const PREVIEW_PAGE_SIZE = 50;
+
 function PreviewTable({
   preview,
   updatableCount,
@@ -292,6 +294,16 @@ function PreviewTable({
   onApply: () => void;
   onCancel: () => void;
 }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(
+    1,
+    Math.ceil(preview.rows.length / PREVIEW_PAGE_SIZE),
+  );
+  const pageRows = preview.rows.slice(
+    (page - 1) * PREVIEW_PAGE_SIZE,
+    page * PREVIEW_PAGE_SIZE,
+  );
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-4 text-sm">
@@ -315,51 +327,65 @@ function PreviewTable({
       </div>
 
       {preview.rows.length > 0 && (
-        <div className="overflow-x-auto max-h-64">
-          <table className="table table-zebra table-xs">
-            <thead>
-              <tr>
-                <th>Row</th>
-                <th>TG ID</th>
-                <th>Status</th>
-                <th>Label</th>
-                <th>Name</th>
-                <th>Group</th>
-                <th>Tag</th>
-                <th>Fields</th>
-              </tr>
-            </thead>
-            <tbody>
-              {preview.rows.slice(0, 100).map((row: RRPreviewRow) => (
-                <tr key={row.row}>
-                  <td>{row.row}</td>
-                  <td>{row.talkgroupId}</td>
-                  <td>
-                    {row.wouldUpdate ? (
-                      <CheckCircle className="w-4 h-4 text-success inline" />
-                    ) : row.matched ? (
-                      <span className="text-base-content/50">no change</span>
-                    ) : (
-                      <span className="text-warning text-xs">
-                        {row.skipReason ?? "skip"}
-                      </span>
-                    )}
-                  </td>
-                  <td className="max-w-32 truncate">{row.label ?? "-"}</td>
-                  <td className="max-w-40 truncate">{row.name ?? "-"}</td>
-                  <td>{row.group ?? "-"}</td>
-                  <td>{row.tag ?? "-"}</td>
-                  <td className="text-xs">
-                    {row.wouldUpdateFields?.join(", ") || "-"}
-                  </td>
+        <div className="space-y-2">
+          <div className="overflow-x-auto max-h-96">
+            <table className="table table-zebra table-xs">
+              <thead>
+                <tr>
+                  <th>Row</th>
+                  <th>TG ID</th>
+                  <th>Status</th>
+                  <th>Label</th>
+                  <th>Name</th>
+                  <th>Group</th>
+                  <th>Tag</th>
+                  <th>Fields</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {preview.rows.length > 100 && (
-            <p className="text-xs text-base-content/70 mt-1">
-              Showing first 100 of {preview.rows.length} rows.
-            </p>
+              </thead>
+              <tbody>
+                {pageRows.map((row: RRPreviewRow) => (
+                  <tr key={row.row}>
+                    <td>{row.row}</td>
+                    <td>{row.talkgroupId}</td>
+                    <td>
+                      {row.wouldUpdate ? (
+                        <CheckCircle className="w-4 h-4 text-success inline" />
+                      ) : (
+                        <span className="text-base-content/50">no change</span>
+                      )}
+                    </td>
+                    <td className="max-w-32 truncate">{row.label ?? "-"}</td>
+                    <td className="max-w-40 truncate">{row.name ?? "-"}</td>
+                    <td>{row.group ?? "-"}</td>
+                    <td>{row.tag ?? "-"}</td>
+                    <td className="text-xs">
+                      {row.wouldUpdateFields?.join(", ") || "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between text-sm">
+              <button
+                className="btn btn-ghost btn-xs"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                ← Prev
+              </button>
+              <span className="text-base-content/70">
+                Page {page} of {totalPages} ({preview.rows.length} rows)
+              </span>
+              <button
+                className="btn btn-ghost btn-xs"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next →
+              </button>
+            </div>
           )}
         </div>
       )}

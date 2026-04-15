@@ -135,8 +135,7 @@ func (h *AdminHandler) RadioReferencePreviewCSV(c *gin.Context) {
 		if tgErr != nil {
 			if errors.Is(tgErr, sql.ErrNoRows) {
 				resp.Skipped++
-				preview.SkipReason = "talkgroup not found in selected system"
-				resp.Rows = append(resp.Rows, preview)
+				// Do not add not-found rows to the preview; skipped count is enough.
 				continue
 			}
 			resp.Errors++
@@ -471,22 +470,34 @@ func (h *AdminHandler) applyRRFieldUpdates(ctx context.Context, params *db.Updat
 				g, err := h.queries.GetGroupByLabel(ctx, *candidate.Group)
 				if err != nil {
 					if errors.Is(err, sql.ErrNoRows) {
-						return errors.New("group not found: " + *candidate.Group)
+						newID, createErr := h.queries.CreateGroup(ctx, *candidate.Group)
+						if createErr != nil {
+							return errors.New("database error")
+						}
+						params.GroupID = sql.NullInt64{Int64: newID, Valid: true}
+					} else {
+						return errors.New("database error")
 					}
-					return errors.New("database error")
+				} else {
+					params.GroupID = sql.NullInt64{Int64: g.ID, Valid: true}
 				}
-				params.GroupID = sql.NullInt64{Int64: g.ID, Valid: true}
 			}
 		case "tag":
 			if candidate.Tag != nil {
 				t, err := h.queries.GetTagByLabel(ctx, *candidate.Tag)
 				if err != nil {
 					if errors.Is(err, sql.ErrNoRows) {
-						return errors.New("tag not found: " + *candidate.Tag)
+						newID, createErr := h.queries.CreateTag(ctx, *candidate.Tag)
+						if createErr != nil {
+							return errors.New("database error")
+						}
+						params.TagID = sql.NullInt64{Int64: newID, Valid: true}
+					} else {
+						return errors.New("database error")
 					}
-					return errors.New("database error")
+				} else {
+					params.TagID = sql.NullInt64{Int64: t.ID, Valid: true}
 				}
-				params.TagID = sql.NullInt64{Int64: t.ID, Valid: true}
 			}
 		case "led":
 			if candidate.Led != nil {
