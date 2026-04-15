@@ -37,6 +37,8 @@ definitions:
     type: object
   ApiKeyCreateResponse:
     properties:
+      callRateLimit:
+        type: integer
       createdKey:
         type: string
       disabled:
@@ -54,6 +56,8 @@ definitions:
     type: object
   ApiKeyResponse:
     properties:
+      callRateLimit:
+        type: integer
       disabled:
         type: integer
       fingerprint:
@@ -265,6 +269,8 @@ definitions:
     type: object
   CreateAPIKeyRequest:
     properties:
+      callRateLimit:
+        type: integer
       disabled:
         type: integer
       ident:
@@ -996,6 +1002,8 @@ definitions:
     type: object
   UpdateAPIKeyRequest:
     properties:
+      callRateLimit:
+        type: integer
       disabled:
         type: integer
       ident:
@@ -3554,6 +3562,7 @@ paths:
           schema:
             properties:
               id:
+                format: int64
                 type: integer
             type: object
         "400":

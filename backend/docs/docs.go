@@ -3678,7 +3678,8 @@ const docTemplate = `{
                             "type": "object",
                             "properties": {
                                 "id": {
-                                    "type": "integer"
+                                    "type": "integer",
+                                    "format": "int64"
                                 }
                             }
                         }
@@ -4287,6 +4288,9 @@ const docTemplate = `{
         "ApiKeyCreateResponse": {
             "type": "object",
             "properties": {
+                "callRateLimit": {
+                    "type": "integer"
+                },
                 "createdKey": {
                     "type": "string"
                 },
@@ -4313,6 +4317,9 @@ const docTemplate = `{
         "ApiKeyResponse": {
             "type": "object",
             "properties": {
+                "callRateLimit": {
+                    "type": "integer"
+                },
                 "disabled": {
                     "type": "integer"
                 },
@@ -4635,6 +4642,9 @@ const docTemplate = `{
         "CreateAPIKeyRequest": {
             "type": "object",
             "properties": {
+                "callRateLimit": {
+                    "type": "integer"
+                },
                 "disabled": {
                     "type": "integer"
                 },
@@ -5757,6 +5767,9 @@ const docTemplate = `{
         "UpdateAPIKeyRequest": {
             "type": "object",
             "properties": {
+                "callRateLimit": {
+                    "type": "integer"
+                },
                 "disabled": {
                     "type": "integer"
                 },
