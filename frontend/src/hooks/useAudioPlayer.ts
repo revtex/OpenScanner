@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { audioPlayer } from "@/services/audioPlayer";
 import { wsClient } from "@/services/wsClient";
+import { api } from "@/app/api";
 import {
   setCurrentCall,
   clearCurrentCall,
@@ -27,6 +28,7 @@ export function useAudioPlayer() {
     audioPlayer.setOnCallEnd(() => {
       dispatch(clearCurrentCall());
       setPlaying(false);
+      dispatch(api.util.invalidateTags([{ type: "Calls", id: "LIST" }]));
     });
 
     audioPlayer.setOnQueueChange((length) => {
