@@ -403,5 +403,10 @@ func (s *Service) pushCall(ctx context.Context, ds db.Downstream, event CallEven
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unexpected status %d from %s", resp.StatusCode, ds.Url)
 	}
+	slog.Debug("downstream: push response received",
+		"downstream_id", ds.ID,
+		"call_id", event.CallID,
+		"status_code", resp.StatusCode,
+	)
 	return nil
 }

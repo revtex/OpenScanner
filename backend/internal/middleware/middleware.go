@@ -259,6 +259,11 @@ func APIKeyAuth(queries *db.Queries) gin.HandlerFunc {
 		if apiKey.CallRateLimit.Valid {
 			c.Set("apiKeyCallRate", apiKey.CallRateLimit.Int64)
 		}
+		slog.Debug("middleware: api key auth success",
+			"api_key_id", apiKey.ID,
+			"ident", apiKey.Ident.String,
+			"path", c.Request.URL.Path,
+		)
 		c.Next()
 	}
 }

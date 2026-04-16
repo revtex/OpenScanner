@@ -95,6 +95,8 @@ Add `slog.Info` at the success path of every Create/Update/Delete handler. Extra
 
 ## Phase 3 — Improve Existing Logs (Missing Context)
 
+> **Status: ✅ Complete**
+
 ### `backend/internal/middleware/middleware.go` — `APIKeyAuth`
 
 - Add `slog.Debug("middleware: api key auth success", "api_key_id", key.ID, "ident", key.Ident.String, "path", c.Request.URL.Path)` — currently only failure paths are logged

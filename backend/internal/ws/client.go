@@ -342,6 +342,8 @@ func (c *Client) readPump(ctx context.Context) {
 					}
 				}
 			}
+		default:
+			slog.Warn("ws: received unknown command", "cmd", cmd)
 		}
 	}
 }

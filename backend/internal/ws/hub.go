@@ -148,6 +148,7 @@ func (h *Hub) BroadcastCFG(ctx context.Context) {
 		return
 	}
 	h.Broadcast(cfgMsg, nil)
+	slog.Debug("ws: cfg broadcast complete", "clients", h.ClientCount())
 }
 
 // ClientCount returns the number of non-admin (listener) clients.
