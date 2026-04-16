@@ -34,8 +34,6 @@ const AUDIO_CONVERSION_MODES: Record<string, string> = {
 const KEYPAD_BEEPS = ["disabled", "uniden", "whistler"] as const;
 
 const TRANSCRIPTION_MODELS = ["tiny", "base", "small", "medium", "large"];
-const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
-
 interface SettingSection {
   title: string;
   keys: string[];
@@ -59,7 +57,7 @@ const PLANNED_ONLY_KEYS = [
 const SECTIONS: SettingSection[] = [
   {
     title: "General",
-    keys: ["branding", "email", "publicAccess", "logLevel"],
+    keys: ["branding", "email", "publicAccess"],
   },
   {
     title: "Scanner Behavior",
@@ -119,7 +117,6 @@ const LABELS: Record<string, string> = {
   transcriptionModel: "Transcription Model",
   transcriptionLanguage: "Transcription Language",
   audioConversion: "Audio Conversion (FFmpeg)",
-  logLevel: "Minimum Log Level",
   branding: "Branding Label",
   email: "Support Email",
   autoPopulate: "Auto-Populate Systems & Talkgroups",
@@ -158,8 +155,6 @@ const DESCRIPTIONS: Record<string, string> = {
   showListenersCount:
     "Display the active listener count on the main scanner screen.",
   audioConversion: "Convert incoming audio to AAC/M4A using FFmpeg.",
-  logLevel:
-    "Minimum level persisted to the admin logs table (debug < info < warn < error).",
   disableDuplicateDetection:
     "Disable automatic rejection of duplicate incoming calls.",
   duplicateDetectionTimeFrame:
@@ -209,9 +204,6 @@ export default function OptionsPanel() {
     const map: Record<string, string> = {};
     for (const s of settings) {
       map[s.key] = s.value;
-    }
-    if (!("logLevel" in map)) {
-      map["logLevel"] = "info";
     }
     setLocalSettings(map);
     setConfigLoaded(true);
@@ -406,32 +398,6 @@ export default function OptionsPanel() {
             {TRANSCRIPTION_MODELS.map((model) => (
               <option key={model} value={model}>
                 {model}
-              </option>
-            ))}
-          </select>
-          {plannedOnly && (
-            <p className="text-xs text-warning/80 mt-1">
-              Saved to config, but not wired to runtime behavior yet.
-            </p>
-          )}
-        </div>
-      );
-    }
-
-    if (key === "logLevel") {
-      return (
-        <div className="flex flex-col">
-          {label}
-          {description}
-          <select
-            className="select w-full max-w-xs"
-            value={value || "info"}
-            disabled={plannedOnly}
-            onChange={(e) => updateSetting(key, e.target.value)}
-          >
-            {LOG_LEVELS.map((level) => (
-              <option key={level} value={level}>
-                {level.toUpperCase()}
               </option>
             ))}
           </select>

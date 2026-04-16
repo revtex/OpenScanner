@@ -10,12 +10,17 @@ import {
   X,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useGetLogsQuery, useGetLogLevelQuery } from "@/app/slices/adminSlice";
+import {
+  useGetLogsQuery,
+  useGetLogLevelQuery,
+  useUpdateConfigMutation,
+} from "@/app/slices/adminSlice";
 import type { AdminLog } from "@/types";
 
 // ─── Constants ──────────────────────────────────────────────
 
 const LEVELS = ["", "debug", "info", "warn", "error"] as const;
+const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
 const LIMIT_OPTIONS = [200, 500, 1000, 2500, 5000] as const;
 
 const LEVEL_COLORS: Record<string, { badge: string; dot: string }> = {
@@ -93,6 +98,9 @@ export default function LogsPanel() {
   const [showFilters, setShowFilters] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [autoScroll, setAutoScroll] = useState(false);
+  const [savingLevel, setSavingLevel] = useState(false);
+  const [levelSaveError, setLevelSaveError] = useState<string | null>(null);
+  const [levelToast, setLevelToast] = useState<string | null>(null);
 
   const [queryParams, setQueryParams] = useState<{
     from?: number;
@@ -115,6 +123,7 @@ export default function LogsPanel() {
   const { data: logLevelData } = useGetLogLevelQuery(undefined, {
     pollingInterval: 30000,
   });
+  const [updateConfig] = useUpdateConfigMutation();
 
   const parentRef = useRef<HTMLDivElement>(null);
   const prevCountRef = useRef(0);
@@ -181,6 +190,30 @@ export default function LogsPanel() {
 
   const hasActiveFilters = !!(level || fromDate || toDate || textQuery);
   const runtimeLevel = logLevelData?.level ?? "info";
+  const [selectedRuntimeLevel, setSelectedRuntimeLevel] =
+    useState(runtimeLevel);
+
+  useEffect(() => {
+    setSelectedRuntimeLevel(runtimeLevel);
+  }, [runtimeLevel]);
+
+  const saveRuntimeLevel = useCallback(async () => {
+    if (selectedRuntimeLevel === runtimeLevel) return;
+    setSavingLevel(true);
+    setLevelSaveError(null);
+    try {
+      await updateConfig([
+        { key: "logLevel", value: selectedRuntimeLevel },
+      ]).unwrap();
+      setLevelToast("Log level updated");
+      setTimeout(() => setLevelToast(null), 2500);
+      void refetch();
+    } catch {
+      setLevelSaveError("Failed to update log level");
+    } finally {
+      setSavingLevel(false);
+    }
+  }, [selectedRuntimeLevel, runtimeLevel, updateConfig, refetch]);
 
   const virtualizer = useVirtualizer({
     count: rows.length,
@@ -198,6 +231,39 @@ export default function LogsPanel() {
           <p className="text-sm text-base-content/60 mt-0.5">
             Live server logs &mdash; {rows.length} entries in buffer
           </p>
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-base-content/60">
+              Runtime log level
+            </span>
+            <select
+              className="select select-xs select-bordered"
+              value={selectedRuntimeLevel}
+              onChange={(e) => setSelectedRuntimeLevel(e.target.value)}
+              disabled={savingLevel}
+            >
+              {LOG_LEVELS.map((l) => (
+                <option key={l} value={l}>
+                  {l.toUpperCase()}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn btn-xs btn-primary"
+              disabled={savingLevel || selectedRuntimeLevel === runtimeLevel}
+              onClick={() => void saveRuntimeLevel()}
+            >
+              {savingLevel ? "Saving..." : "Apply"}
+            </button>
+            <span className="text-xs text-base-content/50">
+              Higher verbosity increases log volume.
+            </span>
+          </div>
+          {levelSaveError && (
+            <p className="text-xs text-error mt-1">{levelSaveError}</p>
+          )}
+          {levelToast && (
+            <p className="text-xs text-success mt-1">{levelToast}</p>
+          )}
         </div>
         <div className="flex items-center gap-1.5">
           <div className="flex items-center gap-1 text-xs text-base-content/60 mr-2">
