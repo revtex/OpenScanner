@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/openscanner/openscanner/internal/db"
@@ -15,6 +16,7 @@ import (
 // A windowMs of 0 or less disables detection (always returns false).
 // systemID and talkgroupID are the DB row IDs (FKs used in the calls table).
 func IsDuplicate(ctx context.Context, queries *db.Queries, systemID, talkgroupID int64, dateTime time.Time, windowMs int64) (bool, error) {
+	slog.Debug("audio: duplicate check", "system", systemID, "talkgroup", talkgroupID, "window_ms", windowMs)
 	if windowMs <= 0 {
 		return false, nil
 	}
@@ -53,6 +55,7 @@ func IsDuplicate(ctx context.Context, queries *db.Queries, systemID, talkgroupID
 		}
 		return false, err
 	}
-
-	return found != 0, nil
+	isDup := found != 0
+	slog.Debug("audio: duplicate check result", "system", systemID, "talkgroup", talkgroupID, "is_duplicate", isDup)
+	return isDup, nil
 }

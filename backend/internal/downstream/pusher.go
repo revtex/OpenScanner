@@ -105,6 +105,7 @@ func (s *Service) Start(ctx context.Context) {
 	}
 
 	entries := make([]pusherEntry, len(downstreams))
+	slog.Debug("downstream: starting pushers", "count", len(downstreams))
 	for i, ds := range downstreams {
 		ch := make(chan CallEvent, 1000)
 		entries[i] = pusherEntry{ch: ch}
@@ -158,6 +159,8 @@ func (s *Service) Notify(event CallEvent) {
 	entries := s.pushers
 	s.mu.Unlock()
 
+	slog.Debug("downstream: notifying pushers", "call_id", event.CallID, "pushers", len(entries))
+
 	for i := range entries {
 		select {
 		case entries[i].ch <- event:
@@ -182,8 +185,12 @@ func (s *Service) runPusher(ctx context.Context, ds db.Downstream, ch <-chan Cal
 			return
 		case event := <-ch:
 			if !isGranted(grants, event.SystemID, event.TalkgroupID) {
+				slog.Debug("downstream: call filtered by grants",
+					"downstream_id", ds.ID, "call_id", event.CallID,
+					"system", event.SystemID, "talkgroup", event.TalkgroupID)
 				continue
 			}
+			slog.Debug("downstream: pushing call", "downstream_id", ds.ID, "call_id", event.CallID)
 			s.pushWithRetry(ctx, ds, event)
 		}
 	}
@@ -232,6 +239,7 @@ func (s *Service) pushWithRetry(ctx context.Context, ds db.Downstream, event Cal
 	backoff := time.Second
 
 	for attempt := range maxRetries {
+		slog.Debug("downstream: push attempt", "downstream_id", ds.ID, "call_id", event.CallID, "attempt", attempt+1)
 		err := s.pushCall(ctx, ds, event)
 		if err == nil {
 			slog.Info("downstream: call pushed successfully",
@@ -375,6 +383,7 @@ func (s *Service) pushCall(ctx context.Context, ds db.Downstream, event CallEven
 	}
 
 	url := strings.TrimRight(ds.Url, "/") + "/api/call-upload"
+	slog.Debug("downstream: http post", "url", url, "system", event.SystemID, "talkgroup", event.TalkgroupID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &body)
 	if err != nil {
 		return fmt.Errorf("create request: %w", err)

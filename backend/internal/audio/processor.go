@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -35,6 +36,7 @@ func (p *Processor) RecordingsDir() string {
 // If conversion is enabled, submits an FFmpeg job, waits for completion, removes
 // the original, and returns the .m4a relative path.
 func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode ConversionMode) (string, error) {
+	slog.Debug("audio: storing uploaded file", "filename", fh.Filename, "size", fh.Size, "mode", mode)
 	safeName := filepath.Base(fh.Filename)
 	if safeName == "" || safeName == "." || safeName == ".." || strings.Contains(safeName, "..") {
 		return "", fmt.Errorf("invalid filename")
@@ -126,6 +128,7 @@ func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode Co
 // SECURITY: the filename is sanitised via filepath.Base — strips directory
 // components and rejects names containing "..".
 func (p *Processor) StoreFile(ctx context.Context, srcPath string, mode ConversionMode) (string, error) {
+	slog.Debug("audio: storing local file", "src", srcPath, "mode", mode)
 	// filepath.Base strips all directory components; the == ".." guard catches
 	// the only remaining traversal case.  No further Contains check is needed.
 	safeName := filepath.Base(srcPath)

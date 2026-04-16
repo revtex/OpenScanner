@@ -133,6 +133,7 @@ func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		if !strings.HasPrefix(header, "Bearer ") {
+			slog.Debug("middleware: jwt auth failed, no bearer header", "path", c.Request.URL.Path)
 			c.AbortWithStatusJSON(401, gin.H{"error": "authorization header required"})
 			return
 		}
@@ -149,6 +150,7 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
+		slog.Debug("middleware: jwt auth success", "user_id", claims.UserID, "role", claims.Role)
 		c.Set("userID", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("role", claims.Role)
@@ -195,9 +197,11 @@ func RequireAdmin() gin.HandlerFunc {
 		role, _ := c.Get("role")
 		roleStr, _ := role.(string)
 		if roleStr != auth.RoleAdmin {
+			slog.Debug("middleware: admin check failed", "role", roleStr)
 			c.AbortWithStatusJSON(403, gin.H{"error": "admin access required"})
 			return
 		}
+		slog.Debug("middleware: admin check passed")
 		c.Next()
 	}
 }

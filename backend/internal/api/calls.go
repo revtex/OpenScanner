@@ -210,6 +210,7 @@ func (h *CallHandler) getSettingValue(c *gin.Context, key string) string {
 //	@Router			/call-upload [post]
 //	@Router			/trunk-recorder-call-upload [post]
 func (h *CallHandler) PostCallUpload(c *gin.Context) {
+	slog.Debug("call-upload: request received", "ip", c.ClientIP())
 	// Retrieve API key ID injected by APIKeyAuth middleware.
 	apiKeyIDVal, exists := c.Get("apiKeyID")
 	if !exists {
@@ -244,6 +245,8 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": "rate limit exceeded"})
 		return
 	}
+
+	slog.Debug("call-upload: rate limit passed", "api_key_id", apiKeyID)
 
 	// SDRTrunk and other rdio-scanner-compatible clients may send a POST with
 	// partial data to verify the API key. rdio-scanner responds with plain-text
@@ -387,6 +390,9 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	autoPopulate := h.getSettingValue(c, "autoPopulate") == "true"
+
+	slog.Debug("call-upload: resolving system and talkgroup",
+		"system_id", systemIDRaw, "talkgroup_id", talkgroupIDRaw)
 
 	// Resolve system by its radio system_id.
 	system, err := h.queries.GetSystemBySystemID(ctx, systemIDRaw)
@@ -552,6 +558,8 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		return
 	}
 
+	slog.Debug("call-upload: audio stored", "path", relPath, "mode", convMode)
+
 	// If the recorder didn't supply a duration, probe the stored file.
 	if !duration.Valid {
 		absPath := filepath.Join(h.processor.RecordingsDir(), relPath)
@@ -606,6 +614,13 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	}
 
 	slog.Info("call ingested", "id", callID)
+
+	slog.Debug("call-upload: db record inserted",
+		"call_id", callID,
+		"system", systemIDRaw,
+		"talkgroup", talkgroupIDRaw,
+		"audio_path", relPath,
+	)
 
 	// Extract unit tags from sources JSON and upsert into units table.
 	// Sources format: [{"pos":0,"src":12345,"tag":"Unit Name"}, ...]
@@ -686,6 +701,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			h.hub.BroadcastCAL(calMsg, audioBytes, func(cl *ws.Client) bool {
 				return cl.CanReceive(system.ID, talkgroup.ID)
 			})
+			slog.Debug("call-upload: ws broadcast sent", "call_id", callID)
 		}
 	}
 

@@ -3,6 +3,7 @@ package auth
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -64,8 +65,10 @@ func (r *RateLimiter) RecordFailure(ip string) bool {
 	e.lastFailure = now
 	if e.failures >= maxFailures {
 		e.lockedUntil = now.Add(lockoutDuration)
+		slog.Debug("auth: ip locked out", "ip", ip, "failures", e.failures)
 		return true
 	}
+	slog.Debug("auth: login failure recorded", "ip", ip, "failures", e.failures)
 	return false
 }
 
@@ -78,7 +81,9 @@ func (r *RateLimiter) IsLockedOut(ip string) bool {
 	if !ok {
 		return false
 	}
-	return time.Now().Before(e.lockedUntil)
+	locked := time.Now().Before(e.lockedUntil)
+	slog.Debug("auth: lockout check", "ip", ip, "locked", locked)
+	return locked
 }
 
 // Reset clears the failure record for an IP (call on successful login).

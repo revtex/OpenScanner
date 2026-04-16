@@ -40,6 +40,7 @@ func pruneOldCalls(ctx context.Context, queries *db.Queries, recordingsDir strin
 	if err != nil || pruneDays <= 0 {
 		return
 	}
+	slog.Debug("pruner: starting prune cycle", "prune_days", pruneDays)
 
 	cutoff := time.Now().AddDate(0, 0, -pruneDays).Unix()
 
@@ -50,8 +51,10 @@ func pruneOldCalls(ctx context.Context, queries *db.Queries, recordingsDir strin
 			return
 		}
 		if len(rows) == 0 {
+			slog.Debug("pruner: no calls to prune")
 			return
 		}
+		slog.Debug("pruner: pruning batch", "count", len(rows))
 
 		cleanBase := filepath.Clean(recordingsDir)
 		for _, row := range rows {

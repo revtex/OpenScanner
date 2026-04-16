@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -156,6 +157,9 @@ func parseTrunkRecorder(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, er
 		tgLabel = sc.TalkgroupTag
 	}
 
+	slog.Debug("dirmonitor: parsed trunk-recorder sidecar",
+		"system", sc.ShortName, "talkgroup", sc.Talkgroup, "freq", sc.Freq)
+
 	return &ParsedCall{
 		AudioFilePath:  audioPath,
 		SidecarPath:    jsonPath,
@@ -225,6 +229,7 @@ func parseSDRTrunk(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) 
 
 	// Try ID3 tag reading first.
 	if tagsParsed := parseSDRTrunkTags(triggeredPath, &systemLabel, &tgID, &freq, &source, &dt, &tgTitle, &site, &channel, &decoder); !tagsParsed {
+		slog.Debug("dirmonitor: sdrtrunk ID3 tags not found, using filename fallback", "file", triggeredPath)
 		// Fall back to filename parsing: <systemID>_<talkgroupID>_<unixTs>.<ext>
 		name := filepath.Base(triggeredPath)
 		stem := strings.TrimSuffix(name, filepath.Ext(name))
@@ -236,6 +241,8 @@ func parseSDRTrunk(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) 
 				dt = time.Unix(ts, 0)
 			}
 		}
+	} else {
+		slog.Debug("dirmonitor: sdrtrunk parsed ID3 tags", "system", systemLabel, "talkgroup", tgID, "freq", freq)
 	}
 
 	if dt.IsZero() {

@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -96,6 +97,7 @@ func GenerateToken(userID int64, username, role string) (string, string, error) 
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, err := token.SignedString(JWTSecret)
+	slog.Debug("auth: token generated", "user_id", userID, "username", username, "role", role, "jti", jti)
 	return signed, jti, err
 }
 
@@ -128,6 +130,7 @@ func (tt *TokenTracker) Track(userID int64, jti string, expiresAt time.Time) {
 	tt.mu.Lock()
 	defer tt.mu.Unlock()
 
+	slog.Debug("auth: tracking token", "user_id", userID, "jti", jti)
 	tt.cleanupLocked()
 
 	entries := tt.userTokens[userID]
@@ -145,13 +148,16 @@ func (tt *TokenTracker) IsRevoked(jti string) bool {
 	defer tt.mu.Unlock()
 	exp, ok := tt.denied[jti]
 	if !ok {
+		slog.Debug("auth: revocation check", "jti", jti, "revoked", false)
 		return false
 	}
 	// Lazily clean up expired denied entries.
 	if time.Now().After(exp) {
 		delete(tt.denied, jti)
+		slog.Debug("auth: revocation check (expired denial)", "jti", jti, "revoked", false)
 		return false
 	}
+	slog.Debug("auth: revocation check", "jti", jti, "revoked", true)
 	return true
 }
 
@@ -167,6 +173,7 @@ func (tt *TokenTracker) Revoke(jti string) {
 func (tt *TokenTracker) RevokeAllForUser(userID int64) {
 	tt.mu.Lock()
 	defer tt.mu.Unlock()
+	slog.Debug("auth: revoking all tokens for user", "user_id", userID, "count", len(tt.userTokens[userID]))
 	for _, e := range tt.userTokens[userID] {
 		tt.denied[e.JTI] = e.ExpiresAt
 	}
@@ -209,12 +216,15 @@ func ParseToken(tokenStr string) (*Claims, error) {
 		return JWTSecret, nil
 	})
 	if err != nil {
+		slog.Debug("auth: token parse failed", "error", err)
 		return nil, err
 	}
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
+		slog.Debug("auth: token parse invalid claims")
 		return nil, jwt.ErrTokenInvalidClaims
 	}
+	slog.Debug("auth: token parsed", "user_id", claims.UserID, "role", claims.Role)
 	return claims, nil
 }
 

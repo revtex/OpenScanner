@@ -57,6 +57,7 @@ func (h *Hub) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case c := <-h.register:
+			slog.Debug("ws: client registered", "user_id", c.userID, "is_admin", c.isAdmin)
 			h.mu.Lock()
 			h.clients[c] = struct{}{}
 			h.mu.Unlock()
@@ -64,6 +65,7 @@ func (h *Hub) Run(ctx context.Context) {
 				h.debounceLSC()
 			}
 		case c := <-h.unregister:
+			slog.Debug("ws: client unregistered", "user_id", c.userID, "is_admin", c.isAdmin)
 			h.mu.Lock()
 			if _, ok := h.clients[c]; ok {
 				delete(h.clients, c)
@@ -74,6 +76,7 @@ func (h *Hub) Run(ctx context.Context) {
 				h.debounceLSC()
 			}
 		case msg := <-h.broadcast:
+			slog.Debug("ws: broadcasting message", "size", len(msg.data), "has_filter", msg.filter != nil)
 			h.mu.RLock()
 			for c := range h.clients {
 				if msg.filter != nil && !msg.filter(c) {
@@ -106,6 +109,7 @@ func (h *Hub) Broadcast(data []byte, filter func(*Client) bool) {
 func (h *Hub) BroadcastCAL(calMsg []byte, audioData []byte, filter func(*Client) bool) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
+	slog.Debug("ws: broadcasting CAL", "cal_size", len(calMsg), "audio_size", len(audioData), "num_clients", len(h.clients))
 	for c := range h.clients {
 		if filter != nil && !filter(c) {
 			continue
@@ -137,6 +141,7 @@ func (h *Hub) BroadcastCFG(ctx context.Context) {
 	if h == nil {
 		return
 	}
+	slog.Debug("ws: rebuilding and broadcasting CFG")
 	cfgMsg, err := buildCFGMessage(ctx, h.queries)
 	if err != nil {
 		slog.Error("ws: failed to build CFG for broadcast", "error", err)

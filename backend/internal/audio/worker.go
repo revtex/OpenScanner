@@ -62,6 +62,7 @@ func NewWorkerPool(ctx context.Context) *WorkerPool {
 // Submit enqueues a conversion job. Returns ctx.Err() if the context is
 // cancelled before the job can be queued. Blocks only when the buffer is full.
 func (p *WorkerPool) Submit(ctx context.Context, job ConversionJob) error {
+	slog.Debug("audio: submitting conversion job", "input", job.InputPath, "output", job.OutputPath, "mode", job.Mode)
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -77,12 +78,14 @@ func runJob(ctx context.Context, job ConversionJob) {
 		job.Done <- nil
 		return
 	}
+	slog.Debug("audio: starting ffmpeg", "input", job.InputPath, "output", job.OutputPath, "mode", job.Mode)
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	if err := cmd.Run(); err != nil {
 		slog.Error("ffmpeg conversion failed", "input", job.InputPath, "output", job.OutputPath, "error", err)
 		job.Done <- err
 		return
 	}
+	slog.Debug("audio: ffmpeg completed", "output", job.OutputPath)
 	job.Done <- nil
 }
 

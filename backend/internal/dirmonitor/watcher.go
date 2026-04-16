@@ -69,6 +69,8 @@ func (s *Service) Start(ctx context.Context) {
 		return
 	}
 
+	slog.Debug("dirmonitor: starting watchers", "count", len(dirmonitors))
+
 	for _, dw := range dirmonitors {
 		s.wg.Add(1)
 		go func() {
@@ -135,8 +137,10 @@ func (s *Service) runDirMonitor(ctx context.Context, dw db.Dirmonitor) {
 	)
 
 	if dw.UsePolling == 1 {
+		slog.Debug("dirmonitor: using polling strategy", "id", dw.ID, "dir", dw.Directory)
 		s.runWithPolling(ctx, dw)
 	} else {
+		slog.Debug("dirmonitor: using fsnotify strategy", "id", dw.ID, "dir", dw.Directory)
 		s.runWithFsnotify(ctx, dw)
 	}
 
@@ -314,6 +318,7 @@ func (s *Service) handleFile(ctx context.Context, dw db.Dirmonitor, filePath str
 	}
 
 	parse := parserForType(dw.Type)
+	slog.Debug("dirmonitor: processing file", "id", dw.ID, "file", filePath, "parser", dw.Type)
 	parsed, err := parse(dw, fileReal)
 	if err != nil {
 		slog.Error("dirmonitor: parse error", "id", dw.ID, "file", filePath, "error", err)
@@ -361,10 +366,16 @@ func (s *Service) handleFile(ctx context.Context, dw db.Dirmonitor, filePath str
 		slog.Error("dirmonitor: ingest failed", "id", dw.ID, "file", filePath, "error", err)
 	}
 }
-
 // ingestCall runs the full call ingest pipeline for a parsed file, mirroring
 // the logic in api/calls.go but without an HTTP context.
 func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *ParsedCall) error {
+	slog.Debug("dirmonitor: ingest pipeline start",
+		"id", dw.ID,
+		"system_id", parsed.SystemID,
+		"system_label", parsed.SystemLabel,
+		"talkgroup_id", parsed.TalkgroupID,
+		"file", parsed.AudioFilePath,
+	)
 	// Helper to retrieve a setting value from the DB (returns "" on missing/error).
 	getSetting := func(key string) string {
 		v, err := s.queries.GetSetting(ctx, key)
@@ -641,6 +652,8 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 	if err != nil {
 		return fmt.Errorf("insert call record: %w", err)
 	}
+
+	slog.Debug("dirmonitor: call record inserted", "call_id", callID, "audio_path", relPath)
 
 	slog.Info("dirmonitor: call ingested",
 		"id", callID,

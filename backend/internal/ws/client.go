@@ -48,6 +48,7 @@ type Client struct {
 // the given system and talkgroup. If grants is nil/empty, everything is allowed.
 func (c *Client) CanReceive(systemID, talkgroupID int64) bool {
 	if len(c.grants) == 0 {
+		slog.Debug("ws: grant check (no grants, allow all)", "system", systemID, "talkgroup", talkgroupID)
 		return true
 	}
 	for _, g := range c.grants {
@@ -56,14 +57,17 @@ func (c *Client) CanReceive(systemID, talkgroupID int64) bool {
 		}
 		// No TG filter → all TGs in this system.
 		if len(g.Talkgroups) == 0 {
+			slog.Debug("ws: grant check allowed (system match, no tg filter)", "system", systemID, "talkgroup", talkgroupID)
 			return true
 		}
 		for _, tg := range g.Talkgroups {
 			if tg == talkgroupID {
+				slog.Debug("ws: grant check allowed", "system", systemID, "talkgroup", talkgroupID)
 				return true
 			}
 		}
 	}
+	slog.Debug("ws: grant check denied", "system", systemID, "talkgroup", talkgroupID)
 	return false
 }
 
@@ -116,6 +120,8 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
+		slog.Debug("ws: listener connection accepted", "ip", r.RemoteAddr)
+
 		ctx := r.Context()
 
 		// Check maxClients setting.
@@ -143,6 +149,7 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 		}
 
 		if publicAccess {
+			slog.Debug("ws: listener authenticated via public access")
 			// Public access — no auth required, receive all.
 			if err := sendWelcome(ctx, conn, hub, queries); err != nil {
 				slog.Error("ws: failed to send welcome", "error", err)
@@ -226,6 +233,7 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 		}
 		client.userID = user.ID
 		client.grants = parseGrants(user.SystemsJson)
+		slog.Debug("ws: listener authenticated via jwt", "user_id", user.ID, "grants", len(client.grants))
 
 		if err := sendWelcome(ctx, conn, hub, queries); err != nil {
 			slog.Error("ws: failed to send welcome", "error", err)
@@ -273,6 +281,8 @@ func HandleAdminWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
+		slog.Debug("ws: admin connection accepted", "user_id", claims.UserID)
+
 		ctx := r.Context()
 
 		client := &Client{
@@ -318,6 +328,7 @@ func (c *Client) readPump(ctx context.Context) {
 
 		switch cmd {
 		case CmdLFM:
+			slog.Debug("ws: received command", "cmd", cmd)
 			// Client updating live feed map — echo it back.
 			if payload != nil {
 				var fm map[string]any
@@ -360,6 +371,7 @@ func (c *Client) writePump(ctx context.Context) {
 			if len(msg) > 0 && msg[0] != '[' && msg[0] != '{' {
 				msgType = websocket.MessageBinary
 			}
+			slog.Debug("ws: sending message", "type", msgType, "size", len(msg))
 			err := c.conn.Write(writeCtx, msgType, msg)
 			cancel()
 			if err != nil {
@@ -385,6 +397,7 @@ func sendExpiredAndClose(ctx context.Context, conn *websocket.Conn) {
 
 // sendWelcome sends VER and CFG messages to a newly authenticated client.
 func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *db.Queries) error {
+	slog.Debug("ws: sending welcome (VER+CFG)")
 	// Build VER message.
 	branding := ""
 	if s, err := queries.GetSetting(ctx, "branding"); err == nil {
