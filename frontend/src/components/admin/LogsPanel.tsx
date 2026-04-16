@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ArrowDown,
   Filter,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -96,6 +97,7 @@ export default function LogsPanel() {
   const [limit, setLimit] = useState<number>(500);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const [showRuntimeLevel, setShowRuntimeLevel] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [autoScroll, setAutoScroll] = useState(false);
   const [savingLevel, setSavingLevel] = useState(false);
@@ -190,30 +192,22 @@ export default function LogsPanel() {
 
   const hasActiveFilters = !!(level || fromDate || toDate || textQuery);
   const runtimeLevel = logLevelData?.level ?? "info";
-  const [selectedRuntimeLevel, setSelectedRuntimeLevel] =
-    useState(runtimeLevel);
-
-  useEffect(() => {
-    setSelectedRuntimeLevel(runtimeLevel);
-  }, [runtimeLevel]);
-
-  const saveRuntimeLevel = useCallback(async () => {
-    if (selectedRuntimeLevel === runtimeLevel) return;
+  const saveRuntimeLevel = useCallback(async (nextLevel: string) => {
+    if (nextLevel === runtimeLevel) return;
     setSavingLevel(true);
     setLevelSaveError(null);
     try {
-      await updateConfig([
-        { key: "logLevel", value: selectedRuntimeLevel },
-      ]).unwrap();
+      await updateConfig([{ key: "logLevel", value: nextLevel }]).unwrap();
       setLevelToast("Log level updated");
       setTimeout(() => setLevelToast(null), 2500);
       void refetch();
+      setShowRuntimeLevel(false);
     } catch {
       setLevelSaveError("Failed to update log level");
     } finally {
       setSavingLevel(false);
     }
-  }, [selectedRuntimeLevel, runtimeLevel, updateConfig, refetch]);
+  }, [runtimeLevel, updateConfig, refetch]);
 
   const virtualizer = useVirtualizer({
     count: rows.length,
@@ -231,39 +225,6 @@ export default function LogsPanel() {
           <p className="text-sm text-base-content/60 mt-0.5">
             Live server logs &mdash; {rows.length} entries in buffer
           </p>
-          <div className="mt-2 flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-base-content/60">
-              Runtime log level
-            </span>
-            <select
-              className="select select-xs select-bordered"
-              value={selectedRuntimeLevel}
-              onChange={(e) => setSelectedRuntimeLevel(e.target.value)}
-              disabled={savingLevel}
-            >
-              {LOG_LEVELS.map((l) => (
-                <option key={l} value={l}>
-                  {l.toUpperCase()}
-                </option>
-              ))}
-            </select>
-            <button
-              className="btn btn-xs btn-primary"
-              disabled={savingLevel || selectedRuntimeLevel === runtimeLevel}
-              onClick={() => void saveRuntimeLevel()}
-            >
-              {savingLevel ? "Saving..." : "Apply"}
-            </button>
-            <span className="text-xs text-base-content/50">
-              Higher verbosity increases log volume.
-            </span>
-          </div>
-          {levelSaveError && (
-            <p className="text-xs text-error mt-1">{levelSaveError}</p>
-          )}
-          {levelToast && (
-            <p className="text-xs text-success mt-1">{levelToast}</p>
-          )}
         </div>
         <div className="flex items-center gap-1.5">
           <div className="flex items-center gap-1 text-xs text-base-content/60 mr-2">
@@ -274,6 +235,13 @@ export default function LogsPanel() {
               {runtimeLevel.toUpperCase()}
             </span>
           </div>
+          <button
+            className={`btn btn-sm btn-ghost ${showRuntimeLevel ? "text-primary" : ""}`}
+            onClick={() => setShowRuntimeLevel((p) => !p)}
+            title="Runtime log level"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
           <button
             className={`btn btn-sm btn-ghost ${hasActiveFilters ? "text-primary" : ""}`}
             onClick={() => setShowFilters((p) => !p)}
@@ -311,6 +279,43 @@ export default function LogsPanel() {
           </label>
         </div>
       </div>
+
+      {/* Runtime log level popdown */}
+      {showRuntimeLevel && (
+        <div className="rounded-lg border border-base-300 bg-base-200/50 p-3 mb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-base-content/70 mr-1">
+              Runtime log level
+            </span>
+            {LOG_LEVELS.map((l) => (
+              <button
+                key={l}
+                className={`badge gap-1 cursor-pointer transition-opacity ${
+                  LEVEL_COLORS[l].badge
+                } ${runtimeLevel === l ? "ring-1 ring-primary" : "opacity-80"}`}
+                disabled={savingLevel || runtimeLevel === l}
+                onClick={() => void saveRuntimeLevel(l)}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${LEVEL_COLORS[l].dot}`} />
+                {l.toUpperCase()}
+              </button>
+            ))}
+            <div className="flex-1" />
+            <span className="text-xs text-base-content/50">
+              Higher verbosity increases log volume.
+            </span>
+          </div>
+          {savingLevel && (
+            <p className="text-xs text-base-content/60 mt-2">Updating log level...</p>
+          )}
+          {levelSaveError && (
+            <p className="text-xs text-error mt-2">{levelSaveError}</p>
+          )}
+          {levelToast && (
+            <p className="text-xs text-success mt-2">{levelToast}</p>
+          )}
+        </div>
+      )}
 
       {/* Level summary bar */}
       <div className="flex flex-wrap items-center gap-2 mb-3">
