@@ -37,6 +37,14 @@ Thumbs.db
 # pnpm store (devcontainer volume mount fallback)
 /.pnpm-store/
 
-reference/
-backend/tmp/
-recordings/
+# Reference implementation
+/reference/
+
+# Dev temp files
+/backend/tmp/
+
+# Dev audio recordings
+/recordings/
+
+# In-progress planning docs
+/docs/plans/
