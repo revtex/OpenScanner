@@ -1497,7 +1497,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns log entries within an optional date range and level filter. Results are capped at 10,000 rows (X-Truncated header set when truncated).",
+                "description": "Returns log entries from the in-memory ring buffer, filtered by date range, level, and text search.",
                 "produces": [
                     "application/json"
                 ],
@@ -1520,8 +1520,20 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Log level filter (e.g. INFO, WARN, ERROR)",
+                        "description": "Log level filter (debug, info, warn, error)",
                         "name": "level",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Substring match on message or attributes",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum rows to return (1-10000, default 500)",
+                        "name": "limit",
                         "in": "query"
                     }
                 ],
@@ -1531,7 +1543,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/LogResponse"
+                                "$ref": "#/definitions/LogEntryResponse"
                             }
                         }
                     },
@@ -1540,11 +1552,29 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/ErrorResponse"
                         }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
+                    }
+                }
+            }
+        },
+        "/admin/logs/level": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get current log level",
+                "responses": {
+                    "200": {
+                        "description": "level: debug|info|warn|error",
                         "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
+                            "type": "object"
                         }
                     }
                 }
@@ -5437,13 +5467,16 @@ const docTemplate = `{
                 }
             }
         },
-        "LogResponse": {
+        "LogEntryResponse": {
             "type": "object",
             "properties": {
-                "dateTime": {
-                    "type": "integer"
+                "attrs": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 },
-                "id": {
+                "dateTime": {
                     "type": "integer"
                 },
                 "level": {

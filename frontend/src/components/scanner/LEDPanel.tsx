@@ -29,8 +29,8 @@ export function LEDPanel() {
   const config = useAppSelector((s) => s.scanner.config);
   const isLive = useAppSelector((s) => s.scanner.isLive);
   const isPaused = useAppSelector((s) => s.scanner.isPaused);
+  const isAudioActive = useAppSelector((s) => s.scanner.isAudioActive);
   const currentCall = useAppSelector((s) => s.scanner.currentCall);
-  const isPlaying = !!currentCall;
   const [menuOpen, setMenuOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -75,16 +75,16 @@ export function LEDPanel() {
   } else if (isPaused) {
     ledColor = "#ff9100"; // orange blink when paused
     dimmed = false;
-  } else if (currentCall?.talkgroupLedColor) {
+  } else if (isAudioActive && currentCall?.talkgroupLedColor) {
     ledColor = currentCall.talkgroupLedColor;
     dimmed = false;
-  } else if (isPlaying && isLive) {
+  } else if (isAudioActive && isLive) {
     ledColor = "#00e676"; // green - live receiving
     dimmed = false;
-  } else if (isPlaying && !isLive) {
+  } else if (isAudioActive && !isLive) {
     ledColor = "#ff9100"; // orange - archive playback
     dimmed = false;
-  } else if (isLive && !isPlaying) {
+  } else if (isLive && !isAudioActive) {
     ledColor = "#00e676"; // green dimmed - live idle
     dimmed = true;
   } else {
@@ -150,7 +150,7 @@ export function LEDPanel() {
                     <button
                       onClick={() => {
                         setMenuOpen(false);
-                        navigate("/admin/users");
+                        navigate("/admin/activity");
                       }}
                     >
                       <Settings className="w-4 h-4" /> Admin Panel

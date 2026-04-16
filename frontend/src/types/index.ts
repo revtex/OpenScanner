@@ -220,10 +220,10 @@ export interface ConfigResponse {
 }
 
 export interface AdminLog {
-  id: number;
   dateTime: number;
   level: string;
   message: string;
+  attrs?: Record<string, string>;
 }
 
 // Password change request

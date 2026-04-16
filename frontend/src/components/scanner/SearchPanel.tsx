@@ -124,10 +124,12 @@ function CheckItem({
   checked,
   onChange,
   label,
+  title,
 }: {
   checked: boolean;
   onChange: () => void;
   label: string;
+  title?: string;
 }) {
   return (
     <label className="flex items-center gap-2 py-1 px-1 -mx-1 cursor-pointer rounded hover:bg-base-200 group">
@@ -137,7 +139,10 @@ function CheckItem({
         checked={checked}
         onChange={onChange}
       />
-      <span className="text-sm truncate text-base-content/80 group-hover:text-base-content">
+      <span
+        className="text-sm truncate text-base-content/80 group-hover:text-base-content"
+        title={title}
+      >
         {label}
       </span>
     </label>
@@ -159,7 +164,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const [toggleBookmark] = useToggleBookmarkMutation();
   const bookmarkedCallIds = bookmarkData?.callIds ?? [];
   const parentRef = useRef<HTMLDivElement>(null);
-  const [openFilterSection, setOpenFilterSection] = useState<string>("system");
+  const [openFilterSection, setOpenFilterSection] = useState<string>("");
   const [systemFilterSearch, setSystemFilterSearch] = useState("");
   const [talkgroupFilterSearch, setTalkgroupFilterSearch] = useState("");
   const [groupFilterSearch, setGroupFilterSearch] = useState("");
@@ -655,6 +660,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                     checked={filters.talkgroupIds.includes(tg.id)}
                     onChange={() => dispatch(toggleTalkgroupFilter(tg.id))}
                     label={formatTalkgroupLabelName(tg.label, tg.name)}
+                    title={formatTalkgroupLabelName(tg.label, tg.name)}
                   />
                 ))}
               </div>

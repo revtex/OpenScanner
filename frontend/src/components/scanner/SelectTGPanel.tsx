@@ -134,6 +134,10 @@ function Section({
             {talkgroups.map((tg) => {
               const enabled = tgSelection[tg.id] !== false;
               const secondary = secondaryLabels?.[tg.id];
+              const fullTalkgroupName = formatTalkgroupLabelName(
+                tg.label,
+                tg.name,
+              );
               const avoid = avoidMap.get(tg.id);
               const isAvoided =
                 avoid !== undefined &&
@@ -160,8 +164,11 @@ function Section({
                       style={{ backgroundColor: tg.ledColor }}
                     />
                   )}
-                  <span className="text-sm truncate flex-1">
-                    {formatTalkgroupLabelName(tg.label, tg.name)}
+                  <span
+                    className="text-sm truncate flex-1"
+                    title={fullTalkgroupName}
+                  >
+                    {fullTalkgroupName}
                   </span>
                   {isHeld && (
                     <span className="badge badge-xs badge-secondary">HELD</span>

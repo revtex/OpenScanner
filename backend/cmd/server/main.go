@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -38,6 +39,7 @@ import (
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/dirmonitor"
 	"github.com/openscanner/openscanner/internal/downstream"
+	"github.com/openscanner/openscanner/internal/logging"
 	"github.com/openscanner/openscanner/internal/seed"
 	"github.com/openscanner/openscanner/internal/ws"
 	"golang.org/x/crypto/acme/autocert"
@@ -132,15 +134,21 @@ func (p *program) run() {
 		slog.Info("timezone configured", "timezone", cfg.Timezone)
 	}
 
+	// Determine log file path (next to the database file).
+	logFilePath := strings.TrimSuffix(cfg.DBFile, ".db") + ".log"
+
+	// Load historical logs into the ring buffer before configuring
+	// the new slog handler (so they appear in the admin UI immediately).
+	logging.LoadHistoricalLogs(logFilePath)
+
 	// Configure structured logging.
-	var handler slog.Handler
 	if os.Getenv("OPENSCANNER_ENV") == "development" {
-		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
+		logging.Configure(true, logFilePath)
 	} else {
-		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+		logging.Configure(false, logFilePath)
 		gin.SetMode(gin.ReleaseMode)
 	}
-	slog.SetDefault(slog.New(handler))
+	defer logging.CloseLogFile()
 
 	// Print a human-readable startup banner.
 	listenURL := cfg.Listen
@@ -182,6 +190,14 @@ func (p *program) run() {
 		os.Exit(1)
 	}
 
+	queries := db.New(sqlDB)
+
+	if setting, err := queries.GetSetting(context.Background(), "logLevel"); err == nil {
+		if err := logging.SetLevel(setting.Value); err != nil {
+			slog.Warn("invalid persisted log level, keeping default", "value", setting.Value, "error", err)
+		}
+	}
+
 	// Set up Gin router with registered routes.
 	router := gin.New()
 	router.MaxMultipartMemory = 50 << 20 // 50 MiB limit for multipart uploads
@@ -193,7 +209,6 @@ func (p *program) run() {
 	defer stop()
 	p.stop = stop
 
-	queries := db.New(sqlDB)
 	rateLimiter := auth.NewRateLimiter(ctx)
 
 	// Set up bounded FFmpeg worker pool and audio processor.

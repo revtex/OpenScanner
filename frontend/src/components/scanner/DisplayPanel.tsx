@@ -5,7 +5,7 @@ import {
   useCallback,
   useRef,
 } from "react";
-import { Share2, Sun } from "lucide-react";
+import { Share2, Sun, Copy, X, ExternalLink } from "lucide-react";
 import { BookmarkButton } from "@/components/scanner/BookmarkButton";
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { useShareCallMutation } from "@/app/slices/shareSlice";
@@ -16,6 +16,8 @@ import type { AvoidEntry, Call } from "@/types";
 interface DisplayPanelProps {
   currentCall: Call | null;
   history: Call[];
+  heldSystem: number | null;
+  heldTG: number | null;
   listenerCount: number;
   queueCount: number;
   avoidList: AvoidEntry[];
@@ -98,6 +100,8 @@ function AutoSizeText({
 export function DisplayPanel({
   currentCall,
   history,
+  heldSystem,
+  heldTG,
   listenerCount,
   queueCount,
   avoidList,
@@ -125,20 +129,60 @@ export function DisplayPanel({
   const [shareCall] = useShareCallMutation();
   const bookmarkedCallIds = bookmarkData?.callIds ?? [];
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+
+  const copyToClipboard = useCallback(
+    async (text: string): Promise<boolean> => {
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          // Fall through to legacy copy for non-secure contexts or blocked permissions.
+        }
+      }
+
+      try {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const copied = document.execCommand("copy");
+        document.body.removeChild(textarea);
+        return copied;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
 
   const handleShare = useCallback(async () => {
     if (!currentCall) return;
     try {
       const result = await shareCall(currentCall.id).unwrap();
       const url = `${window.location.origin}${result.url}`;
-      await navigator.clipboard.writeText(url);
-      setToastMessage("Link copied to clipboard");
-      setTimeout(() => setToastMessage(null), 3000);
+      setShareUrl(url);
     } catch {
       setToastMessage("Failed to share call");
       setTimeout(() => setToastMessage(null), 3000);
     }
   }, [currentCall, shareCall]);
+
+  const handleCopyShareUrl = useCallback(async () => {
+    if (!shareUrl) return;
+    const copied = await copyToClipboard(shareUrl);
+    if (copied) {
+      setToastMessage("Link copied to clipboard");
+    } else {
+      setToastMessage("Copy failed - long-press URL to copy");
+    }
+    setTimeout(() => setToastMessage(null), 3000);
+  }, [copyToClipboard, shareUrl]);
 
   const handleToggleBookmark = useCallback(
     (callId: number) => {
@@ -154,6 +198,10 @@ export function DisplayPanel({
           a.talkgroupId === currentCall.talkgroup &&
           (a.expiresAt === 0 || a.expiresAt > Date.now()),
       )
+    : false;
+
+  const isHeld = currentCall
+    ? heldTG === currentCall.talkgroup || heldSystem === currentCall.system
     : false;
 
   const displayContent = (
@@ -258,6 +306,11 @@ export function DisplayPanel({
               )}
             </div>
             <div className="flex items-center gap-1">
+              {isHeld && (
+                <span className="badge badge-xs bg-base-300 text-base-content">
+                  HOLD
+                </span>
+              )}
               {isAvoided && (
                 <span className="badge badge-xs bg-base-300 text-base-content">
                   AVOID
@@ -356,6 +409,54 @@ export function DisplayPanel({
       >
         {displayContent}
       </div>
+
+      {shareUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-xl rounded-lg border border-base-300 bg-base-100 p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-base-content/70">
+                Share Link
+              </h3>
+              <button
+                className="btn btn-ghost btn-xs btn-circle"
+                onClick={() => setShareUrl(null)}
+                aria-label="Close share popup"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={shareUrl}
+                className="input input-sm w-full"
+                onFocus={(e) => e.currentTarget.select()}
+                aria-label="Share URL"
+              />
+              <button
+                className="btn btn-primary btn-sm btn-square"
+                onClick={handleCopyShareUrl}
+                aria-label="Copy share URL"
+                title="Copy"
+              >
+                <Copy size={16} />
+              </button>
+              <button
+                className="btn btn-ghost btn-sm btn-square"
+                onClick={() => {
+                  if (!shareUrl) return;
+                  window.open(shareUrl, "_blank", "noopener,noreferrer");
+                }}
+                aria-label="Open share URL"
+                title="Open"
+              >
+                <ExternalLink size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast notification */}
       {toastMessage && (

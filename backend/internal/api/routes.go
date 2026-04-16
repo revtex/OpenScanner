@@ -211,6 +211,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 
 		// Logs
 		admin.GET("/logs", adminHandler.GetLogs)
+		admin.GET("/logs/level", adminHandler.GetLogLevel)
 
 		// Activity
 		admin.GET("/activity/stats", adminHandler.GetActivityStats)

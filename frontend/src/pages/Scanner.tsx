@@ -69,6 +69,8 @@ export default function Scanner() {
       <DisplayPanel
         currentCall={scanner.currentCall}
         history={scanner.history}
+        heldSystem={scanner.heldSystem}
+        heldTG={scanner.heldTG}
         listenerCount={scanner.listenerCount}
         queueCount={scanner.pendingCount}
         avoidList={scanner.avoidList}

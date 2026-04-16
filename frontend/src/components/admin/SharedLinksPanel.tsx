@@ -55,37 +55,63 @@ export default function SharedLinksPanel() {
           No calls have been shared yet.
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="table table-zebra w-full">
+        <div className="overflow-x-auto rounded-xl border border-base-300 bg-base-200/40">
+          <table className="table table-zebra table-fixed w-full">
             <thead>
               <tr>
-                <th>System</th>
-                <th>Talkgroup</th>
-                <th>Call Date</th>
-                <th>Duration</th>
-                <th>Shared By</th>
-                <th>Shared At</th>
-                <th>Actions</th>
+                <th className="w-[30%]">System</th>
+                <th className="w-[24%]">Talkgroup</th>
+                <th className="w-44">Call Date</th>
+                <th className="w-24">Duration</th>
+                <th className="w-32">Shared By</th>
+                <th className="w-44">Shared At</th>
+                <th className="w-20">Actions</th>
               </tr>
             </thead>
             <tbody>
               {links.map((link) => (
                 <tr key={link.id}>
-                  <td>{link.systemLabel || "-"}</td>
-                  <td>
-                    {link.talkgroupLabel || "-"}
-                    {link.talkgroupName && (
-                      <span className="text-base-content/60 ml-1 text-xs">
-                        ({link.talkgroupName})
-                      </span>
-                    )}
+                  <td className="align-top">
+                    <div
+                      className="leading-snug whitespace-normal wrap-break-word"
+                      title={link.systemLabel || "-"}
+                    >
+                      {link.systemLabel || "-"}
+                    </div>
                   </td>
-                  <td>{formatDate(link.dateTime)}</td>
-                  <td>{formatDuration(link.duration)}</td>
-                  <td>{link.sharedBy}</td>
-                  <td>{formatDate(link.createdAt)}</td>
+                  <td className="align-top">
+                    <div
+                      className="leading-snug whitespace-normal wrap-break-word"
+                      title={
+                        link.talkgroupName
+                          ? `${link.talkgroupLabel || "-"} (${link.talkgroupName})`
+                          : link.talkgroupLabel || "-"
+                      }
+                    >
+                      <div>{link.talkgroupLabel || "-"}</div>
+                      {link.talkgroupName && (
+                        <span className="mt-0.5 block text-xs text-base-content/60">
+                          {link.talkgroupName}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap text-sm">
+                    {formatDate(link.dateTime)}
+                  </td>
+                  <td className="whitespace-nowrap font-medium">
+                    {formatDuration(link.duration)}
+                  </td>
                   <td>
-                    <div className="flex gap-1">
+                    <div className="truncate" title={link.sharedBy || "-"}>
+                      {link.sharedBy || "-"}
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap text-sm">
+                    {formatDate(link.createdAt)}
+                  </td>
+                  <td className="align-top">
+                    <div className="flex gap-1 whitespace-nowrap">
                       <a
                         href={`/call/${link.token}`}
                         target="_blank"

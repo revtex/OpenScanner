@@ -135,3 +135,23 @@
     cursor: pointer;
   }
 }
+
+/* Radio operations center — radar sweep animation */
+@keyframes radar-sweep {
+  0% {
+    left: 0%;
+    opacity: 1;
+  }
+  95% {
+    left: 100%;
+    opacity: 0.8;
+  }
+  96% {
+    left: 100%;
+    opacity: 0;
+  }
+  100% {
+    left: 0%;
+    opacity: 0;
+  }
+}

@@ -48,6 +48,8 @@ interface LogQueryParams {
   from?: number;
   to?: number;
   level?: string;
+  q?: string;
+  limit?: number;
 }
 
 interface ServerDirectoryEntry {
@@ -509,9 +511,14 @@ const adminApi = api.injectEndpoints({
           from: params.from,
           to: params.to,
           level: params.level,
+          q: params.q,
+          limit: params.limit,
         },
       }),
       providesTags: ["Logs"],
+    }),
+    getLogLevel: builder.query<{ level: string }, void>({
+      query: () => "/admin/logs/level",
     }),
 
     // ── Import / Export ──
@@ -677,6 +684,7 @@ export const {
   useUpdateConfigMutation,
   // Logs
   useGetLogsQuery,
+  useGetLogLevelQuery,
   // Import / Export
   useImportTalkgroupsMutation,
   useImportUnitsMutation,

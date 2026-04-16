@@ -92,6 +92,7 @@ describe("LEDPanel", () => {
       scanner: {
         isLive: true,
         isPaused: false,
+        isAudioActive: false,
         heldSystem: null,
         heldTG: null,
         avoidList: [],
@@ -122,6 +123,7 @@ describe("LEDPanel", () => {
       scanner: {
         isLive: true,
         isPaused: false,
+        isAudioActive: false,
         heldSystem: null,
         heldTG: null,
         avoidList: [],
@@ -153,6 +155,7 @@ describe("LEDPanel", () => {
       scanner: {
         isLive: true,
         isPaused: false,
+        isAudioActive: false,
         heldSystem: null,
         heldTG: null,
         avoidList: [],
@@ -176,6 +179,7 @@ describe("LEDPanel", () => {
       scanner: {
         isLive: true,
         isPaused: true,
+        isAudioActive: false,
         heldSystem: null,
         heldTG: null,
         avoidList: [],
@@ -199,6 +203,7 @@ describe("LEDPanel", () => {
       scanner: {
         isLive: true,
         isPaused: true,
+        isAudioActive: false,
         heldSystem: null,
         heldTG: null,
         avoidList: [],
@@ -219,6 +224,7 @@ describe("LEDPanel", () => {
       scanner: {
         isLive: true,
         isPaused: false,
+        isAudioActive: false,
         heldSystem: null,
         heldTG: null,
         avoidList: [],
@@ -239,6 +245,7 @@ describe("LEDPanel", () => {
       scanner: {
         isLive: true,
         isPaused: false,
+        isAudioActive: false,
         heldSystem: null,
         heldTG: null,
         avoidList: [],
@@ -262,6 +269,7 @@ describe("LEDPanel", () => {
       scanner: {
         isLive: false,
         isPaused: false,
+        isAudioActive: false,
         heldSystem: null,
         heldTG: null,
         avoidList: [],

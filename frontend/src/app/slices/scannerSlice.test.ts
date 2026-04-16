@@ -63,7 +63,7 @@ describe("scannerSlice", () => {
       let state = reducer(undefined, { type: "init" });
       state = reducer(state, setCurrentCall(makeCall({ id: 1 })));
       state = reducer(state, clearCurrentCall());
-      expect(state.currentCall).toBeNull();
+      expect(state.currentCall?.id).toBe(1);
       expect(state.history).toHaveLength(1);
       expect(state.history[0].id).toBe(1);
     });

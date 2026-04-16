@@ -3,7 +3,11 @@ import { useAppDispatch, useAppSelector } from "@/app/store";
 import { store } from "@/app/store";
 import { audioPlayer } from "@/services/audioPlayer";
 import { wsClient } from "@/services/wsClient";
-import { setCurrentCall, clearCurrentCall } from "@/app/slices/scannerSlice";
+import {
+  setCurrentCall,
+  clearCurrentCall,
+  setAudioActive,
+} from "@/app/slices/scannerSlice";
 
 export function useAudioPlayer() {
   const dispatch = useAppDispatch();
@@ -21,11 +25,13 @@ export function useAudioPlayer() {
   useEffect(() => {
     audioPlayer.setOnCallStart((call) => {
       dispatch(setCurrentCall(call));
+      dispatch(setAudioActive(true));
       setPlaying(true);
     });
 
     audioPlayer.setOnCallEnd(() => {
       dispatch(clearCurrentCall());
+      dispatch(setAudioActive(false));
       setPlaying(false);
     });
 
@@ -111,9 +117,10 @@ export function useAudioPlayer() {
   useEffect(() => {
     if (!isLive) {
       audioPlayer.clearQueue();
+      dispatch(setAudioActive(false));
       setPlaying(false);
     }
-  }, [isLive]);
+  }, [dispatch, isLive]);
 
   const skip = useCallback(() => {
     audioPlayer.skip();

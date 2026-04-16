@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/openscanner/openscanner/internal/db"
+	"github.com/openscanner/openscanner/internal/logging"
 	"github.com/openscanner/openscanner/internal/ws"
 )
 
@@ -20,13 +21,11 @@ var allowedSettingKeys = map[string]bool{
 	"audioConversion":             true,
 	"autoPopulate":                true,
 	"branding":                    true,
-	"darkMode":                    true,
-	"dimmerDelay":                 true,
 	"disableDuplicateDetection":   true,
 	"duplicateDetectionTimeFrame": true,
 	"email":                       true,
-	"keyboardShortcuts":           true,
 	"keypadBeeps":                 true,
+	"logLevel":                    true,
 	"maxClients":                  true,
 	"playbackGoesLive":            true,
 	"pruneDays":                   true,
@@ -107,6 +106,12 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown setting key: " + s.Key})
 			return
 		}
+		if s.Key == "logLevel" {
+			if _, ok := logging.ParseLevel(s.Value); !ok {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid logLevel; expected debug, info, warn, or error"})
+				return
+			}
+		}
 	}
 
 	// Reject enabling audio conversion when ffmpeg is not installed.
@@ -144,6 +149,15 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 		slog.Error("failed to commit config transaction", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save config"})
 		return
+	}
+
+	for _, s := range settings {
+		if s.Key == "logLevel" {
+			if err := logging.SetLevel(s.Value); err != nil {
+				slog.Warn("invalid logLevel setting, keeping previous runtime level", "value", s.Value, "error", err)
+			}
+			break
+		}
 	}
 
 	// Broadcast updated config to all WS clients.

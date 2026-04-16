@@ -559,11 +559,13 @@ definitions:
       path:
         type: string
     type: object
-  LogResponse:
+  LogEntryResponse:
     properties:
+      attrs:
+        additionalProperties:
+          type: string
+        type: object
       dateTime:
-        type: integer
-      id:
         type: integer
       level:
         type: string
@@ -2189,8 +2191,8 @@ paths:
       - Admin
   /admin/logs:
     get:
-      description: Returns log entries within an optional date range and level filter.
-        Results are capped at 10,000 rows (X-Truncated header set when truncated).
+      description: Returns log entries from the in-memory ring buffer, filtered by
+        date range, level, and text search.
       parameters:
       - description: Start unix timestamp
         in: query
@@ -2200,10 +2202,18 @@ paths:
         in: query
         name: to
         type: integer
-      - description: Log level filter (e.g. INFO, WARN, ERROR)
+      - description: Log level filter (debug, info, warn, error)
         in: query
         name: level
         type: string
+      - description: Substring match on message or attributes
+        in: query
+        name: q
+        type: string
+      - description: Maximum rows to return (1-10000, default 500)
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -2211,19 +2221,29 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/LogResponse'
+              $ref: '#/definitions/LogEntryResponse'
             type: array
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List logs
+      tags:
+      - Admin
+  /admin/logs/level:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'level: debug|info|warn|error'
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get current log level
       tags:
       - Admin
   /admin/radioreference/apply:

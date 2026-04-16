@@ -14,6 +14,17 @@ import (
 	"github.com/openscanner/openscanner/internal/db"
 )
 
+func requestLogLevel(status int) string {
+	switch {
+	case status >= http.StatusInternalServerError:
+		return "error"
+	case status >= http.StatusBadRequest:
+		return "warn"
+	default:
+		return "info"
+	}
+}
+
 // RequestID adds a UUID v4 X-Request-ID response header and stores it in the
 // Gin context under the key "requestID".
 func RequestID() gin.HandlerFunc {
@@ -91,12 +102,24 @@ func Logger() gin.HandlerFunc {
 		start := time.Now()
 		c.Next()
 		latency := time.Since(start)
+		status := c.Writer.Status()
+		level := requestLogLevel(status)
+
+		var slogLevel slog.Level
+		switch level {
+		case "error":
+			slogLevel = slog.LevelError
+		case "warn":
+			slogLevel = slog.LevelWarn
+		default:
+			slogLevel = slog.LevelInfo
+		}
 
 		requestID, _ := c.Get("requestID")
-		slog.Info("request",
+		slog.Log(c.Request.Context(), slogLevel, "request",
 			"method", c.Request.Method,
 			"path", c.Request.URL.Path,
-			"status", c.Writer.Status(),
+			"status", status,
 			"latency_ms", latency.Milliseconds(),
 			"request_id", requestID,
 			"ip", c.ClientIP(),
@@ -260,14 +283,12 @@ func MaxBodySize(maxBytes int64) gin.HandlerFunc {
 	}
 }
 
-// SwaggerCookieAuth validates the short-lived HTTP-only cookie set by
-// POST /api/admin/docs/session. Used to protect the Swagger UI route
-// without exposing JWTs in URLs.
+// SwaggerCookieAuth validates the short-lived docs session cookie.
 func SwaggerCookieAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		cookie, err := c.Cookie(auth.SwaggerCookieName)
-		if err != nil || !auth.ValidateSwaggerCookie(cookie) {
-			c.AbortWithStatusJSON(401, gin.H{"error": "swagger session expired, please reopen from admin panel"})
+		value, err := c.Cookie(auth.SwaggerCookieName)
+		if err != nil || !auth.ValidateSwaggerCookie(value) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "swagger session required"})
 			return
 		}
 		c.Next()

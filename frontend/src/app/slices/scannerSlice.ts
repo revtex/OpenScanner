@@ -11,6 +11,7 @@ const MAX_HISTORY = 5;
 interface ScannerState {
   isLive: boolean;
   isPaused: boolean;
+  isAudioActive: boolean;
   heldSystem: number | null;
   heldTG: number | null;
   avoidList: AvoidEntry[];
@@ -27,6 +28,7 @@ const initialState: ScannerState = {
   isPaused:
     typeof sessionStorage !== "undefined" &&
     sessionStorage.getItem("openscanner-paused") === "true",
+  isAudioActive: false,
   heldSystem: null,
   heldTG: null,
   avoidList: [],
@@ -89,7 +91,7 @@ export const scannerSlice = createSlice({
           MAX_HISTORY,
         );
       }
-      state.currentCall = null;
+      // Keep the last call visible on the display until a new call starts.
     },
     togglePause(state) {
       state.isPaused = !state.isPaused;
@@ -98,6 +100,9 @@ export const scannerSlice = createSlice({
       } catch {
         /* quota exceeded or SSR */
       }
+    },
+    setAudioActive(state, action: PayloadAction<boolean>) {
+      state.isAudioActive = action.payload;
     },
     setPaused(state, action: PayloadAction<boolean>) {
       state.isPaused = action.payload;
@@ -288,6 +293,7 @@ export const {
   setCurrentCall,
   clearCurrentCall,
   togglePause,
+  setAudioActive,
   setPaused,
   toggleLive,
   holdSystem,
