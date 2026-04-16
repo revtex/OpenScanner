@@ -151,6 +151,22 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 		return
 	}
 
+	actorID, _ := c.Get("userID")
+	// Build list of saved key names (exclude sensitive values from log).
+	savedKeys := make([]string, 0, len(settings))
+	for _, s := range settings {
+		savedKeys = append(savedKeys, s.Key)
+	}
+	slog.Info("admin: config saved", "keys", savedKeys, "by", actorID)
+
+	// Log level change specifically.
+	for _, s := range settings {
+		if s.Key == "logLevel" {
+			slog.Info("admin: log level changed", "level", s.Value, "by", actorID)
+			break
+		}
+	}
+
 	for _, s := range settings {
 		if s.Key == "logLevel" {
 			if err := logging.SetLevel(s.Value); err != nil {

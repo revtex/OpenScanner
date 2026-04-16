@@ -292,6 +292,8 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created user"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: user created", "id", user.ID, "username", user.Username, "role", user.Role, "by", actorID)
 	c.JSON(http.StatusCreated, toUserResponse(user))
 }
 
@@ -385,6 +387,8 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated user"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: user updated", "id", user.ID, "username", user.Username, "role", user.Role, "disabled", user.Disabled, "by", actorID)
 	c.JSON(http.StatusOK, toUserResponse(user))
 }
 
@@ -430,6 +434,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete user"})
 		return
 	}
+	slog.Info("admin: user deleted", "id", id, "by", userIDVal)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -493,6 +498,8 @@ func (h *AdminHandler) CreateSystem(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created system"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: system created", "id", system.ID, "system_id", system.SystemID, "label", system.Label, "by", actorID)
 	c.JSON(http.StatusCreated, toSystemResponse(system))
 }
 
@@ -546,6 +553,8 @@ func (h *AdminHandler) UpdateSystem(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated system"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: system updated", "id", system.ID, "system_id", system.SystemID, "by", actorID)
 	c.JSON(http.StatusOK, toSystemResponse(system))
 }
 
@@ -619,6 +628,8 @@ func (h *AdminHandler) ReorderSystems(c *gin.Context) {
 		return
 	}
 
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: systems reordered", "count", len(req.Systems), "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -651,6 +662,8 @@ func (h *AdminHandler) DeleteSystem(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete system"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: system deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -714,6 +727,8 @@ func (h *AdminHandler) CreateTalkgroup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created talkgroup"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: talkgroup created", "id", tg.ID, "talkgroup_id", tg.TalkgroupID, "by", actorID)
 	c.JSON(http.StatusCreated, toTalkgroupResponse(tg))
 }
 
@@ -767,6 +782,8 @@ func (h *AdminHandler) UpdateTalkgroup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated talkgroup"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: talkgroup updated", "id", tg.ID, "talkgroup_id", tg.TalkgroupID, "by", actorID)
 	c.JSON(http.StatusOK, toTalkgroupResponse(tg))
 }
 
@@ -799,6 +816,8 @@ func (h *AdminHandler) DeleteTalkgroup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete talkgroup"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: talkgroup deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -895,6 +914,8 @@ func (h *AdminHandler) CreateUnit(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created unit"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: unit created", "id", unit.ID, "unit_id", unit.UnitID, "by", actorID)
 	c.JSON(http.StatusCreated, toUnitResponse(unit))
 }
 
@@ -948,6 +969,8 @@ func (h *AdminHandler) UpdateUnit(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated unit"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: unit updated", "id", unit.ID, "unit_id", unit.UnitID, "by", actorID)
 	c.JSON(http.StatusOK, toUnitResponse(unit))
 }
 
@@ -980,6 +1003,8 @@ func (h *AdminHandler) DeleteUnit(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete unit"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: unit deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -1052,6 +1077,8 @@ func (h *AdminHandler) CreateGroup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created group"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: group created", "id", group.ID, "label", group.Label, "by", actorID)
 	c.JSON(http.StatusCreated, group)
 }
 
@@ -1110,6 +1137,8 @@ func (h *AdminHandler) UpdateGroup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated group"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: group updated", "id", group.ID, "label", group.Label, "by", actorID)
 	c.JSON(http.StatusOK, group)
 }
 
@@ -1142,6 +1171,8 @@ func (h *AdminHandler) DeleteGroup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete group"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: group deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -1214,6 +1245,8 @@ func (h *AdminHandler) CreateTag(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created tag"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: tag created", "id", tag.ID, "label", tag.Label, "by", actorID)
 	c.JSON(http.StatusCreated, tag)
 }
 
@@ -1272,6 +1305,8 @@ func (h *AdminHandler) UpdateTag(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated tag"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: tag updated", "id", tag.ID, "label", tag.Label, "by", actorID)
 	c.JSON(http.StatusOK, tag)
 }
 
@@ -1304,6 +1339,8 @@ func (h *AdminHandler) DeleteTag(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete tag"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: tag deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -1372,6 +1409,8 @@ func (h *AdminHandler) CreateAPIKey(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created API key"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: api key created", "id", key.ID, "ident", key.Ident.String, "by", actorID)
 	c.JSON(http.StatusCreated, apiKeyCreateResponse{
 		apiKeyResponse: toAPIKeyResponse(key),
 		CreatedKey:     plainKey,
@@ -1447,6 +1486,8 @@ func (h *AdminHandler) UpdateAPIKey(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated API key"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: api key updated", "id", key.ID, "ident", key.Ident.String, "by", actorID)
 	c.JSON(http.StatusOK, toAPIKeyResponse(key))
 }
 
@@ -1519,6 +1560,8 @@ func (h *AdminHandler) ReorderAPIKeys(c *gin.Context) {
 		return
 	}
 
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: api keys reordered", "count", len(req.APIKeys), "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -1551,6 +1594,8 @@ func (h *AdminHandler) DeleteAPIKey(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete API key"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: api key deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -1629,6 +1674,8 @@ func (h *AdminHandler) CreateDirMonitor(c *gin.Context) {
 	if h.dwReload != nil {
 		h.dwReload.Reload()
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: dirmonitor created", "id", dm.ID, "dir", dm.Directory, "by", actorID)
 	c.JSON(http.StatusCreated, toDirMonitorResponse(dm))
 }
 
@@ -1697,6 +1744,8 @@ func (h *AdminHandler) UpdateDirMonitor(c *gin.Context) {
 	if h.dwReload != nil {
 		h.dwReload.Reload()
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: dirmonitor updated", "id", dm.ID, "dir", dm.Directory, "by", actorID)
 	c.JSON(http.StatusOK, toDirMonitorResponse(dm))
 }
 
@@ -1733,6 +1782,8 @@ func (h *AdminHandler) DeleteDirMonitor(c *gin.Context) {
 	if h.dwReload != nil {
 		h.dwReload.Reload()
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: dirmonitor deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -1804,6 +1855,8 @@ func (h *AdminHandler) CreateDownstream(c *gin.Context) {
 	if h.dsReload != nil {
 		h.dsReload.Reload()
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: downstream created", "id", ds.ID, "url", ds.Url, "by", actorID)
 	c.JSON(http.StatusCreated, toDownstreamResponse(ds))
 }
 
@@ -1861,6 +1914,8 @@ func (h *AdminHandler) UpdateDownstream(c *gin.Context) {
 	if h.dsReload != nil {
 		h.dsReload.Reload()
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: downstream updated", "id", ds.ID, "url", ds.Url, "by", actorID)
 	c.JSON(http.StatusOK, toDownstreamResponse(ds))
 }
 
@@ -1897,6 +1952,8 @@ func (h *AdminHandler) DeleteDownstream(c *gin.Context) {
 	if h.dsReload != nil {
 		h.dsReload.Reload()
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: downstream deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -1964,6 +2021,8 @@ func (h *AdminHandler) CreateWebhook(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch created webhook"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: webhook created", "id", wh.ID, "url", wh.Url, "by", actorID)
 	c.JSON(http.StatusCreated, toWebhookResponse(wh))
 }
 
@@ -2017,6 +2076,8 @@ func (h *AdminHandler) UpdateWebhook(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch updated webhook"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: webhook updated", "id", wh.ID, "url", wh.Url, "by", actorID)
 	c.JSON(http.StatusOK, toWebhookResponse(wh))
 }
 
@@ -2049,5 +2110,7 @@ func (h *AdminHandler) DeleteWebhook(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete webhook"})
 		return
 	}
+	actorID, _ := c.Get("userID")
+	slog.Info("admin: webhook deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

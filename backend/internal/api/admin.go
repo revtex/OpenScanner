@@ -197,11 +197,14 @@ func (h *AuthHandler) PutPassword(c *gin.Context) {
 
 	user, err := h.queries.GetUser(c.Request.Context(), userID)
 	if err != nil {
+		slog.Error("failed to load user for password change", "user_id", userID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load user"})
 		return
 	}
 
 	if !auth.CheckPassword(req.CurrentPassword, user.PasswordHash) {
+		ip := c.ClientIP()
+		slog.Warn("auth: password change rejected - wrong current password", "user_id", userID, "ip", ip)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "current password is incorrect"})
 		return
 	}
@@ -217,6 +220,7 @@ func (h *AuthHandler) PutPassword(c *gin.Context) {
 		UpdatedAt:    time.Now().Unix(),
 		ID:           userID,
 	}); err != nil {
+		slog.Error("failed to update password", "user_id", userID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update password"})
 		return
 	}
@@ -224,6 +228,8 @@ func (h *AuthHandler) PutPassword(c *gin.Context) {
 	// Revoke all existing tokens so compromised sessions are immediately invalidated.
 	auth.Tokens.RevokeAllForUser(userID)
 
+	ip := c.ClientIP()
+	slog.Info("auth: password changed", "user_id", userID, "ip", ip)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 

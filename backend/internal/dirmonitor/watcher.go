@@ -366,6 +366,7 @@ func (s *Service) handleFile(ctx context.Context, dw db.Dirmonitor, filePath str
 		slog.Error("dirmonitor: ingest failed", "id", dw.ID, "file", filePath, "error", err)
 	}
 }
+
 // ingestCall runs the full call ingest pipeline for a parsed file, mirroring
 // the logic in api/calls.go but without an HTTP context.
 func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *ParsedCall) error {
