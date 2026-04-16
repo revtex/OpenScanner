@@ -31,6 +31,14 @@ const AUDIO_CONVERSION_MODES: Record<string, string> = {
   "3": "Loudnorm",
 };
 
+const AUDIO_ENCODING_PRESETS: Record<string, string> = {
+  aac_lc_32k: "AAC-LC 32 kbps (default)",
+  aac_lc_24k: "AAC-LC 24 kbps",
+  aac_lc_16k: "AAC-LC 16 kbps",
+  he_aac_12k: "HE-AAC 12 kbps",
+  he_aac_8k: "HE-AAC 8 kbps",
+};
+
 const KEYPAD_BEEPS = ["disabled", "uniden", "whistler"] as const;
 
 const TRANSCRIPTION_MODELS = ["tiny", "base", "small", "medium", "large"];
@@ -76,6 +84,7 @@ const SECTIONS: SettingSection[] = [
     title: "Call Processing",
     keys: [
       "audioConversion",
+      "audioEncodingPreset",
       "disableDuplicateDetection",
       "duplicateDetectionTimeFrame",
       "pruneDays",
@@ -117,6 +126,7 @@ const LABELS: Record<string, string> = {
   transcriptionModel: "Transcription Model",
   transcriptionLanguage: "Transcription Language",
   audioConversion: "Audio Conversion (FFmpeg)",
+  audioEncodingPreset: "Audio Encoding Preset",
   branding: "Branding Label",
   email: "Support Email",
   autoPopulate: "Auto-Populate Systems & Talkgroups",
@@ -155,6 +165,8 @@ const DESCRIPTIONS: Record<string, string> = {
   showListenersCount:
     "Display the active listener count on the main scanner screen.",
   audioConversion: "Convert incoming audio to AAC/M4A using FFmpeg.",
+  audioEncodingPreset:
+    "Codec and bitrate for converted audio. HE-AAC presets require libfdk_aac in your FFmpeg build. Lower bitrates save storage; choose based on your quality needs.",
   disableDuplicateDetection:
     "Disable automatic rejection of duplicate incoming calls.",
   duplicateDetectionTimeFrame:
@@ -352,6 +364,34 @@ export default function OptionsPanel() {
             <p className="text-xs text-warning mt-1">
               FFmpeg is not installed. Install it and restart the service to
               enable audio conversion.
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    if (key === "audioEncodingPreset") {
+      const conversionDisabled = (localSettings["audioConversion"] ?? "0") === "0";
+      const ffmpegMissing = capabilities && !capabilities.ffmpeg;
+      return (
+        <div className="flex flex-col">
+          {label}
+          {description}
+          <select
+            className="select w-full max-w-xs"
+            value={value || "aac_lc_32k"}
+            onChange={(e) => updateSetting(key, e.target.value)}
+            disabled={!!ffmpegMissing || conversionDisabled}
+          >
+            {Object.entries(AUDIO_ENCODING_PRESETS).map(([val, lbl]) => (
+              <option key={val} value={val}>
+                {lbl}
+              </option>
+            ))}
+          </select>
+          {conversionDisabled && (
+            <p className="text-xs text-base-content/50 mt-1">
+              Enable audio conversion above to activate this setting.
             </p>
           )}
         </div>

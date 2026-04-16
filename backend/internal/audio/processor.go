@@ -35,8 +35,8 @@ func (p *Processor) RecordingsDir() string {
 // rejects paths containing "..".
 // If conversion is enabled, submits an FFmpeg job, waits for completion, removes
 // the original, and returns the .m4a relative path.
-func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode ConversionMode) (string, error) {
-	slog.Debug("audio: storing uploaded file", "filename", fh.Filename, "size", fh.Size, "mode", mode)
+func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode ConversionMode, preset EncodingPreset) (string, error) {
+	slog.Debug("audio: storing uploaded file", "filename", fh.Filename, "size", fh.Size, "mode", mode, "preset", preset)
 	safeName := filepath.Base(fh.Filename)
 	if safeName == "" || safeName == "." || safeName == ".." || strings.Contains(safeName, "..") {
 		return "", fmt.Errorf("invalid filename")
@@ -94,6 +94,7 @@ func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode Co
 		InputPath:  destPath,
 		OutputPath: outPath,
 		Mode:       mode,
+		Preset:     preset,
 		Done:       done,
 	}); err != nil {
 		os.Remove(destPath) //nolint:errcheck
@@ -128,8 +129,8 @@ func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode Co
 // directly from the filesystem rather than from a multipart upload.
 // SECURITY: the filename is sanitised via filepath.Base — strips directory
 // components and rejects names containing "..".
-func (p *Processor) StoreFile(ctx context.Context, srcPath string, mode ConversionMode) (string, error) {
-	slog.Debug("audio: storing local file", "src", srcPath, "mode", mode)
+func (p *Processor) StoreFile(ctx context.Context, srcPath string, mode ConversionMode, preset EncodingPreset) (string, error) {
+	slog.Debug("audio: storing local file", "src", srcPath, "mode", mode, "preset", preset)
 	// filepath.Base strips all directory components; the == ".." guard catches
 	// the only remaining traversal case.  No further Contains check is needed.
 	safeName := filepath.Base(srcPath)
@@ -171,6 +172,7 @@ func (p *Processor) StoreFile(ctx context.Context, srcPath string, mode Conversi
 		InputPath:  destPath,
 		OutputPath: outPath,
 		Mode:       mode,
+		Preset:     preset,
 		Done:       done,
 	}); err != nil {
 		os.Remove(destPath) //nolint:errcheck

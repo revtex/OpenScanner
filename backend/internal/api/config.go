@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/logging"
 	"github.com/openscanner/openscanner/internal/ws"
@@ -19,6 +20,7 @@ var allowedSettingKeys = map[string]bool{
 	"afsSystems":                  true,
 	"apiKeyCallRate":              true,
 	"audioConversion":             true,
+	"audioEncodingPreset":         true,
 	"autoPopulate":                true,
 	"branding":                    true,
 	"disableDuplicateDetection":   true,
@@ -113,6 +115,12 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 		if s.Key == "logLevel" {
 			if _, ok := logging.ParseLevel(s.Value); !ok {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid logLevel; expected debug, info, warn, or error"})
+				return
+			}
+		}
+		if s.Key == "audioEncodingPreset" {
+			if !audio.IsValidEncodingPreset(s.Value) {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid audioEncodingPreset value"})
 				return
 			}
 		}

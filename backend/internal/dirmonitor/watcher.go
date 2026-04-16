@@ -574,8 +574,11 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 		}
 	}
 
-	// ── Store audio ─────────────────────────────────────────────────────────
-	relPath, err := s.processor.StoreFile(ctx, parsed.AudioFilePath, convMode)
+	// Resolve encoding preset from settings.
+	convPreset := audio.ParseEncodingPreset(getSetting("audioEncodingPreset"))
+
+	// ── Store audio ─────────────────────────────────────────────────────────────────────────
+	relPath, err := s.processor.StoreFile(ctx, parsed.AudioFilePath, convMode, convPreset)
 	if err != nil {
 		return fmt.Errorf("store audio: %w", err)
 	}

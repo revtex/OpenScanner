@@ -74,7 +74,7 @@ func TestStore_PathSanitisation(t *testing.T) {
 			proc, recordingsDir := newTestProcessor(t)
 			fh := makeFileHeader(t, tc.filename, fakeWAV)
 
-			relPath, err := proc.Store(context.Background(), fh, audio.ConversionDisabled)
+			relPath, err := proc.Store(context.Background(), fh, audio.ConversionDisabled, audio.PresetAACLC32k)
 
 			if tc.wantErr {
 				if err == nil {
@@ -112,7 +112,7 @@ func TestStore_ConversionDisabled(t *testing.T) {
 	content := []byte("RIFF\x24\x00\x00\x00WAVEfmt ")
 	fh := makeFileHeader(t, "recording.wav", content)
 
-	relPath, err := proc.Store(context.Background(), fh, audio.ConversionDisabled)
+	relPath, err := proc.Store(context.Background(), fh, audio.ConversionDisabled, audio.PresetAACLC32k)
 	if err != nil {
 		t.Fatalf("Store: %v", err)
 	}
@@ -158,23 +158,23 @@ func TestFfmpegArgs(t *testing.T) {
 		{
 			name:     "enabled — plain aac 32k",
 			mode:     audio.ConversionEnabled,
-			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "aac", "-b:a", "32k", out},
+			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "aac", "-b:a", "32k", "-ac", "1", out},
 		},
 		{
 			name:     "norm — aac 32k + acompressor",
 			mode:     audio.ConversionNorm,
-			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "aac", "-b:a", "32k", "-af", "acompressor", out},
+			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "aac", "-b:a", "32k", "-ac", "1", "-af", "acompressor", out},
 		},
 		{
 			name:     "loudnorm — aac 32k + loudnorm filter",
 			mode:     audio.ConversionLoudNorm,
-			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "aac", "-b:a", "32k", "-af", "loudnorm", out},
+			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "aac", "-b:a", "32k", "-ac", "1", "-af", "loudnorm", out},
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := audio.FfmpegArgs(in, out, tc.mode)
+			got := audio.FfmpegArgs(in, out, tc.mode, audio.PresetAACLC32k)
 
 			if tc.wantNil {
 				if got != nil {

@@ -554,8 +554,11 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		}
 	}
 
+	// Resolve encoding preset from settings.
+	convPreset := audio.ParseEncodingPreset(h.getSettingValue(c, "audioEncodingPreset"))
+
 	// Store audio file (conversion handled inside Processor.Store).
-	relPath, err := h.processor.Store(ctx, fh, convMode)
+	relPath, err := h.processor.Store(ctx, fh, convMode, convPreset)
 	if err != nil {
 		slog.Error("failed to store audio file",
 			"system_id", systemIDRaw,
