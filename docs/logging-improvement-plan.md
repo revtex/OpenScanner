@@ -121,6 +121,8 @@ Add `slog.Info` at the success path of every Create/Update/Delete handler. Extra
 
 ## Phase 4 — Startup & Lifecycle Logging
 
+> **Status: ✅ Complete**
+
 ### `backend/cmd/server/main.go`
 
 - Add `slog.Info("server: startup complete", "addr", addr, "recordings_dir", ..., "db", ...)` after all services have started and the HTTP listener is ready

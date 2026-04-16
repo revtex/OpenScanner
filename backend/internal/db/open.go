@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -109,6 +110,8 @@ func applyOne(db *sql.DB, name string) error {
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit migration %q: %w", name, err)
 	}
+
+	slog.Info("db: migration applied", "version", name)
 	return nil
 }
 

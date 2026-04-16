@@ -192,11 +192,29 @@ func (p *program) run() {
 
 	queries := db.New(sqlDB)
 
+	persistedLogLevel := ""
 	if setting, err := queries.GetSetting(context.Background(), "logLevel"); err == nil {
+		persistedLogLevel = setting.Value
 		if err := logging.SetLevel(setting.Value); err != nil {
 			slog.Warn("invalid persisted log level, keeping default", "value", setting.Value, "error", err)
 		}
 	}
+
+	publicAccess := ""
+	if setting, err := queries.GetSetting(context.Background(), "publicAccess"); err == nil {
+		publicAccess = setting.Value
+	}
+
+	autoPopulate := ""
+	if setting, err := queries.GetSetting(context.Background(), "autoPopulate"); err == nil {
+		autoPopulate = setting.Value
+	}
+
+	slog.Debug("server: loaded settings from db",
+		"log_level", persistedLogLevel,
+		"public_access", publicAccess,
+		"auto_populate", autoPopulate,
+	)
 
 	// Set up Gin router with registered routes.
 	router := gin.New()
@@ -294,6 +312,14 @@ func (p *program) run() {
 		tlsSrv = p.startTLSServer(cfg, router, serverErr)
 	}
 
+	slog.Info("server: startup complete",
+		"version", config.Version,
+		"addr", cfg.Listen,
+		"ssl_enabled", sslEnabled,
+		"db", cfg.DBFile,
+		"recordings_dir", cfg.RecordingsDir,
+	)
+
 	// Block until signal or server error.
 	select {
 	case <-ctx.Done():
@@ -317,7 +343,7 @@ func (p *program) run() {
 	}
 
 	dsService.Stop()
-	slog.Info("server stopped")
+	slog.Info("server: shutdown complete")
 }
 
 // startTLSServer starts an HTTPS server with the provided certificate and key files.
