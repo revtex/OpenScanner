@@ -135,6 +135,18 @@ Add `slog.Info` at the success path of every Create/Update/Delete handler. Extra
 
 ---
 
+## Phase 5 — Setup, Request IDs, and Settings Visibility
+
+> **Status: ✅ Complete**
+
+- `backend/internal/api/setup.go`: added setup flow `Error` logs for all 500 responses and success `Info` log for initial admin creation.
+- `backend/internal/api/admin.go`: added missing password-hash failure `Error` log in `PutPassword`.
+- `backend/internal/api/activity.go`: added `request_id` to activity endpoint error logs.
+- `backend/internal/api/config.go`: added `request_id` to config save/read error logs and config-fetch visibility `Debug` log.
+- `backend/internal/api/calls.go`: added downstream-notify queued `Debug` log after successful call ingest.
+
+---
+
 ## Key Rules
 
 | Rule                 | Detail                                                                                              |

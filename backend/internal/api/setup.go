@@ -4,6 +4,7 @@ package api
 import (
 	"database/sql"
 	"errors"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -40,9 +41,11 @@ type setupStatusResponse struct {
 //	@Router			/setup/status [get]
 func (h *SetupHandler) GetSetupStatus(c *gin.Context) {
 	ctx := c.Request.Context()
+	requestID, _ := c.Get("requestID")
 
 	state, err := h.queries.GetAppState(ctx)
 	if err != nil {
+		slog.Error("setup: failed to read app state", "request_id", requestID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read app state"})
 		return
 	}
@@ -52,6 +55,7 @@ func (h *SetupHandler) GetSetupStatus(c *gin.Context) {
 	if err == nil {
 		publicAccess = setting.Value == "true"
 	} else if !errors.Is(err, sql.ErrNoRows) {
+		slog.Error("setup: failed to read settings", "request_id", requestID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read settings"})
 		return
 	}
@@ -86,9 +90,11 @@ func (h *SetupHandler) PostSetup(c *gin.Context) {
 	defer h.mu.Unlock()
 
 	ctx := c.Request.Context()
+	requestID, _ := c.Get("requestID")
 
 	state, err := h.queries.GetAppState(ctx)
 	if err != nil {
+		slog.Error("setup: failed to read app state", "request_id", requestID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read app state"})
 		return
 	}
@@ -114,6 +120,7 @@ func (h *SetupHandler) PostSetup(c *gin.Context) {
 
 	hash, err := auth.HashPassword(req.Password)
 	if err != nil {
+		slog.Error("setup: failed to hash password", "request_id", requestID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
 		return
 	}
@@ -131,14 +138,18 @@ func (h *SetupHandler) PostSetup(c *gin.Context) {
 		CreatedAt:          now,
 		UpdatedAt:          now,
 	}); err != nil {
+		slog.Error("setup: failed to create initial admin user", "request_id", requestID, "username", req.Username, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
 		return
 	}
 
 	if err := h.queries.SetSetupComplete(ctx, 1); err != nil {
+		slog.Error("setup: failed to mark setup complete", "request_id", requestID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to mark setup complete"})
 		return
 	}
+
+	slog.Info("setup: initial admin account created", "request_id", requestID, "username", req.Username)
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

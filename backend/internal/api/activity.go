@@ -32,6 +32,7 @@ type ActivityStatsResponse struct {
 // @Router       /admin/activity/stats [get]
 func (h *AdminHandler) GetActivityStats(c *gin.Context) {
 	ctx := c.Request.Context()
+	requestID, _ := c.Get("requestID")
 	now := time.Now()
 
 	// Start of today (midnight local time).
@@ -50,7 +51,7 @@ func (h *AdminHandler) GetActivityStats(c *gin.Context) {
 		WeekStart:  weekStart,
 	})
 	if err != nil {
-		slog.Error("failed to get activity stats", "error", err)
+		slog.Error("failed to get activity stats", "request_id", requestID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
@@ -87,11 +88,12 @@ type ActivityChartResponse struct {
 // @Router       /admin/activity/chart [get]
 func (h *AdminHandler) GetActivityChart(c *gin.Context) {
 	ctx := c.Request.Context()
+	requestID, _ := c.Get("requestID")
 	cutoff := time.Now().Add(-24 * time.Hour).Unix()
 
 	rows, err := h.queries.GetCallsPerHour(ctx, cutoff)
 	if err != nil {
-		slog.Error("failed to get calls per hour", "error", err)
+		slog.Error("failed to get calls per hour", "request_id", requestID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
@@ -130,6 +132,7 @@ type TopTalkgroupsResponse struct {
 // @Router       /admin/activity/top-talkgroups [get]
 func (h *AdminHandler) GetTopTalkgroups(c *gin.Context) {
 	ctx := c.Request.Context()
+	requestID, _ := c.Get("requestID")
 	cutoff := time.Now().Add(-24 * time.Hour).Unix()
 
 	rows, err := h.queries.GetTopTalkgroups(ctx, db.GetTopTalkgroupsParams{
@@ -137,7 +140,7 @@ func (h *AdminHandler) GetTopTalkgroups(c *gin.Context) {
 		Limit:    10,
 	})
 	if err != nil {
-		slog.Error("failed to get top talkgroups", "error", err)
+		slog.Error("failed to get top talkgroups", "request_id", requestID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}

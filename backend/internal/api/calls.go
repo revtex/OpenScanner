@@ -763,6 +763,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			TalkgroupTag:   tagLabel,
 			TalkerAlias:    talkerAliasCol.String,
 		})
+		slog.Debug("call-upload: downstream notify queued", "call_id", callID)
 	}
 }
 

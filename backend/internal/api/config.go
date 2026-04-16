@@ -58,12 +58,15 @@ var allowedSettingKeys = map[string]bool{
 // @Security     BearerAuth
 // @Router       /admin/config [get]
 func (h *AdminHandler) GetConfig(c *gin.Context) {
+	requestID, _ := c.Get("requestID")
 	settings, err := h.queries.ListSettings(c.Request.Context())
 	if err != nil {
-		slog.Error("failed to list settings", "error", err)
+		slog.Error("failed to list settings", "request_id", requestID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list settings"})
 		return
 	}
+
+	slog.Debug("admin: config fetched", "request_id", requestID, "count", len(settings))
 
 	c.JSON(http.StatusOK, gin.H{
 		"settings": toSettingResponses(settings),
@@ -90,6 +93,7 @@ func (h *AdminHandler) GetConfig(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /admin/config [put]
 func (h *AdminHandler) PutConfig(c *gin.Context) {
+	requestID, _ := c.Get("requestID")
 	var settings []struct {
 		Key   string `json:"key"`
 		Value string `json:"value"`
@@ -129,7 +133,7 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 	// Wrap all upserts in a transaction so the update is atomic.
 	tx, err := h.sqlDB.BeginTx(ctx, nil)
 	if err != nil {
-		slog.Error("failed to begin config transaction", "error", err)
+		slog.Error("failed to begin config transaction", "request_id", requestID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save config"})
 		return
 	}
@@ -139,14 +143,14 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 
 	for _, s := range settings {
 		if err := qtx.UpsertSetting(ctx, db.UpsertSettingParams{Key: s.Key, Value: s.Value}); err != nil {
-			slog.Error("failed to upsert setting", "key", s.Key, "error", err)
+			slog.Error("failed to upsert setting", "request_id", requestID, "key", s.Key, "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save config"})
 			return
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("failed to commit config transaction", "error", err)
+		slog.Error("failed to commit config transaction", "request_id", requestID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save config"})
 		return
 	}
@@ -157,12 +161,12 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 	for _, s := range settings {
 		savedKeys = append(savedKeys, s.Key)
 	}
-	slog.Info("admin: config saved", "keys", savedKeys, "by", actorID)
+	slog.Info("admin: config saved", "request_id", requestID, "keys", savedKeys, "by", actorID)
 
 	// Log level change specifically.
 	for _, s := range settings {
 		if s.Key == "logLevel" {
-			slog.Info("admin: log level changed", "level", s.Value, "by", actorID)
+			slog.Info("admin: log level changed", "request_id", requestID, "level", s.Value, "by", actorID)
 			break
 		}
 	}
@@ -179,7 +183,7 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 	// Broadcast updated config to all WS clients.
 	allSettings, err := h.queries.ListSettings(ctx)
 	if err != nil {
-		slog.Warn("failed to reload settings for CFG broadcast", "error", err)
+		slog.Warn("failed to reload settings for CFG broadcast", "request_id", requestID, "error", err)
 	} else {
 		cfgMap := make(map[string]string, len(allSettings))
 		for _, s := range allSettings {
@@ -187,7 +191,7 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 		}
 		msg, err := ws.NewCFGMessage(cfgMap)
 		if err != nil {
-			slog.Warn("failed to build CFG message", "error", err)
+			slog.Warn("failed to build CFG message", "request_id", requestID, "error", err)
 		} else {
 			h.hub.Broadcast(msg, nil)
 		}

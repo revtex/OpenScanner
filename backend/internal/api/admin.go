@@ -212,6 +212,7 @@ func (h *AuthHandler) PutPassword(c *gin.Context) {
 
 	hash, err := auth.HashPassword(req.NewPassword)
 	if err != nil {
+		slog.Error("failed to hash new password", "user_id", userID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
 		return
 	}
