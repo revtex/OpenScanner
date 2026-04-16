@@ -8,6 +8,8 @@ The audit found ~40+ unlogged error paths, 25+ CRUD operations with no audit tra
 
 ## Phase 1 — Admin CRUD Audit Trail
 
+> **Status: ✅ Complete** — committed `9e1ff66`
+
 These are the highest-priority gaps. Every admin action that mutates data should emit an `Info` log with who did what and which resource was affected. Currently zero CRUD success paths are logged.
 
 ### `backend/internal/api/crud.go`
@@ -70,6 +72,8 @@ Add `slog.Info` at the success path of every Create/Update/Delete handler. Extra
 ---
 
 ## Phase 2 — Error Paths Missing Logs
+
+> **Status: ✅ Complete**
 
 ### `backend/internal/api/calls.go` — `PostCallUpload`
 

@@ -66,6 +66,7 @@ func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode Co
 		return "", fmt.Errorf("write audio file: %w", err)
 	}
 	dst.Close()
+	slog.Debug("audio: file written", "path", destPath, "size_bytes", fh.Size)
 
 	relPath, err := filepath.Rel(p.recordingsDir, destPath)
 	if err != nil {
@@ -112,14 +113,14 @@ func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode Co
 
 	// Remove original after successful conversion.
 	if err := os.Remove(destPath); err != nil && !os.IsNotExist(err) {
-		// Non-fatal.
-		_ = err
+		slog.Warn("audio: failed to remove original after conversion", "path", destPath, "error", err)
 	}
 
 	relOut, err := filepath.Rel(p.recordingsDir, outPath)
 	if err != nil {
 		return "", fmt.Errorf("compute relative output path: %w", err)
 	}
+	slog.Debug("audio: conversion complete", "input", safeName, "output", relOut)
 	return relOut, nil
 }
 
@@ -146,6 +147,7 @@ func (p *Processor) StoreFile(ctx context.Context, srcPath string, mode Conversi
 	if err := copyFile(srcPath, destPath); err != nil {
 		return "", fmt.Errorf("copy audio file: %w", err)
 	}
+	slog.Debug("audio: file written", "path", destPath)
 
 	relPath, err := filepath.Rel(p.recordingsDir, destPath)
 	if err != nil {
@@ -187,13 +189,14 @@ func (p *Processor) StoreFile(ctx context.Context, srcPath string, mode Conversi
 	}
 
 	if err := os.Remove(destPath); err != nil && !os.IsNotExist(err) {
-		_ = err
+		slog.Warn("audio: failed to remove original after conversion", "path", destPath, "error", err)
 	}
 
 	relOut, err := filepath.Rel(p.recordingsDir, outPath)
 	if err != nil {
 		return "", fmt.Errorf("compute relative output path: %w", err)
 	}
+	slog.Debug("audio: conversion complete", "input", safeName, "output", relOut)
 	return relOut, nil
 }
 

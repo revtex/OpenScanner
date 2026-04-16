@@ -110,6 +110,7 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 
 	token, jti, err := auth.GenerateToken(user.ID, user.Username, user.Role)
 	if err != nil {
+		slog.Error("auth: failed to generate token", "user_id", user.ID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
 	}

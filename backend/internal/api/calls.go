@@ -289,6 +289,10 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		incompleteReason = "no talkgroup"
 	}
 	if incompleteReason != "" {
+		slog.Warn("call-upload: incomplete data",
+			"reason", incompleteReason,
+			"api_key_id", apiKeyID,
+		)
 		c.String(http.StatusExpectationFailed, "Incomplete call data: %s\n", incompleteReason)
 		return
 	}
@@ -553,7 +557,11 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	// Store audio file (conversion handled inside Processor.Store).
 	relPath, err := h.processor.Store(ctx, fh, convMode)
 	if err != nil {
-		slog.Error("failed to store audio file", "error", err)
+		slog.Error("failed to store audio file",
+			"system_id", systemIDRaw,
+			"talkgroup_id", talkgroupIDRaw,
+			"error", err,
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store audio"})
 		return
 	}
@@ -704,6 +712,16 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			slog.Debug("call-upload: ws broadcast sent", "call_id", callID)
 		}
 	}
+
+	slog.Info("call-upload: complete",
+		"call_id", callID,
+		"system_id", systemIDRaw,
+		"talkgroup_id", talkgroupIDRaw,
+		"duration_ms", duration.Int64,
+		"duration_valid", duration.Valid,
+		"audio_path", relPath,
+		"api_key_id", apiKeyID,
+	)
 
 	c.JSON(http.StatusOK, gin.H{"id": callID, "message": "Call imported successfully."})
 
