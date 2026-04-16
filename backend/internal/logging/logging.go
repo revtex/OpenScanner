@@ -171,13 +171,19 @@ func GetLevel() string {
 
 // QueryEntries returns log entries from the ring buffer, filtered by the
 // given parameters. All filtering is done in-memory (fast, no DB).
+// Entries are scanned newest-first so that the most recent `limit` matching
+// entries are always returned, then reversed to restore chronological order
+// before returning. This ensures recent debug logs are never hidden behind
+// a page of older entries when the buffer exceeds the limit.
 func QueryEntries(level string, from, to int64, query string, limit int) []LogEntry {
 	all := ring.snapshot()
 	level = strings.ToLower(strings.TrimSpace(level))
 	query = strings.ToLower(strings.TrimSpace(query))
 
+	// Scan newest-first so we always capture the tail of the buffer.
 	result := make([]LogEntry, 0, min(len(all), limit))
-	for _, e := range all {
+	for i := len(all) - 1; i >= 0; i-- {
+		e := all[i]
 		if from > 0 && e.Time.Unix() < from {
 			continue
 		}
@@ -201,6 +207,11 @@ func QueryEntries(level string, from, to int64, query string, limit int) []LogEn
 		if len(result) >= limit {
 			break
 		}
+	}
+
+	// Reverse to restore chronological (oldest-first) order for the UI.
+	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
+		result[i], result[j] = result[j], result[i]
 	}
 	return result
 }
