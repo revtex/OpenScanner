@@ -3,8 +3,6 @@ import {
   Clock3,
   RefreshCw,
   Search,
-  ChevronDown,
-  ChevronRight,
   ArrowDown,
   Filter,
   SlidersHorizontal,
@@ -98,7 +96,7 @@ export default function LogsPanel() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [showRuntimeLevel, setShowRuntimeLevel] = useState(false);
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [selectedLog, setSelectedLog] = useState<AdminLog | null>(null);
   const [autoScroll, setAutoScroll] = useState(false);
   const [savingLevel, setSavingLevel] = useState(false);
   const [levelSaveError, setLevelSaveError] = useState<string | null>(null);
@@ -170,15 +168,6 @@ export default function LogsPanel() {
     setToDate(fmt(now));
   }, []);
 
-  const toggleRow = useCallback((idx: number) => {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
-      return next;
-    });
-  }, []);
-
   const rows = logs ?? [];
 
   const counts = useMemo(() => {
@@ -192,27 +181,30 @@ export default function LogsPanel() {
 
   const hasActiveFilters = !!(level || fromDate || toDate || textQuery);
   const runtimeLevel = logLevelData?.level ?? "info";
-  const saveRuntimeLevel = useCallback(async (nextLevel: string) => {
-    if (nextLevel === runtimeLevel) return;
-    setSavingLevel(true);
-    setLevelSaveError(null);
-    try {
-      await updateConfig([{ key: "logLevel", value: nextLevel }]).unwrap();
-      setLevelToast("Log level updated");
-      setTimeout(() => setLevelToast(null), 2500);
-      void refetch();
-      setShowRuntimeLevel(false);
-    } catch {
-      setLevelSaveError("Failed to update log level");
-    } finally {
-      setSavingLevel(false);
-    }
-  }, [runtimeLevel, updateConfig, refetch]);
+  const saveRuntimeLevel = useCallback(
+    async (nextLevel: string) => {
+      if (nextLevel === runtimeLevel) return;
+      setSavingLevel(true);
+      setLevelSaveError(null);
+      try {
+        await updateConfig([{ key: "logLevel", value: nextLevel }]).unwrap();
+        setLevelToast("Log level updated");
+        setTimeout(() => setLevelToast(null), 2500);
+        void refetch();
+        setShowRuntimeLevel(false);
+      } catch {
+        setLevelSaveError("Failed to update log level");
+      } finally {
+        setSavingLevel(false);
+      }
+    },
+    [runtimeLevel, updateConfig, refetch],
+  );
 
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: (idx) => (expandedRows.has(idx) ? 120 : 44),
+    estimateSize: () => 44,
     overscan: 30,
   });
 
@@ -296,7 +288,9 @@ export default function LogsPanel() {
                 disabled={savingLevel || runtimeLevel === l}
                 onClick={() => void saveRuntimeLevel(l)}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${LEVEL_COLORS[l].dot}`} />
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${LEVEL_COLORS[l].dot}`}
+                />
                 {l.toUpperCase()}
               </button>
             ))}
@@ -306,7 +300,9 @@ export default function LogsPanel() {
             </span>
           </div>
           {savingLevel && (
-            <p className="text-xs text-base-content/60 mt-2">Updating log level...</p>
+            <p className="text-xs text-base-content/60 mt-2">
+              Updating log level...
+            </p>
           )}
           {levelSaveError && (
             <p className="text-xs text-error mt-2">{levelSaveError}</p>
@@ -485,9 +481,7 @@ export default function LogsPanel() {
             {virtualizer.getVirtualItems().map((virtualRow) => {
               const log = rows[virtualRow.index];
               const parsed = parseLog(log);
-              const expanded = expandedRows.has(virtualRow.index);
               const levelStyle = LEVEL_COLORS[log.level] ?? LEVEL_COLORS.debug;
-              const hasAttrs = log.attrs && Object.keys(log.attrs).length > 0;
 
               return (
                 <div
@@ -508,16 +502,9 @@ export default function LogsPanel() {
                   {/* Main row */}
                   <div
                     className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none"
-                    onClick={() => hasAttrs && toggleRow(virtualRow.index)}
+                    onClick={() => setSelectedLog(log)}
                   >
-                    <span className="w-4 shrink-0">
-                      {hasAttrs &&
-                        (expanded ? (
-                          <ChevronDown className="w-3.5 h-3.5 text-base-content/40" />
-                        ) : (
-                          <ChevronRight className="w-3.5 h-3.5 text-base-content/40" />
-                        ))}
-                    </span>
+                    <span className="w-4 shrink-0" />
 
                     <span
                       className={`w-2 h-2 rounded-full shrink-0 ${levelStyle.dot}`}
@@ -562,25 +549,78 @@ export default function LogsPanel() {
                       )}
                     </div>
                   </div>
-
-                  {/* Expanded details */}
-                  {expanded && log.attrs && (
-                    <div className="px-10 pb-2">
-                      <div className="rounded bg-base-200 p-2 text-xs font-mono grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-                        {Object.entries(log.attrs).map(([k, v]) => (
-                          <div key={k} className="contents">
-                            <span className="text-base-content/50">{k}</span>
-                            <span className="text-base-content/80 break-all">
-                              {v}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Log details popup */}
+      {selectedLog && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+          onClick={() => setSelectedLog(null)}
+        >
+          <div
+            className="w-full max-w-3xl max-h-[80vh] overflow-auto rounded-lg border border-base-300 bg-base-100 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-base-300">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">Log Details</span>
+                <span
+                  className={`text-[10px] font-semibold uppercase rounded px-1.5 py-0.5 ${
+                    LEVEL_COLORS[selectedLog.level]?.badge ??
+                    LEVEL_COLORS.debug.badge
+                  }`}
+                >
+                  {selectedLog.level}
+                </span>
+                <span className="text-xs text-base-content/50 font-mono">
+                  {new Date(selectedLog.dateTime * 1000).toLocaleString()}
+                </span>
+              </div>
+              <button
+                className="btn btn-xs btn-ghost"
+                onClick={() => setSelectedLog(null)}
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              <div>
+                <p className="text-xs font-medium text-base-content/60 mb-1">
+                  Message
+                </p>
+                <p className="text-sm break-words">{selectedLog.message}</p>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-base-content/60 mb-1">
+                  Attributes
+                </p>
+                {selectedLog.attrs &&
+                Object.keys(selectedLog.attrs).length > 0 ? (
+                  <div className="rounded bg-base-200 p-3 text-xs font-mono grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                    {Object.entries(selectedLog.attrs).map(([k, v]) => (
+                      <div key={k} className="contents">
+                        <span className="text-base-content/50">{k}</span>
+                        <span className="text-base-content/80 break-all">
+                          {v}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-base-content/50">
+                    No attributes for this entry.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
