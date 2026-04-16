@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import { X, ChevronDown, ChevronRight, Search } from "lucide-react";
 import { useAppSelector, useAppDispatch } from "@/app/store";
 import {
@@ -8,16 +7,8 @@ import {
   setTGsBySystem,
   setTGsByGroup,
   setTGsByTag,
-  restoreTGSelection,
-  restoreFromDisabledTGs,
-  restoreAvoidList,
   removeAvoid,
 } from "@/app/slices/scannerSlice";
-import { selectToken } from "@/app/slices/authSlice";
-import {
-  useGetTGSelectionQuery,
-  useUpdateTGSelectionMutation,
-} from "@/app/slices/authSlice";
 import type { TalkgroupConfig, AvoidEntry } from "@/types";
 
 interface SelectTGPanelProps {
@@ -26,10 +17,6 @@ interface SelectTGPanelProps {
 }
 
 type TabId = "groups" | "tags" | "systems";
-
-function storageKey(instanceId: string): string {
-  return `openscanner-tg-selection-${instanceId}`;
-}
 
 function formatCountdown(expiresAt: number, now: number): string {
   const remaining = Math.max(0, Math.ceil((expiresAt - now) / 1000));
@@ -200,8 +187,6 @@ function Section({
 
 export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
   const dispatch = useAppDispatch();
-  const [searchParams] = useSearchParams();
-  const instanceId = searchParams.get("id") ?? "default";
 
   const config = useAppSelector((s) => s.scanner.config);
   const tgSelection = useAppSelector((s) => s.scanner.tgSelection);
@@ -361,90 +346,6 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
     },
     [searchLower, matchesTG],
   );
-
-  const token = useAppSelector(selectToken);
-  const isAuthenticated = !!token;
-
-  // RTK Query: only fetch when authenticated and config is ready
-  const { data: tgSelectionData } = useGetTGSelectionQuery(undefined, {
-    skip: !isAuthenticated || !config,
-  });
-  const [saveTGSelection] = useUpdateTGSelectionMutation();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const restoredRef = useRef(false);
-
-  // Reset restored flag when auth state changes
-  useEffect(() => {
-    restoredRef.current = false;
-  }, [isAuthenticated]);
-
-  // Restore tgSelection from API (authenticated) or localStorage (anonymous)
-  useEffect(() => {
-    if (!config) return;
-
-    if (isAuthenticated) {
-      // Wait for API data to arrive
-      if (!tgSelectionData) return;
-      dispatch(restoreFromDisabledTGs(tgSelectionData.disabledTGs));
-      dispatch(restoreAvoidList(tgSelectionData.avoidList ?? []));
-      restoredRef.current = true;
-    } else {
-      // Anonymous: use localStorage
-      const raw = localStorage.getItem(storageKey(instanceId));
-      if (!raw) return;
-      try {
-        const saved = JSON.parse(raw) as Record<string, unknown>;
-        const restored: Record<number, boolean> = {};
-        for (const sys of config.systems) {
-          for (const tg of sys.talkgroups ?? []) {
-            const savedVal = saved[String(tg.id)];
-            restored[tg.id] = typeof savedVal === "boolean" ? savedVal : true;
-          }
-        }
-        dispatch(restoreTGSelection(restored));
-      } catch {
-        // ignore malformed data
-      }
-      restoredRef.current = true;
-    }
-  }, [config, instanceId, dispatch, isAuthenticated, tgSelectionData]);
-
-  // Persist tgSelection: API (authenticated) or localStorage (anonymous)
-  useEffect(() => {
-    if (!config || !restoredRef.current) return;
-
-    if (isAuthenticated) {
-      // Debounce API writes
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        const disabledTGs: number[] = [];
-        for (const sys of config.systems) {
-          for (const tg of sys.talkgroups ?? []) {
-            if (tgSelection[tg.id] === false) {
-              disabledTGs.push(tg.id);
-            }
-          }
-        }
-        const now = Date.now();
-        const activeAvoids = avoidList.filter(
-          (a) => a.expiresAt === 0 || a.expiresAt > now,
-        );
-        saveTGSelection({ disabledTGs, avoidList: activeAvoids });
-      }, 500);
-      return () => {
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-      };
-    } else {
-      localStorage.setItem(storageKey(instanceId), JSON.stringify(tgSelection));
-    }
-  }, [
-    tgSelection,
-    avoidList,
-    instanceId,
-    config,
-    isAuthenticated,
-    saveTGSelection,
-  ]);
 
   // Auto-expand sections matching search
   useEffect(() => {

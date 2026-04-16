@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useGetSetupStatusQuery } from "@/app/api";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { setSetupStatus, selectToken } from "@/app/slices/authSlice";
-import { expireAvoids, setPaused } from "@/app/slices/scannerSlice";
+import { expireAvoids, setPaused, setLive } from "@/app/slices/scannerSlice";
 import { useScanner } from "@/hooks/useScanner";
+import { useTGSelectionSync } from "@/hooks/useTGSelectionSync";
 import { LEDPanel } from "@/components/scanner/LEDPanel";
 import { DisplayPanel } from "@/components/scanner/DisplayPanel";
 import { ControlToolbar } from "@/components/scanner/ControlToolbar";
@@ -19,6 +20,7 @@ export default function Scanner() {
   const token = useAppSelector(selectToken);
 
   const scanner = useScanner();
+  useTGSelectionSync();
 
   const [selectTGOpen, setSelectTGOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -54,10 +56,11 @@ export default function Scanner() {
     return () => clearInterval(id);
   }, [dispatch]);
 
-  // Pause applies to the current playback moment only; clear stale paused UI
-  // state when leaving the scanner route.
+  // Reset playback state when leaving the scanner route.
+  // Live off ensures no audio auto-plays on return.
   useEffect(
     () => () => {
+      dispatch(setLive(false));
       dispatch(setPaused(false));
     },
     [dispatch],

@@ -13,6 +13,7 @@ import {
   TowerControl,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useAppSelector } from "@/app/store";
 
 const POLL_INTERVAL = 30_000;
 
@@ -27,21 +28,12 @@ function formatUptime(totalSeconds: number): string {
   return parts.join(" ");
 }
 
-function formatHourLabel(unixHour: number): string {
+function formatHourLabel(unixHour: number, hour12: boolean): string {
   const date = new Date(unixHour * 1000);
   return date.toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
-  });
-}
-
-function formatHourForBadge(unixHour: number): string {
-  const date = new Date(unixHour * 1000);
-  return date.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
+    hour12,
   });
 }
 
@@ -51,7 +43,13 @@ function formatCompact(n: number): string {
   return String(n);
 }
 
-function Sparkline({ buckets }: { buckets: ChartBucket[] }) {
+function Sparkline({
+  buckets,
+  hour12,
+}: {
+  buckets: ChartBucket[];
+  hour12: boolean;
+}) {
   const W = 1000;
   const H = 160;
   const PAD = { top: 12, right: 2, bottom: 28, left: 2 };
@@ -153,7 +151,7 @@ function Sparkline({ buckets }: { buckets: ChartBucket[] }) {
               setTooltip({
                 x: cx - rect.left,
                 y: cy - rect.top,
-                text: `${formatHourLabel(b.hour)} — ${b.count.toLocaleString()} calls`,
+                text: `${formatHourLabel(b.hour, hour12)} — ${b.count.toLocaleString()} calls`,
               });
             }}
             onMouseLeave={() => setTooltip(null)}
@@ -171,7 +169,7 @@ function Sparkline({ buckets }: { buckets: ChartBucket[] }) {
             fill="currentColor"
             fillOpacity={0.4}
           >
-            {formatHourLabel(buckets[i].hour)}
+            {formatHourLabel(buckets[i].hour, hour12)}
           </text>
         ))}
 
@@ -179,11 +177,16 @@ function Sparkline({ buckets }: { buckets: ChartBucket[] }) {
         <rect
           x={0}
           y={PAD.top}
-          width={3}
+          width={4}
           height={chartH}
           fill="var(--color-primary)"
-          fillOpacity={0.4}
-          style={{ animation: "radar-sweep 8s linear infinite" }}
+          fillOpacity={0.5}
+          rx={2}
+          style={{
+            animation: "radar-sweep 8s linear infinite",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ["--sweep-width" as string]: `${W}px`,
+          }}
         />
       </svg>
 
@@ -201,6 +204,9 @@ function Sparkline({ buckets }: { buckets: ChartBucket[] }) {
 }
 
 export default function ActivityPanel() {
+  const hour12 = useAppSelector(
+    (s) => s.scanner.config?.time12hFormat ?? false,
+  );
   const { data: stats, isLoading: statsLoading } = useGetActivityStatsQuery(
     undefined,
     { pollingInterval: POLL_INTERVAL },
@@ -341,7 +347,7 @@ export default function ActivityPanel() {
               </div>
               <div className="mt-1 text-xl font-bold">
                 {peakBucket
-                  ? `${formatHourForBadge(peakBucket.hour)} (${peakBucket.count.toLocaleString()})`
+                  ? `${formatHourLabel(peakBucket.hour, hour12)} (${peakBucket.count.toLocaleString()})`
                   : "N/A"}
               </div>
             </div>
@@ -371,7 +377,7 @@ export default function ActivityPanel() {
               <span className="loading loading-spinner loading-sm" />
             </div>
           ) : chart && chart.buckets.length > 0 ? (
-            <Sparkline buckets={chart.buckets} />
+            <Sparkline buckets={chart.buckets} hour12={hour12} />
           ) : (
             <p className="text-sm text-base-content/50">No data available</p>
           )}
@@ -394,6 +400,7 @@ export default function ActivityPanel() {
                   <tr>
                     <th>#</th>
                     <th>Talkgroup</th>
+                    <th>Name</th>
                     <th>System</th>
                     <th>Channel Load</th>
                     <th className="text-right">Calls</th>
@@ -404,6 +411,12 @@ export default function ActivityPanel() {
                     <tr key={tg.talkgroupId}>
                       <td className="text-base-content/50">{i + 1}</td>
                       <td className="font-semibold">{tg.talkgroupLabel}</td>
+                      <td
+                        className="text-base-content/70 max-w-40 truncate"
+                        title={tg.talkgroupName || undefined}
+                      >
+                        {tg.talkgroupName || "—"}
+                      </td>
                       <td className="text-base-content/70">{tg.systemLabel}</td>
                       <td>
                         <div className="flex items-center gap-2">

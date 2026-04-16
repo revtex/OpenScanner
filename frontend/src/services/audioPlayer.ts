@@ -5,32 +5,30 @@ interface QueueItem {
   audioUrl: string;
 }
 
+// Extend window for Safari's prefixed AudioContext
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
+
 class AudioPlayer {
-  private audio: HTMLAudioElement;
-  private preloadAudio: HTMLAudioElement;
-  private audioContext: AudioContext | null = null;
+  private ctx: AudioContext | null = null;
   private gainNode: GainNode | null = null;
-  private sourceNode: MediaElementAudioSourceNode | null = null;
+  private source: AudioBufferSourceNode | null = null;
   private volume = 1;
   private queue: QueueItem[] = [];
   private currentItem: QueueItem | null = null;
   private _paused = false;
+  private _playing = false;
   private callStartCb: ((call: Call) => void) | null = null;
   private callEndCb: (() => void) | null = null;
   private queueChangeCb: ((length: number) => void) | null = null;
 
   constructor() {
-    this.audio = new Audio();
-    this.preloadAudio = new Audio();
-    this.preloadAudio.preload = "auto";
-
-    this.audio.addEventListener("ended", () => {
-      this.onEnded();
-    });
-
-    this.audio.addEventListener("error", () => {
-      this.onEnded();
-    });
+    // No bootstrap listeners needed — AudioContext is created when
+    // the user clicks the Live button (a user gesture), which
+    // satisfies the browser autoplay policy.
   }
 
   play(call: Call, audioUrl: string): void {
@@ -45,23 +43,16 @@ class AudioPlayer {
     } else {
       this.queue.push(item);
       this.queueChangeCb?.(this.queue.length);
-      this.preloadNext();
     }
   }
 
-  /**
-   * Interrupt current playback to play a call immediately.
-   * The interrupted call is pushed to the front of the queue
-   * so it resumes after the new call finishes.
-   */
   playNow(call: Call, audioUrl: string): void {
     const item: QueueItem = { call, audioUrl };
     if (!this.currentItem) {
       this.startPlayback(item);
       return;
     }
-    // Push interrupted call to front of queue so it plays next
-    this.audio.pause();
+    this.stopSource();
     this.queue.unshift(this.currentItem);
     this.currentItem = null;
     this.queueChangeCb?.(this.queue.length);
@@ -69,7 +60,7 @@ class AudioPlayer {
   }
 
   skip(): void {
-    this.audio.pause();
+    this.stopSource();
     if (this.currentItem) {
       this.cleanup(this.currentItem.audioUrl);
     }
@@ -78,33 +69,32 @@ class AudioPlayer {
 
   replay(): void {
     if (this.currentItem) {
-      this.resumeAudioContext();
-      this.audio.currentTime = 0;
-      this.audio.play().catch(() => {});
+      this.stopSource();
+      this.decodeAndPlay(this.currentItem);
     }
   }
 
   pause(): void {
     this._paused = true;
-    this.audio.pause();
+    this.ctx?.suspend();
   }
 
   resume(): void {
     this._paused = false;
-    if (this.currentItem) {
-      this.resumeAudioContext();
-      this.audio.play().catch(() => {});
-    } else if (this.queue.length > 0) {
-      this.playNext();
-    }
+    this.ensureContext();
+    this.ctx?.resume().then(() => {
+      if (this.currentItem && !this._playing) {
+        this.decodeAndPlay(this.currentItem);
+      } else if (!this.currentItem && this.queue.length > 0) {
+        this.playNext();
+      }
+    });
   }
 
   setVolume(v: number): void {
     this.volume = Math.max(0, Math.min(1, v));
     if (this.gainNode) {
       this.gainNode.gain.value = this.volume;
-    } else {
-      this.audio.volume = this.volume;
     }
   }
 
@@ -117,7 +107,6 @@ class AudioPlayer {
     const a = document.createElement("a");
     a.href = this.currentItem.audioUrl;
     const name = this.currentItem.call.audioName || "call";
-    // audioName typically already includes the extension (e.g. "call.m4a")
     a.download = /\.\w+$/.test(name) ? name : `${name}.mp3`;
     document.body.appendChild(a);
     a.click();
@@ -125,7 +114,7 @@ class AudioPlayer {
   }
 
   isPlaying(): boolean {
-    return this.currentItem !== null && !this.audio.paused;
+    return this._playing;
   }
 
   setOnCallStart(cb: (call: Call) => void): void {
@@ -147,9 +136,10 @@ class AudioPlayer {
     this.queue = [];
     this.queueChangeCb?.(0);
     if (this.currentItem) {
-      this.audio.pause();
+      this.stopSource();
       this.cleanup(this.currentItem.audioUrl);
       this.currentItem = null;
+      this._playing = false;
     }
     this.callEndCb?.();
   }
@@ -165,57 +155,87 @@ class AudioPlayer {
     }
     this.queue = kept;
     this.queueChangeCb?.(this.queue.length);
-    this.preloadNext();
   }
 
   getCurrentCall(): Call | null {
     return this.currentItem?.call ?? null;
   }
 
-  private startPlayback(item: QueueItem): void {
-    this.currentItem = item;
-    this.audio.src = item.audioUrl;
+  // -- Private --
 
-    this.resumeAudioContext();
-    this.audio.play().then(
-      () => {
-        this.callStartCb?.(item.call);
-      },
-      () => {
-        // Autoplay blocked — keep the call so resume() can play it.
-        // Subsequent play() calls will queue behind it normally.
-        // Show the call in the UI so the user knows what's pending.
-        this.callStartCb?.(item.call);
-      },
-    );
-    this.preloadNext();
+  private ensureContext(): void {
+    if (!this.ctx) {
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return;
+      this.ctx = new Ctor({ latencyHint: "playback" });
+      this.gainNode = this.ctx.createGain();
+      this.gainNode.gain.value = this.volume;
+      this.gainNode.connect(this.ctx.destination);
+    }
+    if (this.ctx.state === "suspended") {
+      this.ctx.resume().catch(() => {});
+    }
   }
 
-  /** Create the Web Audio graph if needed and resume a suspended context. */
-  private resumeAudioContext(): void {
-    if (!this.audioContext) {
-      try {
-        this.audioContext = new AudioContext();
-        this.sourceNode = this.audioContext.createMediaElementSource(
-          this.audio,
-        );
-        this.gainNode = this.audioContext.createGain();
-        this.gainNode.gain.value = this.volume;
-        this.sourceNode.connect(this.gainNode);
-        this.gainNode.connect(this.audioContext.destination);
-      } catch {
-        // Fallback to HTML volume if Web Audio not available
-        this.audio.volume = this.volume;
-        return;
-      }
+  private startPlayback(item: QueueItem): void {
+    this.currentItem = item;
+    this.callStartCb?.(item.call);
+    this.ensureContext();
+    if (this.ctx?.state === "running") {
+      this.decodeAndPlay(item);
     }
+  }
 
-    if (this.audioContext.state === "suspended") {
-      this.audioContext.resume().catch(() => {});
+  private decodeAndPlay(item: QueueItem): void {
+    if (!this.ctx || !this.gainNode) return;
+    // Item may have changed by the time async work completes —
+    // capture a reference to check against.
+    const playingItem = item;
+
+    fetch(item.audioUrl)
+      .then((r) => r.arrayBuffer())
+      .then((buf) => this.ctx!.decodeAudioData(buf))
+      .then((audioBuffer) => {
+        // Bail if item changed while we were decoding.
+        if (this.currentItem !== playingItem) return;
+
+        this.stopSource();
+        const src = this.ctx!.createBufferSource();
+        src.buffer = audioBuffer;
+        src.connect(this.gainNode!);
+        src.onended = () => {
+          if (this.currentItem === playingItem) {
+            this.onEnded();
+          }
+        };
+        src.start();
+        this.source = src;
+        this._playing = true;
+      })
+      .catch(() => {
+        // Decode or fetch failure — skip to next.
+        if (this.currentItem === playingItem) {
+          this.onEnded();
+        }
+      });
+  }
+
+  private stopSource(): void {
+    if (this.source) {
+      this.source.onended = null;
+      try {
+        this.source.stop();
+      } catch {
+        // already stopped
+      }
+      this.source.disconnect();
+      this.source = null;
     }
+    this._playing = false;
   }
 
   private onEnded(): void {
+    this.stopSource();
     if (this.currentItem) {
       this.cleanup(this.currentItem.audioUrl);
       this.currentItem = null;
@@ -230,13 +250,8 @@ class AudioPlayer {
       this.startPlayback(next);
     } else {
       this.currentItem = null;
+      this._playing = false;
       this.callEndCb?.();
-    }
-  }
-
-  private preloadNext(): void {
-    if (this.queue.length > 0) {
-      this.preloadAudio.src = this.queue[0].audioUrl;
     }
   }
 

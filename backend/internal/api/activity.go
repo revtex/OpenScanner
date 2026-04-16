@@ -108,6 +108,7 @@ func (h *AdminHandler) GetActivityChart(c *gin.Context) {
 type TopTalkgroup struct {
 	TalkgroupID    int64  `json:"talkgroupId"`
 	TalkgroupLabel string `json:"talkgroupLabel"`
+	TalkgroupName  string `json:"talkgroupName"`
 	SystemLabel    string `json:"systemLabel"`
 	CallCount      int64  `json:"callCount"`
 } // @name TopTalkgroup
@@ -146,6 +147,7 @@ func (h *AdminHandler) GetTopTalkgroups(c *gin.Context) {
 		tgs[i] = TopTalkgroup{
 			TalkgroupID:    r.TalkgroupID.Int64,
 			TalkgroupLabel: r.TalkgroupLabel.String,
+			TalkgroupName:  r.TalkgroupName.String,
 			SystemLabel:    r.SystemLabel.String,
 			CallCount:      r.CallCount,
 		}

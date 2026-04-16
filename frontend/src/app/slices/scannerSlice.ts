@@ -24,7 +24,7 @@ interface ScannerState {
 }
 
 const initialState: ScannerState = {
-  isLive: true,
+  isLive: false,
   isPaused:
     typeof sessionStorage !== "undefined" &&
     sessionStorage.getItem("openscanner-paused") === "true",
@@ -114,6 +114,9 @@ export const scannerSlice = createSlice({
     },
     toggleLive(state) {
       state.isLive = !state.isLive;
+    },
+    setLive(state, action: PayloadAction<boolean>) {
+      state.isLive = action.payload;
     },
     holdSystem(state, action: PayloadAction<number | null>) {
       state.heldSystem = action.payload;
@@ -296,6 +299,7 @@ export const {
   setAudioActive,
   setPaused,
   toggleLive,
+  setLive,
   holdSystem,
   holdTG,
   addAvoid,

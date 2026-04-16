@@ -20,6 +20,7 @@ SELECT
 SELECT
     c.talkgroup_id,
     t.label AS talkgroup_label,
+    t.name AS talkgroup_name,
     s.label AS system_label,
     COUNT(*) AS call_count
 FROM calls c

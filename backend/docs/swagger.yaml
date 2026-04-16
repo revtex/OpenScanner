@@ -990,6 +990,8 @@ definitions:
         type: integer
       talkgroupLabel:
         type: string
+      talkgroupName:
+        type: string
     type: object
   TopTalkgroupsResponse:
     properties:

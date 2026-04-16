@@ -6128,6 +6128,9 @@ const docTemplate = `{
                 },
                 "talkgroupLabel": {
                     "type": "string"
+                },
+                "talkgroupName": {
+                    "type": "string"
                 }
             }
         },

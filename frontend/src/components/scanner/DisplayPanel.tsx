@@ -234,7 +234,7 @@ export function DisplayPanel({
                 .filter(Boolean)
                 .join(" · ")}
             </span>
-            <span className="opacity-60">
+            <span className="shrink-0 whitespace-nowrap opacity-60">
               {formatCallTime(currentCall.dateTime, time12hFormat)}
             </span>
           </div>

@@ -20,6 +20,7 @@ export interface ActivityChartResponse {
 export interface TopTalkgroup {
   talkgroupId: number;
   talkgroupLabel: string;
+  talkgroupName: string;
   systemLabel: string;
   callCount: number;
 }

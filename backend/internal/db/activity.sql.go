@@ -79,6 +79,7 @@ const getTopTalkgroups = `-- name: GetTopTalkgroups :many
 SELECT
     c.talkgroup_id,
     t.label AS talkgroup_label,
+    t.name AS talkgroup_name,
     s.label AS system_label,
     COUNT(*) AS call_count
 FROM calls c
@@ -98,6 +99,7 @@ type GetTopTalkgroupsParams struct {
 type GetTopTalkgroupsRow struct {
 	TalkgroupID    sql.NullInt64  `db:"talkgroup_id" json:"talkgroup_id"`
 	TalkgroupLabel sql.NullString `db:"talkgroup_label" json:"talkgroup_label"`
+	TalkgroupName  sql.NullString `db:"talkgroup_name" json:"talkgroup_name"`
 	SystemLabel    sql.NullString `db:"system_label" json:"system_label"`
 	CallCount      int64          `db:"call_count" json:"call_count"`
 }
@@ -115,6 +117,7 @@ func (q *Queries) GetTopTalkgroups(ctx context.Context, arg GetTopTalkgroupsPara
 		if err := rows.Scan(
 			&i.TalkgroupID,
 			&i.TalkgroupLabel,
+			&i.TalkgroupName,
 			&i.SystemLabel,
 			&i.CallCount,
 		); err != nil {
