@@ -26,7 +26,7 @@ func TestFfmpegArgs_DefaultPreset(t *testing.T) {
 
 func TestFfmpegArgs_AACLC_Presets(t *testing.T) {
 	cases := []struct {
-		preset audio.EncodingPreset
+		preset  audio.EncodingPreset
 		bitrate string
 	}{
 		{audio.PresetAACLC32k, "32k"},
@@ -108,6 +108,18 @@ func TestParseEncodingPreset_Fallback(t *testing.T) {
 	}
 	if got := audio.ParseEncodingPreset("he_aac_8k"); got != audio.PresetHEAAC8k {
 		t.Errorf("expected PresetHEAAC8k, got %q", got)
+	}
+}
+
+func TestIsHEEncodingPreset(t *testing.T) {
+	if !audio.IsHEEncodingPreset("he_aac_12k") {
+		t.Error("expected he_aac_12k to be an HE preset")
+	}
+	if !audio.IsHEEncodingPreset("he_aac_8k") {
+		t.Error("expected he_aac_8k to be an HE preset")
+	}
+	if audio.IsHEEncodingPreset("aac_lc_32k") {
+		t.Error("expected aac_lc_32k to not be an HE preset")
 	}
 }
 

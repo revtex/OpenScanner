@@ -74,6 +74,7 @@ func (h *AdminHandler) GetConfig(c *gin.Context) {
 		"settings": toSettingResponses(settings),
 		"capabilities": gin.H{
 			"ffmpeg":  h.ffmpegAvailable,
+			"fdkAac":  h.fdkAACAvailable,
 			"whisper": h.whisperAvailable,
 		},
 	})
@@ -121,6 +122,10 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 		if s.Key == "audioEncodingPreset" {
 			if !audio.IsValidEncodingPreset(s.Value) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid audioEncodingPreset value"})
+				return
+			}
+			if audio.IsHEEncodingPreset(s.Value) && !h.fdkAACAvailable {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "selected HE-AAC preset requires libfdk_aac support in ffmpeg"})
 				return
 			}
 		}

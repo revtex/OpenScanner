@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -947,6 +948,9 @@ func TestConfig_GetPut(t *testing.T) {
 	if resp.Capabilities["ffmpeg"] {
 		t.Error("expected capabilities.ffmpeg = false in test env")
 	}
+	if resp.Capabilities["fdkAac"] {
+		t.Error("expected capabilities.fdkAac = false in test env")
+	}
 
 	// PUT — audioConversion=1 should be rejected because ffmpeg is not available.
 	putBody := jsonBody(t, []map[string]string{
@@ -999,15 +1003,14 @@ func TestLogs_Get(t *testing.T) {
 	tok := adminToken(t, uid, "admin1")
 	hdrs := map[string]string{"Authorization": "Bearer " + tok}
 
-	// Seed logs.
-	ctx := context.Background()
-	now := time.Now().Unix()
-	_ = queries.CreateLog(ctx, db.CreateLogParams{DateTime: now - 100, Level: "info", Message: "msg1"})
-	_ = queries.CreateLog(ctx, db.CreateLogParams{DateTime: now - 50, Level: "error", Message: "msg2"})
-	_ = queries.CreateLog(ctx, db.CreateLogParams{DateTime: now, Level: "info", Message: "msg3"})
+	// Seed runtime logs into the in-memory ring buffer.
+	tag := fmt.Sprintf("test-logs-get-%d", time.Now().UnixNano())
+	slog.Info("msg1 " + tag)
+	slog.Error("msg2 " + tag)
+	slog.Info("msg3 " + tag)
 
-	// All logs (no filters).
-	w := doRequest(engine, http.MethodGet, "/api/admin/logs", nil, hdrs)
+	// Filter by unique tag so assertions are deterministic.
+	w := doRequest(engine, http.MethodGet, "/api/admin/logs?q="+tag, nil, hdrs)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d; body: %s", w.Code, w.Body.String())
 	}
@@ -1024,14 +1027,16 @@ func TestLogs_FilterByDateRange(t *testing.T) {
 	tok := adminToken(t, uid, "admin1")
 	hdrs := map[string]string{"Authorization": "Bearer " + tok}
 
-	ctx := context.Background()
-	now := time.Now().Unix()
-	_ = queries.CreateLog(ctx, db.CreateLogParams{DateTime: now - 200, Level: "info", Message: "old"})
-	_ = queries.CreateLog(ctx, db.CreateLogParams{DateTime: now - 50, Level: "info", Message: "mid"})
-	_ = queries.CreateLog(ctx, db.CreateLogParams{DateTime: now, Level: "info", Message: "new"})
+	tag := fmt.Sprintf("test-logs-range-%d", time.Now().UnixNano())
+	slog.Info("old " + tag)
+	// Ensure old entry falls outside the upcoming range.
+	time.Sleep(1100 * time.Millisecond)
+	from := time.Now().Unix()
+	slog.Info("mid " + tag)
+	slog.Info("new " + tag)
 
-	// Only logs from (now-100) to now.
-	url := fmt.Sprintf("/api/admin/logs?from=%d&to=%d", now-100, now+1)
+	// Only logs from `from` to now+1 should include mid+new, not old.
+	url := fmt.Sprintf("/api/admin/logs?from=%d&to=%d&q=%s", from, time.Now().Unix()+1, tag)
 	w := doRequest(engine, http.MethodGet, url, nil, hdrs)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d; body: %s", w.Code, w.Body.String())
@@ -1049,13 +1054,12 @@ func TestLogs_FilterByLevel(t *testing.T) {
 	tok := adminToken(t, uid, "admin1")
 	hdrs := map[string]string{"Authorization": "Bearer " + tok}
 
-	ctx := context.Background()
-	now := time.Now().Unix()
-	_ = queries.CreateLog(ctx, db.CreateLogParams{DateTime: now - 10, Level: "info", Message: "info1"})
-	_ = queries.CreateLog(ctx, db.CreateLogParams{DateTime: now - 5, Level: "error", Message: "err1"})
-	_ = queries.CreateLog(ctx, db.CreateLogParams{DateTime: now, Level: "error", Message: "err2"})
+	tag := fmt.Sprintf("test-logs-level-%d", time.Now().UnixNano())
+	slog.Info("info1 " + tag)
+	slog.Error("err1 " + tag)
+	slog.Error("err2 " + tag)
 
-	w := doRequest(engine, http.MethodGet, "/api/admin/logs?level=error", nil, hdrs)
+	w := doRequest(engine, http.MethodGet, "/api/admin/logs?level=error&q="+tag, nil, hdrs)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d; body: %s", w.Code, w.Body.String())
 	}

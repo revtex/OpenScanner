@@ -10,11 +10,13 @@ import (
 	"github.com/openscanner/openscanner/internal/api"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
+	"github.com/openscanner/openscanner/internal/logging"
 	_ "modernc.org/sqlite"
 )
 
 func init() {
 	gin.SetMode(gin.TestMode)
+	logging.Configure(true, "")
 }
 
 // newTestDB opens an in-memory SQLite database with all embedded migrations applied.

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os/exec"
 	"runtime"
+	"strings"
 )
 
 // ConversionMode controls how FFmpeg processes audio (normalization filter).
@@ -22,11 +23,11 @@ const (
 type EncodingPreset string
 
 const (
-	PresetAACLC32k  EncodingPreset = "aac_lc_32k"  // AAC-LC 32 kbps (default)
-	PresetAACLC24k  EncodingPreset = "aac_lc_24k"  // AAC-LC 24 kbps
-	PresetAACLC16k  EncodingPreset = "aac_lc_16k"  // AAC-LC 16 kbps
-	PresetHEAAC12k  EncodingPreset = "he_aac_12k"  // HE-AAC 12 kbps
-	PresetHEAAC8k   EncodingPreset = "he_aac_8k"   // HE-AAC  8 kbps
+	PresetAACLC32k EncodingPreset = "aac_lc_32k" // AAC-LC 32 kbps (default)
+	PresetAACLC24k EncodingPreset = "aac_lc_24k" // AAC-LC 24 kbps
+	PresetAACLC16k EncodingPreset = "aac_lc_16k" // AAC-LC 16 kbps
+	PresetHEAAC12k EncodingPreset = "he_aac_12k" // HE-AAC 12 kbps
+	PresetHEAAC8k  EncodingPreset = "he_aac_8k"  // HE-AAC  8 kbps
 )
 
 // validPresets is the set of accepted EncodingPreset values.
@@ -51,6 +52,16 @@ func ParseEncodingPreset(s string) EncodingPreset {
 		return p
 	}
 	return PresetAACLC32k
+}
+
+// IsHEEncodingPreset reports whether s selects an HE-AAC preset.
+func IsHEEncodingPreset(s string) bool {
+	switch EncodingPreset(s) {
+	case PresetHEAAC12k, PresetHEAAC8k:
+		return true
+	default:
+		return false
+	}
 }
 
 // presetCodecArgs returns the FFmpeg codec/bitrate/channel args for the preset.
@@ -172,4 +183,22 @@ func CheckFFmpeg() bool {
 		return false
 	}
 	return true
+}
+
+// CheckLibFDKAAC reports whether the current ffmpeg build includes
+// libfdk_aac. Logs INFO when available and WARN when unavailable.
+func CheckLibFDKAAC() bool {
+	cmd := exec.Command("ffmpeg", "-hide_banner", "-encoders")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		slog.Warn("failed to inspect ffmpeg encoders for libfdk_aac", "error", err)
+		return false
+	}
+	has := strings.Contains(strings.ToLower(string(out)), "libfdk_aac")
+	if has {
+		slog.Info("libfdk_aac detected — HE-AAC presets enabled")
+		return true
+	}
+	slog.Warn("libfdk_aac not detected — HE-AAC presets hidden")
+	return false
 }

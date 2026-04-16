@@ -231,6 +231,10 @@ func (p *program) run() {
 
 	// Set up bounded FFmpeg worker pool and audio processor.
 	hasFFmpeg := audio.CheckFFmpeg()
+	hasFDKAAC := false
+	if hasFFmpeg {
+		hasFDKAAC = audio.CheckLibFDKAAC()
+	}
 	pool := audio.NewWorkerPool(ctx)
 	processor := audio.NewProcessor(cfg.RecordingsDir, pool)
 
@@ -271,6 +275,7 @@ func (p *program) run() {
 		DownstreamNotifier: dsService,
 		Version:            config.Version,
 		FFmpegAvailable:    hasFFmpeg,
+		FDKAACAvailable:    hasFDKAAC,
 		WhisperAvailable:   hasWhisper,
 	})
 

@@ -211,6 +211,7 @@ export interface AdminSetting {
 
 export interface Capabilities {
   ffmpeg: boolean;
+  fdkAac: boolean;
   whisper: boolean;
 }
 

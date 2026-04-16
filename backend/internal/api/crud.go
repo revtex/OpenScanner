@@ -36,6 +36,7 @@ type AdminHandler struct {
 	dsReload         DownstreamReloader
 	recordingsDir    string
 	ffmpegAvailable  bool
+	fdkAACAvailable  bool
 	whisperAvailable bool
 }
 

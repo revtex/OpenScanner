@@ -50,6 +50,7 @@ type Deps struct {
 	DownstreamNotifier DownstreamNotifier
 	Version            string
 	FFmpegAvailable    bool
+	FDKAACAvailable    bool
 	WhisperAvailable   bool
 }
 
@@ -65,6 +66,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	}
 	adminHandler := NewAdminHandler(deps.Queries, deps.Hub, deps.SQLDB, deps.DirMonitorReloader, deps.DownstreamReloader, recordingsDir)
 	adminHandler.ffmpegAvailable = deps.FFmpegAvailable
+	adminHandler.fdkAACAvailable = deps.FDKAACAvailable
 	adminHandler.whisperAvailable = deps.WhisperAvailable
 
 	// Global middleware applied to every request.

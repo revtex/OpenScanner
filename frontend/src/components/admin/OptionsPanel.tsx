@@ -39,6 +39,8 @@ const AUDIO_ENCODING_PRESETS: Record<string, string> = {
   he_aac_8k: "HE-AAC 8 kbps",
 };
 
+const HE_AAC_PRESETS = new Set(["he_aac_12k", "he_aac_8k"]);
+
 const KEYPAD_BEEPS = ["disabled", "uniden", "whistler"] as const;
 
 const TRANSCRIPTION_MODELS = ["tiny", "base", "small", "medium", "large"];
@@ -371,24 +373,38 @@ export default function OptionsPanel() {
     }
 
     if (key === "audioEncodingPreset") {
-      const conversionDisabled = (localSettings["audioConversion"] ?? "0") === "0";
+      const conversionDisabled =
+        (localSettings["audioConversion"] ?? "0") === "0";
       const ffmpegMissing = capabilities && !capabilities.ffmpeg;
+      const fdkAacAvailable = !!capabilities?.fdkAac;
+      const visiblePresets = Object.entries(AUDIO_ENCODING_PRESETS).filter(
+        ([preset]) => fdkAacAvailable || !HE_AAC_PRESETS.has(preset),
+      );
+      const selectedValue =
+        value && (!HE_AAC_PRESETS.has(value) || fdkAacAvailable)
+          ? value
+          : "aac_lc_32k";
       return (
         <div className="flex flex-col">
           {label}
           {description}
           <select
             className="select w-full max-w-xs"
-            value={value || "aac_lc_32k"}
+            value={selectedValue}
             onChange={(e) => updateSetting(key, e.target.value)}
             disabled={!!ffmpegMissing || conversionDisabled}
           >
-            {Object.entries(AUDIO_ENCODING_PRESETS).map(([val, lbl]) => (
+            {visiblePresets.map(([val, lbl]) => (
               <option key={val} value={val}>
                 {lbl}
               </option>
             ))}
           </select>
+          {!fdkAacAvailable && (
+            <p className="text-xs text-warning mt-1">
+              libfdk_aac not detected in FFmpeg; HE-AAC presets are unavailable.
+            </p>
+          )}
           {conversionDisabled && (
             <p className="text-xs text-base-content/50 mt-1">
               Enable audio conversion above to activate this setting.
