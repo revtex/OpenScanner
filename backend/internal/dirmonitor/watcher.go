@@ -423,7 +423,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 			if cerr != nil {
 				return fmt.Errorf("auto-create system %d: %w", parsed.SystemID, cerr)
 			}
-			slog.Info("dirmonitor: auto-populated system", "system_id", parsed.SystemID, "db_id", newID)
+			slog.Info("dirmonitor: auto-populated system", "system_id", parsed.SystemID, "label", label, "db_id", newID)
 			system = db.System{ID: newID, SystemID: parsed.SystemID, Label: label, AutoPopulate: 1}
 			s.hub.BroadcastCFG(ctx)
 		}
@@ -510,7 +510,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 			return fmt.Errorf("auto-create talkgroup %d: %w", parsed.TalkgroupID, cerr)
 		}
 		slog.Info("dirmonitor: auto-populated talkgroup",
-			"talkgroup_id", parsed.TalkgroupID, "db_id", newID)
+			"system_id", system.SystemID, "talkgroup_id", parsed.TalkgroupID, "label", tgLabel.String, "db_id", newID)
 		talkgroup = db.Talkgroup{ID: newID, SystemID: system.ID, TalkgroupID: parsed.TalkgroupID, Label: tgLabel, Name: tgName, GroupID: groupID, TagID: tagID}
 		s.hub.BroadcastCFG(ctx)
 	} else if needsBackfill(talkgroup, parsed) {
@@ -583,10 +583,11 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 		return fmt.Errorf("store audio: %w", err)
 	}
 
-	// Determine MIME type.  When conversion is enabled the output is always AAC.
+	// Determine MIME type.  When conversion is enabled the output format
+	// depends on the encoding preset (M4A for AAC, MP3 for MP3 presets).
 	var audioType string
 	if convMode != audio.ConversionDisabled {
-		audioType = "audio/aac"
+		audioType = audio.OutputMIME(convPreset)
 	} else {
 		audioType = mimeFromExt(filepath.Ext(parsed.AudioFilePath))
 	}
@@ -672,6 +673,28 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 
 	// ── Broadcast to WebSocket listeners ────────────────────────────────────
 	if s.hub != nil {
+		// Read audio file for inline embedding in the CAL JSON frame.
+		// SECURITY: limit audio read size for WS broadcast to prevent OOM
+		// for large audio files. Files exceeding the limit are still stored
+		// on disk; the client will fetch them via HTTP.
+		const maxBroadcastAudioBytes = 20 << 20 // 20 MiB
+		var audioBytes []byte
+		audioAbsPath := filepath.Join(s.processor.RecordingsDir(), relPath)
+		if rel, pathErr := filepath.Rel(s.processor.RecordingsDir(), audioAbsPath); pathErr != nil || strings.HasPrefix(rel, "..") {
+			slog.Error("dirmonitor: audio path escapes base directory", "path", relPath)
+		} else if fi, statErr := os.Stat(audioAbsPath); statErr != nil {
+			slog.Warn("dirmonitor: failed to stat audio for WS broadcast",
+				"path", relPath, "error", statErr)
+		} else if fi.Size() > maxBroadcastAudioBytes {
+			slog.Warn("dirmonitor: audio file too large for inline WS broadcast, sending metadata only",
+				"path", relPath, "size_bytes", fi.Size(), "max_bytes", maxBroadcastAudioBytes)
+		} else if readBytes, readErr := os.ReadFile(audioAbsPath); readErr != nil {
+			slog.Warn("dirmonitor: failed to read audio for WS broadcast",
+				"path", relPath, "error", readErr)
+		} else {
+			audioBytes = readBytes
+		}
+
 		calPayload := map[string]any{
 			"id":          callID,
 			"audioName":   filepath.Base(relPath),
@@ -701,31 +724,11 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 			calPayload["decoder"] = decoderCol.String
 		}
 
-		calMsg, err := ws.NewCALMessage(calPayload)
+		calMsg, err := ws.NewCALMessage(calPayload, audioBytes)
 		if err != nil {
 			slog.Error("dirmonitor: failed to build CAL message", "error", err)
 		} else {
-			// SECURITY: limit audio read size for WS broadcast to prevent OOM
-			// for large audio files. Files exceeding the limit are still stored
-			// on disk; the client will fetch them via HTTP.
-			const maxBroadcastAudioBytes = 20 << 20 // 20 MiB
-			var audioBytes []byte
-			audioAbsPath := filepath.Join(s.processor.RecordingsDir(), relPath)
-			if rel, pathErr := filepath.Rel(s.processor.RecordingsDir(), audioAbsPath); pathErr != nil || strings.HasPrefix(rel, "..") {
-				slog.Error("dirmonitor: audio path escapes base directory", "path", relPath)
-			} else if fi, statErr := os.Stat(audioAbsPath); statErr != nil {
-				slog.Warn("dirmonitor: failed to stat audio for WS broadcast",
-					"path", relPath, "error", statErr)
-			} else if fi.Size() > maxBroadcastAudioBytes {
-				slog.Warn("dirmonitor: audio file too large for inline WS broadcast, sending metadata only",
-					"path", relPath, "size_bytes", fi.Size(), "max_bytes", maxBroadcastAudioBytes)
-			} else if readBytes, readErr := os.ReadFile(audioAbsPath); readErr != nil {
-				slog.Warn("dirmonitor: failed to read audio for WS broadcast",
-					"path", relPath, "error", readErr)
-			} else {
-				audioBytes = readBytes
-			}
-			s.hub.BroadcastCAL(calMsg, audioBytes, func(cl *ws.Client) bool {
+			s.hub.BroadcastCAL(calMsg, func(cl *ws.Client) bool {
 				return cl.CanReceive(system.ID, talkgroup.ID)
 			})
 		}

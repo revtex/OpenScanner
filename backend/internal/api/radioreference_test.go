@@ -29,30 +29,6 @@ func seedTalkgroup(t *testing.T, q *db.Queries, systemID, talkgroupID int64, lab
 	return id
 }
 
-func seedTalkgroupFull(t *testing.T, q *db.Queries, systemID, talkgroupID int64, label, name string, groupID, tagID int64) int64 {
-	t.Helper()
-	gid := sql.NullInt64{}
-	if groupID > 0 {
-		gid = sql.NullInt64{Int64: groupID, Valid: true}
-	}
-	tid := sql.NullInt64{}
-	if tagID > 0 {
-		tid = sql.NullInt64{Int64: tagID, Valid: true}
-	}
-	id, err := q.CreateTalkgroup(context.Background(), db.CreateTalkgroupParams{
-		SystemID:    systemID,
-		TalkgroupID: talkgroupID,
-		Label:       sql.NullString{String: label, Valid: label != ""},
-		Name:        sql.NullString{String: name, Valid: name != ""},
-		GroupID:     gid,
-		TagID:       tid,
-	})
-	if err != nil {
-		t.Fatalf("CreateTalkgroupFull(%d, %d): %v", systemID, talkgroupID, err)
-	}
-	return id
-}
-
 func seedGroup(t *testing.T, q *db.Queries, label string) int64 {
 	t.Helper()
 	id, err := q.CreateGroup(context.Background(), label)

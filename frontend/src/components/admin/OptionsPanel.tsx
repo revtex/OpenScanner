@@ -32,7 +32,10 @@ const AUDIO_CONVERSION_MODES: Record<string, string> = {
 };
 
 const AUDIO_ENCODING_PRESETS: Record<string, string> = {
-  aac_lc_32k: "AAC-LC 32 kbps (default)",
+  mp3_32k: "MP3 32 kbps (default)",
+  mp3_24k: "MP3 24 kbps",
+  mp3_16k: "MP3 16 kbps",
+  aac_lc_32k: "AAC-LC 32 kbps",
   aac_lc_24k: "AAC-LC 24 kbps",
   aac_lc_16k: "AAC-LC 16 kbps",
   he_aac_12k: "HE-AAC 12 kbps",
@@ -383,7 +386,7 @@ export default function OptionsPanel() {
       const selectedValue =
         value && (!HE_AAC_PRESETS.has(value) || fdkAacAvailable)
           ? value
-          : "aac_lc_32k";
+          : "mp3_32k";
       return (
         <div className="flex flex-col">
           {label}

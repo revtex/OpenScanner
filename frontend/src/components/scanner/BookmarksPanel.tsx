@@ -95,10 +95,13 @@ export default function BookmarksPanel({
         return;
       }
 
-      const blob = await resp.blob();
+      const buf = await resp.arrayBuffer();
+      const mimeType =
+        resp.headers.get("Content-Type") || bc.audioType || "audio/mpeg";
+      const blob = new Blob([buf], { type: mimeType });
       const audioUrl = URL.createObjectURL(blob);
       const call = bookmarkCallToCall(bc);
-      audioPlayer.playNow(call, audioUrl);
+      audioPlayer.playNow(call, buf, audioUrl);
     } catch (err) {
       console.error("failed to play bookmark", bc.id, err);
     }

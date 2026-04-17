@@ -21,6 +21,7 @@ interface ScannerState {
   connectionStatus: ConnectionStatus;
   config: ScannerConfig | null;
   tgSelection: Record<number, boolean>;
+  tgSelectionReady: boolean;
 }
 
 const initialState: ScannerState = {
@@ -38,6 +39,7 @@ const initialState: ScannerState = {
   connectionStatus: "disconnected",
   config: null,
   tgSelection: {},
+  tgSelectionReady: false,
 };
 
 export const scannerSlice = createSlice({
@@ -92,6 +94,14 @@ export const scannerSlice = createSlice({
         );
       }
       // Keep the last call visible on the display until a new call starts.
+    },
+    resetDisplay(state) {
+      state.currentCall = null;
+      state.history = [];
+    },
+    resetTGSelection(state) {
+      state.tgSelection = {};
+      state.tgSelectionReady = false;
     },
     togglePause(state) {
       state.isPaused = !state.isPaused;
@@ -158,6 +168,18 @@ export const scannerSlice = createSlice({
         email: incoming.email ?? state.config?.email ?? "",
         version: incoming.version ?? state.config?.version ?? "",
       };
+      // Cache display prefs so the next page load avoids a flash of defaults.
+      try {
+        sessionStorage.setItem(
+          "openscanner-display-prefs",
+          JSON.stringify({
+            time12hFormat: state.config.time12hFormat,
+            showListenersCount: state.config.showListenersCount,
+          }),
+        );
+      } catch {
+        // sessionStorage unavailable — ignore
+      }
     },
     setBranding(
       state,
@@ -189,6 +211,7 @@ export const scannerSlice = createSlice({
     },
     restoreTGSelection(state, action: PayloadAction<Record<number, boolean>>) {
       state.tgSelection = action.payload;
+      state.tgSelectionReady = true;
     },
     restoreFromDisabledTGs(state, action: PayloadAction<number[]>) {
       const disabled = new Set(action.payload);
@@ -201,6 +224,7 @@ export const scannerSlice = createSlice({
         }
       }
       state.tgSelection = selection;
+      state.tgSelectionReady = true;
     },
     restoreAvoidList(state, action: PayloadAction<AvoidEntry[]>) {
       const now = Date.now();
@@ -295,6 +319,8 @@ export const {
   callReceived,
   setCurrentCall,
   clearCurrentCall,
+  resetDisplay,
+  resetTGSelection,
   togglePause,
   setAudioActive,
   setPaused,

@@ -595,7 +595,7 @@ export default function LogsPanel() {
                 <p className="text-xs font-medium text-base-content/60 mb-1">
                   Message
                 </p>
-                <p className="text-sm break-words">{selectedLog.message}</p>
+                <p className="text-sm wrap-break-word">{selectedLog.message}</p>
               </div>
 
               <div>

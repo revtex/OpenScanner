@@ -23,8 +23,12 @@ const (
 )
 
 // NewCALMessage builds a CAL JSON text frame for a call event.
-// The payload is a map of call fields. Audio is sent separately as a binary frame.
-func NewCALMessage(payload map[string]any) ([]byte, error) {
+// When audioData is non-nil, it is added to the payload as "audio" and
+// Go's json.Marshal encodes it as a base64 string automatically.
+func NewCALMessage(payload map[string]any, audioData []byte) ([]byte, error) {
+	if len(audioData) > 0 {
+		payload["audio"] = audioData
+	}
 	return json.Marshal([]any{CmdCAL, payload})
 }
 

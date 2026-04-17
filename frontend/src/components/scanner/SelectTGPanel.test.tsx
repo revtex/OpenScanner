@@ -115,6 +115,7 @@ function scannerState(
     connectionStatus: "disconnected",
     config: twoGroupConfig,
     tgSelection: {},
+    tgSelectionReady: true,
     ...overrides,
   };
 }

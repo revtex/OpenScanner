@@ -143,38 +143,70 @@ func TestStore_ConversionDisabled(t *testing.T) {
 func TestFfmpegArgs(t *testing.T) {
 	const in = "/tmp/in.wav"
 	const out = "/tmp/out.m4a"
+	const outMP3 = "/tmp/out.mp3"
 
 	cases := []struct {
 		name     string
 		mode     audio.ConversionMode
+		preset   audio.EncodingPreset
+		output   string
 		wantNil  bool
 		wantArgs []string
 	}{
 		{
 			name:    "disabled returns nil",
 			mode:    audio.ConversionDisabled,
+			preset:  audio.PresetAACLC32k,
+			output:  out,
 			wantNil: true,
 		},
 		{
 			name:     "enabled — plain aac 32k",
 			mode:     audio.ConversionEnabled,
-			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "aac", "-b:a", "32k", "-ac", "1", out},
+			preset:   audio.PresetAACLC32k,
+			output:   out,
+			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "aac", "-b:a", "32k", "-ac", "1", "-movflags", "frag_keyframe+empty_moov", "-f", "ipod", out},
 		},
 		{
 			name:     "norm — aac 32k + acompressor",
 			mode:     audio.ConversionNorm,
-			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "aac", "-b:a", "32k", "-ac", "1", "-af", "acompressor", out},
+			preset:   audio.PresetAACLC32k,
+			output:   out,
+			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "aac", "-b:a", "32k", "-ac", "1", "-af", "acompressor", "-movflags", "frag_keyframe+empty_moov", "-f", "ipod", out},
 		},
 		{
 			name:     "loudnorm — aac 32k + loudnorm filter",
 			mode:     audio.ConversionLoudNorm,
-			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "aac", "-b:a", "32k", "-ac", "1", "-af", "loudnorm", out},
+			preset:   audio.PresetAACLC32k,
+			output:   out,
+			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "aac", "-b:a", "32k", "-ac", "1", "-af", "loudnorm", "-movflags", "frag_keyframe+empty_moov", "-f", "ipod", out},
+		},
+		{
+			name:     "enabled — mp3 32k (no iPod flags)",
+			mode:     audio.ConversionEnabled,
+			preset:   audio.PresetMP3_32k,
+			output:   outMP3,
+			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "libmp3lame", "-b:a", "32k", "-ac", "1", outMP3},
+		},
+		{
+			name:     "norm — mp3 24k + acompressor",
+			mode:     audio.ConversionNorm,
+			preset:   audio.PresetMP3_24k,
+			output:   outMP3,
+			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "libmp3lame", "-b:a", "24k", "-ac", "1", "-af", "acompressor", outMP3},
+		},
+		{
+			name:     "loudnorm — mp3 16k + loudnorm filter",
+			mode:     audio.ConversionLoudNorm,
+			preset:   audio.PresetMP3_16k,
+			output:   outMP3,
+			wantArgs: []string{"ffmpeg", "-y", "-i", in, "-c:a", "libmp3lame", "-b:a", "16k", "-ac", "1", "-af", "loudnorm", outMP3},
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := audio.FfmpegArgs(in, out, tc.mode, audio.PresetAACLC32k)
+			got := audio.FfmpegArgs(in, tc.output, tc.mode, tc.preset)
 
 			if tc.wantNil {
 				if got != nil {
@@ -200,8 +232,8 @@ func TestFfmpegArgs(t *testing.T) {
 			if got[1] != "-y" {
 				t.Errorf("args[1] = %q, want \"-y\" (overwrite flag)", got[1])
 			}
-			if got[len(got)-1] != out {
-				t.Errorf("last arg = %q, want output path %q", got[len(got)-1], out)
+			if got[len(got)-1] != tc.output {
+				t.Errorf("last arg = %q, want output path %q", got[len(got)-1], tc.output)
 			}
 		})
 	}

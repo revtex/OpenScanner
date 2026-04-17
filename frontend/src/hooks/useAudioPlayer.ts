@@ -39,7 +39,7 @@ export function useAudioPlayer() {
       setPendingCount(length);
     });
 
-    wsClient.onAudioReceived((call, audioUrl) => {
+    wsClient.onAudioReceived((call, audioUrl, audioData) => {
       // LIVE mode gates only streaming WS audio. Manual playback
       // (Search/Bookmarks) uses audioPlayer.playNow and remains available.
       if (!store.getState().scanner.isLive) {
@@ -50,7 +50,7 @@ export function useAudioPlayer() {
         }
         return;
       }
-      audioPlayer.play(call, audioUrl);
+      audioPlayer.play(call, audioData, audioUrl);
     });
 
     // If restored as paused (e.g. after refresh), tell audioPlayer so
@@ -118,7 +118,6 @@ export function useAudioPlayer() {
     if (!isLive) {
       audioPlayer.clearQueue();
       dispatch(setAudioActive(false));
-      setPlaying(false);
     }
   }, [dispatch, isLive]);
 

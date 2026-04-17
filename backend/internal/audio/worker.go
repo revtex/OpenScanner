@@ -28,6 +28,9 @@ const (
 	PresetAACLC16k EncodingPreset = "aac_lc_16k" // AAC-LC 16 kbps
 	PresetHEAAC12k EncodingPreset = "he_aac_12k" // HE-AAC 12 kbps
 	PresetHEAAC8k  EncodingPreset = "he_aac_8k"  // HE-AAC  8 kbps
+	PresetMP3_32k  EncodingPreset = "mp3_32k"    // MP3  32 kbps
+	PresetMP3_24k  EncodingPreset = "mp3_24k"    // MP3  24 kbps
+	PresetMP3_16k  EncodingPreset = "mp3_16k"    // MP3  16 kbps
 )
 
 // validPresets is the set of accepted EncodingPreset values.
@@ -37,6 +40,9 @@ var validPresets = map[EncodingPreset]bool{
 	PresetAACLC16k: true,
 	PresetHEAAC12k: true,
 	PresetHEAAC8k:  true,
+	PresetMP3_32k:  true,
+	PresetMP3_24k:  true,
+	PresetMP3_16k:  true,
 }
 
 // IsValidEncodingPreset reports whether s is a known preset value.
@@ -51,7 +57,7 @@ func ParseEncodingPreset(s string) EncodingPreset {
 	if validPresets[p] {
 		return p
 	}
-	return PresetAACLC32k
+	return PresetMP3_32k
 }
 
 // IsHEEncodingPreset reports whether s selects an HE-AAC preset.
@@ -62,6 +68,32 @@ func IsHEEncodingPreset(s string) bool {
 	default:
 		return false
 	}
+}
+
+// IsMP3EncodingPreset reports whether s selects an MP3 preset.
+func IsMP3EncodingPreset(s string) bool {
+	switch EncodingPreset(s) {
+	case PresetMP3_32k, PresetMP3_24k, PresetMP3_16k:
+		return true
+	default:
+		return false
+	}
+}
+
+// OutputExt returns the file extension (with dot) for the given preset.
+func OutputExt(preset EncodingPreset) string {
+	if IsMP3EncodingPreset(string(preset)) {
+		return ".mp3"
+	}
+	return ".m4a"
+}
+
+// OutputMIME returns the MIME type for the given preset.
+func OutputMIME(preset EncodingPreset) string {
+	if IsMP3EncodingPreset(string(preset)) {
+		return "audio/mpeg"
+	}
+	return "audio/mp4"
 }
 
 // presetCodecArgs returns the FFmpeg codec/bitrate/channel args for the preset.
@@ -75,6 +107,12 @@ func presetCodecArgs(preset EncodingPreset) []string {
 		return []string{"-c:a", "libfdk_aac", "-profile:a", "aac_he", "-b:a", "12k", "-ac", "1"}
 	case PresetHEAAC8k:
 		return []string{"-c:a", "libfdk_aac", "-profile:a", "aac_he", "-b:a", "8k", "-ac", "1"}
+	case PresetMP3_32k:
+		return []string{"-c:a", "libmp3lame", "-b:a", "32k", "-ac", "1"}
+	case PresetMP3_24k:
+		return []string{"-c:a", "libmp3lame", "-b:a", "24k", "-ac", "1"}
+	case PresetMP3_16k:
+		return []string{"-c:a", "libmp3lame", "-b:a", "16k", "-ac", "1"}
 	default: // PresetAACLC32k
 		return []string{"-c:a", "aac", "-b:a", "32k", "-ac", "1"}
 	}
@@ -171,6 +209,12 @@ func ffmpegArgs(input, output string, mode ConversionMode, preset EncodingPreset
 		base = append(base, "-af", "acompressor")
 	case ConversionLoudNorm:
 		base = append(base, "-af", "loudnorm")
+	}
+
+	// AAC presets use the iPod/M4A muxer with fragmented-MP4 flags so that
+	// the moov atom is at the front of the file. MP3 doesn't need this.
+	if !IsMP3EncodingPreset(string(preset)) {
+		base = append(base, "-movflags", "frag_keyframe+empty_moov", "-f", "ipod")
 	}
 
 	return append(base, output)

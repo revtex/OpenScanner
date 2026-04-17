@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/coder/websocket"
@@ -38,7 +37,6 @@ type Client struct {
 	hub     *Hub
 	conn    *websocket.Conn
 	send    chan []byte
-	sendMu  sync.Mutex
 	grants  []systemGrant // nil/empty = receive all
 	isAdmin bool
 	userID  int64
@@ -367,14 +365,7 @@ func (c *Client) writePump(ctx context.Context) {
 				return
 			}
 			writeCtx, cancel := context.WithTimeout(ctx, writeWait)
-			// Determine message type: if it doesn't start with '[' or '{',
-			// treat as binary (audio data). Otherwise text.
-			msgType := websocket.MessageText
-			if len(msg) > 0 && msg[0] != '[' && msg[0] != '{' {
-				msgType = websocket.MessageBinary
-			}
-			slog.Debug("ws: sending message", "type", msgType, "size", len(msg))
-			err := c.conn.Write(writeCtx, msgType, msg)
+			err := c.conn.Write(writeCtx, websocket.MessageText, msg)
 			cancel()
 			if err != nil {
 				return

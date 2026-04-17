@@ -11,13 +11,16 @@ export function useWebSocket(): { connectionStatus: ConnectionStatus } {
   const connectedRef = useRef(false);
 
   useEffect(() => {
+    // Wait for setup status to load before deciding whether to connect.
+    if (!setupStatus) return;
+
     // Don't connect if setup is needed
-    if (setupStatus?.needsSetup) return;
+    if (setupStatus.needsSetup) return;
 
     const auth: { token?: string; publicAccess?: boolean } = {};
     if (token) {
       auth.token = token;
-    } else if (setupStatus?.publicAccess) {
+    } else if (setupStatus.publicAccess) {
       auth.publicAccess = true;
     } else {
       // Not authenticated and not public — don't connect
@@ -36,7 +39,7 @@ export function useWebSocket(): { connectionStatus: ConnectionStatus } {
         connectedRef.current = false;
       }
     };
-  }, [dispatch, token, setupStatus?.needsSetup, setupStatus?.publicAccess]);
+  }, [dispatch, token, setupStatus]);
 
   return { connectionStatus };
 }

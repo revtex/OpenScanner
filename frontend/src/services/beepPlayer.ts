@@ -28,8 +28,31 @@ const styleTones: Record<BeepStyle, ToneSpec[]> = {
 
 let audioCtx: AudioContext | null = null;
 
+/**
+ * Create and resume the beep AudioContext inside a user-gesture handler.
+ * Called from audioPlayer's bootstrapAudio() to satisfy mobile autoplay policy.
+ * Returns a promise so the caller can await the resume.
+ */
+export async function bootstrapBeepContext(): Promise<void> {
+  if (audioCtx) return;
+  audioCtx = new AudioContext();
+  if (audioCtx.state === "suspended") {
+    try {
+      await audioCtx.resume();
+    } catch {
+      // ignore
+    }
+  }
+  audioCtx.onstatechange = () => {
+    if (audioCtx?.state === "suspended") {
+      audioCtx.resume().catch(() => {});
+    }
+  };
+}
+
 function getContext(): AudioContext {
   if (!audioCtx) {
+    // Fallback if bootstrap hasn't fired yet.
     audioCtx = new AudioContext();
   }
   if (audioCtx.state === "suspended") {

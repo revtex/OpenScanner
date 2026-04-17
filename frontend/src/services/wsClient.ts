@@ -9,16 +9,31 @@ import {
 } from "@/app/slices/scannerSlice";
 import { clearCredentials } from "@/app/slices/authSlice";
 import type { Call, WsCommand } from "@/types";
-import { audioPlayer } from "@/services/audioPlayer";
 
 const MAX_BACKOFF = 30_000;
+const DEDUP_SIZE = 100;
 
-type AudioReceivedCallback = (call: Call, audioUrl: string) => void;
+type AudioReceivedCallback = (
+  call: Call,
+  audioUrl: string,
+  audioData: ArrayBuffer,
+) => void;
 type CallFilter = (call: Call) => boolean;
 
 interface WsAuth {
   token?: string;
   publicAccess?: boolean;
+}
+
+/** Decode a base64 string to an ArrayBuffer. */
+function base64ToArrayBuffer(b64: string): ArrayBuffer {
+  const bin = atob(b64);
+  const buf = new ArrayBuffer(bin.length);
+  const view = new Uint8Array(buf);
+  for (let i = 0; i < bin.length; i++) {
+    view[i] = bin.charCodeAt(i);
+  }
+  return buf;
 }
 
 class WsClient {
@@ -27,10 +42,10 @@ class WsClient {
   private backoff = 1000;
   private dispatch: AppDispatch | null = null;
   private auth: WsAuth = {};
-  private pendingAudioForCall: Call | null = null;
   private audioCallback: AudioReceivedCallback | null = null;
   private callFilter: CallFilter | null = null;
   private intentionalClose = false;
+  private recentCallIds: number[] = [];
 
   connect(dispatch: AppDispatch, auth: WsAuth = {}): void {
     this.dispatch = dispatch;
@@ -46,11 +61,16 @@ class WsClient {
       this.reconnectTimeout = null;
     }
     if (this.ws) {
+      // Detach handlers before closing to avoid browser console noise
+      // when the socket is still in CONNECTING state.
+      this.ws.onopen = null;
+      this.ws.onmessage = null;
+      this.ws.onclose = null;
+      this.ws.onerror = null;
       this.ws.close();
       this.ws = null;
     }
-    this.pendingAudioForCall = null;
-    audioPlayer.clearQueue();
+    this.recentCallIds = [];
     this.dispatch?.(setConnectionStatus("disconnected"));
   }
 
@@ -80,7 +100,6 @@ class WsClient {
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
     const url = `${proto}//${window.location.host}/ws`;
     this.ws = new WebSocket(url);
-    this.ws.binaryType = "arraybuffer";
 
     this.ws.onopen = () => {
       this.backoff = 1000;
@@ -88,18 +107,14 @@ class WsClient {
 
       // Authenticate based on mode
       if (this.auth.token) {
-        // Send JWT as first message (raw string in array)
         if (this.ws?.readyState === WebSocket.OPEN) {
           this.ws.send(JSON.stringify([this.auth.token]));
         }
       }
-      // publicAccess: no auth message needed
     };
 
     this.ws.onmessage = (event: MessageEvent) => {
-      if (event.data instanceof ArrayBuffer) {
-        this.handleBinaryMessage(event.data);
-      } else if (typeof event.data === "string") {
+      if (typeof event.data === "string") {
         this.handleTextMessage(event.data);
       }
     };
@@ -138,15 +153,34 @@ class WsClient {
           "id" in payload &&
           "dateTime" in payload
         ) {
-          const call = payload as Call;
-          // Apply client-side talkgroup filter — if rejected, discard
-          // the call (and the binary audio frame that follows).
+          const raw = payload as Record<string, unknown>;
+          const audioB64 = raw.audio as string | undefined;
+          // Strip the audio field before dispatching metadata to Redux.
+          delete raw.audio;
+          const call = raw as unknown as Call;
+
           if (this.callFilter && !this.callFilter(call)) {
-            this.pendingAudioForCall = null;
             break;
           }
-          this.pendingAudioForCall = call;
+
+          // Dedup: skip if this call ID was already processed recently.
+          if (this.recentCallIds.includes(call.id)) {
+            break;
+          }
+          this.recentCallIds.push(call.id);
+          if (this.recentCallIds.length > DEDUP_SIZE) {
+            this.recentCallIds.shift();
+          }
+
           this.dispatch?.(callReceived(call));
+
+          if (audioB64) {
+            const audioData = base64ToArrayBuffer(audioB64);
+            const mimeType = call.audioType || "audio/mpeg";
+            const blob = new Blob([audioData], { type: mimeType });
+            const audioUrl = URL.createObjectURL(blob);
+            this.audioCallback?.(call, audioUrl, audioData);
+          }
         }
         break;
       case "CFG":
@@ -233,19 +267,6 @@ class WsClient {
       default:
         break;
     }
-  }
-
-  private handleBinaryMessage(data: ArrayBuffer): void {
-    if (!this.pendingAudioForCall) return;
-
-    const call = this.pendingAudioForCall;
-    this.pendingAudioForCall = null;
-
-    const mimeType = call.audioType || "audio/mpeg";
-    const blob = new Blob([data], { type: mimeType });
-    const audioUrl = URL.createObjectURL(blob);
-
-    this.audioCallback?.(call, audioUrl);
   }
 
   private reconnect(): void {

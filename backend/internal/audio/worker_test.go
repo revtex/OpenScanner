@@ -17,10 +17,22 @@ func TestFfmpegArgs_Disabled(t *testing.T) {
 }
 
 func TestFfmpegArgs_DefaultPreset(t *testing.T) {
-	// Empty preset should fall back to aac_lc_32k behaviour.
-	args := audio.FfmpegArgs("/in.wav", "/out.m4a", audio.ConversionEnabled, "")
-	if !containsAll(args, "aac", "32k") {
-		t.Errorf("empty preset: expected aac/32k in args, got %v", args)
+	// Empty preset should fall back to mp3_32k via ParseEncodingPreset.
+	preset := audio.ParseEncodingPreset("")
+	args := audio.FfmpegArgs("/in.wav", "/out.mp3", audio.ConversionEnabled, preset)
+	if !containsAll(args, "libmp3lame", "32k") {
+		t.Errorf("empty preset: expected libmp3lame/32k in args, got %v", args)
+	}
+}
+
+func TestFfmpegArgs_FragmentedMP4(t *testing.T) {
+	// All enabled modes must produce fragmented MP4 (iPod muxer) so that
+	// blob-URL playback works on Mobile Edge.
+	for _, mode := range []audio.ConversionMode{audio.ConversionEnabled, audio.ConversionNorm, audio.ConversionLoudNorm} {
+		args := audio.FfmpegArgs("/in.wav", "/out.m4a", mode, audio.PresetAACLC32k)
+		if !containsAll(args, "-movflags", "frag_keyframe+empty_moov", "-f", "ipod") {
+			t.Errorf("mode %d: expected fragmented MP4 flags, got %v", mode, args)
+		}
 	}
 }
 
@@ -85,7 +97,7 @@ func TestFfmpegArgs_OutputIsLast(t *testing.T) {
 }
 
 func TestIsValidEncodingPreset(t *testing.T) {
-	valid := []string{"aac_lc_32k", "aac_lc_24k", "aac_lc_16k", "he_aac_12k", "he_aac_8k"}
+	valid := []string{"aac_lc_32k", "aac_lc_24k", "aac_lc_16k", "he_aac_12k", "he_aac_8k", "mp3_32k", "mp3_24k", "mp3_16k"}
 	for _, v := range valid {
 		if !audio.IsValidEncodingPreset(v) {
 			t.Errorf("expected %q to be valid", v)
@@ -100,11 +112,11 @@ func TestIsValidEncodingPreset(t *testing.T) {
 }
 
 func TestParseEncodingPreset_Fallback(t *testing.T) {
-	if got := audio.ParseEncodingPreset(""); got != audio.PresetAACLC32k {
-		t.Errorf("empty string should fall back to PresetAACLC32k, got %q", got)
+	if got := audio.ParseEncodingPreset(""); got != audio.PresetMP3_32k {
+		t.Errorf("empty string should fall back to PresetMP3_32k, got %q", got)
 	}
-	if got := audio.ParseEncodingPreset("garbage"); got != audio.PresetAACLC32k {
-		t.Errorf("unknown string should fall back to PresetAACLC32k, got %q", got)
+	if got := audio.ParseEncodingPreset("garbage"); got != audio.PresetMP3_32k {
+		t.Errorf("unknown string should fall back to PresetMP3_32k, got %q", got)
 	}
 	if got := audio.ParseEncodingPreset("he_aac_8k"); got != audio.PresetHEAAC8k {
 		t.Errorf("expected PresetHEAAC8k, got %q", got)
@@ -120,6 +132,58 @@ func TestIsHEEncodingPreset(t *testing.T) {
 	}
 	if audio.IsHEEncodingPreset("aac_lc_32k") {
 		t.Error("expected aac_lc_32k to not be an HE preset")
+	}
+}
+
+func TestIsMP3EncodingPreset(t *testing.T) {
+	for _, p := range []string{"mp3_32k", "mp3_24k", "mp3_16k"} {
+		if !audio.IsMP3EncodingPreset(p) {
+			t.Errorf("expected %q to be an MP3 preset", p)
+		}
+	}
+	for _, p := range []string{"aac_lc_32k", "he_aac_12k", ""} {
+		if audio.IsMP3EncodingPreset(p) {
+			t.Errorf("expected %q to not be an MP3 preset", p)
+		}
+	}
+}
+
+func TestFfmpegArgs_MP3_Presets(t *testing.T) {
+	cases := []struct {
+		preset  audio.EncodingPreset
+		bitrate string
+	}{
+		{audio.PresetMP3_32k, "32k"},
+		{audio.PresetMP3_24k, "24k"},
+		{audio.PresetMP3_16k, "16k"},
+	}
+	for _, tc := range cases {
+		args := audio.FfmpegArgs("/in.wav", "/out.mp3", audio.ConversionEnabled, tc.preset)
+		if !containsAll(args, "libmp3lame", tc.bitrate) {
+			t.Errorf("preset %q: expected libmp3lame/%s in args, got %v", tc.preset, tc.bitrate, args)
+		}
+		// MP3 must NOT have iPod/fragmented-MP4 flags.
+		if containsAny(args, "ipod", "-movflags") {
+			t.Errorf("preset %q: unexpected iPod/movflags for MP3: %v", tc.preset, args)
+		}
+	}
+}
+
+func TestOutputExt(t *testing.T) {
+	if ext := audio.OutputExt(audio.PresetAACLC32k); ext != ".m4a" {
+		t.Errorf("expected .m4a, got %q", ext)
+	}
+	if ext := audio.OutputExt(audio.PresetMP3_32k); ext != ".mp3" {
+		t.Errorf("expected .mp3, got %q", ext)
+	}
+}
+
+func TestOutputMIME(t *testing.T) {
+	if mime := audio.OutputMIME(audio.PresetAACLC32k); mime != "audio/mp4" {
+		t.Errorf("expected audio/mp4, got %q", mime)
+	}
+	if mime := audio.OutputMIME(audio.PresetMP3_32k); mime != "audio/mpeg" {
+		t.Errorf("expected audio/mpeg, got %q", mime)
 	}
 }
 

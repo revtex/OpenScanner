@@ -25,13 +25,21 @@ function formatCountdown(expiresAt: number, now: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-function formatTalkgroupLabelName(label?: string, name?: string): string {
+function formatTalkgroupLabelName(
+  label?: string,
+  name?: string,
+  talkgroupId?: number,
+): string {
   const cleanLabel = (label ?? "").trim();
   const cleanName = (name ?? "").trim();
   if (cleanLabel && cleanName && cleanLabel !== cleanName) {
     return `${cleanLabel} - ${cleanName}`;
   }
-  return cleanLabel || cleanName || "(Unnamed Talkgroup)";
+  return (
+    cleanLabel ||
+    cleanName ||
+    (talkgroupId != null ? `TGID: ${talkgroupId}` : "(Unnamed Talkgroup)")
+  );
 }
 
 // ---------- Section: a collapsible accordion row ----------
@@ -124,6 +132,7 @@ function Section({
               const fullTalkgroupName = formatTalkgroupLabelName(
                 tg.label,
                 tg.name,
+                tg.talkgroupId,
               );
               const avoid = avoidMap.get(tg.id);
               const isAvoided =
@@ -190,6 +199,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
 
   const config = useAppSelector((s) => s.scanner.config);
   const tgSelection = useAppSelector((s) => s.scanner.tgSelection);
+  const tgSelectionReady = useAppSelector((s) => s.scanner.tgSelectionReady);
   const avoidList = useAppSelector((s) => s.scanner.avoidList);
   const heldTG = useAppSelector((s) => s.scanner.heldTG);
   const heldSystem = useAppSelector((s) => s.scanner.heldSystem);
@@ -399,6 +409,26 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
   }, [activeTab]);
 
   if (!isOpen) return null;
+
+  if (!tgSelectionReady) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-base-100">
+        <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">
+          <h2 className="text-lg font-semibold">Select Talkgroups</h2>
+          <button
+            className="btn btn-ghost btn-sm btn-circle"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="flex flex-1 items-center justify-center">
+          <span className="loading loading-spinner loading-md" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-base-100">

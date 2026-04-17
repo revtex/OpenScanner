@@ -84,15 +84,24 @@ func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode Co
 		return relPath, nil
 	}
 
-	// Build .m4a output path.
+	// Build output path with appropriate extension for the preset.
 	ext := filepath.Ext(safeName)
-	outName := strings.TrimSuffix(safeName, ext) + ".m4a"
+	outExt := OutputExt(preset)
+	outName := strings.TrimSuffix(safeName, ext) + outExt
 	outPath := filepath.Join(dayDir, outName)
+
+	// When the input already has the target extension, FFmpeg would try to
+	// read and write the same file.  Write to a temp path then rename.
+	sameFile := strings.EqualFold(ext, outExt)
+	ffmpegOut := outPath
+	if sameFile {
+		ffmpegOut = outPath + ".tmp" + outExt
+	}
 
 	done := make(chan error, 1)
 	if err := p.pool.Submit(ctx, ConversionJob{
 		InputPath:  destPath,
-		OutputPath: outPath,
+		OutputPath: ffmpegOut,
 		Mode:       mode,
 		Preset:     preset,
 		Done:       done,
@@ -104,17 +113,33 @@ func (p *Processor) Store(ctx context.Context, fh *multipart.FileHeader, mode Co
 	select {
 	case <-ctx.Done():
 		os.Remove(destPath) //nolint:errcheck
+		if sameFile {
+			os.Remove(ffmpegOut) //nolint:errcheck
+		}
 		return "", ctx.Err()
 	case err := <-done:
 		if err != nil {
 			os.Remove(destPath) //nolint:errcheck
+			if sameFile {
+				os.Remove(ffmpegOut) //nolint:errcheck
+			}
 			return "", fmt.Errorf("audio conversion: %w", err)
 		}
 	}
 
-	// Remove original after successful conversion.
-	if err := os.Remove(destPath); err != nil && !os.IsNotExist(err) {
-		slog.Warn("audio: failed to remove original after conversion", "path", destPath, "error", err)
+	// Rename temp file to final output path when input/output extensions match.
+	if sameFile {
+		if err := os.Rename(ffmpegOut, outPath); err != nil {
+			os.Remove(ffmpegOut) //nolint:errcheck
+			return "", fmt.Errorf("rename converted file: %w", err)
+		}
+	}
+
+	// Remove original after successful conversion (skip if same path — already replaced by rename).
+	if !sameFile {
+		if err := os.Remove(destPath); err != nil && !os.IsNotExist(err) {
+			slog.Warn("audio: failed to remove original after conversion", "path", destPath, "error", err)
+		}
 	}
 
 	relOut, err := filepath.Rel(p.recordingsDir, outPath)
@@ -164,13 +189,22 @@ func (p *Processor) StoreFile(ctx context.Context, srcPath string, mode Conversi
 	}
 
 	ext := filepath.Ext(safeName)
-	outName := strings.TrimSuffix(safeName, ext) + ".m4a"
+	outExt := OutputExt(preset)
+	outName := strings.TrimSuffix(safeName, ext) + outExt
 	outPath := filepath.Join(dayDir, outName)
+
+	// When the input already has the target extension, FFmpeg would try to
+	// read and write the same file.  Write to a temp path then rename.
+	sameFile := strings.EqualFold(ext, outExt)
+	ffmpegOut := outPath
+	if sameFile {
+		ffmpegOut = outPath + ".tmp" + outExt
+	}
 
 	done := make(chan error, 1)
 	if err := p.pool.Submit(ctx, ConversionJob{
 		InputPath:  destPath,
-		OutputPath: outPath,
+		OutputPath: ffmpegOut,
 		Mode:       mode,
 		Preset:     preset,
 		Done:       done,
@@ -182,16 +216,31 @@ func (p *Processor) StoreFile(ctx context.Context, srcPath string, mode Conversi
 	select {
 	case <-ctx.Done():
 		os.Remove(destPath) //nolint:errcheck
+		if sameFile {
+			os.Remove(ffmpegOut) //nolint:errcheck
+		}
 		return "", ctx.Err()
 	case err := <-done:
 		if err != nil {
 			os.Remove(destPath) //nolint:errcheck
+			if sameFile {
+				os.Remove(ffmpegOut) //nolint:errcheck
+			}
 			return "", fmt.Errorf("audio conversion: %w", err)
 		}
 	}
 
-	if err := os.Remove(destPath); err != nil && !os.IsNotExist(err) {
-		slog.Warn("audio: failed to remove original after conversion", "path", destPath, "error", err)
+	if sameFile {
+		if err := os.Rename(ffmpegOut, outPath); err != nil {
+			os.Remove(ffmpegOut) //nolint:errcheck
+			return "", fmt.Errorf("rename converted file: %w", err)
+		}
+	}
+
+	if !sameFile {
+		if err := os.Remove(destPath); err != nil && !os.IsNotExist(err) {
+			slog.Warn("audio: failed to remove original after conversion", "path", destPath, "error", err)
+		}
 	}
 
 	relOut, err := filepath.Rel(p.recordingsDir, outPath)

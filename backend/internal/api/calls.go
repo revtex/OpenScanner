@@ -425,7 +425,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 			return
 		}
-		slog.Info("auto-populated system", "system_id", systemIDRaw, "db_id", newID)
+		slog.Info("auto-populated system", "system_id", systemIDRaw, "label", label, "db_id", newID)
 		system = db.System{ID: newID, SystemID: systemIDRaw, Label: label, AutoPopulate: 1}
 		h.hub.BroadcastCFG(ctx)
 	}
@@ -483,7 +483,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 			return
 		}
-		slog.Info("auto-populated talkgroup", "talkgroup_id", talkgroupIDRaw, "db_id", newID)
+		slog.Info("auto-populated talkgroup", "system_id", system.SystemID, "talkgroup_id", talkgroupIDRaw, "label", tgLabel.String, "db_id", newID)
 		talkgroup = db.Talkgroup{ID: newID, SystemID: system.ID, TalkgroupID: talkgroupIDRaw, Label: tgLabel, Name: tgName, GroupID: groupID, TagID: tagID}
 		h.hub.BroadcastCFG(ctx)
 	} else if needsBackfill(talkgroup, talkgroupLabel, talkgroupName, talkgroupTag, talkgroupGroup) {
@@ -580,12 +580,13 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	}
 
 	// Determine audio MIME type.
-	// When conversion is enabled the output is always AAC.
+	// When conversion is enabled the output format depends on the encoding
+	// preset (M4A for AAC presets, MP3 for MP3 presets).
 	// Otherwise validate the client-supplied Content-Type against an allowlist
 	// to prevent attacker-controlled MIME types from reaching the database.
 	var audioType string
 	if convMode != audio.ConversionDisabled {
-		audioType = "audio/aac"
+		audioType = audio.OutputMIME(convPreset)
 	} else {
 		switch fh.Header.Get("Content-Type") {
 		case "audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav",
@@ -653,6 +654,23 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 
 	// Broadcast to WebSocket listeners.
 	if h.hub != nil {
+		// Read audio file for inline embedding in the CAL JSON frame.
+		const maxBroadcastAudioBytes = 20 << 20 // 20 MiB
+		var audioBytes []byte
+		audioFullPath := filepath.Join(h.processor.RecordingsDir(), relPath)
+		if rel, pathErr := filepath.Rel(h.processor.RecordingsDir(), audioFullPath); pathErr != nil || strings.HasPrefix(rel, "..") {
+			slog.Error("audio path escapes base directory", "path", relPath)
+		} else if fi, statErr := os.Stat(audioFullPath); statErr != nil {
+			slog.Warn("failed to stat audio for WS broadcast", "path", rel, "error", statErr)
+		} else if fi.Size() > maxBroadcastAudioBytes {
+			slog.Warn("audio file too large for inline WS broadcast, sending metadata only",
+				"path", rel, "size_bytes", fi.Size(), "max_bytes", maxBroadcastAudioBytes)
+		} else if readBytes, readErr := os.ReadFile(audioFullPath); readErr != nil {
+			slog.Warn("failed to read audio for WS broadcast", "path", rel, "error", readErr)
+		} else {
+			audioBytes = readBytes
+		}
+
 		calPayload := map[string]any{
 			"id":          callID,
 			"audioName":   filepath.Base(relPath),
@@ -690,26 +708,11 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		if talkerAliasCol.Valid {
 			calPayload["talkerAlias"] = talkerAliasCol.String
 		}
-		calMsg, err := ws.NewCALMessage(calPayload)
+		calMsg, err := ws.NewCALMessage(calPayload, audioBytes)
 		if err != nil {
 			slog.Error("failed to build CAL message", "error", err)
 		} else {
-			const maxBroadcastAudioBytes = 20 << 20 // 20 MiB
-			var audioBytes []byte
-			audioFullPath := filepath.Join(h.processor.RecordingsDir(), relPath)
-			if rel, pathErr := filepath.Rel(h.processor.RecordingsDir(), audioFullPath); pathErr != nil || strings.HasPrefix(rel, "..") {
-				slog.Error("audio path escapes base directory", "path", relPath)
-			} else if fi, statErr := os.Stat(audioFullPath); statErr != nil {
-				slog.Warn("failed to stat audio for WS broadcast", "path", rel, "error", statErr)
-			} else if fi.Size() > maxBroadcastAudioBytes {
-				slog.Warn("audio file too large for inline WS broadcast, sending metadata only",
-					"path", rel, "size_bytes", fi.Size(), "max_bytes", maxBroadcastAudioBytes)
-			} else if readBytes, readErr := os.ReadFile(audioFullPath); readErr != nil {
-				slog.Warn("failed to read audio for WS broadcast", "path", rel, "error", readErr)
-			} else {
-				audioBytes = readBytes
-			}
-			h.hub.BroadcastCAL(calMsg, audioBytes, func(cl *ws.Client) bool {
+			h.hub.BroadcastCAL(calMsg, func(cl *ws.Client) bool {
 				return cl.CanReceive(system.ID, talkgroup.ID)
 			})
 			slog.Debug("call-upload: ws broadcast sent", "call_id", callID)

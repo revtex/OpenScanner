@@ -82,7 +82,7 @@ export function ControlToolbar({
           data-tip={isPaused ? "Resume" : "Pause"}
         >
           <button
-            className={`btn btn-circle w-11 h-11 ${isPaused ? "btn-warning" : "btn-primary"}`}
+            className="btn btn-circle btn-ghost w-11 h-11"
             onClick={() => {
               beep();
               onTogglePause();

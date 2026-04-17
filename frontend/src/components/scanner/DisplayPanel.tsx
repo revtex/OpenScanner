@@ -25,6 +25,7 @@ interface DisplayPanelProps {
   showListenersCount: boolean;
   shareableLinks: boolean;
   isAuthenticated: boolean;
+  isLive: boolean;
 }
 
 function useClock() {
@@ -109,6 +110,7 @@ export function DisplayPanel({
   showListenersCount,
   shareableLinks,
   isAuthenticated,
+  isLive,
 }: DisplayPanelProps) {
   const clock = useClock();
   const [brightness, setBrightness] = useState(() => {
@@ -241,7 +243,11 @@ export function DisplayPanel({
 
           {/* Row 5: TG name — large, auto-sized to fit */}
           <AutoSizeText
-            text={currentCall.talkgroupName ?? ""}
+            text={
+              currentCall.talkgroupName?.trim() ||
+              currentCall.talkgroupLabel?.trim() ||
+              `TGID: ${currentCall.talkgroupId}`
+            }
             className="text-2xl font-bold text-center py-1"
           />
 
@@ -363,6 +369,13 @@ export function DisplayPanel({
           <div className="flex justify-between invisible">
             <span>&nbsp;</span>
           </div>
+
+          {/* Hint to enable LIVE when offline */}
+          {!isLive && (
+            <div className="text-center text-sm opacity-40 py-1">
+              Tap LIVE to start listening
+            </div>
+          )}
 
           {/* Row 8: bookmark, share, flags */}
           <div className="flex items-center justify-between">

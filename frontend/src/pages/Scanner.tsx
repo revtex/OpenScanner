@@ -1,9 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGetSetupStatusQuery } from "@/app/api";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { setSetupStatus, selectToken } from "@/app/slices/authSlice";
-import { expireAvoids, setPaused, setLive } from "@/app/slices/scannerSlice";
+import {
+  expireAvoids,
+  setPaused,
+  setLive,
+  resetDisplay,
+} from "@/app/slices/scannerSlice";
 import { useScanner } from "@/hooks/useScanner";
 import { useTGSelectionSync } from "@/hooks/useTGSelectionSync";
 import { LEDPanel } from "@/components/scanner/LEDPanel";
@@ -21,6 +26,21 @@ export default function Scanner() {
 
   const scanner = useScanner();
   useTGSelectionSync();
+
+  // Read cached display prefs so we don't flash defaults before WS delivers CFG.
+  const cachedPrefs = useMemo(() => {
+    try {
+      const raw = sessionStorage.getItem("openscanner-display-prefs");
+      if (raw)
+        return JSON.parse(raw) as {
+          time12hFormat?: boolean;
+          showListenersCount?: boolean;
+        };
+    } catch {
+      /* ignore */
+    }
+    return {};
+  }, []);
 
   const [selectTGOpen, setSelectTGOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -62,6 +82,7 @@ export default function Scanner() {
     () => () => {
       dispatch(setLive(false));
       dispatch(setPaused(false));
+      dispatch(resetDisplay());
     },
     [dispatch],
   );
@@ -77,10 +98,17 @@ export default function Scanner() {
         listenerCount={scanner.listenerCount}
         queueCount={scanner.pendingCount}
         avoidList={scanner.avoidList}
-        time12hFormat={scanner.config?.time12hFormat ?? false}
-        showListenersCount={scanner.config?.showListenersCount ?? false}
+        time12hFormat={
+          scanner.config?.time12hFormat ?? cachedPrefs.time12hFormat ?? false
+        }
+        showListenersCount={
+          scanner.config?.showListenersCount ??
+          cachedPrefs.showListenersCount ??
+          false
+        }
         shareableLinks={scanner.config?.shareableLinks ?? false}
         isAuthenticated={!!token}
+        isLive={scanner.isLive}
       />
       <ControlToolbar
         isPaused={scanner.isPaused}

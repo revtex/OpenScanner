@@ -103,34 +103,10 @@ func (h *Hub) Broadcast(data []byte, filter func(*Client) bool) {
 	}
 }
 
-// BroadcastCAL sends a CAL text frame followed by a binary audio frame to
-// matching clients. The two frames are sent atomically per client using
-// sendMu to prevent interleaving from concurrent broadcasts.
-func (h *Hub) BroadcastCAL(calMsg []byte, audioData []byte, filter func(*Client) bool) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	slog.Debug("ws: broadcasting CAL", "cal_size", len(calMsg), "audio_size", len(audioData), "num_clients", len(h.clients))
-	for c := range h.clients {
-		if filter != nil && !filter(c) {
-			continue
-		}
-		c.sendMu.Lock()
-		// Non-blocking send of CAL text frame.
-		select {
-		case c.send <- calMsg:
-		default:
-			c.sendMu.Unlock()
-			continue
-		}
-		// Non-blocking send of audio binary frame.
-		if len(audioData) > 0 {
-			select {
-			case c.send <- audioData:
-			default:
-			}
-		}
-		c.sendMu.Unlock()
-	}
+// BroadcastCAL sends a CAL message (with embedded base64 audio) to matching
+// clients. Audio is now part of the JSON text frame — no separate binary frame.
+func (h *Hub) BroadcastCAL(calMsg []byte, filter func(*Client) bool) {
+	h.Broadcast(calMsg, filter)
 }
 
 // BroadcastCFG rebuilds the CFG message from the database and sends it to

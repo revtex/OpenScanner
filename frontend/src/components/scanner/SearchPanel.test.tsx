@@ -123,6 +123,7 @@ function scannerState(
     connectionStatus: "disconnected",
     config: testConfig,
     tgSelection: {},
+    tgSelectionReady: true,
     ...overrides,
   };
 }

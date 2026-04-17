@@ -169,12 +169,14 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 	}
 
 	actorID, _ := c.Get("userID")
-	// Build list of saved key names (exclude sensitive values from log).
-	savedKeys := make([]string, 0, len(settings))
+	// Log each changed setting (key=value), redacting sensitive keys.
 	for _, s := range settings {
-		savedKeys = append(savedKeys, s.Key)
+		v := s.Value
+		if s.Key == "vapidPrivateKey" {
+			v = "[REDACTED]"
+		}
+		slog.Info("admin: config updated", "request_id", requestID, "key", s.Key, "value", v, "by", actorID)
 	}
-	slog.Info("admin: config saved", "request_id", requestID, "keys", savedKeys, "by", actorID)
 
 	// Log level change specifically.
 	for _, s := range settings {

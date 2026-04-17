@@ -53,13 +53,21 @@ function formatDate(unix: number): string {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-function formatTalkgroupLabelName(label?: string, name?: string): string {
+function formatTalkgroupLabelName(
+  label?: string,
+  name?: string,
+  talkgroupId?: number,
+): string {
   const cleanLabel = (label ?? "").trim();
   const cleanName = (name ?? "").trim();
   if (cleanLabel && cleanName && cleanLabel !== cleanName) {
     return `${cleanLabel} - ${cleanName}`;
   }
-  return cleanLabel || cleanName || "(Unnamed Talkgroup)";
+  return (
+    cleanLabel ||
+    cleanName ||
+    (talkgroupId != null ? `TGID: ${talkgroupId}` : "(Unnamed Talkgroup)")
+  );
 }
 
 // ── Filter section ────────────────────────────────────────────────────────────
@@ -336,6 +344,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
       const combined = formatTalkgroupLabelName(
         tg.label,
         tg.name,
+        tg.talkgroupId,
       ).toLowerCase();
       return combined.includes(q);
     });
@@ -458,7 +467,10 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
           return;
         }
 
-        const blob = await resp.blob();
+        const buf = await resp.arrayBuffer();
+        const mimeType =
+          resp.headers.get("Content-Type") || call.audioType || "audio/mpeg";
+        const blob = new Blob([buf], { type: mimeType });
         const audioUrl = URL.createObjectURL(blob);
 
         const playCall: Call = {
@@ -487,7 +499,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
           transcript: call.transcript,
         };
 
-        audioPlayer.playNow(playCall, audioUrl);
+        audioPlayer.playNow(playCall, buf, audioUrl);
       } catch (err) {
         console.error("failed to play call", call.id, err);
       }
@@ -659,8 +671,16 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                     key={tg.id}
                     checked={filters.talkgroupIds.includes(tg.id)}
                     onChange={() => dispatch(toggleTalkgroupFilter(tg.id))}
-                    label={formatTalkgroupLabelName(tg.label, tg.name)}
-                    title={formatTalkgroupLabelName(tg.label, tg.name)}
+                    label={formatTalkgroupLabelName(
+                      tg.label,
+                      tg.name,
+                      tg.talkgroupId,
+                    )}
+                    title={formatTalkgroupLabelName(
+                      tg.label,
+                      tg.name,
+                      tg.talkgroupId,
+                    )}
                   />
                 ))}
               </div>
@@ -910,6 +930,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                         {formatTalkgroupLabelName(
                           call.talkgroupLabel,
                           call.talkgroupName,
+                          call.talkgroupId,
                         )}
                       </div>
                       {/* Row 2: system */}

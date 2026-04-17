@@ -1,8 +1,10 @@
 import type { Call } from "@/types";
+import { bootstrapBeepContext } from "@/services/beepPlayer";
 
 interface QueueItem {
   call: Call;
-  audioUrl: string;
+  audioData: ArrayBuffer;
+  audioUrl: string; // blob URL kept for download only
 }
 
 // Extend window for Safari's prefixed AudioContext
@@ -16,6 +18,7 @@ class AudioPlayer {
   private ctx: AudioContext | null = null;
   private gainNode: GainNode | null = null;
   private source: AudioBufferSourceNode | null = null;
+  private fallbackAudio: HTMLAudioElement | null = null;
   private volume = 1;
   private queue: QueueItem[] = [];
   private currentItem: QueueItem | null = null;
@@ -26,13 +29,67 @@ class AudioPlayer {
   private queueChangeCb: ((length: number) => void) | null = null;
 
   constructor() {
-    // No bootstrap listeners needed — AudioContext is created when
-    // the user clicks the Live button (a user gesture), which
-    // satisfies the browser autoplay policy.
+    this.bootstrapAudio();
   }
 
-  play(call: Call, audioUrl: string): void {
-    const item: QueueItem = { call, audioUrl };
+  /**
+   * Attach gesture listeners so that the AudioContext is created and
+   * resumed inside a user-interaction handler — required by mobile
+   * browsers (Android Edge/Chrome, iOS Safari) that enforce strict
+   * autoplay policies.
+   */
+  private bootstrapAudio(): void {
+    const events: Array<keyof DocumentEventMap> = [
+      "mousedown",
+      "touchstart",
+      "keydown",
+    ];
+
+    const handler = async () => {
+      if (!this.ctx) {
+        const Ctor = window.AudioContext || window.webkitAudioContext;
+        if (!Ctor) {
+          return;
+        }
+        this.ctx = new Ctor({ latencyHint: "playback" });
+        this.gainNode = this.ctx.createGain();
+        this.gainNode.gain.value = this.volume;
+        this.gainNode.connect(this.ctx.destination);
+      }
+
+      // Await resume inside the gesture handler — required on Mobile Edge.
+      if (this.ctx.state === "suspended") {
+        try {
+          await this.ctx.resume();
+        } catch {
+          // ignore
+        }
+      }
+
+      // Re-resume if the browser suspends the context later.
+      this.ctx.onstatechange = () => {
+        if (this.ctx?.state === "suspended" && !this._paused) {
+          this.ctx.resume().catch(() => {});
+        }
+      };
+
+      await bootstrapBeepContext();
+
+      // Only remove listeners once the context is confirmed running.
+      if (this.ctx.state === "running") {
+        for (const e of events) {
+          document.body.removeEventListener(e, handler);
+        }
+      }
+    };
+
+    for (const e of events) {
+      document.body.addEventListener(e, handler);
+    }
+  }
+
+  play(call: Call, audioData: ArrayBuffer, audioUrl: string): void {
+    const item: QueueItem = { call, audioData, audioUrl };
     if (this._paused) {
       this.queue.push(item);
       this.queueChangeCb?.(this.queue.length);
@@ -46,8 +103,8 @@ class AudioPlayer {
     }
   }
 
-  playNow(call: Call, audioUrl: string): void {
-    const item: QueueItem = { call, audioUrl };
+  playNow(call: Call, audioData: ArrayBuffer, audioUrl: string): void {
+    const item: QueueItem = { call, audioData, audioUrl };
     if (!this.currentItem) {
       this.startPlayback(item);
       return;
@@ -95,6 +152,9 @@ class AudioPlayer {
     this.volume = Math.max(0, Math.min(1, v));
     if (this.gainNode) {
       this.gainNode.gain.value = this.volume;
+    }
+    if (this.fallbackAudio) {
+      this.fallbackAudio.volume = this.volume;
     }
   }
 
@@ -163,6 +223,7 @@ class AudioPlayer {
 
   // -- Private --
 
+  /** Fallback in case bootstrapAudio hasn't fired yet. */
   private ensureContext(): void {
     if (!this.ctx) {
       const Ctor = window.AudioContext || window.webkitAudioContext;
@@ -171,6 +232,12 @@ class AudioPlayer {
       this.gainNode = this.ctx.createGain();
       this.gainNode.gain.value = this.volume;
       this.gainNode.connect(this.ctx.destination);
+
+      this.ctx.onstatechange = () => {
+        if (this.ctx?.state === "suspended" && !this._paused) {
+          this.ctx.resume().catch(() => {});
+        }
+      };
     }
     if (this.ctx.state === "suspended") {
       this.ctx.resume().catch(() => {});
@@ -183,20 +250,28 @@ class AudioPlayer {
     this.ensureContext();
     if (this.ctx?.state === "running") {
       this.decodeAndPlay(item);
+    } else if (this.ctx) {
+      // Context not yet running — wait for the bootstrap resume.
+      const onReady = () => {
+        if (this.ctx?.state === "running") {
+          this.ctx.removeEventListener("statechange", onReady);
+          if (this.currentItem === item) {
+            this.decodeAndPlay(item);
+          }
+        }
+      };
+      this.ctx.addEventListener("statechange", onReady);
     }
   }
 
   private decodeAndPlay(item: QueueItem): void {
-    if (!this.ctx || !this.gainNode) return;
-    // Item may have changed by the time async work completes —
-    // capture a reference to check against.
+    if (!this.ctx || !this.gainNode) {
+      return;
+    }
     const playingItem = item;
-
-    fetch(item.audioUrl)
-      .then((r) => r.arrayBuffer())
-      .then((buf) => this.ctx!.decodeAudioData(buf))
-      .then((audioBuffer) => {
-        // Bail if item changed while we were decoding.
+    const p = this.ctx.decodeAudioData(
+      item.audioData.slice(0),
+      (audioBuffer) => {
         if (this.currentItem !== playingItem) return;
 
         this.stopSource();
@@ -211,16 +286,58 @@ class AudioPlayer {
         src.start();
         this.source = src;
         this._playing = true;
-      })
-      .catch(() => {
-        // Decode or fetch failure — skip to next.
-        if (this.currentItem === playingItem) {
-          this.onEnded();
-        }
-      });
+      },
+      () => {
+        // WebAudio decode failed — fall back to HTMLAudioElement which
+        // has broader codec support on mobile browsers.
+        if (this.currentItem !== playingItem) return;
+        this.playViaAudioElement(item);
+      },
+    );
+    // Suppress "Uncaught (in promise) EncodingError" on Mobile Edge.
+    if (p && typeof p.catch === "function") {
+      p.catch(() => {});
+    }
+  }
+
+  /**
+   * Fallback playback via HTMLAudioElement. Used when decodeAudioData
+   * fails (e.g. unsupported codec in WebAudio but supported by the
+   * platform media decoder).
+   */
+  private playViaAudioElement(item: QueueItem): void {
+    const playingItem = item;
+    this.stopSource();
+
+    const audio = new Audio(item.audioUrl);
+    audio.volume = this.volume;
+    audio.onended = () => {
+      if (this.currentItem === playingItem) {
+        this.onEnded();
+      }
+    };
+    audio.onerror = () => {
+      if (this.currentItem === playingItem) {
+        this.onEnded();
+      }
+    };
+    audio.play().catch(() => {
+      if (this.currentItem === playingItem) {
+        this.onEnded();
+      }
+    });
+    this.fallbackAudio = audio;
+    this._playing = true;
   }
 
   private stopSource(): void {
+    if (this.fallbackAudio) {
+      this.fallbackAudio.onended = null;
+      this.fallbackAudio.onerror = null;
+      this.fallbackAudio.pause();
+      this.fallbackAudio.src = "";
+      this.fallbackAudio = null;
+    }
     if (this.source) {
       this.source.onended = null;
       try {

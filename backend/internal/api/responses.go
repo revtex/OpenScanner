@@ -309,32 +309,6 @@ func toWebhookResponses(webhooks []db.Webhook) []webhookResponse {
 	return out
 }
 
-// ── Log ──
-
-type logResponse struct {
-	ID       int64  `json:"id"`
-	DateTime int64  `json:"dateTime"`
-	Level    string `json:"level"`
-	Message  string `json:"message"`
-} // @name LogResponse
-
-func toLogResponse(l db.Log) logResponse {
-	return logResponse{
-		ID:       l.ID,
-		DateTime: l.DateTime,
-		Level:    l.Level,
-		Message:  l.Message,
-	}
-}
-
-func toLogResponses(logs []db.Log) []logResponse {
-	out := make([]logResponse, len(logs))
-	for i, l := range logs {
-		out[i] = toLogResponse(l)
-	}
-	return out
-}
-
 // ── Settings / Config ──
 
 type settingResponse struct {
