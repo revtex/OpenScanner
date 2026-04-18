@@ -58,7 +58,7 @@ func main() {
 	}
 
 	if cfg.ConfigSave {
-		if err := cfg.SaveINI(); err != nil {
+		if err := cfg.SaveJSON(); err != nil {
 			slog.Error("failed to save configuration", "error", err)
 			os.Exit(1)
 		}

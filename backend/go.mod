@@ -16,7 +16,6 @@ require (
 	github.com/swaggo/swag v1.16.4
 	golang.org/x/crypto v0.50.0
 	golang.org/x/term v0.42.0
-	gopkg.in/ini.v1 v1.67.1
 	modernc.org/sqlite v1.48.2
 )
 

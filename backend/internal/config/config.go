@@ -1,16 +1,15 @@
-// Package config handles server startup configuration via CLI flags, environment variables, and optional INI file.
+// Package config handles server startup configuration via CLI flags, environment variables, and optional JSON file.
 //
-// Configuration precedence: CLI flags > environment variables > INI file > built-in defaults.
+// Configuration precedence: CLI flags > environment variables > JSON file > built-in defaults.
 package config
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
-
-	"gopkg.in/ini.v1"
 )
 
 // Version is set at build time via ldflags.
@@ -27,14 +26,25 @@ type Config struct {
 	SSLAutoCert   string // Domain for Let's Encrypt auto-cert
 	AdminPassword string // Reset first admin user's password on startup
 	Timezone      string // IANA timezone for recorder timestamps (default: TZ env or "UTC")
-	ConfigFile    string // Path to INI config file (default "openscanner.ini")
-	ConfigSave    bool   // Write current flags to INI file and exit
+	ConfigFile    string // Path to JSON config file (default "openscanner.json")
+	ConfigSave    bool   // Write current flags to JSON config file and exit
 	ShowVersion   bool   // Print version and exit
 	Service       string // Service command: install, uninstall, start, stop, restart
 }
 
-// Load parses configuration from CLI flags, environment variables, and an optional INI file.
-// Precedence: CLI flags > environment variables > INI file > built-in defaults.
+type jsonFileConfig struct {
+	Listen        string `json:"listen"`
+	DBFile        string `json:"db_file"`
+	RecordingsDir string `json:"recordings_dir"`
+	SSLListen     string `json:"ssl_listen"`
+	SSLCert       string `json:"ssl_cert_file"`
+	SSLKey        string `json:"ssl_key_file"`
+	SSLAutoCert   string `json:"ssl_auto_cert"`
+	Timezone      string `json:"timezone"`
+}
+
+// Load parses configuration from CLI flags, environment variables, and an optional JSON file.
+// Precedence: CLI flags > environment variables > JSON file > built-in defaults.
 func Load() (*Config, error) {
 	cfg := &Config{}
 
@@ -55,58 +65,64 @@ func Load() (*Config, error) {
 	flag.StringVar(&cfg.SSLAutoCert, "ssl-auto-cert", "", "Domain for Let's Encrypt auto-cert")
 	flag.StringVar(&cfg.AdminPassword, "admin-password", "", "Reset first admin user's password on startup")
 	flag.StringVar(&cfg.Timezone, "timezone", "", "IANA timezone for recorder timestamps (e.g. America/New_York)")
-	flag.StringVar(&cfg.ConfigFile, "config", "openscanner.ini", "Path to INI config file")
-	flag.BoolVar(&cfg.ConfigSave, "config-save", false, "Write current flags to INI file and exit")
+	flag.StringVar(&cfg.ConfigFile, "config", "openscanner.json", "Path to JSON config file")
+	flag.BoolVar(&cfg.ConfigSave, "config-save", false, "Write current flags to JSON config file and exit")
 	flag.BoolVar(&cfg.ShowVersion, "version", false, "Print version and exit")
 	flag.StringVar(&cfg.Service, "service", "", "Service command: install, uninstall, start, stop, restart")
 	flag.Parse()
 
-	// Load INI file defaults (lowest precedence after built-in defaults).
-	loadINI(cfg)
+	// Load JSON file defaults (lowest precedence after built-in defaults).
+	loadJSON(cfg)
 
-	// Apply environment variables (higher precedence than INI).
+	// Apply environment variables (higher precedence than JSON file).
 	applyEnv(cfg)
 
 	// CLI flags already parsed above have highest precedence (flag package handles this
 	// since we set defaults before Parse, and Parse overwrites only if flag is provided).
-	// However, flag package always sets the value, so we need to re-apply env and INI
+	// However, flag package always sets the value, so we need to re-apply env and JSON
 	// only for flags that were NOT explicitly set on the command line.
 	reapplyPrecedence(cfg)
 
 	return cfg, nil
 }
 
-// loadINI reads the INI config file and applies values as defaults.
-func loadINI(cfg *Config) {
-	iniFile, err := ini.Load(cfg.ConfigFile)
+// loadJSON reads the JSON config file and applies values as defaults.
+func loadJSON(cfg *Config) {
+	data, err := os.ReadFile(cfg.ConfigFile)
 	if err != nil {
-		// INI file is optional; if it doesn't exist, silently continue.
+		// Config file is optional; if it doesn't exist, silently continue.
 		return
 	}
 
-	section := iniFile.Section("")
-	if v := section.Key("listen").String(); v != "" {
+	var fileCfg jsonFileConfig
+	if err := json.Unmarshal(data, &fileCfg); err != nil {
+		// Keep startup resilient if the config file is malformed.
+		slog.Warn("failed to parse JSON config file", "file", cfg.ConfigFile, "error", err)
+		return
+	}
+
+	if v := fileCfg.Listen; v != "" {
 		cfg.Listen = v
 	}
-	if v := section.Key("db_file").String(); v != "" {
+	if v := fileCfg.DBFile; v != "" {
 		cfg.DBFile = v
 	}
-	if v := section.Key("recordings_dir").String(); v != "" {
+	if v := fileCfg.RecordingsDir; v != "" {
 		cfg.RecordingsDir = v
 	}
-	if v := section.Key("ssl_listen").String(); v != "" {
+	if v := fileCfg.SSLListen; v != "" {
 		cfg.SSLListen = v
 	}
-	if v := section.Key("ssl_cert_file").String(); v != "" {
+	if v := fileCfg.SSLCert; v != "" {
 		cfg.SSLCert = v
 	}
-	if v := section.Key("ssl_key_file").String(); v != "" {
+	if v := fileCfg.SSLKey; v != "" {
 		cfg.SSLKey = v
 	}
-	if v := section.Key("ssl_auto_cert").String(); v != "" {
+	if v := fileCfg.SSLAutoCert; v != "" {
 		cfg.SSLAutoCert = v
 	}
-	if v := section.Key("timezone").String(); v != "" {
+	if v := fileCfg.Timezone; v != "" {
 		cfg.Timezone = v
 	}
 }
@@ -144,7 +160,7 @@ func applyEnv(cfg *Config) {
 	}
 }
 
-// reapplyPrecedence ensures CLI flags > env vars > INI file > defaults.
+// reapplyPrecedence ensures CLI flags > env vars > JSON file > defaults.
 // The flag package sets all values to defaults then overwrites with CLI args.
 // We need to detect which flags were explicitly set on the command line.
 func reapplyPrecedence(cfg *Config) {
@@ -153,8 +169,8 @@ func reapplyPrecedence(cfg *Config) {
 		explicitFlags[f.Name] = true
 	})
 
-	// For each setting: if not explicitly set via CLI, apply env > INI > default.
-	// Since we already applied INI then env above, re-read env vars for non-explicit flags.
+	// For each setting: if not explicitly set via CLI, apply env > JSON file > default.
+	// Since we already applied JSON file then env above, re-read env vars for non-explicit flags.
 	if !explicitFlags["listen"] {
 		if v := os.Getenv("OPENSCANNER_LISTEN"); v != "" {
 			cfg.Listen = v
@@ -204,32 +220,27 @@ func reapplyPrecedence(cfg *Config) {
 	}
 }
 
-// SaveINI writes the current configuration to the INI file.
-func (c *Config) SaveINI() error {
-	iniFile := ini.Empty()
-	section := iniFile.Section("")
+// SaveJSON writes the current configuration to the JSON config file.
+func (c *Config) SaveJSON() error {
+	fileCfg := jsonFileConfig{
+		Listen:        c.Listen,
+		DBFile:        c.DBFile,
+		RecordingsDir: c.RecordingsDir,
+		SSLListen:     c.SSLListen,
+		SSLCert:       c.SSLCert,
+		SSLKey:        c.SSLKey,
+		SSLAutoCert:   c.SSLAutoCert,
+		Timezone:      c.Timezone,
+	}
 
-	section.Key("listen").SetValue(c.Listen)
-	section.Key("db_file").SetValue(c.DBFile)
-	section.Key("recordings_dir").SetValue(c.RecordingsDir)
-	if c.SSLListen != "" {
-		section.Key("ssl_listen").SetValue(c.SSLListen)
+	data, err := json.MarshalIndent(fileCfg, "", "  ")
+	if err != nil {
+		return err
 	}
-	if c.SSLCert != "" {
-		section.Key("ssl_cert_file").SetValue(c.SSLCert)
-	}
-	if c.SSLKey != "" {
-		section.Key("ssl_key_file").SetValue(c.SSLKey)
-	}
-	if c.SSLAutoCert != "" {
-		section.Key("ssl_auto_cert").SetValue(c.SSLAutoCert)
-	}
-	if c.Timezone != "" {
-		section.Key("timezone").SetValue(c.Timezone)
-	}
+	data = append(data, '\n')
 
 	slog.Info("saving configuration", "file", c.ConfigFile)
-	return iniFile.SaveTo(c.ConfigFile)
+	return os.WriteFile(c.ConfigFile, data, 0o644)
 }
 
 // String returns a safe string representation (no secrets).

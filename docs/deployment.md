@@ -15,7 +15,7 @@ No external database is required. SQLite is embedded and uses WAL mode.
 
 Configuration precedence:
 
-CLI flags > environment variables > INI file > defaults
+CLI flags > environment variables > JSON config file > defaults
 
 Key startup flags:
 
@@ -32,6 +32,8 @@ Key startup flags:
 - --config-save
 - --version
 - --service
+
+Default config file path for `--config` is `openscanner.json`.
 
 Environment variable equivalents are OPENSCANNER\_\* variants plus TZ for timezone fallback.
 
