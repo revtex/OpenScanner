@@ -91,6 +91,16 @@ export interface LoginResponse {
   passwordNeedChange: boolean;
 }
 
+// Auth refresh response
+export interface RefreshResponse {
+  token: string;
+  user: {
+    id: number;
+    username: string;
+    role: string;
+  };
+}
+
 // For avoid timer tracking
 export interface AvoidEntry {
   talkgroupId: number;

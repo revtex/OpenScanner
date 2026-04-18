@@ -16,6 +16,7 @@ import {
   selectRole,
   selectUsername,
   clearCredentials,
+  usePostLogoutMutation,
 } from "@/app/slices/authSlice";
 import { useChangePasswordMutation } from "@/app/slices/authSlice";
 
@@ -42,6 +43,7 @@ export function LEDPanel() {
     type: "success" | "error";
   } | null>(null);
   const [changePassword] = useChangePasswordMutation();
+  const [postLogout] = usePostLogoutMutation();
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu on outside click
@@ -93,8 +95,13 @@ export function LEDPanel() {
   }
 
   const handleSignOut = () => {
-    dispatch(clearCredentials());
-    navigate("/login", { replace: true });
+    postLogout()
+      .unwrap()
+      .catch(() => {})
+      .finally(() => {
+        dispatch(clearCredentials());
+        navigate("/login", { replace: true });
+      });
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -111,7 +111,7 @@ describe("AdminLayout", () => {
     }
   });
 
-  it("sign out button clears credentials", () => {
+  it("sign out button clears credentials", async () => {
     const { store } = renderAdmin({
       auth: {
         token: "test-token",
@@ -126,7 +126,9 @@ describe("AdminLayout", () => {
     const signOutButtons = screen.getAllByText("Sign Out");
     fireEvent.click(signOutButtons[0]);
 
-    expect(store.getState().auth.token).toBeNull();
+    await waitFor(() => {
+      expect(store.getState().auth.token).toBeNull();
+    });
     expect(mockNavigate).toHaveBeenCalledWith("/login", { replace: true });
   });
 });

@@ -253,6 +253,26 @@ func (p *program) run() {
 	// Start background call pruner.
 	go audio.PruneLoop(ctx, queries, cfg.RecordingsDir)
 
+	// Start background refresh token cleanup (every hour).
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				now := time.Now().Unix()
+				if err := queries.DeleteExpiredRefreshTokens(context.Background(), db.DeleteExpiredRefreshTokensParams{
+					ExpiresAt: now,
+					CreatedAt: now,
+				}); err != nil {
+					slog.Error("failed to cleanup expired refresh tokens", "error", err)
+				}
+			}
+		}
+	}()
+
 	// Create and start WebSocket hub.
 	hub := ws.NewHub(queries, config.Version)
 	go hub.Run(ctx)

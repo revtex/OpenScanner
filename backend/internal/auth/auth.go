@@ -28,6 +28,15 @@ func HashAPIKey(key string) string {
 const (
 	RoleAdmin    = "admin"
 	RoleListener = "listener"
+
+	// AccessTokenExpiry is the lifetime of short-lived JWT access tokens.
+	AccessTokenExpiry = 15 * time.Minute
+
+	// RefreshTokenExpiry is the lifetime of opaque refresh tokens (HTTP-only cookie).
+	RefreshTokenExpiry = 30 * 24 * time.Hour
+
+	// MaxRefreshFamilies is the maximum number of active refresh token families per user.
+	MaxRefreshFamilies = 10
 )
 
 // JWTSecret is the HS256 signing key. Set by cmd/server on startup; auto-generated
@@ -80,7 +89,7 @@ func CheckPassword(password, hash string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 
-// GenerateToken signs a new HS256 JWT for the given user, valid for 24 hours.
+// GenerateToken signs a new HS256 JWT for the given user, valid for AccessTokenExpiry.
 // Returns the signed token string and the unique JTI (token ID).
 func GenerateToken(userID int64, username, role string) (string, string, error) {
 	now := time.Now()
@@ -92,13 +101,32 @@ func GenerateToken(userID int64, username, role string) (string, string, error) 
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        jti,
 			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(AccessTokenExpiry)),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, err := token.SignedString(JWTSecret)
 	slog.Debug("auth: token generated", "user_id", userID, "username", username, "role", role, "jti", jti)
 	return signed, jti, err
+}
+
+// GenerateRefreshToken creates a cryptographically random opaque refresh token.
+// Returns the raw hex-encoded token (for the cookie) and its SHA-256 hash (for DB storage).
+func GenerateRefreshToken() (raw string, hash string, err error) {
+	b := make([]byte, 32)
+	if _, err = rand.Read(b); err != nil {
+		return "", "", err
+	}
+	raw = hex.EncodeToString(b)
+	h := sha256.Sum256([]byte(raw))
+	hash = hex.EncodeToString(h[:])
+	return raw, hash, nil
+}
+
+// HashRefreshToken returns the SHA-256 hex digest of a raw refresh token.
+func HashRefreshToken(raw string) string {
+	h := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(h[:])
 }
 
 // TokenTracker tracks active JWTs per user. When a user exceeds MaxTokens
@@ -161,12 +189,11 @@ func (tt *TokenTracker) IsRevoked(jti string) bool {
 	return true
 }
 
-// Revoke adds a single JTI to the deny list.
-// Revoke adds a single JTI to the deny list with a 24-hour expiry.
+// Revoke adds a single JTI to the deny list with an AccessTokenExpiry expiry.
 func (tt *TokenTracker) Revoke(jti string) {
 	tt.mu.Lock()
 	defer tt.mu.Unlock()
-	tt.denied[jti] = time.Now().Add(24 * time.Hour)
+	tt.denied[jti] = time.Now().Add(AccessTokenExpiry)
 }
 
 // RevokeAllForUser revokes all tokens for a user.

@@ -19,6 +19,7 @@ type AudioReceivedCallback = (
   audioData: ArrayBuffer,
 ) => void;
 type CallFilter = (call: Call) => boolean;
+type TokenExpiredCallback = () => Promise<string | null>;
 
 interface WsAuth {
   token?: string;
@@ -44,6 +45,7 @@ class WsClient {
   private auth: WsAuth = {};
   private audioCallback: AudioReceivedCallback | null = null;
   private callFilter: CallFilter | null = null;
+  private tokenExpiredCallback: TokenExpiredCallback | null = null;
   private intentionalClose = false;
   private recentCallIds: number[] = [];
 
@@ -87,6 +89,10 @@ class WsClient {
 
   setCallFilter(filter: CallFilter): void {
     this.callFilter = filter;
+  }
+
+  onTokenExpired(cb: TokenExpiredCallback): void {
+    this.tokenExpiredCallback = cb;
   }
 
   private doConnect(): void {
@@ -243,11 +249,26 @@ class WsClient {
         }
         break;
       case "XPR":
-        // Token expired on listener WS — clear credentials so the UI
-        // redirects to the login page.
-        console.warn("[WsClient] Token expired");
-        this.dispatch?.(clearCredentials());
-        this.disconnect();
+        // Token expired — attempt silent refresh before disconnecting.
+        console.warn("[WsClient] Token expired, attempting refresh");
+        if (this.tokenExpiredCallback) {
+          this.tokenExpiredCallback().then((newToken) => {
+            if (newToken) {
+              // Update auth and reconnect with new token.
+              this.auth = { ...this.auth, token: newToken };
+              this.disconnect();
+              this.intentionalClose = false;
+              this.doConnect();
+            } else {
+              // Refresh failed — clear credentials.
+              this.dispatch?.(clearCredentials());
+              this.disconnect();
+            }
+          });
+        } else {
+          this.dispatch?.(clearCredentials());
+          this.disconnect();
+        }
         break;
       case "MAX":
         console.warn("[WsClient] Server max clients reached");

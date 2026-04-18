@@ -10,6 +10,7 @@ import (
 )
 
 type Querier interface {
+	CountActiveRefreshTokenFamilies(ctx context.Context, arg CountActiveRefreshTokenFamiliesParams) (int64, error)
 	CountCalls(ctx context.Context) (int64, error)
 	CountCallsFiltered(ctx context.Context, arg CountCallsFilteredParams) (int64, error)
 	CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (int64, error)
@@ -20,6 +21,7 @@ type Querier interface {
 	CreateGroup(ctx context.Context, label string) (int64, error)
 	CreateLog(ctx context.Context, arg CreateLogParams) error
 	CreatePushSubscription(ctx context.Context, arg CreatePushSubscriptionParams) (int64, error)
+	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) error
 	CreateSharedLink(ctx context.Context, arg CreateSharedLinkParams) (SharedLink, error)
 	CreateSystem(ctx context.Context, arg CreateSystemParams) (int64, error)
 	CreateTag(ctx context.Context, label string) (int64, error)
@@ -35,6 +37,7 @@ type Querier interface {
 	DeleteCallBatch(ctx context.Context, id int64) error
 	DeleteDirMonitor(ctx context.Context, id int64) error
 	DeleteDownstream(ctx context.Context, id int64) error
+	DeleteExpiredRefreshTokens(ctx context.Context, arg DeleteExpiredRefreshTokensParams) error
 	DeleteGroup(ctx context.Context, id int64) error
 	DeletePushSubscription(ctx context.Context, id int64) error
 	DeletePushSubscriptionByEndpoint(ctx context.Context, endpoint string) error
@@ -65,7 +68,9 @@ type Querier interface {
 	GetDownstream(ctx context.Context, id int64) (Downstream, error)
 	GetGroup(ctx context.Context, id int64) (Group, error)
 	GetGroupByLabel(ctx context.Context, label string) (Group, error)
+	GetOldestActiveRefreshTokenFamily(ctx context.Context, arg GetOldestActiveRefreshTokenFamilyParams) (string, error)
 	GetPushSubscription(ctx context.Context, id int64) (PushSubscription, error)
+	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetSetting(ctx context.Context, key string) (Setting, error)
 	GetSharedLinkByCallID(ctx context.Context, callID int64) (SharedLink, error)
 	GetSharedLinkByToken(ctx context.Context, token string) (GetSharedLinkByTokenRow, error)
@@ -117,6 +122,9 @@ type Querier interface {
 	ListWebhooks(ctx context.Context) ([]Webhook, error)
 	PruneCalls(ctx context.Context, dateTime int64) error
 	PruneLogs(ctx context.Context, dateTime int64) error
+	RevokeAllRefreshTokensForUser(ctx context.Context, userID int64) error
+	RevokeRefreshToken(ctx context.Context, id int64) error
+	RevokeRefreshTokenFamily(ctx context.Context, familyID string) error
 	SetSetupComplete(ctx context.Context, setupComplete int64) error
 	UpdateAPIKey(ctx context.Context, arg UpdateAPIKeyParams) error
 	UpdateDirMonitor(ctx context.Context, arg UpdateDirMonitorParams) error

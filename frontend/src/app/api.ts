@@ -5,7 +5,7 @@ import {
   type FetchArgs,
   type FetchBaseQueryError,
 } from "@reduxjs/toolkit/query/react";
-import type { SetupStatus } from "@/types";
+import type { SetupStatus, RefreshResponse } from "@/types";
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: "/api",
@@ -19,17 +19,51 @@ const rawBaseQuery = fetchBaseQuery({
   },
 });
 
-const baseQueryWith401Redirect: BaseQueryFn<
+/**
+ * Wrapper that intercepts 401 responses and attempts a silent token refresh.
+ * If the refresh succeeds, the original request is retried with the new token.
+ * If the refresh fails, credentials are cleared (user sees login screen).
+ */
+const baseQueryWithRefresh: BaseQueryFn<
   string | FetchArgs,
   unknown,
   FetchBaseQueryError
-> = async (args, api, extraOptions) => {
-  const result = await rawBaseQuery(args, api, extraOptions);
+> = async (args, storeApi, extraOptions) => {
+  let result = await rawBaseQuery(args, storeApi, extraOptions);
+
   if (result.error && result.error.status === 401) {
-    // Dispatch clearCredentials by action type to avoid circular import
-    // (authSlice imports api, api cannot import authSlice).
-    api.dispatch({ type: "auth/clearCredentials" });
+    // Don't try to refresh if the failing request IS the refresh endpoint.
+    const url = typeof args === "string" ? args : args.url;
+    if (url === "/auth/refresh") {
+      storeApi.dispatch({ type: "auth/clearCredentials" });
+      return result;
+    }
+
+    // Attempt silent refresh.
+    const refreshResult = await rawBaseQuery(
+      { url: "/auth/refresh", method: "POST" },
+      storeApi,
+      extraOptions,
+    );
+
+    if (refreshResult.data) {
+      const refreshData = refreshResult.data as RefreshResponse;
+      storeApi.dispatch({
+        type: "auth/setCredentials",
+        payload: {
+          token: refreshData.token,
+          role: refreshData.user.role,
+          username: refreshData.user.username,
+          passwordNeedChange: false,
+        },
+      });
+      // Retry original request with new token.
+      result = await rawBaseQuery(args, storeApi, extraOptions);
+    } else {
+      storeApi.dispatch({ type: "auth/clearCredentials" });
+    }
   }
+
   return result;
 };
 
@@ -53,7 +87,7 @@ export const api = createApi({
     "Setup",
     "SharedLinks",
   ],
-  baseQuery: baseQueryWith401Redirect,
+  baseQuery: baseQueryWithRefresh,
   endpoints: (builder) => ({
     getSetupStatus: builder.query<SetupStatus, void>({
       query: () => "/setup/status",

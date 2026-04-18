@@ -100,6 +100,16 @@ type PushSubscription struct {
 	CreatedAt   int64          `db:"created_at" json:"created_at"`
 }
 
+type RefreshToken struct {
+	ID        int64  `db:"id" json:"id"`
+	UserID    int64  `db:"user_id" json:"user_id"`
+	TokenHash string `db:"token_hash" json:"token_hash"`
+	FamilyID  string `db:"family_id" json:"family_id"`
+	ExpiresAt int64  `db:"expires_at" json:"expires_at"`
+	Revoked   int64  `db:"revoked" json:"revoked"`
+	CreatedAt int64  `db:"created_at" json:"created_at"`
+}
+
 type Setting struct {
 	Key   string `db:"key" json:"key"`
 	Value string `db:"value" json:"value"`

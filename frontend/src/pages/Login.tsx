@@ -31,6 +31,7 @@ export default function Login() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
 
   // Change password form
@@ -71,7 +72,11 @@ export default function Login() {
     e.preventDefault();
     setError("");
     try {
-      const result = await postLogin({ username, password }).unwrap();
+      const result = await postLogin({
+        username,
+        password,
+        rememberMe,
+      }).unwrap();
       const creds = {
         token: result.token,
         role: result.user.role,
@@ -174,6 +179,15 @@ export default function Login() {
               autoComplete="current-password"
               required
             />
+            <label className="flex items-center gap-2 cursor-pointer self-start">
+              <input
+                type="checkbox"
+                className="checkbox checkbox-sm checkbox-primary"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+              <span className="text-sm">Remember me</span>
+            </label>
             {error && <p className="text-error text-sm">{error}</p>}
             <button
               type="submit"

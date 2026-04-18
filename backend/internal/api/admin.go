@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
 )
@@ -29,8 +30,9 @@ func NewAuthHandler(queries *db.Queries, rateLimiter *auth.RateLimiter) *AuthHan
 }
 
 type loginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	RememberMe *bool  `json:"rememberMe,omitempty"`
 } // @name LoginRequest
 
 type loginUserResponse struct {
@@ -115,7 +117,56 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 		return
 	}
 
-	auth.Tokens.Track(user.ID, jti, time.Now().Add(24*time.Hour))
+	auth.Tokens.Track(user.ID, jti, time.Now().Add(auth.AccessTokenExpiry))
+
+	// Generate refresh token and store its hash in the DB.
+	rawRefresh, hashRefresh, err := auth.GenerateRefreshToken()
+	if err != nil {
+		slog.Error("auth: failed to generate refresh token", "user_id", user.ID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+
+	familyID := uuid.New().String()
+	now := time.Now()
+
+	// Enforce max refresh token families per user.
+	count, err := h.queries.CountActiveRefreshTokenFamilies(c.Request.Context(), db.CountActiveRefreshTokenFamiliesParams{
+		UserID:    user.ID,
+		ExpiresAt: now.Unix(),
+	})
+	if err == nil && count >= auth.MaxRefreshFamilies {
+		// Revoke the oldest family to make room.
+		oldestFamily, err := h.queries.GetOldestActiveRefreshTokenFamily(c.Request.Context(), db.GetOldestActiveRefreshTokenFamilyParams{
+			UserID:    user.ID,
+			ExpiresAt: now.Unix(),
+		})
+		if err == nil {
+			_ = h.queries.RevokeRefreshTokenFamily(c.Request.Context(), oldestFamily)
+		}
+	}
+
+	if err := h.queries.CreateRefreshToken(c.Request.Context(), db.CreateRefreshTokenParams{
+		UserID:    user.ID,
+		TokenHash: hashRefresh,
+		FamilyID:  familyID,
+		ExpiresAt: now.Add(auth.RefreshTokenExpiry).Unix(),
+		CreatedAt: now.Unix(),
+	}); err != nil {
+		slog.Error("auth: failed to store refresh token", "user_id", user.ID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+
+	// Set refresh token cookie. rememberMe defaults to true.
+	rememberMe := req.RememberMe == nil || *req.RememberMe
+	if rememberMe {
+		auth.SetRefreshCookie(c, rawRefresh, int(auth.RefreshTokenExpiry.Seconds()))
+	} else {
+		// Session-only cookie (no Max-Age / Expires — cleared on browser close).
+		auth.SetRefreshCookie(c, rawRefresh, 0)
+	}
+
 	h.logAuthEvent(c.Request.Context(), "info", "login success: "+user.Username, ip)
 	slog.Info("user logged in", "userId", user.ID, "username", user.Username, "ip", ip)
 
@@ -158,7 +209,130 @@ func (h *AuthHandler) PostLogout(c *gin.Context) {
 			auth.Tokens.Revoke(jti)
 		}
 	}
+
+	// Revoke the refresh token family and clear the cookie.
+	if rawToken, err := c.Cookie(auth.RefreshCookieName); err == nil && rawToken != "" {
+		tokenHash := auth.HashRefreshToken(rawToken)
+		if rt, err := h.queries.GetRefreshTokenByHash(c.Request.Context(), tokenHash); err == nil {
+			_ = h.queries.RevokeRefreshTokenFamily(c.Request.Context(), rt.FamilyID)
+		}
+	}
+	auth.ClearRefreshCookie(c)
+
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+type refreshResponse struct {
+	Token string            `json:"token"`
+	User  loginUserResponse `json:"user"`
+} // @name RefreshResponse
+
+// PostRefresh handles POST /api/auth/refresh (no JWT required — cookie is the auth).
+// Validates the refresh token cookie, rotates it, and returns a new access token.
+//
+// @Summary      Refresh access token
+// @Description  Exchange a valid refresh token cookie for a new access token and rotated refresh token.
+// @Tags         Auth
+// @Produce      json
+// @Success      200  {object}  refreshResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /auth/refresh [post]
+func (h *AuthHandler) PostRefresh(c *gin.Context) {
+	rawToken, err := c.Cookie(auth.RefreshCookieName)
+	if err != nil || rawToken == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "no refresh token"})
+		return
+	}
+
+	tokenHash := auth.HashRefreshToken(rawToken)
+	rt, err := h.queries.GetRefreshTokenByHash(c.Request.Context(), tokenHash)
+	if err != nil {
+		// Token not found — invalid or already consumed.
+		auth.ClearRefreshCookie(c)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid refresh token"})
+		return
+	}
+
+	// If the token has been revoked, this is a replay attack — revoke the entire family.
+	if rt.Revoked != 0 {
+		slog.Warn("auth: refresh token replay detected, revoking family",
+			"family_id", rt.FamilyID, "user_id", rt.UserID)
+		_ = h.queries.RevokeRefreshTokenFamily(c.Request.Context(), rt.FamilyID)
+		auth.ClearRefreshCookie(c)
+		ip := c.ClientIP()
+		h.logAuthEvent(c.Request.Context(), "warn", "refresh token replay detected", ip)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid refresh token"})
+		return
+	}
+
+	// Check expiration.
+	if time.Now().Unix() > rt.ExpiresAt {
+		_ = h.queries.RevokeRefreshToken(c.Request.Context(), rt.ID)
+		auth.ClearRefreshCookie(c)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token expired"})
+		return
+	}
+
+	// Revoke the old refresh token (rotation).
+	_ = h.queries.RevokeRefreshToken(c.Request.Context(), rt.ID)
+
+	// Load user — check disabled, expiration.
+	user, err := h.queries.GetUser(c.Request.Context(), rt.UserID)
+	if err != nil || user.Disabled != 0 {
+		auth.ClearRefreshCookie(c)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid refresh token"})
+		return
+	}
+	if user.Expiration.Valid && user.Expiration.Int64 > 0 {
+		if time.Now().Unix() > user.Expiration.Int64 {
+			auth.ClearRefreshCookie(c)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "account expired"})
+			return
+		}
+	}
+
+	// Generate new access token.
+	accessToken, jti, err := auth.GenerateToken(user.ID, user.Username, user.Role)
+	if err != nil {
+		slog.Error("auth: failed to generate token on refresh", "user_id", user.ID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+	auth.Tokens.Track(user.ID, jti, time.Now().Add(auth.AccessTokenExpiry))
+
+	// Generate new refresh token (same family).
+	newRaw, newHash, err := auth.GenerateRefreshToken()
+	if err != nil {
+		slog.Error("auth: failed to generate refresh token on refresh", "user_id", user.ID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+
+	now := time.Now()
+	if err := h.queries.CreateRefreshToken(c.Request.Context(), db.CreateRefreshTokenParams{
+		UserID:    user.ID,
+		TokenHash: newHash,
+		FamilyID:  rt.FamilyID,
+		ExpiresAt: now.Add(auth.RefreshTokenExpiry).Unix(),
+		CreatedAt: now.Unix(),
+	}); err != nil {
+		slog.Error("auth: failed to store rotated refresh token", "user_id", user.ID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+
+	// Set new cookie with same Max-Age as original.
+	auth.SetRefreshCookie(c, newRaw, int(auth.RefreshTokenExpiry.Seconds()))
+
+	c.JSON(http.StatusOK, refreshResponse{
+		Token: accessToken,
+		User: loginUserResponse{
+			ID:       user.ID,
+			Username: user.Username,
+			Role:     user.Role,
+		},
+	})
 }
 
 type changePasswordRequest struct {
@@ -229,6 +403,7 @@ func (h *AuthHandler) PutPassword(c *gin.Context) {
 
 	// Revoke all existing tokens so compromised sessions are immediately invalidated.
 	auth.Tokens.RevokeAllForUser(userID)
+	_ = h.queries.RevokeAllRefreshTokensForUser(c.Request.Context(), userID)
 
 	ip := c.ClientIP()
 	slog.Info("auth: password changed", "user_id", userID, "ip", ip)

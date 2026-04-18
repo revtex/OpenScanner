@@ -33,6 +33,7 @@ import {
   selectToken,
   selectRole,
   clearCredentials,
+  usePostLogoutMutation,
 } from "@/app/slices/authSlice";
 import UsersPanel from "@/components/admin/UsersPanel";
 import SystemsPanel from "@/components/admin/SystemsPanel";
@@ -128,6 +129,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [postLogout] = usePostLogoutMutation();
 
   if (!token) {
     return (
@@ -158,8 +160,13 @@ export default function AdminLayout() {
   }
 
   const handleSignOut = () => {
-    dispatch(clearCredentials());
-    navigate("/login", { replace: true });
+    postLogout()
+      .unwrap()
+      .catch(() => {})
+      .finally(() => {
+        dispatch(clearCredentials());
+        navigate("/login", { replace: true });
+      });
   };
 
   return (
