@@ -24,6 +24,7 @@ class AudioPlayer {
   private currentItem: QueueItem | null = null;
   private _paused = false;
   private _playing = false;
+  private _startedAt = 0; // AudioContext.currentTime when source.start() was called
   private callStartCb: ((call: Call) => void) | null = null;
   private callEndCb: (() => void) | null = null;
   private queueChangeCb: ((length: number) => void) | null = null;
@@ -177,6 +178,18 @@ class AudioPlayer {
     return this._playing;
   }
 
+  /** Current playback position in seconds, or 0 if not playing. */
+  getPlaybackTime(): number {
+    if (!this._playing) return 0;
+    if (this.fallbackAudio) {
+      return this.fallbackAudio.currentTime;
+    }
+    if (this.ctx && this._startedAt > 0) {
+      return this.ctx.currentTime - this._startedAt;
+    }
+    return 0;
+  }
+
   setOnCallStart(cb: (call: Call) => void): void {
     this.callStartCb = cb;
   }
@@ -286,6 +299,7 @@ class AudioPlayer {
         src.start();
         this.source = src;
         this._playing = true;
+        this._startedAt = this.ctx!.currentTime;
       },
       () => {
         // WebAudio decode failed — fall back to HTMLAudioElement which

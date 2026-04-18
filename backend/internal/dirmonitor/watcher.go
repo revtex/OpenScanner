@@ -723,6 +723,12 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 		if decoderCol.Valid {
 			calPayload["decoder"] = decoderCol.String
 		}
+		if srcJSON.Valid {
+			calPayload["sources"] = srcJSON.String
+		}
+		if freqJSON.Valid {
+			calPayload["frequencies"] = freqJSON.String
+		}
 
 		calMsg, err := ws.NewCALMessage(calPayload, audioBytes)
 		if err != nil {

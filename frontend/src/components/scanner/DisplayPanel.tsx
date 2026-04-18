@@ -11,6 +11,7 @@ import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { useShareCallMutation } from "@/app/slices/shareSlice";
 import { HistoryPanel } from "@/components/scanner/HistoryPanel";
 import { TranscriptPanel } from "@/components/scanner/TranscriptPanel";
+import { useActiveUnit } from "@/hooks/useActiveUnit";
 import type { AvoidEntry, Call } from "@/types";
 
 interface DisplayPanelProps {
@@ -206,6 +207,8 @@ export function DisplayPanel({
     ? heldTG === currentCall.talkgroup || heldSystem === currentCall.system
     : false;
 
+  const activeUnit = useActiveUnit(currentCall?.sources);
+
   const displayContent = (
     <div className="font-mono text-sm leading-5 p-3 h-105 flex flex-col">
       {/* Row 1: clock, listeners, queue */}
@@ -265,12 +268,13 @@ export function DisplayPanel({
                 .join(" · ")}
             </span>
             <span className="truncate text-right">
-              {[
-                currentCall.source ? `UID: ${currentCall.source}` : "",
-                currentCall.talkerAlias,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
+              {(() => {
+                const uid = activeUnit?.src ?? currentCall.source;
+                const alias = activeUnit?.tag || currentCall.talkerAlias;
+                return [uid ? `UID: ${uid}` : "", alias]
+                  .filter(Boolean)
+                  .join(" · ");
+              })()}
             </span>
           </div>
 

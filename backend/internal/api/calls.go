@@ -369,6 +369,20 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		patchesJSON = sql.NullString{String: v, Valid: true}
 	}
 
+	// Trunk-recorder's rdio-scanner uploader embeds unit IDs inside the
+	// "sources" JSON array rather than sending a top-level "source" field.
+	// Extract the first source unit ID when not explicitly provided.
+	if !source.Valid && sourcesJSON.Valid {
+		source = extractPrimarySource(sourcesJSON.String)
+	}
+
+	// Similarly, error and spike counts are per-segment inside the
+	// "frequencies" JSON array. Aggregate them when no top-level values
+	// were provided.
+	if !errorCount.Valid && !spikeCount.Valid && frequenciesJSON.Valid {
+		errorCount, spikeCount = aggregateErrorSpikeCounts(frequenciesJSON.String)
+	}
+
 	// Optional call metadata fields.
 	var siteCol, channelCol, decoderCol sql.NullString
 	if v := c.PostForm("site"); v != "" {
@@ -390,6 +404,13 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	var talkerAliasCol sql.NullString
 	if v := c.PostForm("talkerAlias"); v != "" {
 		talkerAliasCol = sql.NullString{String: v, Valid: true}
+	}
+
+	// Trunk-recorder embeds OTA aliases in the sources JSON "tag" field
+	// rather than sending a top-level "talkerAlias". Extract from the
+	// first source entry when not explicitly provided.
+	if !talkerAliasCol.Valid && sourcesJSON.Valid {
+		talkerAliasCol = extractPrimarySourceTag(sourcesJSON.String)
 	}
 
 	ctx := c.Request.Context()
@@ -707,6 +728,12 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		}
 		if talkerAliasCol.Valid {
 			calPayload["talkerAlias"] = talkerAliasCol.String
+		}
+		if sourcesJSON.Valid {
+			calPayload["sources"] = sourcesJSON.String
+		}
+		if frequenciesJSON.Valid {
+			calPayload["frequencies"] = frequenciesJSON.String
 		}
 		calMsg, err := ws.NewCALMessage(calPayload, audioBytes)
 		if err != nil {
@@ -1431,4 +1458,90 @@ func upsertUnitsFromSources(ctx context.Context, q *db.Queries, systemDBID int64
 				"unit_id", int64(srcFloat), "tag", tag, "error", err)
 		}
 	}
+}
+
+// extractPrimarySource returns the "src" value from the first entry in a
+// sources JSON array. Trunk-recorder sends unit IDs only inside this array
+// (e.g. [{"pos":0,"src":12345}, ...]) and does not set a top-level "source".
+func extractPrimarySource(raw string) sql.NullInt64 {
+	var sources []map[string]any
+	if err := json.Unmarshal([]byte(raw), &sources); err != nil || len(sources) == 0 {
+		return sql.NullInt64{}
+	}
+	srcVal, ok := sources[0]["src"]
+	if !ok {
+		return sql.NullInt64{}
+	}
+	srcFloat, ok := srcVal.(float64)
+	if !ok || srcFloat <= 0 {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: int64(srcFloat), Valid: true}
+}
+
+// extractPrimarySourceTag returns the "tag" value from the first source entry
+// that has a non-empty tag. Trunk-recorder sends OTA aliases (talker alias)
+// inside the sources JSON rather than as a top-level "talkerAlias" field.
+func extractPrimarySourceTag(raw string) sql.NullString {
+	var sources []map[string]any
+	if err := json.Unmarshal([]byte(raw), &sources); err != nil {
+		return sql.NullString{}
+	}
+	for _, entry := range sources {
+		tagVal, ok := entry["tag"]
+		if !ok {
+			continue
+		}
+		tag, ok := tagVal.(string)
+		if !ok || tag == "" {
+			continue
+		}
+		return sql.NullString{String: tag, Valid: true}
+	}
+	return sql.NullString{}
+}
+
+// aggregateErrorSpikeCounts sums errorCount and spikeCount from all entries
+// in a frequencies JSON array. Trunk-recorder sends per-segment values inside
+// this array (e.g. [{"errorCount":2,"spikeCount":0}, ...]) rather than
+// providing aggregate top-level fields.
+func aggregateErrorSpikeCounts(raw string) (sql.NullInt64, sql.NullInt64) {
+	var freqs []map[string]any
+	if err := json.Unmarshal([]byte(raw), &freqs); err != nil || len(freqs) == 0 {
+		return sql.NullInt64{}, sql.NullInt64{}
+	}
+	var totalErrors, totalSpikes int64
+	var found bool
+	for _, entry := range freqs {
+		if v, ok := entry["errorCount"]; ok {
+			if f, ok := v.(float64); ok {
+				totalErrors += int64(f)
+				found = true
+			}
+		}
+		// trunk-recorder also uses "error_count" in its call JSON.
+		if v, ok := entry["error_count"]; ok {
+			if f, ok := v.(float64); ok {
+				totalErrors += int64(f)
+				found = true
+			}
+		}
+		if v, ok := entry["spikeCount"]; ok {
+			if f, ok := v.(float64); ok {
+				totalSpikes += int64(f)
+				found = true
+			}
+		}
+		if v, ok := entry["spike_count"]; ok {
+			if f, ok := v.(float64); ok {
+				totalSpikes += int64(f)
+				found = true
+			}
+		}
+	}
+	if !found {
+		return sql.NullInt64{}, sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: totalErrors, Valid: true},
+		sql.NullInt64{Int64: totalSpikes, Valid: true}
 }

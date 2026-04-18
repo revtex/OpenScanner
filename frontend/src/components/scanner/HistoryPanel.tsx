@@ -32,29 +32,14 @@ export function HistoryPanel({ history, time12hFormat }: HistoryPanelProps) {
               {formatTime(call.dateTime)}
             </span>
           </div>
-          {/* Line 2: system · UID · TGID · freq MHz */}
+          {/* Line 2: system · TGID */}
           <div className="flex items-center gap-1 text-[10px] opacity-40 whitespace-nowrap overflow-hidden">
             <span className="min-w-0 flex-1 truncate">
               {call.systemLabel ?? ""}
             </span>
-            {call.source != null && call.source > 0 && (
-              <>
-                <span>·</span>
-                <span className="shrink-0">UID:{call.source}</span>
-              </>
-            )}
             {call.talkgroupId > 0 && (
               <>
-                <span>·</span>
                 <span className="shrink-0">TGID:{call.talkgroupId}</span>
-              </>
-            )}
-            {call.frequency != null && call.frequency > 0 && (
-              <>
-                <span>·</span>
-                <span className="shrink-0">
-                  {(call.frequency / 1e6).toFixed(4)} MHz
-                </span>
               </>
             )}
             {call.errorCount != null && call.errorCount > 0 && (
