@@ -33,7 +33,7 @@ Key startup flags:
 - --version
 - --service
 
-Environment variable equivalents are OPENSCANNER_* variants plus TZ for timezone fallback.
+Environment variable equivalents are OPENSCANNER\_\* variants plus TZ for timezone fallback.
 
 ## Build and Run
 
@@ -111,6 +111,91 @@ When TLS is enabled, HTTP listener redirects traffic to HTTPS.
 You can run OpenScanner behind nginx/Caddy for centralized TLS and host routing.
 
 When proxying, ensure WebSocket upgrade headers are forwarded for /ws and /api/admin/ws.
+
+### Nginx Configuration
+
+Use this when OpenScanner listens on localhost (example: `127.0.0.1:3000`) and Nginx handles TLS.
+
+```nginx
+map $http_upgrade $connection_upgrade {
+	default upgrade;
+	''      close;
+}
+
+server {
+	listen 80;
+	server_name scanner.example.com;
+	return 301 https://$host$request_uri;
+}
+
+server {
+	listen 443 ssl http2;
+	server_name scanner.example.com;
+
+	ssl_certificate     /etc/letsencrypt/live/scanner.example.com/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/scanner.example.com/privkey.pem;
+
+	client_max_body_size 100m;
+
+	location / {
+		proxy_pass http://127.0.0.1:3000;
+		proxy_http_version 1.1;
+
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+
+		proxy_set_header Upgrade $http_upgrade;
+		proxy_set_header Connection $connection_upgrade;
+
+		proxy_read_timeout 3600;
+		proxy_send_timeout 3600;
+	}
+}
+```
+
+Notes:
+
+- `X-Forwarded-Proto $scheme` is required so OpenScanner can detect HTTPS and set secure refresh cookies correctly.
+- WebSocket upgrade headers must be present for `/ws` and `/api/admin/ws`.
+- Increase `client_max_body_size` if you upload larger files (imports/audio).
+
+### Caddy Configuration
+
+Use this when OpenScanner listens on localhost (example: `127.0.0.1:3000`) and Caddy handles automatic HTTPS.
+
+```caddy
+scanner.example.com {
+	encode gzip zstd
+
+	reverse_proxy 127.0.0.1:3000
+}
+```
+
+Caddy automatically forwards headers needed by OpenScanner (including `X-Forwarded-Proto`) and handles WebSocket upgrades.
+
+If you need to be explicit:
+
+```caddy
+scanner.example.com {
+	encode gzip zstd
+
+	reverse_proxy 127.0.0.1:3000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-For {remote_host}
+	}
+}
+```
+
+### Proxy Deployment Tips
+
+- Run OpenScanner on a private bind address (for example, `--listen 127.0.0.1:3000`) when fronted by a reverse proxy.
+- Keep proxy and OpenScanner clocks synchronized (NTP) so JWT and cookie expiry behavior is consistent.
+- Test both WebSocket endpoints after deployment:
+  - `/ws` (scanner/live data)
+  - `/api/admin/ws` (admin channel)
 
 ## Verification Checklist
 
