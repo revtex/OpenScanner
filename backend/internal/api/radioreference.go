@@ -1,13 +1,11 @@
 package api
 
 import (
-	"context"
 	"database/sql"
 	"encoding/csv"
 	"errors"
 	"io"
 	"net/http"
-	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -66,23 +64,7 @@ type RRPreviewResponse struct {
 	Rows        []RRPreviewRow `json:"rows"`
 } // @name RRPreviewResponse
 
-// RRApplyRequest is the request body for applying RadioReference enrichment.
-type RRApplyRequest struct {
-	SystemID       int64                  `json:"systemId"`
-	Candidates     []RRTalkgroupCandidate `json:"candidates"`
-	MergeMode      string                 `json:"mergeMode"`
-	SelectedFields []string               `json:"selectedFields"`
-} // @name RRApplyRequest
 
-// RRApplyResponse is the result of applying RadioReference enrichment.
-type RRApplyResponse struct {
-	Processed int          `json:"processed"`
-	Matched   int          `json:"matched"`
-	Updated   int          `json:"updated"`
-	Skipped   int          `json:"skipped"`
-	Errors    int          `json:"errors"`
-	RowErrors []RRRowError `json:"rowErrors"`
-} // @name RRApplyResponse
 
 // RadioReferencePreviewCSV handles POST /api/admin/radioreference/preview/csv.
 //
@@ -158,106 +140,6 @@ func (h *AdminHandler) RadioReferencePreviewCSV(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// RadioReferenceApply handles POST /api/admin/radioreference/apply.
-//
-//	@Summary      Apply RadioReference enrichment
-//	@Description  Apply previously previewed RadioReference talkgroup enrichment candidates. Supports fill_missing (default) and overwrite_selected merge modes with per-field toggles. Frequency is never updated.
-//	@Tags         Admin - RadioReference
-//	@Accept       json
-//	@Produce      json
-//	@Param        body  body      RRApplyRequest   true  "Candidates and merge options"
-//	@Success      200   {object}  RRApplyResponse
-//	@Failure      400   {object}  ErrorResponse
-//	@Failure      500   {object}  ErrorResponse
-//	@Security     BearerAuth
-//	@Router       /admin/radioreference/apply [post]
-func (h *AdminHandler) RadioReferenceApply(c *gin.Context) {
-	ctx := c.Request.Context()
-
-	var req RRApplyRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-		return
-	}
-	if req.SystemID <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "systemId is required"})
-		return
-	}
-	if len(req.Candidates) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "candidates are required"})
-		return
-	}
-	if len(req.Candidates) > maxImportRows {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "too many candidates"})
-		return
-	}
-	if req.MergeMode == "" {
-		req.MergeMode = rrMergeModeFillMissing
-	}
-	if req.MergeMode != rrMergeModeFillMissing && req.MergeMode != rrMergeModeOverwriteSelected {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "mergeMode must be 'fill_missing' or 'overwrite_selected'"})
-		return
-	}
-	if _, err := h.queries.GetSystem(ctx, req.SystemID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "system not found"})
-		return
-	}
-
-	selected := rrSanitizeSelectedFields(req.SelectedFields)
-	resp := RRApplyResponse{}
-	for _, candidate := range req.Candidates {
-		resp.Processed++
-
-		tg, tgErr := h.queries.GetTalkgroupBySystemAndTGID(ctx, db.GetTalkgroupBySystemAndTGIDParams{
-			SystemID:    req.SystemID,
-			TalkgroupID: candidate.TalkgroupID,
-		})
-		if tgErr != nil {
-			if errors.Is(tgErr, sql.ErrNoRows) {
-				resp.Skipped++
-				resp.RowErrors = append(resp.RowErrors, RRRowError{Row: candidate.Row, Reason: "talkgroup not found in selected system"})
-				continue
-			}
-			resp.Errors++
-			resp.RowErrors = append(resp.RowErrors, RRRowError{Row: candidate.Row, Reason: "database error"})
-			continue
-		}
-		resp.Matched++
-
-		params := db.UpdateTalkgroupParams{
-			ID:          tg.ID,
-			TalkgroupID: tg.TalkgroupID,
-			Label:       tg.Label,
-			Name:        tg.Name,
-			Frequency:   tg.Frequency, // Keep existing value; RR never updates frequency.
-			Led:         tg.Led,
-			GroupID:     tg.GroupID,
-			TagID:       tg.TagID,
-			Order:       tg.Order,
-		}
-
-		applyFields := rrCandidateFieldsForMode(tg, candidate, req.MergeMode, selected)
-		if len(applyFields) == 0 {
-			resp.Skipped++
-			continue
-		}
-
-		if err := h.applyRRFieldUpdates(ctx, &params, candidate, applyFields); err != nil {
-			resp.Errors++
-			resp.RowErrors = append(resp.RowErrors, RRRowError{Row: candidate.Row, Reason: err.Error()})
-			continue
-		}
-
-		if err := h.queries.UpdateTalkgroup(ctx, params); err != nil {
-			resp.Errors++
-			resp.RowErrors = append(resp.RowErrors, RRRowError{Row: candidate.Row, Reason: "database error"})
-			continue
-		}
-		resp.Updated++
-	}
-
-	c.JSON(http.StatusOK, resp)
-}
 
 func parseSystemIDForm(c *gin.Context) (int64, bool) {
 	systemIDStr := c.PostForm("system_id")
@@ -407,19 +289,7 @@ func rrStringPtr(v string) *string {
 	return &v
 }
 
-func rrSanitizeSelectedFields(fields []string) []string {
-	out := make([]string, 0, len(fields))
-	for _, f := range fields {
-		v := strings.ToLower(strings.TrimSpace(f))
-		if !rrUpdatableFields[v] {
-			continue
-		}
-		if !slices.Contains(out, v) {
-			out = append(out, v)
-		}
-	}
-	return out
-}
+
 
 func rrCandidateFieldsForMode(tg db.Talkgroup, candidate RRTalkgroupCandidate, mergeMode string, selectedFields []string) []string {
 	allow := map[string]bool{}
@@ -454,60 +324,4 @@ func rrCandidateFieldsForMode(tg db.Talkgroup, candidate RRTalkgroupCandidate, m
 	return fields
 }
 
-func (h *AdminHandler) applyRRFieldUpdates(ctx context.Context, params *db.UpdateTalkgroupParams, candidate RRTalkgroupCandidate, fields []string) error {
-	for _, field := range fields {
-		switch field {
-		case "label":
-			if candidate.Label != nil {
-				params.Label = sql.NullString{String: *candidate.Label, Valid: true}
-			}
-		case "name":
-			if candidate.Name != nil {
-				params.Name = sql.NullString{String: *candidate.Name, Valid: true}
-			}
-		case "group":
-			if candidate.Group != nil {
-				g, err := h.queries.GetGroupByLabel(ctx, *candidate.Group)
-				if err != nil {
-					if errors.Is(err, sql.ErrNoRows) {
-						newID, createErr := h.queries.CreateGroup(ctx, *candidate.Group)
-						if createErr != nil {
-							return errors.New("database error")
-						}
-						params.GroupID = sql.NullInt64{Int64: newID, Valid: true}
-					} else {
-						return errors.New("database error")
-					}
-				} else {
-					params.GroupID = sql.NullInt64{Int64: g.ID, Valid: true}
-				}
-			}
-		case "tag":
-			if candidate.Tag != nil {
-				t, err := h.queries.GetTagByLabel(ctx, *candidate.Tag)
-				if err != nil {
-					if errors.Is(err, sql.ErrNoRows) {
-						newID, createErr := h.queries.CreateTag(ctx, *candidate.Tag)
-						if createErr != nil {
-							return errors.New("database error")
-						}
-						params.TagID = sql.NullInt64{Int64: newID, Valid: true}
-					} else {
-						return errors.New("database error")
-					}
-				} else {
-					params.TagID = sql.NullInt64{Int64: t.ID, Valid: true}
-				}
-			}
-		case "led":
-			if candidate.Led != nil {
-				params.Led = sql.NullString{String: *candidate.Led, Valid: true}
-			}
-		case "order":
-			if candidate.Order != nil {
-				params.Order = *candidate.Order
-			}
-		}
-	}
-	return nil
-}
+

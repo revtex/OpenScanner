@@ -88,7 +88,8 @@ export default function DirMonitorPanel() {
   }, []);
 
   const sorted = useMemo(
-    () => (dirmonitors ? [...dirmonitors].sort((a, b) => a.order - b.order) : []),
+    () =>
+      dirmonitors ? [...dirmonitors].sort((a, b) => a.order - b.order) : [],
     [dirmonitors],
   );
 
@@ -280,8 +281,8 @@ export default function DirMonitorPanel() {
                   <tr key={d.id}>
                     <td className="font-mono text-sm">{d.directory}</td>
                     <td>
-                      {DIRMONITOR_TYPES.find((t) => t.value === d.type)?.label ??
-                        d.type}
+                      {DIRMONITOR_TYPES.find((t) => t.value === d.type)
+                        ?.label ?? d.type}
                     </td>
                     <td>
                       <input

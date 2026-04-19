@@ -104,33 +104,30 @@ export function useWsMutation<TResult = void, TArg = Record<string, unknown>>(
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
-  const trigger = useCallback(
-    (arg: TArg): MutationResult<TResult> => {
-      const params = optionsRef.current?.transformArg
-        ? optionsRef.current.transformArg(arg)
-        : (arg as unknown as Record<string, unknown>);
+  const trigger = useCallback((arg: TArg): MutationResult<TResult> => {
+    const params = optionsRef.current?.transformArg
+      ? optionsRef.current.transformArg(arg)
+      : (arg as unknown as Record<string, unknown>);
 
-      setIsLoading(true);
-      setIsError(false);
+    setIsLoading(true);
+    setIsError(false);
 
-      const promise = adminWsClient
-        .request<TResult>(opRef.current, params)
-        .then((result) => {
-          setIsLoading(false);
-          return result;
-        })
-        .catch((e: unknown) => {
-          setIsLoading(false);
-          setIsError(true);
-          throw e;
-        });
+    const promise = adminWsClient
+      .request<TResult>(opRef.current, params)
+      .then((result) => {
+        setIsLoading(false);
+        return result;
+      })
+      .catch((e: unknown) => {
+        setIsLoading(false);
+        setIsError(true);
+        throw e;
+      });
 
-      return {
-        unwrap: () => promise,
-      };
-    },
-    [],
-  );
+    return {
+      unwrap: () => promise,
+    };
+  }, []);
 
   return [trigger, { isLoading, isError }];
 }
@@ -155,10 +152,7 @@ interface LazyQueryResult<T> {
 export function useLazyWsQuery<TResult, TArg = void>(
   op: string,
   options?: { transformArg?: (arg: TArg) => Record<string, unknown> },
-): [
-  (arg: TArg) => LazyQueryResult<TResult>,
-  LazyQueryState<TResult>,
-] {
+): [(arg: TArg) => LazyQueryResult<TResult>, LazyQueryState<TResult>] {
   const [data, setData] = useState<TResult | undefined>(undefined);
   const [isFetching, setIsFetching] = useState(false);
   const opRef = useRef(op);
@@ -166,33 +160,30 @@ export function useLazyWsQuery<TResult, TArg = void>(
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
-  const trigger = useCallback(
-    (arg: TArg): LazyQueryResult<TResult> => {
-      const params = optionsRef.current?.transformArg
-        ? optionsRef.current.transformArg(arg)
-        : (arg as unknown as Record<string, unknown> | undefined);
+  const trigger = useCallback((arg: TArg): LazyQueryResult<TResult> => {
+    const params = optionsRef.current?.transformArg
+      ? optionsRef.current.transformArg(arg)
+      : (arg as unknown as Record<string, unknown> | undefined);
 
-      setIsFetching(true);
+    setIsFetching(true);
 
-      const promise = adminWsClient
-        .request<TResult>(opRef.current, params ?? undefined)
-        .then((result) => {
-          setData(result);
-          setIsFetching(false);
-          return result;
-        })
-        .catch((e: unknown) => {
-          setIsFetching(false);
-          throw e;
-        });
+    const promise = adminWsClient
+      .request<TResult>(opRef.current, params ?? undefined)
+      .then((result) => {
+        setData(result);
+        setIsFetching(false);
+        return result;
+      })
+      .catch((e: unknown) => {
+        setIsFetching(false);
+        throw e;
+      });
 
-      return {
-        data: undefined as unknown as TResult,
-        unwrap: () => promise,
-      };
-    },
-    [],
-  );
+    return {
+      data: undefined as unknown as TResult,
+      unwrap: () => promise,
+    };
+  }, []);
 
   return [trigger, { data, isFetching, isLoading: isFetching }];
 }

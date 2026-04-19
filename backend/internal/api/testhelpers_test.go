@@ -74,3 +74,23 @@ func seedAdminUser(t *testing.T, queries *db.Queries, username, password string)
 	}
 	return id
 }
+
+// seedGroup creates a group with the given label and returns its ID.
+func seedGroup(t *testing.T, queries *db.Queries, label string) int64 {
+	t.Helper()
+	id, err := queries.CreateGroup(context.Background(), label)
+	if err != nil {
+		t.Fatalf("create group %q: %v", label, err)
+	}
+	return id
+}
+
+// seedTag creates a tag with the given label and returns its ID.
+func seedTag(t *testing.T, queries *db.Queries, label string) int64 {
+	t.Helper()
+	id, err := queries.CreateTag(context.Background(), label)
+	if err != nil {
+		t.Fatalf("create tag %q: %v", label, err)
+	}
+	return id
+}

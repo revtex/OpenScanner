@@ -1,4 +1,4 @@
-import { api } from "@/app/api";
+// Activity types used by the WebSocket-based useAdminActivity hook.
 
 export interface ActivityStats {
   callsToday: number;
@@ -28,23 +28,3 @@ export interface TopTalkgroup {
 export interface TopTalkgroupsResponse {
   talkgroups: TopTalkgroup[];
 }
-
-const activityApi = api.injectEndpoints({
-  endpoints: (builder) => ({
-    getActivityStats: builder.query<ActivityStats, void>({
-      query: () => "/admin/activity/stats",
-    }),
-    getActivityChart: builder.query<ActivityChartResponse, void>({
-      query: () => "/admin/activity/chart",
-    }),
-    getTopTalkgroups: builder.query<TopTalkgroupsResponse, void>({
-      query: () => "/admin/activity/top-talkgroups",
-    }),
-  }),
-});
-
-export const {
-  useGetActivityStatsQuery,
-  useGetActivityChartQuery,
-  useGetTopTalkgroupsQuery,
-} = activityApi;

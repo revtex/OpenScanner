@@ -320,11 +320,7 @@ export function useDeleteWebhookMutation() {
 // ─── Config ─────────────────────────────────────────────────────────────────
 
 export function useGetConfigQuery() {
-  return useWsQuery<ConfigResponse>(
-    "config.get",
-    undefined,
-    "config.updated",
-  );
+  return useWsQuery<ConfigResponse>("config.get", undefined, "config.updated");
 }
 
 export function useUpdateConfigMutation() {
@@ -394,7 +390,5 @@ export function useCleanupMissingAudioCallsMutation() {
 // ─── RadioReference ─────────────────────────────────────────────────────────
 
 export function useRrApplyMutation() {
-  return useWsMutation<RRApplyResponse, RRApplyRequest>(
-    "radioreference.apply",
-  );
+  return useWsMutation<RRApplyResponse, RRApplyRequest>("radioreference.apply");
 }

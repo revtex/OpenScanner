@@ -127,103 +127,18 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		upload.POST("/api/trunk-recorder-call-upload", callHandler.PostCallUpload)
 	}
 
-	// Admin CRUD — JWT + admin role required.
+	// Admin routes — JWT + admin role required.
+	// Most admin operations are handled via WebSocket (ADM_REQ/ADM_RES).
+	// Only file-upload endpoints remain on REST (WebSocket can't handle multipart).
 	admin := api.Group("/admin")
 	admin.Use(middleware.JWTAuth(), middleware.RequireAdmin(), middleware.MaxBodySize(2<<20)) // 2 MiB JSON body limit
 	{
-		// Users
-		admin.GET("/users", adminHandler.ListUsers)
-		admin.POST("/users", adminHandler.CreateUser)
-		admin.PUT("/users/:id", adminHandler.UpdateUser)
-		admin.DELETE("/users/:id", adminHandler.DeleteUser)
-
-		// Systems
-		admin.GET("/systems", adminHandler.ListSystems)
-		admin.POST("/systems", adminHandler.CreateSystem)
-		admin.PUT("/systems/reorder", adminHandler.ReorderSystems)
-		admin.PUT("/systems/:id", adminHandler.UpdateSystem)
-		admin.DELETE("/systems/:id", adminHandler.DeleteSystem)
-
-		// Talkgroups
-		admin.GET("/talkgroups", adminHandler.ListTalkgroups)
-		admin.POST("/talkgroups", adminHandler.CreateTalkgroup)
-		admin.PUT("/talkgroups/:id", adminHandler.UpdateTalkgroup)
-		admin.DELETE("/talkgroups/:id", adminHandler.DeleteTalkgroup)
-
-		// Units
-		admin.GET("/units", adminHandler.ListUnits)
-		admin.POST("/units", adminHandler.CreateUnit)
-		admin.PUT("/units/:id", adminHandler.UpdateUnit)
-		admin.DELETE("/units/:id", adminHandler.DeleteUnit)
-
-		// Groups
-		admin.GET("/groups", adminHandler.ListGroups)
-		admin.POST("/groups", adminHandler.CreateGroup)
-		admin.PUT("/groups/:id", adminHandler.UpdateGroup)
-		admin.DELETE("/groups/:id", adminHandler.DeleteGroup)
-
-		// Tags
-		admin.GET("/tags", adminHandler.ListTags)
-		admin.POST("/tags", adminHandler.CreateTag)
-		admin.PUT("/tags/:id", adminHandler.UpdateTag)
-		admin.DELETE("/tags/:id", adminHandler.DeleteTag)
-
-		// API Keys
-		admin.GET("/apikeys", adminHandler.ListAPIKeys)
-		admin.POST("/apikeys", adminHandler.CreateAPIKey)
-		admin.PUT("/apikeys/reorder", adminHandler.ReorderAPIKeys)
-		admin.PUT("/apikeys/:id", adminHandler.UpdateAPIKey)
-		admin.DELETE("/apikeys/:id", adminHandler.DeleteAPIKey)
-
-		// DirMonitors
-		admin.GET("/fs/directories", adminHandler.ListServerDirectories)
-		admin.GET("/dirmonitors", adminHandler.ListDirMonitors)
-		admin.POST("/dirmonitors", adminHandler.CreateDirMonitor)
-		admin.PUT("/dirmonitors/:id", adminHandler.UpdateDirMonitor)
-		admin.DELETE("/dirmonitors/:id", adminHandler.DeleteDirMonitor)
-
-		// Downstreams
-		admin.GET("/downstreams", adminHandler.ListDownstreams)
-		admin.POST("/downstreams", adminHandler.CreateDownstream)
-		admin.PUT("/downstreams/:id", adminHandler.UpdateDownstream)
-		admin.DELETE("/downstreams/:id", adminHandler.DeleteDownstream)
-
-		// Webhooks
-		admin.GET("/webhooks", adminHandler.ListWebhooks)
-		admin.POST("/webhooks", adminHandler.CreateWebhook)
-		admin.PUT("/webhooks/:id", adminHandler.UpdateWebhook)
-		admin.DELETE("/webhooks/:id", adminHandler.DeleteWebhook)
-
-		// Config
-		admin.GET("/config", adminHandler.GetConfig)
-		admin.PUT("/config", adminHandler.PutConfig)
-		admin.GET("/tools/audio-missing", adminHandler.GetMissingAudioCalls)
-		admin.POST("/tools/audio-missing/cleanup", adminHandler.CleanupMissingAudioCalls)
-
-		// Import / Export
+		// Import (file uploads — must stay REST)
 		admin.POST("/import/talkgroups", adminHandler.ImportTalkgroups)
 		admin.POST("/import/units", adminHandler.ImportUnits)
-		admin.GET("/export/talkgroups", adminHandler.ExportTalkgroups)
-		admin.GET("/export/units", adminHandler.ExportUnits)
-		admin.GET("/export/config", adminHandler.ExportConfig)
-		admin.POST("/import/config", adminHandler.ImportConfig)
 
-		// RadioReference
+		// RadioReference CSV preview (file upload — must stay REST)
 		admin.POST("/radioreference/preview/csv", adminHandler.RadioReferencePreviewCSV)
-		admin.POST("/radioreference/apply", adminHandler.RadioReferenceApply)
-
-		// Logs
-		admin.GET("/logs", adminHandler.GetLogs)
-		admin.GET("/logs/level", adminHandler.GetLogLevel)
-
-		// Activity
-		admin.GET("/activity/stats", adminHandler.GetActivityStats)
-		admin.GET("/activity/chart", adminHandler.GetActivityChart)
-		admin.GET("/activity/top-talkgroups", adminHandler.GetTopTalkgroups)
-
-		// Shared Links
-		admin.GET("/shared-links", adminHandler.GetSharedLinks)
-		admin.DELETE("/shared-links/:id", adminHandler.DeleteSharedLinkAdmin)
 
 		// Swagger: issue a short-lived HTTP-only cookie so Swagger UI
 		// can be opened in a new browser tab without exposing the JWT.
