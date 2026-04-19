@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Fix ownership of GOPATH (named volume mounts default to root)
+# Fix ownership of named volumes (they mount as root by default)
 sudo chown -R vscode:vscode /home/vscode/go
+sudo chown -R vscode:vscode /home/vscode/.local/share/pnpm
 
 echo "==> Installing backend Go dependencies..."
 cd /workspaces/OpenScanner/backend
@@ -14,6 +15,7 @@ sqlc generate || echo "  (sqlc generate skipped — queries may not be ready yet
 
 echo "==> Installing frontend dependencies..."
 cd /workspaces/OpenScanner/frontend
+
 pnpm install
 
 echo ""

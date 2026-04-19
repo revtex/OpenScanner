@@ -112,6 +112,9 @@ describe("AdminLayout", () => {
   });
 
   it("sign out button clears credentials", async () => {
+    // Suppress RTK Query unhandled-error log (Node's Request can't resolve relative URLs in jsdom)
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
     const { store } = renderAdmin({
       auth: {
         token: "test-token",
@@ -130,5 +133,7 @@ describe("AdminLayout", () => {
       expect(store.getState().auth.token).toBeNull();
     });
     expect(mockNavigate).toHaveBeenCalledWith("/login", { replace: true });
+
+    spy.mockRestore();
   });
 });

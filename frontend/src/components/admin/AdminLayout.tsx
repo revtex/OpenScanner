@@ -91,7 +91,7 @@ function SidebarContent({
           <NavLink
             to={to}
             onClick={handleClick(to, onNavClick)}
-            className={({ isActive }) =>
+            className={({ isActive }: { isActive: boolean }) =>
               isActive
                 ? "border-l-4 border-primary bg-primary/10"
                 : "hover:bg-base-300"
