@@ -18,13 +18,17 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -45,7 +49,19 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 )
 
+var (
+	newServiceControllerFn = newServiceController
+	serviceControlFn       = service.Control
+	executablePathFn       = os.Executable
+)
+
+const defaultInstallBinaryPath = "/usr/local/bin/openscanner"
+
 func main() {
+	if handleLocalSetupCommands() {
+		return
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("failed to load configuration", "error", err)
@@ -101,6 +117,416 @@ func main() {
 		slog.Error("service run failed", "error", err)
 		os.Exit(1)
 	}
+}
+
+func handleLocalSetupCommands() bool {
+	if len(os.Args) < 2 {
+		return false
+	}
+
+	switch os.Args[1] {
+	case "setup":
+		os.Exit(runSetup(os.Args[2:]))
+	case "upgrade":
+		os.Exit(runUpgrade(os.Args[2:]))
+	case "config":
+		if len(os.Args) >= 3 && os.Args[2] == "validate" {
+			os.Exit(runConfigValidate(os.Args[3:]))
+		}
+	case "service":
+		if len(os.Args) >= 3 && os.Args[2] == "doctor" {
+			os.Exit(runServiceDoctor())
+		}
+	}
+
+	return false
+}
+
+func runSetup(args []string) int {
+	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+
+	listen := fs.String("listen", "127.0.0.1:3022", "HTTP listen address")
+	dbFile := fs.String("db-file", "/var/lib/openscanner/openscanner.db", "SQLite database file path")
+	recordingsDir := fs.String("recordings-dir", "/var/lib/openscanner/recordings", "Directory for call audio recordings")
+	configFile := fs.String("config", config.DefaultServiceConfigFile, "Path to JSON config file")
+	installBinary := fs.String("install-binary", defaultInstallBinaryPath, "Path where OpenScanner executable is installed")
+	interactive := fs.Bool("interactive", false, "Prompt for setup values interactively")
+	force := fs.Bool("force", false, "Overwrite/reinstall when setup already exists")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	if *interactive {
+		proceed, err := runInteractiveSetup(os.Stdin, os.Stdout, listen, dbFile, recordingsDir, configFile, installBinary)
+		if err != nil {
+			slog.Error("setup: interactive prompt failed", "error", err)
+			return 1
+		}
+		if !proceed {
+			fmt.Println("Setup cancelled.")
+			return 0
+		}
+	}
+
+	configExists := pathExists(*configFile)
+	dbExists := pathExists(*dbFile)
+
+	serviceArgs := []string{"--config", *configFile}
+	svc, err := newServiceControllerFn(serviceArgs, *installBinary)
+	if err != nil {
+		slog.Error("setup: failed to initialize service controller", "error", err)
+		return 1
+	}
+	installed, running, statusText := serviceState(svc)
+
+	if (configExists || dbExists || installed) && !*force {
+		fmt.Println("OpenScanner appears to already be set up.")
+		fmt.Printf("- config file: %s (exists=%t)\n", *configFile, configExists)
+		fmt.Printf("- database file: %s (exists=%t)\n", *dbFile, dbExists)
+		fmt.Printf("- service status: installed=%t running=%t (%s)\n", installed, running, statusText)
+		fmt.Println("No changes were made. Use --force to overwrite/reinstall.")
+		fmt.Println("Next steps: openscanner service doctor, openscanner config validate --config <path>")
+		return 0
+	}
+
+	if err := os.MkdirAll(filepath.Dir(*configFile), 0o755); err != nil {
+		slog.Error("setup: failed to create config directory", "error", err)
+		return 1
+	}
+	if err := os.MkdirAll(filepath.Dir(*dbFile), 0o755); err != nil {
+		slog.Error("setup: failed to create database directory", "error", err)
+		return 1
+	}
+	if err := os.MkdirAll(*recordingsDir, 0o755); err != nil {
+		slog.Error("setup: failed to create recordings directory", "error", err)
+		return 1
+	}
+
+	startupCfg := &config.Config{
+		Listen:        *listen,
+		DBFile:        *dbFile,
+		RecordingsDir: *recordingsDir,
+		ConfigFile:    *configFile,
+	}
+	if err := startupCfg.SaveJSON(); err != nil {
+		slog.Error("setup: failed to write config file", "error", err)
+		return 1
+	}
+
+	if err := config.ValidateJSONFile(*configFile); err != nil {
+		slog.Error("setup: config validation failed", "error", err)
+		return 1
+	}
+
+	exePath, err := executablePathFn()
+	if err != nil {
+		slog.Error("setup: failed to resolve current executable", "error", err)
+		return 1
+	}
+	if err := moveBinary(exePath, *installBinary); err != nil {
+		slog.Error("setup: failed to install executable", "source", exePath, "target", *installBinary, "error", err)
+		return 1
+	}
+
+	if *force && installed {
+		_ = serviceControlFn(svc, "stop")
+		if err := serviceControlFn(svc, "uninstall"); err != nil {
+			slog.Error("setup: failed to uninstall existing service", "error", err)
+			return 1
+		}
+		installed = false
+	}
+
+	if !installed {
+		if err := serviceControlFn(svc, "install"); err != nil {
+			slog.Error("setup: failed to install service", "error", err)
+			return 1
+		}
+	}
+
+	if err := serviceControlFn(svc, "start"); err != nil && !running {
+		slog.Error("setup: failed to start service", "error", err)
+		return 1
+	}
+
+	fmt.Println("OpenScanner setup completed.")
+	fmt.Printf("- executable: %s\n", *installBinary)
+	fmt.Printf("- config file: %s\n", *configFile)
+	fmt.Printf("- service args: %s\n", strings.Join(serviceArgs, " "))
+	fmt.Println("- verify: curl -f http://127.0.0.1:3022/api/health")
+	fmt.Println("- doctor: openscanner service doctor")
+	return 0
+}
+
+func runUpgrade(args []string) int {
+	fs := flag.NewFlagSet("upgrade", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	binary := fs.String("binary", "", "Path to new OpenScanner executable (defaults to current executable)")
+	installBinary := fs.String("install-binary", defaultInstallBinaryPath, "Installed OpenScanner executable path")
+	configFile := fs.String("config", config.DefaultServiceConfigFile, "Path to JSON config file")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	sourceBinary := strings.TrimSpace(*binary)
+	if sourceBinary == "" {
+		exePath, err := executablePathFn()
+		if err != nil {
+			slog.Error("upgrade: failed to resolve current executable", "error", err)
+			return 1
+		}
+		sourceBinary = exePath
+	}
+
+	serviceArgs := []string{"--config", *configFile}
+	svc, err := newServiceControllerFn(serviceArgs, *installBinary)
+	if err != nil {
+		slog.Error("upgrade: failed to initialize service controller", "error", err)
+		return 1
+	}
+
+	installed, running, statusText := serviceState(svc)
+	if !installed {
+		slog.Error("upgrade: service is not installed")
+		fmt.Println("Run 'openscanner setup' first.")
+		return 1
+	}
+
+	if running {
+		if err := serviceControlFn(svc, "stop"); err != nil {
+			slog.Error("upgrade: failed to stop service", "error", err)
+			return 1
+		}
+	}
+
+	if err := copyBinary(sourceBinary, *installBinary); err != nil {
+		slog.Error("upgrade: failed to copy executable", "source", sourceBinary, "target", *installBinary, "error", err)
+		return 1
+	}
+
+	if running {
+		if err := serviceControlFn(svc, "start"); err != nil {
+			slog.Error("upgrade: failed to start service", "error", err)
+			return 1
+		}
+	}
+
+	fmt.Println("OpenScanner upgrade completed.")
+	fmt.Printf("- source executable: %s\n", sourceBinary)
+	fmt.Printf("- installed executable: %s\n", *installBinary)
+	fmt.Printf("- previous service status: %s\n", statusText)
+	if running {
+		fmt.Println("- service restarted")
+	} else {
+		fmt.Println("- service was stopped and remains stopped")
+	}
+	return 0
+}
+
+func runConfigValidate(args []string) int {
+	fs := flag.NewFlagSet("config validate", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+	configFile := fs.String("config", config.DefaultServiceConfigFile, "Path to JSON config file")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	if *configFile == config.DefaultServiceConfigFile && !pathExists(*configFile) {
+		slog.Error("config file not found", "path", *configFile)
+		fmt.Println("Pass a config path via --config /path/to/openscanner.json")
+		return 1
+	}
+
+	if err := config.ValidateJSONFile(*configFile); err != nil {
+		slog.Error("config validation failed", "path", *configFile, "error", err)
+		return 1
+	}
+
+	fmt.Printf("Config is valid: %s\n", *configFile)
+	return 0
+}
+
+func runServiceDoctor() int {
+	svc, err := newServiceControllerFn(nil, defaultInstallBinaryPath)
+	if err != nil {
+		slog.Error("service doctor: failed to initialize service controller", "error", err)
+		return 1
+	}
+
+	installed, running, statusText := serviceState(svc)
+	fmt.Println("OpenScanner Service Doctor")
+	fmt.Printf("- installed: %t\n", installed)
+	fmt.Printf("- running:   %t\n", running)
+	fmt.Printf("- status:    %s\n", statusText)
+	fmt.Printf("- default config path: %s\n", config.DefaultServiceConfigFile)
+	fmt.Printf("- default executable path: %s\n", defaultInstallBinaryPath)
+
+	if !installed {
+		fmt.Println("- hint: install with 'openscanner setup' or 'openscanner --service install --config /path/to/openscanner.json'")
+		return 0
+	}
+
+	if !running {
+		fmt.Println("- hint: start with 'openscanner --service start'")
+	}
+
+	fmt.Println("- hint: validate config with 'openscanner config validate --config /path/to/openscanner.json'")
+	return 0
+}
+
+func newServiceController(args []string, executable string) (service.Service, error) {
+	svcConfig := &service.Config{
+		Name:        "openscanner",
+		DisplayName: "OpenScanner",
+		Description: "OpenScanner Radio Call Manager",
+		Arguments:   args,
+		Executable:  executable,
+	}
+	return service.New(&program{}, svcConfig)
+}
+
+func serviceState(svc service.Service) (installed bool, running bool, statusText string) {
+	status, err := svc.Status()
+	if err != nil {
+		msg := strings.ToLower(err.Error())
+		if strings.Contains(msg, "not installed") || strings.Contains(msg, "no such") || strings.Contains(msg, "could not be found") {
+			return false, false, "not installed"
+		}
+		return true, false, "unknown"
+	}
+
+	switch status {
+	case service.StatusRunning:
+		return true, true, "running"
+	case service.StatusStopped:
+		return true, false, "stopped"
+	default:
+		return true, false, "unknown"
+	}
+}
+
+func pathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func runInteractiveSetup(
+	in io.Reader,
+	out io.Writer,
+	listen, dbFile, recordingsDir, configFile, installBinary *string,
+) (bool, error) {
+	reader := bufio.NewReader(in)
+	fmt.Fprintln(out, "OpenScanner interactive setup")
+
+	var err error
+	if *listen, err = promptWithDefault(reader, out, "Listen address", *listen); err != nil {
+		return false, err
+	}
+	if *dbFile, err = promptWithDefault(reader, out, "Database file", *dbFile); err != nil {
+		return false, err
+	}
+	if *recordingsDir, err = promptWithDefault(reader, out, "Recordings directory", *recordingsDir); err != nil {
+		return false, err
+	}
+	if *configFile, err = promptWithDefault(reader, out, "Config file", *configFile); err != nil {
+		return false, err
+	}
+	if *installBinary, err = promptWithDefault(reader, out, "Install executable path", *installBinary); err != nil {
+		return false, err
+	}
+
+	answer, err := promptWithDefault(reader, out, "Proceed with setup? [y/N]", "n")
+	if err != nil {
+		return false, err
+	}
+	answer = strings.ToLower(strings.TrimSpace(answer))
+	return answer == "y" || answer == "yes", nil
+}
+
+func moveBinary(sourcePath, targetPath string) error {
+	same, err := samePath(sourcePath, targetPath)
+	if err != nil {
+		return err
+	}
+	if same {
+		return nil
+	}
+
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+		return err
+	}
+
+	if err := os.Rename(sourcePath, targetPath); err == nil {
+		return os.Chmod(targetPath, 0o755)
+	}
+
+	if err := copyBinary(sourcePath, targetPath); err != nil {
+		return err
+	}
+	return os.Remove(sourcePath)
+}
+
+func copyBinary(sourcePath, targetPath string) error {
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+		return err
+	}
+
+	in, err := os.Open(sourcePath)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	tmpFile, err := os.CreateTemp(filepath.Dir(targetPath), ".openscanner-bin-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmpFile.Name()
+
+	if _, err := io.Copy(tmpFile, in); err != nil {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpName)
+		return err
+	}
+	if err := tmpFile.Close(); err != nil {
+		_ = os.Remove(tmpName)
+		return err
+	}
+	if err := os.Chmod(tmpName, 0o755); err != nil {
+		_ = os.Remove(tmpName)
+		return err
+	}
+	if err := os.Rename(tmpName, targetPath); err != nil {
+		_ = os.Remove(tmpName)
+		return err
+	}
+	return nil
+}
+
+func samePath(a, b string) (bool, error) {
+	aAbs, err := filepath.Abs(a)
+	if err != nil {
+		return false, err
+	}
+	bAbs, err := filepath.Abs(b)
+	if err != nil {
+		return false, err
+	}
+	return aAbs == bAbs, nil
+}
+
+func promptWithDefault(reader *bufio.Reader, out io.Writer, label, def string) (string, error) {
+	fmt.Fprintf(out, "%s [%s]: ", label, def)
+	line, err := reader.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return "", err
+	}
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return def, nil
+	}
+	return line, nil
 }
 
 // serviceArguments returns startup arguments to persist in service definitions.

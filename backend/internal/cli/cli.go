@@ -74,8 +74,8 @@ func nonFlagArgs() []string {
 			continue
 		}
 		if strings.HasPrefix(arg, "-") {
-			// Flags like --listen=:3000 are self-contained.
-			// Flags like --listen :3000 consume the next arg.
+			// Flags like --listen=:3022 are self-contained.
+			// Flags like --listen :3022 consume the next arg.
 			if !strings.Contains(arg, "=") {
 				skipNext = true
 			}
@@ -100,7 +100,7 @@ func resolveServerURL() string {
 	if v := os.Getenv("OPENSCANNER_SERVER"); v != "" {
 		return strings.TrimRight(v, "/")
 	}
-	return "http://localhost:3000"
+	return "http://localhost:3022"
 }
 
 // tokenPath returns the full path to the token file.

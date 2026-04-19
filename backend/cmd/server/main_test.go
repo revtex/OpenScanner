@@ -1,0 +1,330 @@
+package main
+
+import (
+	"bytes"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/kardianos/service"
+	"github.com/openscanner/openscanner/internal/config"
+)
+
+type fakeService struct {
+	status service.Status
+}
+
+func (f *fakeService) Run() error                                  { return nil }
+func (f *fakeService) Start() error                                { return nil }
+func (f *fakeService) Stop() error                                 { return nil }
+func (f *fakeService) Restart() error                              { return nil }
+func (f *fakeService) Install() error                              { return nil }
+func (f *fakeService) Uninstall() error                            { return nil }
+func (f *fakeService) Logger(chan<- error) (service.Logger, error) { return nil, nil }
+func (f *fakeService) SystemLogger(chan<- error) (service.Logger, error) {
+	return nil, nil
+}
+func (f *fakeService) String() string                  { return "openscanner" }
+func (f *fakeService) Platform() string                { return "test" }
+func (f *fakeService) Status() (service.Status, error) { return f.status, nil }
+
+func TestRunConfigValidate_CustomPathValid(t *testing.T) {
+	temp := t.TempDir()
+	dbFile := filepath.Join(temp, "openscanner.db")
+	recDir := filepath.Join(temp, "recordings")
+	cfgPath := filepath.Join(temp, "openscanner.json")
+
+	cfg := &config.Config{
+		Listen:        "127.0.0.1:3022",
+		DBFile:        dbFile,
+		RecordingsDir: recDir,
+		ConfigFile:    cfgPath,
+	}
+	if err := cfg.SaveJSON(); err != nil {
+		t.Fatalf("SaveJSON failed: %v", err)
+	}
+
+	if code := runConfigValidate([]string{"--config", cfgPath}); code != 0 {
+		t.Fatalf("runConfigValidate returned %d, want 0", code)
+	}
+}
+
+func TestRunConfigValidate_DefaultPathMissing(t *testing.T) {
+	if _, err := os.Stat(config.DefaultServiceConfigFile); err == nil {
+		t.Skipf("default config path exists on this host: %s", config.DefaultServiceConfigFile)
+	}
+
+	if code := runConfigValidate(nil); code != 1 {
+		t.Fatalf("runConfigValidate returned %d, want 1", code)
+	}
+}
+
+func TestRunSetup_AlreadyConfigured_NoForce(t *testing.T) {
+	origNew := newServiceControllerFn
+	origControl := serviceControlFn
+	origExe := executablePathFn
+	defer func() {
+		newServiceControllerFn = origNew
+		serviceControlFn = origControl
+		executablePathFn = origExe
+	}()
+
+	temp := t.TempDir()
+	cfgPath := filepath.Join(temp, "openscanner.json")
+	dbPath := filepath.Join(temp, "openscanner.db")
+	recDir := filepath.Join(temp, "recordings")
+
+	if err := os.WriteFile(cfgPath, []byte("{}\n"), 0o644); err != nil {
+		t.Fatalf("write config stub: %v", err)
+	}
+	if err := os.WriteFile(dbPath, []byte("db"), 0o644); err != nil {
+		t.Fatalf("write db stub: %v", err)
+	}
+
+	newServiceControllerFn = func(_ []string, _ string) (service.Service, error) {
+		return &fakeService{status: service.StatusRunning}, nil
+	}
+	executablePathFn = func() (string, error) {
+		return filepath.Join(temp, "openscanner"), nil
+	}
+	called := false
+	serviceControlFn = func(_ service.Service, _ string) error {
+		called = true
+		return nil
+	}
+
+	args := []string{
+		"--config", cfgPath,
+		"--db-file", dbPath,
+		"--recordings-dir", recDir,
+		"--install-binary", filepath.Join(temp, "installed", "openscanner"),
+	}
+	if code := runSetup(args); code != 0 {
+		t.Fatalf("runSetup returned %d, want 0", code)
+	}
+	if called {
+		t.Fatalf("service control should not be called when setup already exists and --force is not used")
+	}
+}
+
+func TestRunSetup_ForceReinstallFlow(t *testing.T) {
+	origNew := newServiceControllerFn
+	origControl := serviceControlFn
+	origExe := executablePathFn
+	defer func() {
+		newServiceControllerFn = origNew
+		serviceControlFn = origControl
+		executablePathFn = origExe
+	}()
+
+	temp := t.TempDir()
+	cfgPath := filepath.Join(temp, "openscanner.json")
+	dbPath := filepath.Join(temp, "openscanner.db")
+	recDir := filepath.Join(temp, "recordings")
+
+	if err := os.WriteFile(cfgPath, []byte("{}\n"), 0o644); err != nil {
+		t.Fatalf("write config stub: %v", err)
+	}
+	if err := os.WriteFile(dbPath, []byte("db"), 0o644); err != nil {
+		t.Fatalf("write db stub: %v", err)
+	}
+
+	newServiceControllerFn = func(_ []string, _ string) (service.Service, error) {
+		return &fakeService{status: service.StatusStopped}, nil
+	}
+
+	exeSource := filepath.Join(temp, "openscanner-src")
+	if err := os.WriteFile(exeSource, []byte("fake-binary"), 0o755); err != nil {
+		t.Fatalf("write fake executable: %v", err)
+	}
+	executablePathFn = func() (string, error) {
+		return exeSource, nil
+	}
+	installPath := filepath.Join(temp, "installed", "openscanner")
+
+	var actions []string
+	serviceControlFn = func(_ service.Service, action string) error {
+		actions = append(actions, action)
+		return nil
+	}
+
+	args := []string{
+		"--force",
+		"--listen", "127.0.0.1:3022",
+		"--config", cfgPath,
+		"--db-file", dbPath,
+		"--recordings-dir", recDir,
+		"--install-binary", installPath,
+	}
+	if code := runSetup(args); code != 0 {
+		t.Fatalf("runSetup returned %d, want 0", code)
+	}
+
+	wantOrder := []string{"stop", "uninstall", "install", "start"}
+	if len(actions) != len(wantOrder) {
+		t.Fatalf("service actions count %d, want %d; got=%v", len(actions), len(wantOrder), actions)
+	}
+	for i, want := range wantOrder {
+		if actions[i] != want {
+			t.Fatalf("service action[%d]=%q, want %q (all=%v)", i, actions[i], want, actions)
+		}
+	}
+
+	if _, err := os.Stat(installPath); err != nil {
+		t.Fatalf("installed executable missing: %v", err)
+	}
+	if _, err := os.Stat(exeSource); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected source executable to be moved, stat err=%v", err)
+	}
+}
+
+func TestRunUpgrade_RestartsRunningService(t *testing.T) {
+	origNew := newServiceControllerFn
+	origControl := serviceControlFn
+	defer func() {
+		newServiceControllerFn = origNew
+		serviceControlFn = origControl
+	}()
+
+	temp := t.TempDir()
+	source := filepath.Join(temp, "openscanner-new")
+	installPath := filepath.Join(temp, "installed", "openscanner")
+	if err := os.WriteFile(source, []byte("new-binary"), 0o755); err != nil {
+		t.Fatalf("write source binary: %v", err)
+	}
+
+	newServiceControllerFn = func(_ []string, executable string) (service.Service, error) {
+		if executable != installPath {
+			t.Fatalf("unexpected executable path: %s", executable)
+		}
+		return &fakeService{status: service.StatusRunning}, nil
+	}
+
+	var actions []string
+	serviceControlFn = func(_ service.Service, action string) error {
+		actions = append(actions, action)
+		return nil
+	}
+
+	code := runUpgrade([]string{"--binary", source, "--install-binary", installPath})
+	if code != 0 {
+		t.Fatalf("runUpgrade returned %d, want 0", code)
+	}
+
+	if len(actions) != 2 || actions[0] != "stop" || actions[1] != "start" {
+		t.Fatalf("unexpected service actions: %v", actions)
+	}
+	if _, err := os.Stat(installPath); err != nil {
+		t.Fatalf("installed executable missing after upgrade: %v", err)
+	}
+}
+
+func TestRunUpgrade_RequiresInstalledService(t *testing.T) {
+	origNew := newServiceControllerFn
+	defer func() {
+		newServiceControllerFn = origNew
+	}()
+
+	temp := t.TempDir()
+	source := filepath.Join(temp, "openscanner-new")
+	if err := os.WriteFile(source, []byte("new-binary"), 0o755); err != nil {
+		t.Fatalf("write source binary: %v", err)
+	}
+
+	newServiceControllerFn = func(_ []string, _ string) (service.Service, error) {
+		return &fakeStatusErrorService{err: errors.New("service not installed")}, nil
+	}
+
+	if code := runUpgrade([]string{"--binary", source, "--install-binary", filepath.Join(temp, "installed", "openscanner")}); code != 1 {
+		t.Fatalf("runUpgrade returned %d, want 1", code)
+	}
+}
+
+func TestServiceState_NotInstalledError(t *testing.T) {
+	svc := &fakeStatusErrorService{err: errors.New("service not installed")}
+	installed, running, status := serviceState(svc)
+	if installed || running || status != "not installed" {
+		t.Fatalf("unexpected service state: installed=%t running=%t status=%q", installed, running, status)
+	}
+}
+
+type fakeStatusErrorService struct {
+	err error
+}
+
+func (f *fakeStatusErrorService) Run() error                                  { return nil }
+func (f *fakeStatusErrorService) Start() error                                { return nil }
+func (f *fakeStatusErrorService) Stop() error                                 { return nil }
+func (f *fakeStatusErrorService) Restart() error                              { return nil }
+func (f *fakeStatusErrorService) Install() error                              { return nil }
+func (f *fakeStatusErrorService) Uninstall() error                            { return nil }
+func (f *fakeStatusErrorService) Logger(chan<- error) (service.Logger, error) { return nil, nil }
+func (f *fakeStatusErrorService) SystemLogger(chan<- error) (service.Logger, error) {
+	return nil, nil
+}
+func (f *fakeStatusErrorService) String() string   { return "openscanner" }
+func (f *fakeStatusErrorService) Platform() string { return "test" }
+func (f *fakeStatusErrorService) Status() (service.Status, error) {
+	return service.StatusUnknown, f.err
+}
+
+func TestRunInteractiveSetup_UsesDefaultsAndCancels(t *testing.T) {
+	listen := "127.0.0.1:3022"
+	db := "/var/lib/openscanner/openscanner.db"
+	rec := "/var/lib/openscanner/recordings"
+	cfg := "/etc/openscanner/openscanner.json"
+	install := "/usr/local/bin/openscanner"
+
+	in := strings.NewReader("\n\n\n\n\n\nn\n")
+	out := &bytes.Buffer{}
+
+	proceed, err := runInteractiveSetup(in, out, &listen, &db, &rec, &cfg, &install)
+	if err != nil {
+		t.Fatalf("runInteractiveSetup returned error: %v", err)
+	}
+	if proceed {
+		t.Fatalf("expected setup to be cancelled")
+	}
+	if listen != "127.0.0.1:3022" || db != "/var/lib/openscanner/openscanner.db" || rec != "/var/lib/openscanner/recordings" || cfg != "/etc/openscanner/openscanner.json" {
+		t.Fatalf("expected defaults to remain unchanged")
+	}
+	if install != "/usr/local/bin/openscanner" {
+		t.Fatalf("expected install path default to remain unchanged")
+	}
+}
+
+func TestRunInteractiveSetup_AppliesOverridesAndConfirms(t *testing.T) {
+	listen := "127.0.0.1:3022"
+	db := "/var/lib/openscanner/openscanner.db"
+	rec := "/var/lib/openscanner/recordings"
+	cfg := "/etc/openscanner/openscanner.json"
+	install := "/usr/local/bin/openscanner"
+
+	in := strings.NewReader("0.0.0.0:3022\n/tmp/openscanner.db\n/tmp/recordings\n/tmp/openscanner.json\n/tmp/openscanner\ny\n")
+	out := &bytes.Buffer{}
+
+	proceed, err := runInteractiveSetup(in, out, &listen, &db, &rec, &cfg, &install)
+	if err != nil {
+		t.Fatalf("runInteractiveSetup returned error: %v", err)
+	}
+	if !proceed {
+		t.Fatalf("expected setup to proceed")
+	}
+	if listen != "0.0.0.0:3022" {
+		t.Fatalf("listen override not applied: %s", listen)
+	}
+	if db != "/tmp/openscanner.db" {
+		t.Fatalf("db override not applied: %s", db)
+	}
+	if rec != "/tmp/recordings" {
+		t.Fatalf("recordings override not applied: %s", rec)
+	}
+	if cfg != "/tmp/openscanner.json" {
+		t.Fatalf("config override not applied: %s", cfg)
+	}
+	if install != "/tmp/openscanner" {
+		t.Fatalf("install path override not applied: %s", install)
+	}
+}

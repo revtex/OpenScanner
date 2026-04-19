@@ -102,15 +102,15 @@ describe("scannerSlice", () => {
   });
 
   describe("toggleLive", () => {
-    it("toggles isLive from true to false", () => {
+    it("toggles isLive from false to true", () => {
       const state = reducer(undefined, toggleLive());
-      expect(state.isLive).toBe(false);
+      expect(state.isLive).toBe(true);
     });
 
-    it("toggles isLive from false to true", () => {
+    it("toggles isLive from true to false", () => {
       let state = reducer(undefined, toggleLive());
       state = reducer(state, toggleLive());
-      expect(state.isLive).toBe(true);
+      expect(state.isLive).toBe(false);
     });
   });
 

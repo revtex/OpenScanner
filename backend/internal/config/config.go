@@ -5,9 +5,11 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"path/filepath"
 )
@@ -15,9 +17,12 @@ import (
 // Version is set at build time via ldflags.
 var Version = "0.1.0"
 
+// DefaultServiceConfigFile is the production default JSON config path used by setup tooling.
+const DefaultServiceConfigFile = "/etc/openscanner/openscanner.json"
+
 // Config holds all server startup configuration.
 type Config struct {
-	Listen        string // HTTP listen address (default ":3000")
+	Listen        string // HTTP listen address (default ":3022")
 	DBFile        string // SQLite database file path (default "openscanner.db")
 	RecordingsDir string // Directory for call audio recordings (default: executable dir)
 	SSLListen     string // HTTPS listen address
@@ -56,7 +61,7 @@ func Load() (*Config, error) {
 	defaultRecordingsDir := filepath.Dir(exePath)
 
 	// Define CLI flags.
-	flag.StringVar(&cfg.Listen, "listen", ":3000", "HTTP listen address")
+	flag.StringVar(&cfg.Listen, "listen", ":3022", "HTTP listen address")
 	flag.StringVar(&cfg.DBFile, "db-file", "openscanner.db", "SQLite database file path")
 	flag.StringVar(&cfg.RecordingsDir, "recordings-dir", defaultRecordingsDir, "Directory for call audio recordings")
 	flag.StringVar(&cfg.SSLListen, "ssl-listen", "", "HTTPS listen address")
@@ -247,4 +252,63 @@ func (c *Config) SaveJSON() error {
 func (c *Config) String() string {
 	return fmt.Sprintf("listen=%s db-file=%s recordings-dir=%s ssl-listen=%s ssl-auto-cert=%s timezone=%s",
 		c.Listen, c.DBFile, c.RecordingsDir, c.SSLListen, c.SSLAutoCert, c.Timezone)
+}
+
+// ValidateJSONFile validates a startup JSON config file and basic host filesystem assumptions.
+func ValidateJSONFile(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("config file not found: %s", path)
+		}
+		return fmt.Errorf("read config file: %w", err)
+	}
+
+	var fileCfg jsonFileConfig
+	if err := json.Unmarshal(data, &fileCfg); err != nil {
+		return fmt.Errorf("parse JSON config: %w", err)
+	}
+
+	if fileCfg.Listen == "" {
+		return fmt.Errorf("invalid config: listen is required")
+	}
+	if _, err := net.ResolveTCPAddr("tcp", fileCfg.Listen); err != nil {
+		return fmt.Errorf("invalid listen address %q: %w", fileCfg.Listen, err)
+	}
+
+	if fileCfg.DBFile == "" {
+		return fmt.Errorf("invalid config: db_file is required")
+	}
+	if err := ensureParentDirWritable(fileCfg.DBFile); err != nil {
+		return fmt.Errorf("db_file path is not writable: %w", err)
+	}
+
+	if fileCfg.RecordingsDir == "" {
+		return fmt.Errorf("invalid config: recordings_dir is required")
+	}
+	if err := ensureDirWritable(fileCfg.RecordingsDir); err != nil {
+		return fmt.Errorf("recordings_dir is not writable: %w", err)
+	}
+
+	return nil
+}
+
+func ensureParentDirWritable(path string) error {
+	dir := filepath.Dir(path)
+	return ensureDirWritable(dir)
+}
+
+func ensureDirWritable(path string) error {
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(path, ".openscanner-writecheck-*")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Remove(name)
 }

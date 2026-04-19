@@ -251,7 +251,7 @@ describe("LEDPanel", () => {
       scanner: {
         isLive: true,
         isPaused: false,
-        isAudioActive: false,
+        isAudioActive: true,
         heldSystem: null,
         heldTG: null,
         avoidList: [],

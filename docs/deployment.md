@@ -37,13 +37,37 @@ Default config file path for `--config` is `openscanner.json`.
 
 Environment variable equivalents are OPENSCANNER\_\* variants plus TZ for timezone fallback.
 
+## Quick Start (Recommended)
+
+For production installs, use the guided setup command:
+
+```bash
+./openscanner setup
+```
+
+This command creates config/data paths, validates config, installs the service, and starts it.
+It also installs the executable to `/usr/local/bin/openscanner` by default.
+
+## Verify Installation
+
+```bash
+curl -f http://127.0.0.1:3022/api/health
+./openscanner service doctor
+```
+
+If health check fails, validate config explicitly:
+
+```bash
+./openscanner config validate
+```
+
 ## Build and Run
 
 From repository root:
 
 ```bash
 make build
-./build/openscanner --listen 0.0.0.0:3000 --db-file ./data/openscanner.db --recordings-dir ./data/recordings
+./build/openscanner --listen 0.0.0.0:3022 --db-file ./data/openscanner.db --recordings-dir ./data/recordings
 ```
 
 Root build process:
@@ -68,7 +92,7 @@ Run with persistent /data volume for DB and recordings.
 
 The included compose file maps:
 
-- port 3000
+- port 3022
 - ./data:/data
 - OPENSCANNER_DB_FILE
 - OPENSCANNER_RECORDINGS_DIR
@@ -90,6 +114,11 @@ make lint
 OpenScanner supports service lifecycle commands:
 
 ```bash
+./openscanner setup
+./openscanner upgrade
+./openscanner config validate
+./openscanner service doctor
+
 ./openscanner --service install
 ./openscanner --service start
 ./openscanner --service stop
@@ -97,11 +126,31 @@ OpenScanner supports service lifecycle commands:
 ./openscanner --service uninstall
 ```
 
+Production setup defaults:
+
+- config: `/etc/openscanner/openscanner.json`
+- db: `/var/lib/openscanner/openscanner.db`
+- recordings: `/var/lib/openscanner/recordings`
+- executable: `/usr/local/bin/openscanner`
+
+`openscanner setup` is idempotent and detects existing setup state. Use `--force` to overwrite/reinstall.
+
+Setup/upgrade executable options:
+
+```bash
+./openscanner setup --install-binary /usr/local/bin/openscanner
+./openscanner upgrade --binary /tmp/openscanner --install-binary /usr/local/bin/openscanner
+```
+
+`openscanner upgrade` replaces the installed executable and restarts the service when it is currently running.
+
 You can provide normal startup flags during install (for example `--config`), and they are persisted into the service command line:
 
 ```bash
-./openscanner --service install --config /etc/openscanner/openscanner.json --listen 127.0.0.1:3000 --db-file /var/lib/openscanner/openscanner.db --recordings-dir /var/lib/openscanner/recordings
+./openscanner --service install --config /etc/openscanner/openscanner.json --listen 127.0.0.1:3022 --db-file /var/lib/openscanner/openscanner.db --recordings-dir /var/lib/openscanner/recordings
 ```
+
+`openscanner config validate` defaults to `/etc/openscanner/openscanner.json`. If that file is missing, pass a custom path using `--config /path/to/openscanner.json`.
 
 kardianos/service is used for OS-specific service integration.
 
@@ -122,7 +171,7 @@ When proxying, ensure WebSocket upgrade headers are forwarded for /ws and /api/a
 
 ### Nginx Configuration
 
-Use this when OpenScanner listens on localhost (example: `127.0.0.1:3000`) and Nginx handles TLS.
+Use this when OpenScanner listens on localhost (example: `127.0.0.1:3022`) and Nginx handles TLS.
 
 ```nginx
 map $http_upgrade $connection_upgrade {
@@ -146,7 +195,7 @@ server {
 	client_max_body_size 100m;
 
 	location / {
-		proxy_pass http://127.0.0.1:3000;
+		proxy_pass http://127.0.0.1:3022;
 		proxy_http_version 1.1;
 
 		proxy_set_header Host $host;
@@ -171,13 +220,13 @@ Notes:
 
 ### Caddy Configuration
 
-Use this when OpenScanner listens on localhost (example: `127.0.0.1:3000`) and Caddy handles automatic HTTPS.
+Use this when OpenScanner listens on localhost (example: `127.0.0.1:3022`) and Caddy handles automatic HTTPS.
 
 ```caddy
 scanner.example.com {
 	encode gzip zstd
 
-	reverse_proxy 127.0.0.1:3000
+	reverse_proxy 127.0.0.1:3022
 }
 ```
 
@@ -189,7 +238,7 @@ If you need to be explicit:
 scanner.example.com {
 	encode gzip zstd
 
-	reverse_proxy 127.0.0.1:3000 {
+	reverse_proxy 127.0.0.1:3022 {
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Forwarded-Host {host}
 		header_up X-Forwarded-For {remote_host}
@@ -199,7 +248,7 @@ scanner.example.com {
 
 ### Proxy Deployment Tips
 
-- Run OpenScanner on a private bind address (for example, `--listen 127.0.0.1:3000`) when fronted by a reverse proxy.
+- Run OpenScanner on a private bind address (for example, `--listen 127.0.0.1:3022`) when fronted by a reverse proxy.
 - Keep proxy and OpenScanner clocks synchronized (NTP) so JWT and cookie expiry behavior is consistent.
 - Test both WebSocket endpoints after deployment:
   - `/ws` (scanner/live data)

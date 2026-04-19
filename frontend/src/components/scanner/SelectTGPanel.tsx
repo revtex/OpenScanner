@@ -405,7 +405,10 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
 
   // Scroll to top on tab change
   useEffect(() => {
-    scrollRef.current?.scrollTo(0, 0);
+    const scrollEl = scrollRef.current;
+    if (scrollEl && typeof scrollEl.scrollTo === "function") {
+      scrollEl.scrollTo(0, 0);
+    }
   }, [activeTab]);
 
   if (!isOpen) return null;

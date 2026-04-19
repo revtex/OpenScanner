@@ -180,6 +180,7 @@ describe("SearchPanel", () => {
   describe("filter controls", () => {
     it("system checkbox filters are populated from config", () => {
       renderPanel({ scanner: scannerState() });
+      fireEvent.click(screen.getByRole("button", { name: /System/i }));
       expect(screen.getByText("System Alpha")).toBeInTheDocument();
       expect(screen.getByText("System Beta")).toBeInTheDocument();
     });
