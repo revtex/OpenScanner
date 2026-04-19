@@ -213,4 +213,5 @@ func (h *AdminHandler) PutConfig(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+	h.hub.BroadcastAdminEvent("config.updated", nil)
 }

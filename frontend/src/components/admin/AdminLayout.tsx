@@ -35,6 +35,7 @@ import {
   clearCredentials,
   usePostLogoutMutation,
 } from "@/app/slices/authSlice";
+import { useAdminWebSocket } from "@/hooks/useAdminWebSocket";
 import UsersPanel from "@/components/admin/UsersPanel";
 import SystemsPanel from "@/components/admin/SystemsPanel";
 import GroupsTagsPanel from "@/components/admin/GroupsTagsPanel";
@@ -130,6 +131,8 @@ export default function AdminLayout() {
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [postLogout] = usePostLogoutMutation();
+
+  useAdminWebSocket();
 
   if (!token) {
     return (

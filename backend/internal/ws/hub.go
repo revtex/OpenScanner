@@ -10,6 +10,9 @@ import (
 	"github.com/openscanner/openscanner/internal/db"
 )
 
+// StartTime is the process start time, used for uptime calculations.
+var StartTime = time.Now()
+
 // Hub manages all WebSocket client connections and broadcasts messages.
 type Hub struct {
 	queries *db.Queries
@@ -125,6 +128,18 @@ func (h *Hub) BroadcastCFG(ctx context.Context) {
 	}
 	h.Broadcast(cfgMsg, nil)
 	slog.Debug("ws: cfg broadcast complete", "clients", h.ClientCount())
+}
+
+// BroadcastAdminEvent sends an ADM_EVT to all connected admin clients.
+func (h *Hub) BroadcastAdminEvent(topic string, data any) {
+	msg, err := NewADMEVTMessage(topic, data)
+	if err != nil {
+		slog.Error("ws: failed to build admin event", "topic", topic, "error", err)
+		return
+	}
+	h.Broadcast(msg, func(c *Client) bool {
+		return c.isAdmin
+	})
 }
 
 // ClientCount returns the number of non-admin (listener) clients.

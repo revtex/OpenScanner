@@ -1,7 +1,10 @@
 // Package ws — WebSocket command and message type definitions.
 package ws
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 // Command constants for WebSocket messages.
 // All messages are JSON arrays: [command, payload?, flags?]
@@ -15,6 +18,11 @@ const (
 	CmdMAX = "MAX" // Server → client: max clients reached
 	CmdVER = "VER" // Server → client: server version + branding + email
 	CmdTRN = "TRN" // Server → client: transcript ready for a call
+
+	// Admin WebSocket protocol.
+	CmdADMEVT = "ADM_EVT" // Server → admin client: event notification
+	CmdADMREQ = "ADM_REQ" // Admin client → server: request
+	CmdADMRES = "ADM_RES" // Server → admin client: response
 
 	// Reserved for future use.
 	CmdIOS = "IOS" // Client → server: iOS-specific client identification
@@ -107,3 +115,33 @@ var ErrEmptyMessage = &wsError{"empty message"}
 type wsError struct{ msg string }
 
 func (e *wsError) Error() string { return e.msg }
+
+// NewADMEVTMessage builds an admin event message.
+// ["ADM_EVT", {"topic": "...", "at": unix_seconds, "data": ...}]
+func NewADMEVTMessage(topic string, data any) ([]byte, error) {
+	return json.Marshal([]any{CmdADMEVT, map[string]any{
+		"topic": topic,
+		"at":    time.Now().Unix(),
+		"data":  data,
+	}})
+}
+
+// NewADMRESMessage builds an admin response message.
+// ["ADM_RES", {"reqId": "...", "ok": true, "data": ...}]
+func NewADMRESMessage(reqID string, data any) ([]byte, error) {
+	return json.Marshal([]any{CmdADMRES, map[string]any{
+		"reqId": reqID,
+		"ok":    true,
+		"data":  data,
+	}})
+}
+
+// NewADMRESErrorMessage builds an admin error response.
+// ["ADM_RES", {"reqId": "...", "ok": false, "error": "..."}]
+func NewADMRESErrorMessage(reqID string, errMsg string) ([]byte, error) {
+	return json.Marshal([]any{CmdADMRES, map[string]any{
+		"reqId": reqID,
+		"ok":    false,
+		"error": errMsg,
+	}})
+}

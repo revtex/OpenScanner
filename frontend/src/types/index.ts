@@ -72,7 +72,10 @@ export type WsCommand =
   | "LFM"
   | "MAX"
   | "VER"
-  | "TRN";
+  | "TRN"
+  | "ADM_EVT"
+  | "ADM_REQ"
+  | "ADM_RES";
 
 // Setup status from GET /api/setup/status
 export interface SetupStatus {

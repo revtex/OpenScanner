@@ -1,8 +1,4 @@
-import {
-  useGetActivityStatsQuery,
-  useGetActivityChartQuery,
-  useGetTopTalkgroupsQuery,
-} from "@/app/slices/activitySlice";
+import { useAdminActivity } from "@/hooks/useAdminActivity";
 import type { ChartBucket } from "@/app/slices/activitySlice";
 import {
   Activity,
@@ -14,8 +10,6 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useAppSelector } from "@/app/store";
-
-const POLL_INTERVAL = 30_000;
 
 function formatUptime(totalSeconds: number): string {
   const days = Math.floor(totalSeconds / 86400);
@@ -207,18 +201,10 @@ export default function ActivityPanel() {
   const hour12 = useAppSelector(
     (s) => s.scanner.config?.time12hFormat ?? false,
   );
-  const { data: stats, isLoading: statsLoading } = useGetActivityStatsQuery(
-    undefined,
-    { pollingInterval: POLL_INTERVAL },
-  );
-  const { data: chart, isLoading: chartLoading } = useGetActivityChartQuery(
-    undefined,
-    { pollingInterval: POLL_INTERVAL },
-  );
-  const { data: topTG, isLoading: topLoading } = useGetTopTalkgroupsQuery(
-    undefined,
-    { pollingInterval: POLL_INTERVAL },
-  );
+  const { stats, chart, topTG, isLoading } = useAdminActivity();
+  const statsLoading = isLoading;
+  const chartLoading = isLoading;
+  const topLoading = isLoading;
 
   const buckets = chart?.buckets ?? [];
   const peakBucket = useMemo(
@@ -264,7 +250,7 @@ export default function ActivityPanel() {
           <div className="ml-auto flex items-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs">
             <span className="h-2 w-2 animate-pulse rounded-full bg-success" />
             <span className="font-semibold text-success">
-              Auto-refresh every 30s
+              Live via WebSocket
             </span>
           </div>
         </div>

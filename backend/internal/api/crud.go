@@ -296,6 +296,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: user created", "id", user.ID, "username", user.Username, "role", user.Role, "by", actorID)
 	c.JSON(http.StatusCreated, toUserResponse(user))
+	h.hub.BroadcastAdminEvent("users.updated", nil)
 }
 
 // UpdateUser handles PUT /api/admin/users/:id.
@@ -391,6 +392,7 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: user updated", "id", user.ID, "username", user.Username, "role", user.Role, "disabled", user.Disabled, "by", actorID)
 	c.JSON(http.StatusOK, toUserResponse(user))
+	h.hub.BroadcastAdminEvent("users.updated", nil)
 }
 
 // DeleteUser handles DELETE /api/admin/users/:id.
@@ -437,6 +439,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	}
 	slog.Info("admin: user deleted", "id", id, "by", userIDVal)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+	h.hub.BroadcastAdminEvent("users.updated", nil)
 }
 
 // ---------- Systems ----------
@@ -502,6 +505,7 @@ func (h *AdminHandler) CreateSystem(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: system created", "id", system.ID, "system_id", system.SystemID, "label", system.Label, "by", actorID)
 	c.JSON(http.StatusCreated, toSystemResponse(system))
+	h.hub.BroadcastAdminEvent("systems.updated", nil)
 }
 
 // UpdateSystem handles PUT /api/admin/systems/:id.
@@ -557,6 +561,7 @@ func (h *AdminHandler) UpdateSystem(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: system updated", "id", system.ID, "system_id", system.SystemID, "by", actorID)
 	c.JSON(http.StatusOK, toSystemResponse(system))
+	h.hub.BroadcastAdminEvent("systems.updated", nil)
 }
 
 // ReorderSystems handles PUT /api/admin/systems/reorder.
@@ -632,6 +637,7 @@ func (h *AdminHandler) ReorderSystems(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: systems reordered", "count", len(req.Systems), "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+	h.hub.BroadcastAdminEvent("systems.updated", nil)
 }
 
 // DeleteSystem handles DELETE /api/admin/systems/:id.
@@ -666,6 +672,7 @@ func (h *AdminHandler) DeleteSystem(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: system deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+	h.hub.BroadcastAdminEvent("systems.updated", nil)
 }
 
 // ---------- Talkgroups ----------
@@ -731,6 +738,7 @@ func (h *AdminHandler) CreateTalkgroup(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: talkgroup created", "id", tg.ID, "talkgroup_id", tg.TalkgroupID, "by", actorID)
 	c.JSON(http.StatusCreated, toTalkgroupResponse(tg))
+	h.hub.BroadcastAdminEvent("talkgroups.updated", nil)
 }
 
 // UpdateTalkgroup handles PUT /api/admin/talkgroups/:id.
@@ -786,6 +794,7 @@ func (h *AdminHandler) UpdateTalkgroup(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: talkgroup updated", "id", tg.ID, "talkgroup_id", tg.TalkgroupID, "by", actorID)
 	c.JSON(http.StatusOK, toTalkgroupResponse(tg))
+	h.hub.BroadcastAdminEvent("talkgroups.updated", nil)
 }
 
 // DeleteTalkgroup handles DELETE /api/admin/talkgroups/:id.
@@ -820,6 +829,7 @@ func (h *AdminHandler) DeleteTalkgroup(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: talkgroup deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+	h.hub.BroadcastAdminEvent("talkgroups.updated", nil)
 }
 
 // ---------- Units ----------
@@ -918,6 +928,7 @@ func (h *AdminHandler) CreateUnit(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: unit created", "id", unit.ID, "unit_id", unit.UnitID, "by", actorID)
 	c.JSON(http.StatusCreated, toUnitResponse(unit))
+	h.hub.BroadcastAdminEvent("units.updated", nil)
 }
 
 // UpdateUnit handles PUT /api/admin/units/:id.
@@ -973,6 +984,7 @@ func (h *AdminHandler) UpdateUnit(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: unit updated", "id", unit.ID, "unit_id", unit.UnitID, "by", actorID)
 	c.JSON(http.StatusOK, toUnitResponse(unit))
+	h.hub.BroadcastAdminEvent("units.updated", nil)
 }
 
 // DeleteUnit handles DELETE /api/admin/units/:id.
@@ -1007,6 +1019,7 @@ func (h *AdminHandler) DeleteUnit(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: unit deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+	h.hub.BroadcastAdminEvent("units.updated", nil)
 }
 
 // ---------- Groups ----------
@@ -1081,6 +1094,7 @@ func (h *AdminHandler) CreateGroup(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: group created", "id", group.ID, "label", group.Label, "by", actorID)
 	c.JSON(http.StatusCreated, group)
+	h.hub.BroadcastAdminEvent("groups.updated", nil)
 }
 
 // UpdateGroup handles PUT /api/admin/groups/:id.
@@ -1141,6 +1155,7 @@ func (h *AdminHandler) UpdateGroup(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: group updated", "id", group.ID, "label", group.Label, "by", actorID)
 	c.JSON(http.StatusOK, group)
+	h.hub.BroadcastAdminEvent("groups.updated", nil)
 }
 
 // DeleteGroup handles DELETE /api/admin/groups/:id.
@@ -1175,9 +1190,8 @@ func (h *AdminHandler) DeleteGroup(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: group deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+	h.hub.BroadcastAdminEvent("groups.updated", nil)
 }
-
-// ---------- Tags ----------
 
 type tagRequest struct {
 	Label string `json:"label"`
@@ -1249,6 +1263,7 @@ func (h *AdminHandler) CreateTag(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: tag created", "id", tag.ID, "label", tag.Label, "by", actorID)
 	c.JSON(http.StatusCreated, tag)
+	h.hub.BroadcastAdminEvent("tags.updated", nil)
 }
 
 // UpdateTag handles PUT /api/admin/tags/:id.
@@ -1309,6 +1324,7 @@ func (h *AdminHandler) UpdateTag(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: tag updated", "id", tag.ID, "label", tag.Label, "by", actorID)
 	c.JSON(http.StatusOK, tag)
+	h.hub.BroadcastAdminEvent("tags.updated", nil)
 }
 
 // DeleteTag handles DELETE /api/admin/tags/:id.
@@ -1343,9 +1359,8 @@ func (h *AdminHandler) DeleteTag(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: tag deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+	h.hub.BroadcastAdminEvent("tags.updated", nil)
 }
-
-// ---------- API Keys ----------
 
 // ListAPIKeys handles GET /api/admin/apikeys.
 //
@@ -1416,6 +1431,7 @@ func (h *AdminHandler) CreateAPIKey(c *gin.Context) {
 		apiKeyResponse: toAPIKeyResponse(key),
 		CreatedKey:     plainKey,
 	})
+	h.hub.BroadcastAdminEvent("apikeys.updated", nil)
 }
 
 // UpdateAPIKey handles PUT /api/admin/apikeys/:id.
@@ -1490,6 +1506,7 @@ func (h *AdminHandler) UpdateAPIKey(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: api key updated", "id", key.ID, "ident", key.Ident.String, "by", actorID)
 	c.JSON(http.StatusOK, toAPIKeyResponse(key))
+	h.hub.BroadcastAdminEvent("apikeys.updated", nil)
 }
 
 // ReorderAPIKeys handles PUT /api/admin/apikeys/reorder.
@@ -1564,6 +1581,7 @@ func (h *AdminHandler) ReorderAPIKeys(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: api keys reordered", "count", len(req.APIKeys), "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+	h.hub.BroadcastAdminEvent("apikeys.updated", nil)
 }
 
 // DeleteAPIKey handles DELETE /api/admin/apikeys/:id.
@@ -1598,9 +1616,8 @@ func (h *AdminHandler) DeleteAPIKey(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: api key deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+	h.hub.BroadcastAdminEvent("apikeys.updated", nil)
 }
-
-// ---------- DirMonitors ----------
 
 // ListDirMonitors handles GET /api/admin/dirmonitors.
 //
@@ -1678,6 +1695,7 @@ func (h *AdminHandler) CreateDirMonitor(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: dirmonitor created", "id", dm.ID, "dir", dm.Directory, "by", actorID)
 	c.JSON(http.StatusCreated, toDirMonitorResponse(dm))
+	h.hub.BroadcastAdminEvent("dirmonitors.updated", nil)
 }
 
 // UpdateDirMonitor handles PUT /api/admin/dirmonitors/:id.
@@ -1748,6 +1766,7 @@ func (h *AdminHandler) UpdateDirMonitor(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: dirmonitor updated", "id", dm.ID, "dir", dm.Directory, "by", actorID)
 	c.JSON(http.StatusOK, toDirMonitorResponse(dm))
+	h.hub.BroadcastAdminEvent("dirmonitors.updated", nil)
 }
 
 // DeleteDirMonitor handles DELETE /api/admin/dirmonitors/:id.
@@ -1786,9 +1805,8 @@ func (h *AdminHandler) DeleteDirMonitor(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: dirmonitor deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+	h.hub.BroadcastAdminEvent("dirmonitors.updated", nil)
 }
-
-// ---------- Downstreams ----------
 
 // ListDownstreams handles GET /api/admin/downstreams.
 //
@@ -1859,6 +1877,7 @@ func (h *AdminHandler) CreateDownstream(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: downstream created", "id", ds.ID, "url", ds.Url, "by", actorID)
 	c.JSON(http.StatusCreated, toDownstreamResponse(ds))
+	h.hub.BroadcastAdminEvent("downstreams.updated", nil)
 }
 
 // UpdateDownstream handles PUT /api/admin/downstreams/:id.
@@ -1918,6 +1937,7 @@ func (h *AdminHandler) UpdateDownstream(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: downstream updated", "id", ds.ID, "url", ds.Url, "by", actorID)
 	c.JSON(http.StatusOK, toDownstreamResponse(ds))
+	h.hub.BroadcastAdminEvent("downstreams.updated", nil)
 }
 
 // DeleteDownstream handles DELETE /api/admin/downstreams/:id.
@@ -1956,9 +1976,8 @@ func (h *AdminHandler) DeleteDownstream(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: downstream deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+	h.hub.BroadcastAdminEvent("downstreams.updated", nil)
 }
-
-// ---------- Webhooks ----------
 
 // ListWebhooks handles GET /api/admin/webhooks.
 //
@@ -2025,6 +2044,7 @@ func (h *AdminHandler) CreateWebhook(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: webhook created", "id", wh.ID, "url", wh.Url, "by", actorID)
 	c.JSON(http.StatusCreated, toWebhookResponse(wh))
+	h.hub.BroadcastAdminEvent("webhooks.updated", nil)
 }
 
 // UpdateWebhook handles PUT /api/admin/webhooks/:id.
@@ -2080,6 +2100,7 @@ func (h *AdminHandler) UpdateWebhook(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: webhook updated", "id", wh.ID, "url", wh.Url, "by", actorID)
 	c.JSON(http.StatusOK, toWebhookResponse(wh))
+	h.hub.BroadcastAdminEvent("webhooks.updated", nil)
 }
 
 // DeleteWebhook handles DELETE /api/admin/webhooks/:id.
@@ -2114,4 +2135,5 @@ func (h *AdminHandler) DeleteWebhook(c *gin.Context) {
 	actorID, _ := c.Get("userID")
 	slog.Info("admin: webhook deleted", "id", id, "by", actorID)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+	h.hub.BroadcastAdminEvent("webhooks.updated", nil)
 }

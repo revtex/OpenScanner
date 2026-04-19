@@ -9,11 +9,8 @@ import {
   X,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import {
-  useGetLogsQuery,
-  useGetLogLevelQuery,
-  useUpdateConfigMutation,
-} from "@/app/slices/adminSlice";
+import { useUpdateConfigMutation } from "@/app/slices/adminSlice";
+import { useAdminLogs, useAdminLogLevel } from "@/hooks/useAdminLogs";
 import type { AdminLog } from "@/types";
 
 // ─── Constants ──────────────────────────────────────────────
@@ -111,18 +108,15 @@ export default function LogsPanel() {
   }>({ limit: 500 });
 
   const {
-    data: logs,
+    logs: logsData,
     isLoading,
     isFetching,
     refetch,
-  } = useGetLogsQuery(queryParams, {
-    pollingInterval: autoRefresh ? 5000 : 0,
-    refetchOnFocus: true,
-  });
+  } = useAdminLogs(queryParams, autoRefresh);
+  const logs = logsData;
 
-  const { data: logLevelData } = useGetLogLevelQuery(undefined, {
-    pollingInterval: 30000,
-  });
+  const { level: runtimeLevelFromWs, refetch: refetchLevel } =
+    useAdminLogLevel();
   const [updateConfig] = useUpdateConfigMutation();
 
   const parentRef = useRef<HTMLDivElement>(null);
@@ -180,7 +174,7 @@ export default function LogsPanel() {
   }, [rows]);
 
   const hasActiveFilters = !!(level || fromDate || toDate || textQuery);
-  const runtimeLevel = logLevelData?.level ?? "info";
+  const runtimeLevel = runtimeLevelFromWs ?? "info";
   const saveRuntimeLevel = useCallback(
     async (nextLevel: string) => {
       if (nextLevel === runtimeLevel) return;
@@ -190,7 +184,7 @@ export default function LogsPanel() {
         await updateConfig([{ key: "logLevel", value: nextLevel }]).unwrap();
         setLevelToast("Log level updated");
         setTimeout(() => setLevelToast(null), 2500);
-        void refetch();
+        void refetchLevel();
         setShowRuntimeLevel(false);
       } catch {
         setLevelSaveError("Failed to update log level");
@@ -198,7 +192,7 @@ export default function LogsPanel() {
         setSavingLevel(false);
       }
     },
-    [runtimeLevel, updateConfig, refetch],
+    [runtimeLevel, updateConfig, refetchLevel],
   );
 
   const virtualizer = useVirtualizer({

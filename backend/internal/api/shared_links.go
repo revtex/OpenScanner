@@ -96,4 +96,5 @@ func (h *AdminHandler) DeleteSharedLinkAdmin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"deleted": true})
+	h.hub.BroadcastAdminEvent("shared-links.updated", nil)
 }

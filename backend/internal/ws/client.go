@@ -16,6 +16,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
+	"github.com/openscanner/openscanner/internal/logging"
 )
 
 const (
@@ -40,6 +41,22 @@ type Client struct {
 	grants  []systemGrant // nil/empty = receive all
 	isAdmin bool
 	userID  int64
+}
+
+// adminRequest is the envelope for admin WS request messages.
+type adminRequest struct {
+	ReqID  string          `json:"reqId"`
+	Op     string          `json:"op"`
+	Params json.RawMessage `json:"params,omitempty"`
+}
+
+// adminOps is the allowlist of valid admin request operations.
+var adminOps = map[string]bool{
+	"activity.stats":          true,
+	"activity.chart":          true,
+	"activity.top-talkgroups": true,
+	"logs.query":              true,
+	"logs.level":              true,
 }
 
 // CanReceive reports whether this client is authorized to receive a call for
@@ -340,10 +357,167 @@ func (c *Client) readPump(ctx context.Context) {
 					}
 				}
 			}
+		case CmdADMREQ:
+			if !c.isAdmin {
+				slog.Warn("ws: non-admin client sent ADM_REQ")
+				continue
+			}
+			if payload == nil {
+				slog.Warn("ws: ADM_REQ with nil payload")
+				continue
+			}
+			var req adminRequest
+			if err := json.Unmarshal(payload, &req); err != nil {
+				slog.Warn("ws: failed to parse ADM_REQ payload", "error", err)
+				continue
+			}
+			if req.ReqID == "" {
+				slog.Warn("ws: ADM_REQ missing reqId")
+				continue
+			}
+			if !adminOps[req.Op] {
+				msg, _ := NewADMRESErrorMessage(req.ReqID, "unknown op: "+req.Op)
+				select {
+				case c.send <- msg:
+				default:
+				}
+				continue
+			}
+			c.handleAdminRequest(ctx, req)
 		default:
 			slog.Warn("ws: received unknown command", "cmd", cmd)
 		}
 	}
+}
+
+// handleAdminRequest dispatches an admin WS request to the appropriate handler.
+func (c *Client) handleAdminRequest(ctx context.Context, req adminRequest) {
+	slog.Debug("ws: handling admin request", "op", req.Op, "reqId", req.ReqID)
+
+	var (
+		data any
+		err  error
+	)
+
+	switch req.Op {
+	case "activity.stats":
+		data, err = c.opActivityStats(ctx)
+	case "activity.chart":
+		data, err = c.opActivityChart(ctx)
+	case "activity.top-talkgroups":
+		data, err = c.opTopTalkgroups(ctx)
+	case "logs.query":
+		data, err = c.opLogsQuery(req.Params)
+	case "logs.level":
+		data = map[string]string{"level": logging.GetLevel()}
+	}
+
+	var msg []byte
+	if err != nil {
+		slog.Error("ws: admin op failed", "op", req.Op, "reqId", req.ReqID, "error", err)
+		msg, _ = NewADMRESErrorMessage(req.ReqID, "internal error")
+	} else {
+		msg, _ = NewADMRESMessage(req.ReqID, data)
+	}
+	select {
+	case c.send <- msg:
+	default:
+	}
+}
+
+func (c *Client) opActivityStats(ctx context.Context) (any, error) {
+	now := time.Now()
+	y, m, d := now.Date()
+	todayStart := time.Date(y, m, d, 0, 0, 0, 0, now.Location()).Unix()
+
+	weekday := now.Weekday()
+	if weekday == time.Sunday {
+		weekday = 7
+	}
+	weekStart := time.Date(y, m, d-int(weekday-time.Monday), 0, 0, 0, 0, now.Location()).Unix()
+
+	stats, err := c.hub.queries.GetActivityStats(ctx, db.GetActivityStatsParams{
+		TodayStart: todayStart,
+		WeekStart:  weekStart,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"callsToday":      stats.CallsToday,
+		"callsThisWeek":   stats.CallsThisWeek,
+		"callsTotal":      stats.CallsTotal,
+		"activeListeners": c.hub.ClientCount(),
+		"uptime":          int64(time.Since(StartTime).Seconds()),
+	}, nil
+}
+
+func (c *Client) opActivityChart(ctx context.Context) (any, error) {
+	cutoff := time.Now().Add(-24 * time.Hour).Unix()
+	rows, err := c.hub.queries.GetCallsPerHour(ctx, cutoff)
+	if err != nil {
+		return nil, err
+	}
+
+	buckets := make([]map[string]int64, len(rows))
+	for i, r := range rows {
+		buckets[i] = map[string]int64{"hour": r.HourBucket, "count": r.CallCount}
+	}
+	return map[string]any{"buckets": buckets}, nil
+}
+
+func (c *Client) opTopTalkgroups(ctx context.Context) (any, error) {
+	cutoff := time.Now().Add(-24 * time.Hour).Unix()
+	rows, err := c.hub.queries.GetTopTalkgroups(ctx, db.GetTopTalkgroupsParams{
+		DateTime: cutoff,
+		Limit:    10,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	tgs := make([]map[string]any, len(rows))
+	for i, r := range rows {
+		tgs[i] = map[string]any{
+			"talkgroupId":    r.TalkgroupID.Int64,
+			"talkgroupLabel": r.TalkgroupLabel.String,
+			"talkgroupName":  r.TalkgroupName.String,
+			"systemLabel":    r.SystemLabel.String,
+			"callCount":      r.CallCount,
+		}
+	}
+	return map[string]any{"talkgroups": tgs}, nil
+}
+
+func (c *Client) opLogsQuery(params json.RawMessage) (any, error) {
+	var p struct {
+		Level string `json:"level"`
+		From  int64  `json:"from"`
+		To    int64  `json:"to"`
+		Query string `json:"q"`
+		Limit int    `json:"limit"`
+	}
+	if params != nil {
+		if err := json.Unmarshal(params, &p); err != nil {
+			return nil, err
+		}
+	}
+	if p.Limit <= 0 || p.Limit > 10_000 {
+		p.Limit = 500
+	}
+
+	entries := logging.QueryEntries(p.Level, p.From, p.To, p.Query, p.Limit)
+	resp := make([]map[string]any, len(entries))
+	for i, e := range entries {
+		resp[i] = map[string]any{
+			"dateTime": e.Time.Unix(),
+			"level":    e.Level,
+			"msg":      e.Message,
+			"attrs":    e.Attrs,
+		}
+	}
+	return resp, nil
 }
 
 // writePump sends messages from the send channel to the WebSocket connection
