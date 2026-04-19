@@ -97,6 +97,12 @@ OpenScanner supports service lifecycle commands:
 ./openscanner --service uninstall
 ```
 
+You can provide normal startup flags during install (for example `--config`), and they are persisted into the service command line:
+
+```bash
+./openscanner --service install --config /etc/openscanner/openscanner.json --listen 127.0.0.1:3000 --db-file /var/lib/openscanner/openscanner.db --recordings-dir /var/lib/openscanner/recordings
+```
+
 kardianos/service is used for OS-specific service integration.
 
 ## TLS

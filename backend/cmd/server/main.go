@@ -76,6 +76,7 @@ func main() {
 		Name:        "openscanner",
 		DisplayName: "OpenScanner",
 		Description: "OpenScanner Radio Call Manager",
+		Arguments:   serviceArguments(os.Args[1:]),
 	}
 
 	prg := &program{cfg: cfg}
@@ -100,6 +101,27 @@ func main() {
 		slog.Error("service run failed", "error", err)
 		os.Exit(1)
 	}
+}
+
+// serviceArguments returns startup arguments to persist in service definitions.
+// It strips the service control command itself so installed services start normally.
+func serviceArguments(args []string) []string {
+	out := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case a == "--service":
+			if i+1 < len(args) {
+				i++
+			}
+			continue
+		case strings.HasPrefix(a, "--service="):
+			continue
+		default:
+			out = append(out, a)
+		}
+	}
+	return out
 }
 
 // program implements the kardianos/service.Interface.
