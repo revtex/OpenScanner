@@ -17,9 +17,6 @@ import (
 // Version is set at build time via ldflags.
 var Version = "0.1.0"
 
-// DefaultServiceConfigFile is the production default JSON config path used by setup tooling.
-const DefaultServiceConfigFile = "/etc/openscanner/openscanner.json"
-
 // Config holds all server startup configuration.
 type Config struct {
 	Listen        string // HTTP listen address (default ":3022")
@@ -76,17 +73,21 @@ func Load() (*Config, error) {
 	flag.StringVar(&cfg.Service, "service", "", "Service command: install, uninstall, start, stop, restart")
 	flag.Parse()
 
+	// Capture which flags were explicitly set on the command line and their values,
+	// before loadJSON/applyEnv can overwrite them.
+	explicitFlags := make(map[string]string)
+	flag.Visit(func(f *flag.Flag) {
+		explicitFlags[f.Name] = f.Value.String()
+	})
+
 	// Load JSON file defaults (lowest precedence after built-in defaults).
 	loadJSON(cfg)
 
 	// Apply environment variables (higher precedence than JSON file).
 	applyEnv(cfg)
 
-	// CLI flags already parsed above have highest precedence (flag package handles this
-	// since we set defaults before Parse, and Parse overwrites only if flag is provided).
-	// However, flag package always sets the value, so we need to re-apply env and JSON
-	// only for flags that were NOT explicitly set on the command line.
-	reapplyPrecedence(cfg)
+	// Restore explicitly-set CLI flags (highest precedence).
+	restoreExplicitFlags(cfg, explicitFlags)
 
 	return cfg, nil
 }
@@ -165,63 +166,35 @@ func applyEnv(cfg *Config) {
 	}
 }
 
-// reapplyPrecedence ensures CLI flags > env vars > JSON file > defaults.
-// The flag package sets all values to defaults then overwrites with CLI args.
-// We need to detect which flags were explicitly set on the command line.
-func reapplyPrecedence(cfg *Config) {
-	explicitFlags := make(map[string]bool)
-	flag.Visit(func(f *flag.Flag) {
-		explicitFlags[f.Name] = true
-	})
-
-	// For each setting: if not explicitly set via CLI, apply env > JSON file > default.
-	// Since we already applied JSON file then env above, re-read env vars for non-explicit flags.
-	if !explicitFlags["listen"] {
-		if v := os.Getenv("OPENSCANNER_LISTEN"); v != "" {
-			cfg.Listen = v
-		}
+// restoreExplicitFlags restores CLI flag values that were explicitly set by the user.
+// This ensures CLI flags > env vars > JSON file > defaults.
+func restoreExplicitFlags(cfg *Config, explicit map[string]string) {
+	if v, ok := explicit["listen"]; ok {
+		cfg.Listen = v
 	}
-	if !explicitFlags["db-file"] {
-		if v := os.Getenv("OPENSCANNER_DB_FILE"); v != "" {
-			cfg.DBFile = v
-		}
+	if v, ok := explicit["db-file"]; ok {
+		cfg.DBFile = v
 	}
-	if !explicitFlags["recordings-dir"] {
-		if v := os.Getenv("OPENSCANNER_RECORDINGS_DIR"); v != "" {
-			cfg.RecordingsDir = v
-		}
+	if v, ok := explicit["recordings-dir"]; ok {
+		cfg.RecordingsDir = v
 	}
-	if !explicitFlags["ssl-listen"] {
-		if v := os.Getenv("OPENSCANNER_SSL_LISTEN"); v != "" {
-			cfg.SSLListen = v
-		}
+	if v, ok := explicit["ssl-listen"]; ok {
+		cfg.SSLListen = v
 	}
-	if !explicitFlags["ssl-cert"] {
-		if v := os.Getenv("OPENSCANNER_SSL_CERT"); v != "" {
-			cfg.SSLCert = v
-		}
+	if v, ok := explicit["ssl-cert"]; ok {
+		cfg.SSLCert = v
 	}
-	if !explicitFlags["ssl-key"] {
-		if v := os.Getenv("OPENSCANNER_SSL_KEY"); v != "" {
-			cfg.SSLKey = v
-		}
+	if v, ok := explicit["ssl-key"]; ok {
+		cfg.SSLKey = v
 	}
-	if !explicitFlags["ssl-auto-cert"] {
-		if v := os.Getenv("OPENSCANNER_SSL_AUTO_CERT"); v != "" {
-			cfg.SSLAutoCert = v
-		}
+	if v, ok := explicit["ssl-auto-cert"]; ok {
+		cfg.SSLAutoCert = v
 	}
-	if !explicitFlags["admin-password"] {
-		if v := os.Getenv("OPENSCANNER_ADMIN_PASSWORD"); v != "" {
-			cfg.AdminPassword = v
-		}
+	if v, ok := explicit["admin-password"]; ok {
+		cfg.AdminPassword = v
 	}
-	if !explicitFlags["timezone"] {
-		if v := os.Getenv("OPENSCANNER_TIMEZONE"); v != "" {
-			cfg.Timezone = v
-		} else if v := os.Getenv("TZ"); v != "" {
-			cfg.Timezone = v
-		}
+	if v, ok := explicit["timezone"]; ok {
+		cfg.Timezone = v
 	}
 }
 

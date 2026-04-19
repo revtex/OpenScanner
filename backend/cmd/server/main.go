@@ -55,8 +55,6 @@ var (
 	executablePathFn       = os.Executable
 )
 
-const defaultInstallBinaryPath = "/usr/local/bin/openscanner"
-
 func main() {
 	if handleLocalSetupCommands() {
 		return
@@ -147,10 +145,10 @@ func runSetup(args []string) int {
 	fs.SetOutput(os.Stderr)
 
 	listen := fs.String("listen", "127.0.0.1:3022", "HTTP listen address")
-	dbFile := fs.String("db-file", "/var/lib/openscanner/openscanner.db", "SQLite database file path")
-	recordingsDir := fs.String("recordings-dir", "/var/lib/openscanner/recordings", "Directory for call audio recordings")
-	configFile := fs.String("config", config.DefaultServiceConfigFile, "Path to JSON config file")
-	installBinary := fs.String("install-binary", defaultInstallBinaryPath, "Path where OpenScanner executable is installed")
+	dbFile := fs.String("db-file", config.DefaultDBFile, "SQLite database file path")
+	recordingsDir := fs.String("recordings-dir", config.DefaultRecordingsDir, "Directory for call audio recordings")
+	configFile := fs.String("config", config.DefaultConfigFile, "Path to JSON config file")
+	installBinary := fs.String("install-binary", config.DefaultBinaryPath, "Path where OpenScanner executable is installed")
 	interactive := fs.Bool("interactive", false, "Prompt for setup values interactively")
 	force := fs.Bool("force", false, "Overwrite/reinstall when setup already exists")
 	if err := fs.Parse(args); err != nil {
@@ -224,7 +222,7 @@ func runSetup(args []string) int {
 		slog.Error("setup: failed to resolve current executable", "error", err)
 		return 1
 	}
-	if err := moveBinary(exePath, *installBinary); err != nil {
+	if err := installBinaryTo(exePath, *installBinary); err != nil {
 		slog.Error("setup: failed to install executable", "source", exePath, "target", *installBinary, "error", err)
 		return 1
 	}
@@ -245,7 +243,7 @@ func runSetup(args []string) int {
 		}
 	}
 
-	if err := serviceControlFn(svc, "start"); err != nil && !running {
+	if err := serviceControlFn(svc, "start"); err != nil {
 		slog.Error("setup: failed to start service", "error", err)
 		return 1
 	}
@@ -263,8 +261,8 @@ func runUpgrade(args []string) int {
 	fs := flag.NewFlagSet("upgrade", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	binary := fs.String("binary", "", "Path to new OpenScanner executable (defaults to current executable)")
-	installBinary := fs.String("install-binary", defaultInstallBinaryPath, "Installed OpenScanner executable path")
-	configFile := fs.String("config", config.DefaultServiceConfigFile, "Path to JSON config file")
+	installBinary := fs.String("install-binary", config.DefaultBinaryPath, "Installed OpenScanner executable path")
+	configFile := fs.String("config", config.DefaultConfigFile, "Path to JSON config file")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -327,12 +325,12 @@ func runUpgrade(args []string) int {
 func runConfigValidate(args []string) int {
 	fs := flag.NewFlagSet("config validate", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	configFile := fs.String("config", config.DefaultServiceConfigFile, "Path to JSON config file")
+	configFile := fs.String("config", config.DefaultConfigFile, "Path to JSON config file")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 
-	if *configFile == config.DefaultServiceConfigFile && !pathExists(*configFile) {
+	if *configFile == config.DefaultConfigFile && !pathExists(*configFile) {
 		slog.Error("config file not found", "path", *configFile)
 		fmt.Println("Pass a config path via --config /path/to/openscanner.json")
 		return 1
@@ -348,7 +346,7 @@ func runConfigValidate(args []string) int {
 }
 
 func runServiceDoctor() int {
-	svc, err := newServiceControllerFn(nil, defaultInstallBinaryPath)
+	svc, err := newServiceControllerFn(nil, config.DefaultBinaryPath)
 	if err != nil {
 		slog.Error("service doctor: failed to initialize service controller", "error", err)
 		return 1
@@ -359,8 +357,8 @@ func runServiceDoctor() int {
 	fmt.Printf("- installed: %t\n", installed)
 	fmt.Printf("- running:   %t\n", running)
 	fmt.Printf("- status:    %s\n", statusText)
-	fmt.Printf("- default config path: %s\n", config.DefaultServiceConfigFile)
-	fmt.Printf("- default executable path: %s\n", defaultInstallBinaryPath)
+	fmt.Printf("- default config path: %s\n", config.DefaultConfigFile)
+	fmt.Printf("- default executable path: %s\n", config.DefaultBinaryPath)
 
 	if !installed {
 		fmt.Println("- hint: install with 'openscanner setup' or 'openscanner --service install --config /path/to/openscanner.json'")
@@ -444,7 +442,7 @@ func runInteractiveSetup(
 	return answer == "y" || answer == "yes", nil
 }
 
-func moveBinary(sourcePath, targetPath string) error {
+func installBinaryTo(sourcePath, targetPath string) error {
 	same, err := samePath(sourcePath, targetPath)
 	if err != nil {
 		return err
@@ -457,14 +455,16 @@ func moveBinary(sourcePath, targetPath string) error {
 		return err
 	}
 
-	if err := os.Rename(sourcePath, targetPath); err == nil {
-		return os.Chmod(targetPath, 0o755)
-	}
-
+	// On Windows the running binary is locked and cannot be renamed/moved.
+	// Use copy everywhere for consistency; the source stays in place.
 	if err := copyBinary(sourcePath, targetPath); err != nil {
 		return err
 	}
-	return os.Remove(sourcePath)
+
+	// Try to remove the source after a successful copy; ignore errors
+	// (e.g. Windows locks, read-only mounts, same filesystem with hardlinks).
+	_ = os.Remove(sourcePath)
+	return nil
 }
 
 func copyBinary(sourcePath, targetPath string) error {
@@ -493,10 +493,8 @@ func copyBinary(sourcePath, targetPath string) error {
 		_ = os.Remove(tmpName)
 		return err
 	}
-	if err := os.Chmod(tmpName, 0o755); err != nil {
-		_ = os.Remove(tmpName)
-		return err
-	}
+	// Set executable permission; no-op on Windows.
+	_ = os.Chmod(tmpName, 0o755)
 	if err := os.Rename(tmpName, targetPath); err != nil {
 		_ = os.Remove(tmpName)
 		return err
@@ -530,20 +528,41 @@ func promptWithDefault(reader *bufio.Reader, out io.Writer, label, def string) (
 }
 
 // serviceArguments returns startup arguments to persist in service definitions.
-// It strips the service control command itself so installed services start normally.
+// It strips transient flags that should not be saved (service control, admin password reset, etc.).
 func serviceArguments(args []string) []string {
+	// Flags that take a value and must not be persisted.
+	stripValue := map[string]bool{
+		"--service":        true,
+		"--admin-password": true,
+	}
+	// Boolean flags that must not be persisted.
+	stripBool := map[string]bool{
+		"--config-save": true,
+		"--version":     true,
+	}
+
 	out := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch {
-		case a == "--service":
+		case stripValue[a]:
+			// Skip this flag and its next argument (the value).
 			if i+1 < len(args) {
 				i++
 			}
 			continue
-		case strings.HasPrefix(a, "--service="):
+		case stripBool[a]:
 			continue
-		default:
+		}
+		// Also handle --flag=value form for value flags.
+		skip := false
+		for prefix := range stripValue {
+			if strings.HasPrefix(a, prefix+"=") {
+				skip = true
+				break
+			}
+		}
+		if !skip {
 			out = append(out, a)
 		}
 	}

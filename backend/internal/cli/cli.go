@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"golang.org/x/term"
@@ -129,7 +128,7 @@ func saveToken(token string) error {
 // readPassword prompts for a password without echoing input.
 func readPassword(prompt string) (string, error) {
 	fmt.Print(prompt)
-	pw, err := term.ReadPassword(int(syscall.Stdin))
+	pw, err := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println() // newline after hidden input
 	if err != nil {
 		return "", fmt.Errorf("failed to read password: %w", err)

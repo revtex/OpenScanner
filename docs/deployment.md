@@ -4,174 +4,301 @@
 
 OpenScanner runs as a single Go binary that serves:
 
-- embedded frontend SPA
-- REST API under /api
-- WebSocket endpoints
-- local audio file streaming
+- Embedded frontend SPA
+- REST API under `/api`
+- WebSocket endpoints (`/ws`, `/api/admin/ws`)
+- Local audio file streaming
 
 No external database is required. SQLite is embedded and uses WAL mode.
 
+Supported platforms: **Linux**, **macOS**, **Windows**.
+
+---
+
 ## Configuration
 
-Configuration precedence:
+### Precedence
 
-CLI flags > environment variables > JSON config file > defaults
+CLI flags > environment variables > JSON config file > built-in defaults
 
-Key startup flags:
+### CLI Flags
 
-- --listen
-- --db-file
-- --recordings-dir
-- --ssl-listen
-- --ssl-cert
-- --ssl-key
-- --ssl-auto-cert
-- --timezone
-- --admin-password
-- --config
-- --config-save
-- --version
-- --service
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--listen` | HTTP listen address | `:3022` |
+| `--db-file` | SQLite database file path | `openscanner.db` |
+| `--recordings-dir` | Directory for call audio recordings | (executable directory) |
+| `--ssl-listen` | HTTPS listen address | (disabled) |
+| `--ssl-cert` | TLS certificate file (PEM) | |
+| `--ssl-key` | TLS private key file (PEM) | |
+| `--ssl-auto-cert` | Domain for Let's Encrypt auto-cert | |
+| `--timezone` | IANA timezone for recorder timestamps | `UTC` |
+| `--admin-password` | Reset first admin user's password on startup | |
+| `--config` | Path to JSON config file | `openscanner.json` |
+| `--config-save` | Write current flags to JSON config and exit | |
+| `--version` | Print version and exit | |
+| `--service` | Service command: install, uninstall, start, stop, restart | |
 
-Default config file path for `--config` is `openscanner.json`.
+### Environment Variables
 
-Environment variable equivalents are OPENSCANNER\_\* variants plus TZ for timezone fallback.
+| Variable | Maps to flag |
+|----------|--------------|
+| `OPENSCANNER_LISTEN` | `--listen` |
+| `OPENSCANNER_DB_FILE` | `--db-file` |
+| `OPENSCANNER_RECORDINGS_DIR` | `--recordings-dir` |
+| `OPENSCANNER_SSL_LISTEN` | `--ssl-listen` |
+| `OPENSCANNER_SSL_CERT` | `--ssl-cert` |
+| `OPENSCANNER_SSL_KEY` | `--ssl-key` |
+| `OPENSCANNER_SSL_AUTO_CERT` | `--ssl-auto-cert` |
+| `OPENSCANNER_ADMIN_PASSWORD` | `--admin-password` |
+| `OPENSCANNER_TIMEZONE` | `--timezone` |
+| `TZ` | `--timezone` (fallback) |
+
+### JSON Config File
+
+When `--config-save` is used, a JSON file is written containing persistent settings:
+
+```json
+{
+  "listen": ":3022",
+  "db_file": "/var/lib/openscanner/openscanner.db",
+  "recordings_dir": "/var/lib/openscanner/recordings",
+  "ssl_listen": "",
+  "ssl_cert_file": "",
+  "ssl_key_file": "",
+  "ssl_auto_cert": "",
+  "timezone": ""
+}
+```
+
+Transient flags (`--admin-password`, `--config-save`, `--version`, `--service`) are never persisted.
+
+---
 
 ## Quick Start (Recommended)
 
-For production installs, use the guided setup command:
+### Guided Setup
 
 ```bash
-./openscanner setup
+sudo ./openscanner setup --interactive
 ```
 
-This command creates config/data paths, validates config, installs the service, and starts it.
-It also installs the executable to `/usr/local/bin/openscanner` by default.
+The setup command:
+1. Prompts for listen address, database path, recordings directory, config file, and install path
+2. Creates all required directories
+3. Writes and validates the JSON config file
+4. Copies the executable to the install path
+5. Installs and starts the system service
 
-## Verify Installation
+Without `--interactive`, setup uses platform defaults (see below).
+
+### Verify Installation
 
 ```bash
 curl -f http://127.0.0.1:3022/api/health
-./openscanner service doctor
+openscanner service doctor
+openscanner config validate
 ```
 
-If health check fails, validate config explicitly:
+---
+
+## Platform Defaults
+
+Setup paths are computed per-platform at runtime:
+
+### Linux
+
+| Setting | Default Path |
+|---------|-------------|
+| Config | `/etc/openscanner/openscanner.json` |
+| Database | `/var/lib/openscanner/openscanner.db` |
+| Recordings | `/var/lib/openscanner/recordings` |
+| Executable | `/usr/local/bin/openscanner` |
+| Service | systemd / SysV / OpenRC (auto-detected) |
+
+### macOS
+
+| Setting | Default Path |
+|---------|-------------|
+| Config | `/usr/local/etc/openscanner/openscanner.json` |
+| Database | `/usr/local/var/lib/openscanner/openscanner.db` |
+| Recordings | `/usr/local/var/lib/openscanner/recordings` |
+| Executable | `/usr/local/bin/openscanner` |
+| Service | launchd |
+
+### Windows
+
+| Setting | Default Path |
+|---------|-------------|
+| Config | `%ProgramData%\OpenScanner\openscanner.json` |
+| Database | `%ProgramData%\OpenScanner\openscanner.db` |
+| Recordings | `%ProgramData%\OpenScanner\recordings` |
+| Executable | `%ProgramFiles%\OpenScanner\openscanner.exe` |
+| Service | Windows Service Control Manager |
+
+All defaults can be overridden with setup flags:
 
 ```bash
-./openscanner config validate
+openscanner setup \
+  --listen 0.0.0.0:3022 \
+  --db-file /opt/openscanner/data.db \
+  --recordings-dir /opt/openscanner/recordings \
+  --config /opt/openscanner/config.json \
+  --install-binary /opt/openscanner/openscanner
 ```
 
-## Build and Run
+---
 
-From repository root:
+## Service Management
+
+### Subcommands
+
+| Command | Description |
+|---------|-------------|
+| `openscanner setup` | Full guided install (create dirs, write config, install service, start) |
+| `openscanner setup --interactive` | Interactive setup with prompts |
+| `openscanner setup --force` | Overwrite existing setup / reinstall service |
+| `openscanner upgrade` | Replace installed binary, restart service if running |
+| `openscanner config validate` | Validate JSON config file and check paths are writable |
+| `openscanner service doctor` | Print service status diagnostics |
+
+### Low-Level Service Control
+
+For manual control without the setup wrapper:
+
+```bash
+openscanner --service install --config /path/to/openscanner.json
+openscanner --service start
+openscanner --service stop
+openscanner --service restart
+openscanner --service uninstall
+```
+
+Startup flags provided alongside `--service install` are persisted into the service definition (except transient flags like `--admin-password`, `--version`, `--config-save`).
+
+### Upgrade Flow
+
+```bash
+# Download new binary
+curl -L -o /tmp/openscanner-new https://github.com/...
+
+# Upgrade (stops service → copies binary → restarts)
+openscanner upgrade --binary /tmp/openscanner-new
+```
+
+If the service was stopped before upgrade, it remains stopped after.
+
+---
+
+## Build from Source
+
+### Requirements
+
+- Go 1.25+
+- Node.js 22+ with pnpm
+- Make
+
+### Build
 
 ```bash
 make build
+```
+
+This:
+1. Builds the frontend (`pnpm build`)
+2. Copies frontend dist into `backend/internal/static/dist/` for `go:embed`
+3. Builds the Go binary to `build/openscanner`
+
+### Run Locally
+
+```bash
 ./build/openscanner --listen 0.0.0.0:3022 --db-file ./data/openscanner.db --recordings-dir ./data/recordings
 ```
 
-Root build process:
+### Development
 
-1. Build frontend
-2. Copy frontend dist into backend embed directory
-3. Build backend binary
+```bash
+make dev    # Hot-reload backend (air) + Vite dev server with proxy
+make test   # Run all backend + frontend tests
+make lint   # Run linters
+```
 
-Backend build also regenerates Swagger docs.
+---
 
 ## Docker
 
-The Dockerfile uses three stages:
+### Dockerfile
 
-1. node-builder (frontend build)
-2. go-builder (backend build with embedded frontend)
-3. alpine runtime (ffmpeg + certs + non-root user)
+Multi-stage build (Node → Go → Alpine runtime):
 
-Run with persistent /data volume for DB and recordings.
+- **Stage 1**: `node:22-alpine` — builds frontend
+- **Stage 2**: `golang:1.25-alpine` — builds Go binary with embedded frontend
+- **Stage 3**: `alpine:3.21` — minimal runtime with ffmpeg, ca-certificates, non-root user
 
-## Docker Compose
+The container exposes port **3000** and stores data under `/data`.
 
-The included compose file maps:
+### Docker Compose
 
-- port 3022
-- ./data:/data
-- OPENSCANNER_DB_FILE
-- OPENSCANNER_RECORDINGS_DIR
-- OPENSCANNER_LISTEN
-
-Healthcheck hits /api/health.
-
-## Development Commands
-
-```bash
-make dev
-make build
-make test
-make lint
+```yaml
+services:
+  openscanner:
+    image: ghcr.io/revtex/openscanner:main
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/data
+    environment:
+      - OPENSCANNER_DB_FILE=/data/openscanner.db
+      - OPENSCANNER_RECORDINGS_DIR=/data/recordings
+      - OPENSCANNER_LISTEN=0.0.0.0:3000
+      # - TZ=America/New_York
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
 ```
 
-## Linux Service
-
-OpenScanner supports service lifecycle commands:
+### Custom Build
 
 ```bash
-./openscanner setup
-./openscanner upgrade
-./openscanner config validate
-./openscanner service doctor
-
-./openscanner --service install
-./openscanner --service start
-./openscanner --service stop
-./openscanner --service restart
-./openscanner --service uninstall
+docker compose build   # or: docker build -t openscanner .
+docker compose up -d
 ```
 
-Production setup defaults:
-
-- config: `/etc/openscanner/openscanner.json`
-- db: `/var/lib/openscanner/openscanner.db`
-- recordings: `/var/lib/openscanner/recordings`
-- executable: `/usr/local/bin/openscanner`
-
-`openscanner setup` is idempotent and detects existing setup state. Use `--force` to overwrite/reinstall.
-
-Setup/upgrade executable options:
-
-```bash
-./openscanner setup --install-binary /usr/local/bin/openscanner
-./openscanner upgrade --binary /tmp/openscanner --install-binary /usr/local/bin/openscanner
-```
-
-`openscanner upgrade` replaces the installed executable and restarts the service when it is currently running.
-
-You can provide normal startup flags during install (for example `--config`), and they are persisted into the service command line:
-
-```bash
-./openscanner --service install --config /etc/openscanner/openscanner.json --listen 127.0.0.1:3022 --db-file /var/lib/openscanner/openscanner.db --recordings-dir /var/lib/openscanner/recordings
-```
-
-`openscanner config validate` defaults to `/etc/openscanner/openscanner.json`. If that file is missing, pass a custom path using `--config /path/to/openscanner.json`.
-
-kardianos/service is used for OS-specific service integration.
+---
 
 ## TLS
 
-Two TLS modes are supported:
+Two modes are supported:
 
-- certificate/key files (--ssl-cert, --ssl-key)
-- automatic Let's Encrypt (--ssl-auto-cert)
+### Certificate Files
 
-When TLS is enabled, HTTP listener redirects traffic to HTTPS.
+```bash
+openscanner --ssl-listen :443 --ssl-cert /path/to/cert.pem --ssl-key /path/to/key.pem
+```
+
+### Automatic Let's Encrypt
+
+```bash
+openscanner --ssl-auto-cert scanner.example.com
+```
+
+When any TLS mode is enabled, the HTTP listener automatically redirects to HTTPS.
+
+---
 
 ## Reverse Proxy
 
-You can run OpenScanner behind nginx/Caddy for centralized TLS and host routing.
+Run OpenScanner behind nginx or Caddy for centralized TLS and host routing. Key requirements:
 
-When proxying, ensure WebSocket upgrade headers are forwarded for /ws and /api/admin/ws.
+- Forward WebSocket upgrade headers for `/ws` and `/api/admin/ws`
+- Forward `X-Forwarded-Proto` so secure cookies work correctly
+- Bind OpenScanner to localhost (`--listen 127.0.0.1:3022`) when proxied
 
-### Nginx Configuration
-
-Use this when OpenScanner listens on localhost (example: `127.0.0.1:3022`) and Nginx handles TLS.
+### Nginx
 
 ```nginx
 map $http_upgrade $connection_upgrade {
@@ -218,21 +345,18 @@ Notes:
 - WebSocket upgrade headers must be present for `/ws` and `/api/admin/ws`.
 - Increase `client_max_body_size` if you upload larger files (imports/audio).
 
-### Caddy Configuration
-
-Use this when OpenScanner listens on localhost (example: `127.0.0.1:3022`) and Caddy handles automatic HTTPS.
+### Caddy
 
 ```caddy
 scanner.example.com {
 	encode gzip zstd
-
 	reverse_proxy 127.0.0.1:3022
 }
 ```
 
-Caddy automatically forwards headers needed by OpenScanner (including `X-Forwarded-Proto`) and handles WebSocket upgrades.
+Caddy automatically handles TLS, WebSocket upgrades, and forwarded headers.
 
-If you need to be explicit:
+For explicit header control:
 
 ```caddy
 scanner.example.com {
@@ -246,18 +370,32 @@ scanner.example.com {
 }
 ```
 
-### Proxy Deployment Tips
+### Proxy Tips
 
-- Run OpenScanner on a private bind address (for example, `--listen 127.0.0.1:3022`) when fronted by a reverse proxy.
-- Keep proxy and OpenScanner clocks synchronized (NTP) so JWT and cookie expiry behavior is consistent.
-- Test both WebSocket endpoints after deployment:
-  - `/ws` (scanner/live data)
-  - `/api/admin/ws` (admin channel)
+- Bind OpenScanner to `127.0.0.1:3022` when fronted by a reverse proxy.
+- Keep clocks synchronized (NTP) so JWT and cookie expiry are consistent.
+- Test both WebSocket endpoints after deployment: `/ws` and `/api/admin/ws`.
+
+---
+
+## External Dependencies
+
+| Dependency | Required | Purpose |
+|------------|----------|---------|
+| FFmpeg | Optional | Audio format conversion and normalization (4 modes: disabled/enabled/norm/loudnorm) |
+| Whisper | Optional | Local speech-to-text transcription (CPU or GPU via NVIDIA CUDA) |
+
+Both are invoked via argument slices (no shell execution) for security.
+
+---
 
 ## Verification Checklist
 
-- GET /api/health returns 200
-- Startup logs show listen address, db path, and recordings path
-- /setup appears on first run
-- Recorder uploads persist calls and audio
-- Admin login and /admin panels load successfully
+- [ ] `GET /api/health` returns 200
+- [ ] Startup logs show listen address, db path, and recordings path
+- [ ] `/setup` appears on first run (initial admin creation)
+- [ ] Recorder uploads persist calls and audio files
+- [ ] Admin login and `/admin` panels load
+- [ ] WebSocket at `/ws` delivers live calls
+- [ ] `openscanner service doctor` reports running
+- [ ] `openscanner config validate` passes
