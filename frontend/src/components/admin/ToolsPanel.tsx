@@ -3,6 +3,8 @@ import { Upload, Download, ExternalLink } from "lucide-react";
 import {
   useImportTalkgroupsMutation,
   useImportUnitsMutation,
+} from "@/app/slices/adminSlice";
+import {
   useLazyExportConfigQuery,
   useLazyExportTalkgroupsQuery,
   useLazyExportUnitsQuery,
@@ -10,8 +12,8 @@ import {
   useLazyGetMissingAudioCallsQuery,
   useCleanupMissingAudioCallsMutation,
   useListSystemsQuery,
-  type MissingAudioResponse,
-} from "@/app/slices/adminSlice";
+} from "@/hooks/useAdminWsOps";
+import type { MissingAudioResponse } from "@/types";
 import { selectToken } from "@/app/slices/authSlice";
 import { useAppSelector } from "@/app/store";
 import RadioReferenceCard from "@/components/admin/RadioReferenceCard";

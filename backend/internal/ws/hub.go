@@ -3,12 +3,29 @@ package ws
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/openscanner/openscanner/internal/db"
 )
+
+// Reloader triggers a service config reload (e.g. dirmonitor, downstream).
+type Reloader interface {
+	Reload()
+}
+
+// HubDeps holds optional dependencies injected into the Hub for admin WS operations.
+type HubDeps struct {
+	SQLDB            *sql.DB
+	DirMonitorReload Reloader
+	DownstreamReload Reloader
+	FFmpegAvailable  bool
+	FDKAACAvailable  bool
+	WhisperAvailable bool
+	RecordingsDir    string
+}
 
 // StartTime is the process start time, used for uptime calculations.
 var StartTime = time.Now()
@@ -17,6 +34,7 @@ var StartTime = time.Now()
 type Hub struct {
 	queries *db.Queries
 	version string
+	deps    HubDeps
 
 	mu      sync.RWMutex
 	clients map[*Client]struct{}
@@ -40,10 +58,15 @@ type broadcastMsg struct {
 
 // NewHub creates a new Hub. Pass the queries for settings lookups and the
 // server version string for VER messages.
-func NewHub(queries *db.Queries, version string) *Hub {
+func NewHub(queries *db.Queries, version string, deps ...HubDeps) *Hub {
+	var d HubDeps
+	if len(deps) > 0 {
+		d = deps[0]
+	}
 	return &Hub{
 		queries:    queries,
 		version:    version,
+		deps:       d,
 		clients:    make(map[*Client]struct{}),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
@@ -183,6 +206,13 @@ func (h *Hub) countByUser(userID int64) int {
 		}
 	}
 	return count
+}
+
+// SetDirMonitorReloader sets the DirMonitor reloader after hub creation.
+// This handles the circular dependency where dwService needs hub but hub
+// needs dwService's Reloader.
+func (h *Hub) SetDirMonitorReloader(r Reloader) {
+	h.deps.DirMonitorReload = r
 }
 
 // debounceLSC schedules an LSC broadcast, resetting the timer if one is already

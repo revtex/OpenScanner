@@ -133,6 +133,13 @@ class AdminWsClient {
     this.ws.onopen = () => {
       this.backoff = 1000;
       this.connected = true;
+      // Emit connection event so hooks can re-fetch
+      const connListeners = this.eventListeners.get("__connected__");
+      if (connListeners) {
+        for (const cb of connListeners) {
+          cb("__connected__", null, Date.now());
+        }
+      }
     };
 
     this.ws.onmessage = (ev: MessageEvent) => {

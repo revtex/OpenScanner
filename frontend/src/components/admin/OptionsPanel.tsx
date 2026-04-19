@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import {
   useGetConfigQuery,
   useUpdateConfigMutation,
-} from "@/app/slices/adminSlice";
+} from "@/hooks/useAdminWsOps";
 import { useNavigationGuard } from "@/components/admin/NavigationGuardContext";
 import type { AdminSetting } from "@/types";
 

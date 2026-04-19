@@ -16,7 +16,7 @@ import {
   useDeleteUnitMutation,
   useListGroupsQuery,
   useListTagsQuery,
-} from "@/app/slices/adminSlice";
+} from "@/hooks/useAdminWsOps";
 import type { AdminSystem, AdminTalkgroup, AdminUnit } from "@/types";
 
 // ─── System card ───

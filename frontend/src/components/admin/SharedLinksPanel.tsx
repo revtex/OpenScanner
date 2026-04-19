@@ -2,7 +2,7 @@ import { Trash2, ExternalLink } from "lucide-react";
 import {
   useGetSharedLinksQuery,
   useDeleteSharedLinkMutation,
-} from "@/app/slices/shareSlice";
+} from "@/hooks/useAdminWsOps";
 
 function formatDate(unix: number): string {
   return new Date(unix * 1000).toLocaleString();

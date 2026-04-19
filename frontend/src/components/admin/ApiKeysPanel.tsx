@@ -6,7 +6,7 @@ import {
   useUpdateApiKeyMutation,
   useDeleteApiKeyMutation,
   useListSystemsQuery,
-} from "@/app/slices/adminSlice";
+} from "@/hooks/useAdminWsOps";
 import type { AdminApiKey } from "@/types";
 
 // ─── Form state ───

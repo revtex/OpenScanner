@@ -333,3 +333,56 @@ export interface RRApplyResponse {
   errors: number;
   rowErrors: RRRowError[];
 }
+
+// --- Shared Links (admin) ---
+
+export interface SharedLinkAdmin {
+  id: number;
+  callId: number;
+  token: string;
+  createdAt: number;
+  sharedBy: string;
+  dateTime: number;
+  duration: number;
+  systemLabel: string;
+  talkgroupLabel: string;
+  talkgroupName: string;
+}
+
+// --- Maintenance types ---
+
+export interface MissingAudioCall {
+  id: number;
+  dateTime: number;
+  audioPath: string;
+  audioName: string;
+  reason: string;
+}
+
+export interface MissingAudioResponse {
+  recordingsDir: string;
+  limit: number;
+  offset: number;
+  totalCalls: number;
+  checked: number;
+  missing: MissingAudioCall[];
+}
+
+export interface MissingAudioCleanupResponse {
+  requested: number;
+  deleted: number;
+  skipped: MissingAudioCall[];
+}
+
+// --- Server filesystem types ---
+
+export interface ServerDirectoryEntry {
+  name: string;
+  path: string;
+}
+
+export interface ServerDirectoryListResponse {
+  path: string;
+  parent: string | null;
+  directories: ServerDirectoryEntry[];
+}

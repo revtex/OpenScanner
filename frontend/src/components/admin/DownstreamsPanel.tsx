@@ -5,7 +5,7 @@ import {
   useCreateDownstreamMutation,
   useUpdateDownstreamMutation,
   useDeleteDownstreamMutation,
-} from "@/app/slices/adminSlice";
+} from "@/hooks/useAdminWsOps";
 import type { AdminDownstream } from "@/types";
 
 interface DownstreamFormState {

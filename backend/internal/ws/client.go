@@ -50,14 +50,14 @@ type adminRequest struct {
 	Params json.RawMessage `json:"params,omitempty"`
 }
 
-// adminOps is the allowlist of valid admin request operations.
-var adminOps = map[string]bool{
-	"activity.stats":          true,
-	"activity.chart":          true,
-	"activity.top-talkgroups": true,
-	"logs.query":              true,
-	"logs.level":              true,
-}
+// adminOpHandler is the function signature for all admin WS operation handlers.
+type adminOpHandler func(ctx context.Context, params json.RawMessage) (any, error)
+
+// userError is returned by op handlers for validation errors that should be
+// shown verbatim to the client. Other errors are treated as internal.
+type userError string
+
+func (e userError) Error() string { return string(e) }
 
 // CanReceive reports whether this client is authorized to receive a call for
 // the given system and talkgroup. If grants is nil/empty, everything is allowed.
@@ -375,14 +375,6 @@ func (c *Client) readPump(ctx context.Context) {
 				slog.Warn("ws: ADM_REQ missing reqId")
 				continue
 			}
-			if !adminOps[req.Op] {
-				msg, _ := NewADMRESErrorMessage(req.ReqID, "unknown op: "+req.Op)
-				select {
-				case c.send <- msg:
-				default:
-				}
-				continue
-			}
 			c.handleAdminRequest(ctx, req)
 		default:
 			slog.Warn("ws: received unknown command", "cmd", cmd)
@@ -394,28 +386,26 @@ func (c *Client) readPump(ctx context.Context) {
 func (c *Client) handleAdminRequest(ctx context.Context, req adminRequest) {
 	slog.Debug("ws: handling admin request", "op", req.Op, "reqId", req.ReqID)
 
-	var (
-		data any
-		err  error
-	)
-
-	switch req.Op {
-	case "activity.stats":
-		data, err = c.opActivityStats(ctx)
-	case "activity.chart":
-		data, err = c.opActivityChart(ctx)
-	case "activity.top-talkgroups":
-		data, err = c.opTopTalkgroups(ctx)
-	case "logs.query":
-		data, err = c.opLogsQuery(req.Params)
-	case "logs.level":
-		data = map[string]string{"level": logging.GetLevel()}
+	handlers := c.adminOpHandlers()
+	handler, ok := handlers[req.Op]
+	if !ok {
+		msg, _ := NewADMRESErrorMessage(req.ReqID, "unknown op: "+req.Op)
+		select {
+		case c.send <- msg:
+		default:
+		}
+		return
 	}
 
+	data, err := handler(ctx, req.Params)
 	var msg []byte
 	if err != nil {
-		slog.Error("ws: admin op failed", "op", req.Op, "reqId", req.ReqID, "error", err)
-		msg, _ = NewADMRESErrorMessage(req.ReqID, "internal error")
+		if _, ok := err.(userError); ok {
+			msg, _ = NewADMRESErrorMessage(req.ReqID, err.Error())
+		} else {
+			slog.Error("ws: admin op failed", "op", req.Op, "reqId", req.ReqID, "error", err)
+			msg, _ = NewADMRESErrorMessage(req.ReqID, "internal error")
+		}
 	} else {
 		msg, _ = NewADMRESMessage(req.ReqID, data)
 	}
@@ -425,7 +415,7 @@ func (c *Client) handleAdminRequest(ctx context.Context, req adminRequest) {
 	}
 }
 
-func (c *Client) opActivityStats(ctx context.Context) (any, error) {
+func (c *Client) opActivityStats(ctx context.Context, _ json.RawMessage) (any, error) {
 	now := time.Now()
 	y, m, d := now.Date()
 	todayStart := time.Date(y, m, d, 0, 0, 0, 0, now.Location()).Unix()
@@ -453,7 +443,7 @@ func (c *Client) opActivityStats(ctx context.Context) (any, error) {
 	}, nil
 }
 
-func (c *Client) opActivityChart(ctx context.Context) (any, error) {
+func (c *Client) opActivityChart(ctx context.Context, _ json.RawMessage) (any, error) {
 	cutoff := time.Now().Add(-24 * time.Hour).Unix()
 	rows, err := c.hub.queries.GetCallsPerHour(ctx, cutoff)
 	if err != nil {
@@ -467,7 +457,7 @@ func (c *Client) opActivityChart(ctx context.Context) (any, error) {
 	return map[string]any{"buckets": buckets}, nil
 }
 
-func (c *Client) opTopTalkgroups(ctx context.Context) (any, error) {
+func (c *Client) opTopTalkgroups(ctx context.Context, _ json.RawMessage) (any, error) {
 	cutoff := time.Now().Add(-24 * time.Hour).Unix()
 	rows, err := c.hub.queries.GetTopTalkgroups(ctx, db.GetTopTalkgroupsParams{
 		DateTime: cutoff,
@@ -490,7 +480,7 @@ func (c *Client) opTopTalkgroups(ctx context.Context) (any, error) {
 	return map[string]any{"talkgroups": tgs}, nil
 }
 
-func (c *Client) opLogsQuery(params json.RawMessage) (any, error) {
+func (c *Client) opLogsQuery(_ context.Context, params json.RawMessage) (any, error) {
 	var p struct {
 		Level string `json:"level"`
 		From  int64  `json:"from"`

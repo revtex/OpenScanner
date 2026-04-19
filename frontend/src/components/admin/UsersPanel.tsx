@@ -5,7 +5,7 @@ import {
   useCreateUserMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
-} from "@/app/slices/adminSlice";
+} from "@/hooks/useAdminWsOps";
 import type { AdminUser, CreateUserPayload, UpdateUserPayload } from "@/types";
 
 interface UserFormState {

@@ -2,9 +2,11 @@ import { useState, useRef, useCallback } from "react";
 import { Upload, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import {
   useRrPreviewCSVMutation,
+} from "@/app/slices/adminSlice";
+import {
   useRrApplyMutation,
   useListSystemsQuery,
-} from "@/app/slices/adminSlice";
+} from "@/hooks/useAdminWsOps";
 import type {
   RRPreviewResponse,
   RRPreviewRow,

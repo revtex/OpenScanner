@@ -741,15 +741,24 @@ func (p *program) run() {
 	}()
 
 	// Create and start WebSocket hub.
-	hub := ws.NewHub(queries, config.Version)
-	go hub.Run(ctx)
-
-	// Start DirMonitor service.
+	// Services are created first so their Reloader interfaces can be injected into the hub.
 	dsService := downstream.NewService(queries, processor)
 	dsService.Start(ctx)
 
+	hub := ws.NewHub(queries, config.Version, ws.HubDeps{
+		SQLDB:            sqlDB,
+		DirMonitorReload: nil, // set below after dwService is created
+		DownstreamReload: dsService,
+		FFmpegAvailable:  hasFFmpeg,
+		FDKAACAvailable:  hasFDKAAC,
+		WhisperAvailable: hasWhisper,
+		RecordingsDir:    cfg.RecordingsDir,
+	})
+	go hub.Run(ctx)
+
 	dwService := dirmonitor.NewService(queries, processor, hub, dsService)
 	dwService.Start(ctx)
+	hub.SetDirMonitorReloader(dwService)
 
 	api.RegisterRoutes(router, api.Deps{
 		Queries:            queries,
