@@ -6,30 +6,30 @@ OpenScanner is a modern reimplementation of [rdio-scanner](https://github.com/ch
 
 ### Stack Decisions
 
-| Layer              | Technology                                                       |
-| ------------------ | ---------------------------------------------------------------- |
-| Backend language   | Go 1.25                                                          |
-| HTTP framework     | Gin                                                              |
-| WebSocket          | coder/websocket (github.com/coder/websocket)                     |
-| Database           | SQLite via modernc.org/sqlite (pure Go, no CGO)                  |
-| DB query layer     | sqlc (type-safe code generation)                                 |
-| DB migrations      | golang-migrate                                                   |
-| Auth               | golang-jwt/jwt v5 + golang.org/x/crypto/bcrypt                   |
-| TLS                | Built-in TLS + golang.org/x/crypto/acme/autocert (Let's Encrypt) |
-| Service daemon     | kardianos/service (systemd / Windows service / launchd)          |
-| Audio storage      | Filesystem (paths stored in DB)                                  |
-| Audio conversion   | FFmpeg (external subprocess) with bounded worker pool            |
+| Layer              | Technology                                                            |
+| ------------------ | --------------------------------------------------------------------- |
+| Backend language   | Go 1.25                                                               |
+| HTTP framework     | Gin                                                                   |
+| WebSocket          | coder/websocket (github.com/coder/websocket)                          |
+| Database           | SQLite via modernc.org/sqlite (pure Go, no CGO)                       |
+| DB query layer     | sqlc (type-safe code generation)                                      |
+| DB migrations      | golang-migrate                                                        |
+| Auth               | golang-jwt/jwt v5 + golang.org/x/crypto/bcrypt                        |
+| TLS                | Built-in TLS + golang.org/x/crypto/acme/autocert (Let's Encrypt)      |
+| Service daemon     | kardianos/service (systemd / Windows service / launchd)               |
+| Audio storage      | Filesystem (paths stored in DB)                                       |
+| Audio conversion   | FFmpeg (external subprocess) with bounded worker pool                 |
 | Transcription      | go-whisper HTTP API (whisper.cpp backend, CPU or GPU via CUDA/Vulkan) |
-| Push notifications | webpush-go (Web Push / VAPID)                                    |
-| Logging            | log/slog (structured, levelled)                                  |
-| Deployment         | go:embed frontend into single Go binary                          |
-| Frontend framework | React 18 + TypeScript (strict) + Vite                            |
-| UI components      | Tailwind CSS 4 + DaisyUI 5 (dark/light themes)                   |
-| State management   | Redux Toolkit + RTK Query                                        |
-| Virtual scrolling  | @tanstack/react-virtual (long admin lists)                       |
-| PWA                | Service Worker (app-shell cache + push notifications) + manifest |
-| Frontend tests     | Vitest + React Testing Library                                   |
-| Dev tooling        | air (Go hot-reload) + Vite proxy (single `make dev`)             |
+| Push notifications | webpush-go (Web Push / VAPID)                                         |
+| Logging            | log/slog (structured, levelled)                                       |
+| Deployment         | go:embed frontend into single Go binary                               |
+| Frontend framework | React 18 + TypeScript (strict) + Vite                                 |
+| UI components      | Tailwind CSS 4 + DaisyUI 5 (dark/light themes)                        |
+| State management   | Redux Toolkit + RTK Query                                             |
+| Virtual scrolling  | @tanstack/react-virtual (long admin lists)                            |
+| PWA                | Service Worker (app-shell cache + push notifications) + manifest      |
+| Frontend tests     | Vitest + React Testing Library                                        |
+| Dev tooling        | air (Go hot-reload) + Vite proxy (single `make dev`)                  |
 
 ---
 
@@ -276,39 +276,39 @@ Every app option is a key/value pair here.
 
 **Seeded defaults:**
 
-| Key                           | Default   | Notes                                                                                                 |
-| ----------------------------- | --------- | ----------------------------------------------------------------------------------------------------- |
-| `autoPopulate`                | `true`    |                                                                                                       |
-| `pruneDays`                   | `7`       |                                                                                                       |
-| `maxClients`                  | `200`     |                                                                                                       |
-| `time12hFormat`               | `false`   | When `true`, display and history show 12-hour time (AM/PM); when `false`, 24-hour format              |
-| `dimmerDelay`                 | `5000`    | ms of inactivity before display panel dims (reduces brightness); 0 = never dim                        |
-| `keypadBeeps`                 | `uniden`  | `uniden`, `motorola`, or empty                                                                        |
-| `duplicateDetectionTimeFrame` | `500`     | ms                                                                                                    |
-| `disableDuplicateDetection`   | `false`   |                                                                                                       |
-| `sortTalkgroups`              | `false`   |                                                                                                       |
-| `audioConversion`             | `1`       | 0=disabled, 1=enabled, 2=enabled+norm, 3=enabled+loudnorm                                             |
-| `showListenersCount`          | `false`   | When `true`, show active listener count in the status bar (`LEDPanel`) via `LSC` WS event             |
-| `tagsToggle`                  | `false`   | When `true`, show tag-based toggles in the Select TG panel alongside group/system toggles             |
-| `playbackGoesLive`            | `false`   | When `true`, finishing archive playback automatically switches back to LIVE mode                      |
-| `searchPatchedTalkgroups`     | `false`   |                                                                                                       |
-| `publicAccess`                | `false`   | When `true`, scanner is open to everyone — no login required                                          |
-| `shareableLinks`              | `false`   | When `true`, authenticated users can create shareable call links with UUID tokens (`/call/:token`)    |
-| `keyboardShortcuts`           | `true`    | When `true`, keyboard shortcuts are enabled on scanner page                                           |
-| `darkMode`                    | `true`    | `true` = dark theme, `false` = light theme; persisted per-instance in localStorage too                |
-| `pushNotifications`           | `false`   | When `true`, browser push notification subscriptions are accepted                                     |
-| `webhooksEnabled`             | `false`   | When `true`, webhook delivery is active                                                               |
-| `transcriptionEnabled`        | `false`   | When `true`, calls are queued for transcription via go-whisper                                         |
-| `transcriptionModel`          | `base`    | Whisper model name (e.g. `ggml-base`, `ggml-small.en-tdrz` for diarization)                          |
-| `transcriptionUrl`            | `http://localhost:8081` | URL of the go-whisper HTTP API server                                                    |
-| `transcriptionLanguage`       | `en`      | Language code for Whisper (ISO 639-1)                                                                 |
-| `transcriptionDiarize`        | `false`   | When `true`, use diarization model to label speakers in segments                                      |
-| `activityDashboard`           | `false`   | When `true`, activity stats are collected and dashboard is available                                  |
-| `afsSystems`                  | ``        | AFS/P25 system IDs (comma-separated); used by `#TGAFS` mask token and AFS-aware display formatting    |
-| `branding`                    | ``        | Custom text displayed in the status bar (`LEDPanel`); sent to clients via `VER` WS command            |
-| `email`                       | ``        | Contact email displayed in the status bar (`LEDPanel`); sent to clients via `VER` WS command          |
-| `vapidPublicKey`              | ``        | Auto-generated VAPID public key (created on first enable of `pushNotifications`); never manually set  |
-| `vapidPrivateKey`             | ``        | Auto-generated VAPID private key (created on first enable of `pushNotifications`); never manually set |
+| Key                           | Default                 | Notes                                                                                                 |
+| ----------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| `autoPopulate`                | `true`                  |                                                                                                       |
+| `pruneDays`                   | `7`                     |                                                                                                       |
+| `maxClients`                  | `200`                   |                                                                                                       |
+| `time12hFormat`               | `false`                 | When `true`, display and history show 12-hour time (AM/PM); when `false`, 24-hour format              |
+| `dimmerDelay`                 | `5000`                  | ms of inactivity before display panel dims (reduces brightness); 0 = never dim                        |
+| `keypadBeeps`                 | `uniden`                | `uniden`, `motorola`, or empty                                                                        |
+| `duplicateDetectionTimeFrame` | `500`                   | ms                                                                                                    |
+| `disableDuplicateDetection`   | `false`                 |                                                                                                       |
+| `sortTalkgroups`              | `false`                 |                                                                                                       |
+| `audioConversion`             | `1`                     | 0=disabled, 1=enabled, 2=enabled+norm, 3=enabled+loudnorm                                             |
+| `showListenersCount`          | `false`                 | When `true`, show active listener count in the status bar (`LEDPanel`) via `LSC` WS event             |
+| `tagsToggle`                  | `false`                 | When `true`, show tag-based toggles in the Select TG panel alongside group/system toggles             |
+| `playbackGoesLive`            | `false`                 | When `true`, finishing archive playback automatically switches back to LIVE mode                      |
+| `searchPatchedTalkgroups`     | `false`                 |                                                                                                       |
+| `publicAccess`                | `false`                 | When `true`, scanner is open to everyone — no login required                                          |
+| `shareableLinks`              | `false`                 | When `true`, authenticated users can create shareable call links with UUID tokens (`/call/:token`)    |
+| `keyboardShortcuts`           | `true`                  | When `true`, keyboard shortcuts are enabled on scanner page                                           |
+| `darkMode`                    | `true`                  | `true` = dark theme, `false` = light theme; persisted per-instance in localStorage too                |
+| `pushNotifications`           | `false`                 | When `true`, browser push notification subscriptions are accepted                                     |
+| `webhooksEnabled`             | `false`                 | When `true`, webhook delivery is active                                                               |
+| `transcriptionEnabled`        | `false`                 | When `true`, calls are queued for transcription via go-whisper                                        |
+| `transcriptionModel`          | `base`                  | Whisper model name (e.g. `ggml-base`, `ggml-small.en-tdrz` for diarization)                           |
+| `transcriptionUrl`            | `http://localhost:8081` | URL of the go-whisper HTTP API server                                                                 |
+| `transcriptionLanguage`       | `en`                    | Language code for Whisper (ISO 639-1)                                                                 |
+| `transcriptionDiarize`        | `false`                 | When `true`, use diarization model to label speakers in segments                                      |
+| `activityDashboard`           | `false`                 | When `true`, activity stats are collected and dashboard is available                                  |
+| `afsSystems`                  | ``                      | AFS/P25 system IDs (comma-separated); used by `#TGAFS` mask token and AFS-aware display formatting    |
+| `branding`                    | ``                      | Custom text displayed in the status bar (`LEDPanel`); sent to clients via `VER` WS command            |
+| `email`                       | ``                      | Contact email displayed in the status bar (`LEDPanel`); sent to clients via `VER` WS command          |
+| `vapidPublicKey`              | ``                      | Auto-generated VAPID public key (created on first enable of `pushNotifications`); never manually set  |
+| `vapidPrivateKey`             | ``                      | Auto-generated VAPID private key (created on first enable of `pushNotifications`); never manually set |
 
 ### `systems`
 
@@ -491,16 +491,16 @@ Browser push notification subscriptions.
 
 Speech-to-text results for calls.
 
-| Column        | Type                     | Notes                                          |
-| ------------- | ------------------------ | ---------------------------------------------- |
-| `id`          | INTEGER PK AUTOINCREMENT |                                                |
-| `call_id`     | INTEGER FK → calls       | CASCADE DELETE; UNIQUE                         |
-| `text`        | TEXT                     | Full transcript text (flat, all speakers)      |
-| `segments`    | TEXT (JSON)              | JSON array of `{speaker, start, end, text}`    |
-| `language`    | TEXT                     | Detected language code                         |
+| Column        | Type                     | Notes                                               |
+| ------------- | ------------------------ | --------------------------------------------------- |
+| `id`          | INTEGER PK AUTOINCREMENT |                                                     |
+| `call_id`     | INTEGER FK → calls       | CASCADE DELETE; UNIQUE                              |
+| `text`        | TEXT                     | Full transcript text (flat, all speakers)           |
+| `segments`    | TEXT (JSON)              | JSON array of `{speaker, start, end, text}`         |
+| `language`    | TEXT                     | Detected language code                              |
 | `model`       | TEXT                     | Model used (e.g. `ggml-base`, `ggml-small.en-tdrz`) |
-| `duration_ms` | INTEGER                  | Processing time in ms                          |
-| `created_at`  | INTEGER                  | Unix epoch seconds                             |
+| `duration_ms` | INTEGER                  | Processing time in ms                               |
+| `created_at`  | INTEGER                  | Unix epoch seconds                                  |
 
 **Index:** `CREATE INDEX idx_transcriptions_text ON transcriptions(text)` (for full-text search)
 
