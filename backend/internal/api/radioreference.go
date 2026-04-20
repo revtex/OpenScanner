@@ -17,15 +17,6 @@ import (
 const rrMergeModeFillMissing = "fill_missing"
 const rrMergeModeOverwriteSelected = "overwrite_selected"
 
-var rrUpdatableFields = map[string]bool{
-	"label": true,
-	"name":  true,
-	"group": true,
-	"tag":   true,
-	"led":   true,
-	"order": true,
-}
-
 // RRRowError describes a per-row error in RadioReference enrichment.
 type RRRowError struct {
 	Row    int    `json:"row"`
@@ -63,8 +54,6 @@ type RRPreviewResponse struct {
 	RowErrors   []RRRowError   `json:"rowErrors"`
 	Rows        []RRPreviewRow `json:"rows"`
 } // @name RRPreviewResponse
-
-
 
 // RadioReferencePreviewCSV handles POST /api/admin/radioreference/preview/csv.
 //
@@ -139,7 +128,6 @@ func (h *AdminHandler) RadioReferencePreviewCSV(c *gin.Context) {
 	resp.Errors += len(rowErrors)
 	c.JSON(http.StatusOK, resp)
 }
-
 
 func parseSystemIDForm(c *gin.Context) (int64, bool) {
 	systemIDStr := c.PostForm("system_id")
@@ -289,8 +277,6 @@ func rrStringPtr(v string) *string {
 	return &v
 }
 
-
-
 func rrCandidateFieldsForMode(tg db.Talkgroup, candidate RRTalkgroupCandidate, mergeMode string, selectedFields []string) []string {
 	allow := map[string]bool{}
 	if mergeMode == rrMergeModeOverwriteSelected {
@@ -323,5 +309,3 @@ func rrCandidateFieldsForMode(tg db.Talkgroup, candidate RRTalkgroupCandidate, m
 	check("order", candidate.Order != nil, tg.Order == 0)
 	return fields
 }
-
-

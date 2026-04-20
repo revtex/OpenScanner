@@ -3,6 +3,11 @@ package api
 // Swagger model types — clean mirrors of db types for Swagger documentation.
 // These are referenced via .swaggo replace directives and never used at runtime.
 
+// ErrorResponse is the standard JSON error envelope used across all endpoints.
+type ErrorResponse struct { //nolint:unused
+	Error string `json:"error"`
+} // @name ErrorResponse
+
 // swagGroup mirrors db.Group for Swagger.
 type swagGroup struct { //nolint:unused
 	ID    int64  `json:"id"`
