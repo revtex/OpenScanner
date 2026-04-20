@@ -25,32 +25,32 @@ func ptrToNullInt(p *int64) sql.NullInt64 {
 // ── System requests ──
 
 type createSystemRequest struct {
-	SystemID       int64   `json:"systemId"`
-	Label          string  `json:"label"`
-	AutoPopulate   int64   `json:"autoPopulate"`
-	BlacklistsJson *string `json:"blacklistsJson"`
-	Led            *string `json:"led"`
-	Order          int64   `json:"order"`
+	SystemID               int64   `json:"systemId"`
+	Label                  string  `json:"label"`
+	AutoPopulateTalkgroups int64   `json:"autoPopulateTalkgroups"`
+	BlacklistsJson         *string `json:"blacklistsJson"`
+	Led                    *string `json:"led"`
+	Order                  int64   `json:"order"`
 } // @name CreateSystemRequest
 
 func (r createSystemRequest) toParams() db.CreateSystemParams {
 	return db.CreateSystemParams{
-		SystemID:       r.SystemID,
-		Label:          r.Label,
-		AutoPopulate:   r.AutoPopulate,
-		BlacklistsJson: ptrToNullStr(r.BlacklistsJson),
-		Led:            ptrToNullStr(r.Led),
-		Order:          r.Order,
+		SystemID:               r.SystemID,
+		Label:                  r.Label,
+		AutoPopulateTalkgroups: r.AutoPopulateTalkgroups,
+		BlacklistsJson:         ptrToNullStr(r.BlacklistsJson),
+		Led:                    ptrToNullStr(r.Led),
+		Order:                  r.Order,
 	}
 }
 
 type updateSystemRequest struct {
-	SystemID       int64   `json:"systemId"`
-	Label          string  `json:"label"`
-	AutoPopulate   int64   `json:"autoPopulate"`
-	BlacklistsJson *string `json:"blacklistsJson"`
-	Led            *string `json:"led"`
-	Order          int64   `json:"order"`
+	SystemID               int64   `json:"systemId"`
+	Label                  string  `json:"label"`
+	AutoPopulateTalkgroups int64   `json:"autoPopulateTalkgroups"`
+	BlacklistsJson         *string `json:"blacklistsJson"`
+	Led                    *string `json:"led"`
+	Order                  int64   `json:"order"`
 } // @name UpdateSystemRequest
 
 type reorderSystemItem struct {
@@ -64,13 +64,13 @@ type reorderSystemsRequest struct {
 
 func (r updateSystemRequest) toParams(id int64) db.UpdateSystemParams {
 	return db.UpdateSystemParams{
-		ID:             id,
-		SystemID:       r.SystemID,
-		Label:          r.Label,
-		AutoPopulate:   r.AutoPopulate,
-		BlacklistsJson: ptrToNullStr(r.BlacklistsJson),
-		Led:            ptrToNullStr(r.Led),
-		Order:          r.Order,
+		ID:                     id,
+		SystemID:               r.SystemID,
+		Label:                  r.Label,
+		AutoPopulateTalkgroups: r.AutoPopulateTalkgroups,
+		BlacklistsJson:         ptrToNullStr(r.BlacklistsJson),
+		Led:                    ptrToNullStr(r.Led),
+		Order:                  r.Order,
 	}
 }
 

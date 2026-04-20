@@ -37,13 +37,13 @@ type swagUser struct { //nolint:unused
 
 // swagSystem mirrors db.System for Swagger.
 type swagSystem struct { //nolint:unused
-	ID             int64   `json:"id"`
-	SystemID       int64   `json:"system_id"`
-	Label          string  `json:"label"`
-	AutoPopulate   int64   `json:"auto_populate"`
-	BlacklistsJson *string `json:"blacklists_json"`
-	Led            *string `json:"led"`
-	Order          int64   `json:"order"`
+	ID                     int64   `json:"id"`
+	SystemID               int64   `json:"system_id"`
+	Label                  string  `json:"label"`
+	AutoPopulateTalkgroups int64   `json:"auto_populate_talkgroups"`
+	BlacklistsJson         *string `json:"blacklists_json"`
+	Led                    *string `json:"led"`
+	Order                  int64   `json:"order"`
 } // @name System
 
 // swagTalkgroup mirrors db.Talkgroup for Swagger.

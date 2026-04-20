@@ -79,7 +79,7 @@ var wsAllowedSettingKeys = map[string]bool{
 	"apiKeyCallRate":              true,
 	"audioConversion":             true,
 	"audioEncodingPreset":         true,
-	"autoPopulate":                true,
+	"autoPopulateSystems":         true,
 	"branding":                    true,
 	"disableDuplicateDetection":   true,
 	"duplicateDetectionTimeFrame": true,
@@ -140,13 +140,13 @@ func mapUsers(users []db.User) []map[string]any {
 
 func mapSystem(s db.System) map[string]any {
 	return map[string]any{
-		"id":             s.ID,
-		"systemId":       s.SystemID,
-		"label":          s.Label,
-		"autoPopulate":   s.AutoPopulate,
-		"blacklistsJson": wsNullStr(s.BlacklistsJson),
-		"led":            wsNullStr(s.Led),
-		"order":          s.Order,
+		"id":                     s.ID,
+		"systemId":               s.SystemID,
+		"label":                  s.Label,
+		"autoPopulateTalkgroups": s.AutoPopulateTalkgroups,
+		"blacklistsJson":         wsNullStr(s.BlacklistsJson),
+		"led":                    wsNullStr(s.Led),
+		"order":                  s.Order,
 	}
 }
 
@@ -599,24 +599,24 @@ func (c *Client) opSystemsList(ctx context.Context, _ json.RawMessage) (any, err
 
 func (c *Client) opSystemsCreate(ctx context.Context, params json.RawMessage) (any, error) {
 	var req struct {
-		SystemID       int64   `json:"systemId"`
-		Label          string  `json:"label"`
-		AutoPopulate   int64   `json:"autoPopulate"`
-		BlacklistsJson *string `json:"blacklistsJson"`
-		Led            *string `json:"led"`
-		Order          int64   `json:"order"`
+		SystemID               int64   `json:"systemId"`
+		Label                  string  `json:"label"`
+		AutoPopulateTalkgroups int64   `json:"autoPopulateTalkgroups"`
+		BlacklistsJson         *string `json:"blacklistsJson"`
+		Led                    *string `json:"led"`
+		Order                  int64   `json:"order"`
 	}
 	if err := json.Unmarshal(params, &req); err != nil {
 		return nil, userError("invalid request body")
 	}
 
 	id, err := c.hub.queries.CreateSystem(ctx, db.CreateSystemParams{
-		SystemID:       req.SystemID,
-		Label:          req.Label,
-		AutoPopulate:   req.AutoPopulate,
-		BlacklistsJson: wsPtrToNullStr(req.BlacklistsJson),
-		Led:            wsPtrToNullStr(req.Led),
-		Order:          req.Order,
+		SystemID:               req.SystemID,
+		Label:                  req.Label,
+		AutoPopulateTalkgroups: req.AutoPopulateTalkgroups,
+		BlacklistsJson:         wsPtrToNullStr(req.BlacklistsJson),
+		Led:                    wsPtrToNullStr(req.Led),
+		Order:                  req.Order,
 	})
 	if wsIsUniqueViolation(err) {
 		return nil, userError("system_id already exists")
@@ -637,13 +637,13 @@ func (c *Client) opSystemsCreate(ctx context.Context, params json.RawMessage) (a
 
 func (c *Client) opSystemsUpdate(ctx context.Context, params json.RawMessage) (any, error) {
 	var req struct {
-		ID             int64   `json:"id"`
-		SystemID       int64   `json:"systemId"`
-		Label          string  `json:"label"`
-		AutoPopulate   int64   `json:"autoPopulate"`
-		BlacklistsJson *string `json:"blacklistsJson"`
-		Led            *string `json:"led"`
-		Order          int64   `json:"order"`
+		ID                     int64   `json:"id"`
+		SystemID               int64   `json:"systemId"`
+		Label                  string  `json:"label"`
+		AutoPopulateTalkgroups int64   `json:"autoPopulateTalkgroups"`
+		BlacklistsJson         *string `json:"blacklistsJson"`
+		Led                    *string `json:"led"`
+		Order                  int64   `json:"order"`
 	}
 	if err := json.Unmarshal(params, &req); err != nil {
 		return nil, userError("invalid request body")
@@ -657,13 +657,13 @@ func (c *Client) opSystemsUpdate(ctx context.Context, params json.RawMessage) (a
 	}
 
 	err := c.hub.queries.UpdateSystem(ctx, db.UpdateSystemParams{
-		ID:             req.ID,
-		SystemID:       req.SystemID,
-		Label:          req.Label,
-		AutoPopulate:   req.AutoPopulate,
-		BlacklistsJson: wsPtrToNullStr(req.BlacklistsJson),
-		Led:            wsPtrToNullStr(req.Led),
-		Order:          req.Order,
+		ID:                     req.ID,
+		SystemID:               req.SystemID,
+		Label:                  req.Label,
+		AutoPopulateTalkgroups: req.AutoPopulateTalkgroups,
+		BlacklistsJson:         wsPtrToNullStr(req.BlacklistsJson),
+		Led:                    wsPtrToNullStr(req.Led),
+		Order:                  req.Order,
 	})
 	if wsIsUniqueViolation(err) {
 		return nil, userError("system_id already exists")
@@ -741,13 +741,13 @@ func (c *Client) opSystemsReorder(ctx context.Context, params json.RawMessage) (
 			return nil, fmt.Errorf("failed to load system for reorder: %w", err)
 		}
 		if err := qtx.UpdateSystem(ctx, db.UpdateSystemParams{
-			ID:             sys.ID,
-			SystemID:       sys.SystemID,
-			Label:          sys.Label,
-			AutoPopulate:   sys.AutoPopulate,
-			BlacklistsJson: sys.BlacklistsJson,
-			Led:            sys.Led,
-			Order:          item.Order,
+			ID:                     sys.ID,
+			SystemID:               sys.SystemID,
+			Label:                  sys.Label,
+			AutoPopulateTalkgroups: sys.AutoPopulateTalkgroups,
+			BlacklistsJson:         sys.BlacklistsJson,
+			Led:                    sys.Led,
+			Order:                  item.Order,
 		}); err != nil {
 			return nil, fmt.Errorf("failed to reorder systems: %w", err)
 		}
@@ -2302,12 +2302,12 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 	// Systems
 	for _, s := range data.Systems {
 		if _, err := qtx.CreateSystem(ctx, db.CreateSystemParams{
-			SystemID:       s.SystemID,
-			Label:          s.Label,
-			AutoPopulate:   s.AutoPopulate,
-			BlacklistsJson: s.BlacklistsJson,
-			Led:            s.Led,
-			Order:          s.Order,
+			SystemID:               s.SystemID,
+			Label:                  s.Label,
+			AutoPopulateTalkgroups: s.AutoPopulateTalkgroups,
+			BlacklistsJson:         s.BlacklistsJson,
+			Led:                    s.Led,
+			Order:                  s.Order,
 		}); err != nil && !wsIsUniqueViolation(err) {
 			return nil, fmt.Errorf("failed to import systems: %w", err)
 		}

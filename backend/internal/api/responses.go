@@ -67,24 +67,24 @@ func toUserResponses(users []db.User) []userResponse {
 // ── System ──
 
 type systemResponse struct {
-	ID             int64   `json:"id"`
-	SystemID       int64   `json:"systemId"`
-	Label          string  `json:"label"`
-	AutoPopulate   int64   `json:"autoPopulate"`
-	BlacklistsJson *string `json:"blacklistsJson"`
-	Led            *string `json:"led"`
-	Order          int64   `json:"order"`
+	ID                     int64   `json:"id"`
+	SystemID               int64   `json:"systemId"`
+	Label                  string  `json:"label"`
+	AutoPopulateTalkgroups int64   `json:"autoPopulateTalkgroups"`
+	BlacklistsJson         *string `json:"blacklistsJson"`
+	Led                    *string `json:"led"`
+	Order                  int64   `json:"order"`
 } // @name SystemResponse
 
 func toSystemResponse(s db.System) systemResponse {
 	return systemResponse{
-		ID:             s.ID,
-		SystemID:       s.SystemID,
-		Label:          s.Label,
-		AutoPopulate:   s.AutoPopulate,
-		BlacklistsJson: nullStr(s.BlacklistsJson),
-		Led:            nullStr(s.Led),
-		Order:          s.Order,
+		ID:                     s.ID,
+		SystemID:               s.SystemID,
+		Label:                  s.Label,
+		AutoPopulateTalkgroups: s.AutoPopulateTalkgroups,
+		BlacklistsJson:         nullStr(s.BlacklistsJson),
+		Led:                    nullStr(s.Led),
+		Order:                  s.Order,
 	}
 }
 

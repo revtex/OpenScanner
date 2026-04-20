@@ -124,13 +124,13 @@ type SharedLink struct {
 }
 
 type System struct {
-	ID             int64          `db:"id" json:"id"`
-	SystemID       int64          `db:"system_id" json:"system_id"`
-	Label          string         `db:"label" json:"label"`
-	AutoPopulate   int64          `db:"auto_populate" json:"auto_populate"`
-	BlacklistsJson sql.NullString `db:"blacklists_json" json:"blacklists_json"`
-	Led            sql.NullString `db:"led" json:"led"`
-	Order          int64          `db:"order" json:"order"`
+	ID                     int64          `db:"id" json:"id"`
+	SystemID               int64          `db:"system_id" json:"system_id"`
+	Label                  string         `db:"label" json:"label"`
+	AutoPopulateTalkgroups int64          `db:"auto_populate_talkgroups" json:"auto_populate_talkgroups"`
+	BlacklistsJson         sql.NullString `db:"blacklists_json" json:"blacklists_json"`
+	Led                    sql.NullString `db:"led" json:"led"`
+	Order                  int64          `db:"order" json:"order"`
 }
 
 type Tag struct {

@@ -10,12 +10,16 @@ interface LogQueryParams {
   limit?: number;
 }
 
+const LIVE_POLL_MS = 5_000;
+const DEBOUNCE_MS = 2_000;
+
 export function useAdminLogs(params: LogQueryParams, autoRefresh: boolean) {
   const [logs, setLogs] = useState<AdminLog[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
   const paramsRef = useRef(params);
   paramsRef.current = params;
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchLogs = useCallback(async () => {
     if (!adminWsClient.isConnected()) return;
@@ -46,23 +50,23 @@ export function useAdminLogs(params: LogQueryParams, autoRefresh: boolean) {
     });
   }, [fetchLogs]);
 
-  // Listen for logs.append events (new log entries pushed from server)
+  // Live mode: poll on interval + refresh on new call activity (debounced)
   useEffect(() => {
     if (!autoRefresh) return;
 
-    const unsub = adminWsClient.on("logs.append", (_topic, data) => {
-      const newEntries = data as AdminLog[];
-      setLogs((prev) => {
-        if (!prev) return newEntries;
-        const limit = paramsRef.current.limit ?? 500;
-        const merged = [...prev, ...newEntries];
-        // Keep within limit, trim from the start
-        return merged.length > limit ? merged.slice(-limit) : merged;
-      });
+    const interval = setInterval(fetchLogs, LIVE_POLL_MS);
+
+    const unsubActivity = adminWsClient.on("activity.updated", () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(fetchLogs, DEBOUNCE_MS);
     });
 
-    return unsub;
-  }, [autoRefresh]);
+    return () => {
+      clearInterval(interval);
+      unsubActivity();
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [autoRefresh, fetchLogs]);
 
   return { logs, isLoading, isFetching, refetch: fetchLogs };
 }

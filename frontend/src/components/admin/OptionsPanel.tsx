@@ -14,7 +14,6 @@ const BOOLEAN_KEYS = [
   "pushNotifications",
   "webhooksEnabled",
   "transcriptionEnabled",
-  "autoPopulate",
   "time12hFormat",
   "disableDuplicateDetection",
   "sortTalkgroups",
@@ -75,7 +74,6 @@ const SECTIONS: SettingSection[] = [
   {
     title: "Scanner Behavior",
     keys: [
-      "autoPopulate",
       "sortTalkgroups",
       "tagsToggle",
       "time12hFormat",
@@ -134,7 +132,6 @@ const LABELS: Record<string, string> = {
   audioEncodingPreset: "Audio Encoding Preset",
   branding: "Branding Label",
   email: "Support Email",
-  autoPopulate: "Auto-Populate Systems & Talkgroups",
   time12hFormat: "12-Hour Time Format",
   afsSystems: "AFS Systems",
   maxClients: "Max Simultaneous Clients",
@@ -154,8 +151,6 @@ const DESCRIPTIONS: Record<string, string> = {
   branding:
     "Short label shown above the scanner display to identify this instance.",
   email: "Support contact email shown to users.",
-  autoPopulate:
-    "Automatically create new systems and talkgroups from incoming calls.",
   time12hFormat: "Display timestamps in 12-hour (AM/PM) format.",
   afsSystems:
     "Comma-separated system IDs whose talkgroup IDs should be shown in AFS (agency-fleet-subfleet) format.",

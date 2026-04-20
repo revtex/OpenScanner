@@ -386,7 +386,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 		return v.Value
 	}
 
-	autoPopulate := getSetting("autoPopulate") == "true"
+	autoPopulateSystems := getSetting("autoPopulateSystems") == "true"
 
 	// Validate required IDs before touching the DB.
 	if parsed.SystemID == 0 && strings.TrimSpace(parsed.SystemLabel) == "" {
@@ -408,8 +408,8 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 			if !errors.Is(err, sql.ErrNoRows) {
 				return fmt.Errorf("query system %d: %w", parsed.SystemID, err)
 			}
-			if !autoPopulate {
-				return fmt.Errorf("system %d not found and autoPopulate is disabled", parsed.SystemID)
+			if !autoPopulateSystems {
+				return fmt.Errorf("system %d not found and autoPopulateSystems is disabled", parsed.SystemID)
 			}
 			label := strings.TrimSpace(parsed.SystemLabel)
 			if label == "" {
@@ -418,13 +418,13 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 			newID, cerr := s.queries.CreateSystem(ctx, db.CreateSystemParams{
 				SystemID:     parsed.SystemID,
 				Label:        label,
-				AutoPopulate: 1,
+				AutoPopulateTalkgroups: 1,
 			})
 			if cerr != nil {
 				return fmt.Errorf("auto-create system %d: %w", parsed.SystemID, cerr)
 			}
 			slog.Info("dirmonitor: auto-populated system", "system_id", parsed.SystemID, "label", label, "db_id", newID)
-			system = db.System{ID: newID, SystemID: parsed.SystemID, Label: label, AutoPopulate: 1}
+			system = db.System{ID: newID, SystemID: parsed.SystemID, Label: label, AutoPopulateTalkgroups: 1}
 			s.hub.BroadcastCFG(ctx)
 		}
 	} else {
@@ -434,8 +434,8 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 			if !errors.Is(err, sql.ErrNoRows) {
 				return fmt.Errorf("query system label %q: %w", label, err)
 			}
-			if !autoPopulate {
-				return fmt.Errorf("system %q not found and autoPopulate is disabled", label)
+			if !autoPopulateSystems {
+				return fmt.Errorf("system %q not found and autoPopulateSystems is disabled", label)
 			}
 
 			systems, lerr := s.queries.ListSystems(ctx)
@@ -452,13 +452,13 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 			newID, cerr := s.queries.CreateSystem(ctx, db.CreateSystemParams{
 				SystemID:     nextSystemID,
 				Label:        label,
-				AutoPopulate: 1,
+				AutoPopulateTalkgroups: 1,
 			})
 			if cerr != nil {
 				return fmt.Errorf("auto-create system %q: %w", label, cerr)
 			}
 			slog.Info("dirmonitor: auto-populated system from label", "system_label", label, "system_id", nextSystemID, "db_id", newID)
-			system = db.System{ID: newID, SystemID: nextSystemID, Label: label, AutoPopulate: 1}
+			system = db.System{ID: newID, SystemID: nextSystemID, Label: label, AutoPopulateTalkgroups: 1}
 			s.hub.BroadcastCFG(ctx)
 		}
 		parsed.SystemID = system.SystemID
@@ -480,8 +480,8 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 		if !errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("query talkgroup %d: %w", parsed.TalkgroupID, err)
 		}
-		if !autoPopulate {
-			return fmt.Errorf("talkgroup %d not found and autoPopulate is disabled", parsed.TalkgroupID)
+		if system.AutoPopulateTalkgroups == 0 {
+			return fmt.Errorf("talkgroup %d not found and auto-populate is disabled for this system", parsed.TalkgroupID)
 		}
 		var tgLabel, tgName sql.NullString
 		if parsed.TalkgroupTitle != "" {

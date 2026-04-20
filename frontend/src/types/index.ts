@@ -131,7 +131,7 @@ export interface AdminSystem {
   id: number;
   systemId: number;
   label: string;
-  autoPopulate: number;
+  autoPopulateTalkgroups: number;
   blacklistsJson: string | null;
   led: string | null;
   order: number;

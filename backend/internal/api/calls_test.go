@@ -84,7 +84,7 @@ func TestPostCallUpload_ValidKey(t *testing.T) {
 	ctx := context.Background()
 
 	seedAPIKey(t, queries, "valid-key")
-	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulate", Value: "true"})
+	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulateSystems", Value: "true"})
 	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "audioConversion", Value: "0"})
 	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "disableDuplicateDetection", Value: "true"})
 
@@ -145,7 +145,7 @@ func TestPostCallUpload_MissingAudio(t *testing.T) {
 	ctx := context.Background()
 
 	seedAPIKey(t, queries, "key-noaudio")
-	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulate", Value: "true"})
+	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulateSystems", Value: "true"})
 	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "audioConversion", Value: "0"})
 	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "disableDuplicateDetection", Value: "true"})
 
@@ -178,7 +178,7 @@ func TestPostCallUpload_Duplicate(t *testing.T) {
 	ctx := context.Background()
 
 	seedAPIKey(t, queries, "key-dup")
-	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulate", Value: "true"})
+	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulateSystems", Value: "true"})
 	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "audioConversion", Value: "0"})
 	// Use a 30-second window so the second call with the same timestamp is
 	// always detected as a duplicate (diff = 0 ms < 30 000 ms).
@@ -238,7 +238,7 @@ func TestPostCallUpload_RateLimited(t *testing.T) {
 	ctx := context.Background()
 
 	seedAPIKey(t, queries, "key-ratelimit")
-	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulate", Value: "true"})
+	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulateSystems", Value: "true"})
 	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "audioConversion", Value: "0"})
 	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "apiKeyCallRate", Value: "1"})
 	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "disableDuplicateDetection", Value: "true"})
@@ -332,7 +332,7 @@ func TestPostCallUpload_SuccessMessage(t *testing.T) {
 	ctx := context.Background()
 
 	seedAPIKey(t, queries, "key-msg")
-	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulate", Value: "true"})
+	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulateSystems", Value: "true"})
 	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "audioConversion", Value: "0"})
 	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "disableDuplicateDetection", Value: "true"})
 
@@ -374,7 +374,7 @@ func TestPostCallUpload_SystemLabelAutoPopulate(t *testing.T) {
 	ctx := context.Background()
 
 	seedAPIKey(t, queries, "key-syslbl")
-	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulate", Value: "true"})
+	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulateSystems", Value: "true"})
 	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "audioConversion", Value: "0"})
 	_ = queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "disableDuplicateDetection", Value: "true"})
 

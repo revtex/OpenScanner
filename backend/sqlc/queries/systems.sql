@@ -14,14 +14,14 @@ SELECT * FROM systems ORDER BY "order" ASC, id ASC;
 INSERT INTO systems (
     system_id,
     label,
-    auto_populate,
+    auto_populate_talkgroups,
     blacklists_json,
     led,
     "order"
 ) VALUES (
     :system_id,
     :label,
-    :auto_populate,
+    :auto_populate_talkgroups,
     :blacklists_json,
     :led,
     :order
@@ -29,12 +29,12 @@ INSERT INTO systems (
 
 -- name: UpdateSystem :exec
 UPDATE systems SET
-    system_id       = :system_id,
-    label           = :label,
-    auto_populate   = :auto_populate,
-    blacklists_json = :blacklists_json,
-    led             = :led,
-    "order"         = :order
+    system_id                = :system_id,
+    label                    = :label,
+    auto_populate_talkgroups = :auto_populate_talkgroups,
+    blacklists_json          = :blacklists_json,
+    led                      = :led,
+    "order"                  = :order
 WHERE id = :id;
 
 -- name: DeleteSystem :exec

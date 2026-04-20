@@ -14,7 +14,7 @@ const createSystem = `-- name: CreateSystem :one
 INSERT INTO systems (
     system_id,
     label,
-    auto_populate,
+    auto_populate_talkgroups,
     blacklists_json,
     led,
     "order"
@@ -29,19 +29,19 @@ INSERT INTO systems (
 `
 
 type CreateSystemParams struct {
-	SystemID       int64          `db:"system_id" json:"system_id"`
-	Label          string         `db:"label" json:"label"`
-	AutoPopulate   int64          `db:"auto_populate" json:"auto_populate"`
-	BlacklistsJson sql.NullString `db:"blacklists_json" json:"blacklists_json"`
-	Led            sql.NullString `db:"led" json:"led"`
-	Order          int64          `db:"order" json:"order"`
+	SystemID               int64          `db:"system_id" json:"system_id"`
+	Label                  string         `db:"label" json:"label"`
+	AutoPopulateTalkgroups int64          `db:"auto_populate_talkgroups" json:"auto_populate_talkgroups"`
+	BlacklistsJson         sql.NullString `db:"blacklists_json" json:"blacklists_json"`
+	Led                    sql.NullString `db:"led" json:"led"`
+	Order                  int64          `db:"order" json:"order"`
 }
 
 func (q *Queries) CreateSystem(ctx context.Context, arg CreateSystemParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, createSystem,
 		arg.SystemID,
 		arg.Label,
-		arg.AutoPopulate,
+		arg.AutoPopulateTalkgroups,
 		arg.BlacklistsJson,
 		arg.Led,
 		arg.Order,
@@ -61,7 +61,7 @@ func (q *Queries) DeleteSystem(ctx context.Context, id int64) error {
 }
 
 const getSystem = `-- name: GetSystem :one
-SELECT id, system_id, label, auto_populate, blacklists_json, led, "order" FROM systems WHERE id = ? LIMIT 1
+SELECT id, system_id, label, auto_populate_talkgroups, blacklists_json, led, "order" FROM systems WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetSystem(ctx context.Context, id int64) (System, error) {
@@ -71,7 +71,7 @@ func (q *Queries) GetSystem(ctx context.Context, id int64) (System, error) {
 		&i.ID,
 		&i.SystemID,
 		&i.Label,
-		&i.AutoPopulate,
+		&i.AutoPopulateTalkgroups,
 		&i.BlacklistsJson,
 		&i.Led,
 		&i.Order,
@@ -80,7 +80,7 @@ func (q *Queries) GetSystem(ctx context.Context, id int64) (System, error) {
 }
 
 const getSystemByLabel = `-- name: GetSystemByLabel :one
-SELECT id, system_id, label, auto_populate, blacklists_json, led, "order" FROM systems WHERE label = ? LIMIT 1
+SELECT id, system_id, label, auto_populate_talkgroups, blacklists_json, led, "order" FROM systems WHERE label = ? LIMIT 1
 `
 
 func (q *Queries) GetSystemByLabel(ctx context.Context, label string) (System, error) {
@@ -90,7 +90,7 @@ func (q *Queries) GetSystemByLabel(ctx context.Context, label string) (System, e
 		&i.ID,
 		&i.SystemID,
 		&i.Label,
-		&i.AutoPopulate,
+		&i.AutoPopulateTalkgroups,
 		&i.BlacklistsJson,
 		&i.Led,
 		&i.Order,
@@ -99,7 +99,7 @@ func (q *Queries) GetSystemByLabel(ctx context.Context, label string) (System, e
 }
 
 const getSystemBySystemID = `-- name: GetSystemBySystemID :one
-SELECT id, system_id, label, auto_populate, blacklists_json, led, "order" FROM systems WHERE system_id = ? LIMIT 1
+SELECT id, system_id, label, auto_populate_talkgroups, blacklists_json, led, "order" FROM systems WHERE system_id = ? LIMIT 1
 `
 
 func (q *Queries) GetSystemBySystemID(ctx context.Context, systemID int64) (System, error) {
@@ -109,7 +109,7 @@ func (q *Queries) GetSystemBySystemID(ctx context.Context, systemID int64) (Syst
 		&i.ID,
 		&i.SystemID,
 		&i.Label,
-		&i.AutoPopulate,
+		&i.AutoPopulateTalkgroups,
 		&i.BlacklistsJson,
 		&i.Led,
 		&i.Order,
@@ -118,7 +118,7 @@ func (q *Queries) GetSystemBySystemID(ctx context.Context, systemID int64) (Syst
 }
 
 const listSystems = `-- name: ListSystems :many
-SELECT id, system_id, label, auto_populate, blacklists_json, led, "order" FROM systems ORDER BY "order" ASC, id ASC
+SELECT id, system_id, label, auto_populate_talkgroups, blacklists_json, led, "order" FROM systems ORDER BY "order" ASC, id ASC
 `
 
 func (q *Queries) ListSystems(ctx context.Context) ([]System, error) {
@@ -134,7 +134,7 @@ func (q *Queries) ListSystems(ctx context.Context) ([]System, error) {
 			&i.ID,
 			&i.SystemID,
 			&i.Label,
-			&i.AutoPopulate,
+			&i.AutoPopulateTalkgroups,
 			&i.BlacklistsJson,
 			&i.Led,
 			&i.Order,
@@ -154,30 +154,30 @@ func (q *Queries) ListSystems(ctx context.Context) ([]System, error) {
 
 const updateSystem = `-- name: UpdateSystem :exec
 UPDATE systems SET
-    system_id       = ?1,
-    label           = ?2,
-    auto_populate   = ?3,
-    blacklists_json = ?4,
-    led             = ?5,
-    "order"         = ?6
+    system_id                = ?1,
+    label                    = ?2,
+    auto_populate_talkgroups = ?3,
+    blacklists_json          = ?4,
+    led                      = ?5,
+    "order"                  = ?6
 WHERE id = ?7
 `
 
 type UpdateSystemParams struct {
-	SystemID       int64          `db:"system_id" json:"system_id"`
-	Label          string         `db:"label" json:"label"`
-	AutoPopulate   int64          `db:"auto_populate" json:"auto_populate"`
-	BlacklistsJson sql.NullString `db:"blacklists_json" json:"blacklists_json"`
-	Led            sql.NullString `db:"led" json:"led"`
-	Order          int64          `db:"order" json:"order"`
-	ID             int64          `db:"id" json:"id"`
+	SystemID               int64          `db:"system_id" json:"system_id"`
+	Label                  string         `db:"label" json:"label"`
+	AutoPopulateTalkgroups int64          `db:"auto_populate_talkgroups" json:"auto_populate_talkgroups"`
+	BlacklistsJson         sql.NullString `db:"blacklists_json" json:"blacklists_json"`
+	Led                    sql.NullString `db:"led" json:"led"`
+	Order                  int64          `db:"order" json:"order"`
+	ID                     int64          `db:"id" json:"id"`
 }
 
 func (q *Queries) UpdateSystem(ctx context.Context, arg UpdateSystemParams) error {
 	_, err := q.db.ExecContext(ctx, updateSystem,
 		arg.SystemID,
 		arg.Label,
-		arg.AutoPopulate,
+		arg.AutoPopulateTalkgroups,
 		arg.BlacklistsJson,
 		arg.Led,
 		arg.Order,

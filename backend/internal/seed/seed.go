@@ -63,7 +63,7 @@ func seedAppState(ctx context.Context, tx *sql.Tx) (bool, error) {
 func seedSettings(ctx context.Context, tx *sql.Tx) (bool, error) {
 	var inserted bool
 	defaults := []struct{ key, value string }{
-		{"autoPopulate", "true"},
+		{"autoPopulateSystems", "true"},
 		{"pruneDays", "7"},
 		{"maxClients", "200"},
 		{"time12hFormat", "false"},

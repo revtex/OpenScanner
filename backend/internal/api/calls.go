@@ -414,7 +414,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	autoPopulate := h.getSettingValue(c, "autoPopulate") == "true"
+	autoPopulateSystems := h.getSettingValue(c, "autoPopulateSystems") == "true"
 
 	slog.Debug("call-upload: resolving system and talkgroup",
 		"system_id", systemIDRaw, "talkgroup_id", talkgroupIDRaw)
@@ -427,7 +427,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 			return
 		}
-		if !autoPopulate {
+		if !autoPopulateSystems {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "system not found"})
 			return
 		}
@@ -437,9 +437,9 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			label = sl
 		}
 		newID, cerr := h.queries.CreateSystem(ctx, db.CreateSystemParams{
-			SystemID:     systemIDRaw,
-			Label:        label,
-			AutoPopulate: 1,
+			SystemID:               systemIDRaw,
+			Label:                  label,
+			AutoPopulateTalkgroups: 1,
 		})
 		if cerr != nil {
 			slog.Error("failed to auto-create system", "system_id", systemIDRaw, "error", cerr)
@@ -447,7 +447,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			return
 		}
 		slog.Info("auto-populated system", "system_id", systemIDRaw, "label", label, "db_id", newID)
-		system = db.System{ID: newID, SystemID: systemIDRaw, Label: label, AutoPopulate: 1}
+		system = db.System{ID: newID, SystemID: systemIDRaw, Label: label, AutoPopulateTalkgroups: 1}
 		h.hub.BroadcastCFG(ctx)
 	}
 
@@ -470,7 +470,7 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 			return
 		}
-		if !autoPopulate {
+		if system.AutoPopulateTalkgroups == 0 {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "talkgroup not found"})
 			return
 		}

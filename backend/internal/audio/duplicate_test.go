@@ -31,7 +31,7 @@ func seedCallAtTime(t *testing.T, q *db.Queries, dateTimeUnix int64) (systemID, 
 	sysID, err := q.CreateSystem(ctx, db.CreateSystemParams{
 		SystemID:     1,
 		Label:        "Test System",
-		AutoPopulate: 0,
+		AutoPopulateTalkgroups: 0,
 	})
 	if err != nil {
 		t.Fatalf("CreateSystem: %v", err)
@@ -69,7 +69,7 @@ func TestIsDuplicate_NoPreviousCall(t *testing.T) {
 	sysID, err := q.CreateSystem(ctx, db.CreateSystemParams{
 		SystemID:     1,
 		Label:        "Test",
-		AutoPopulate: 0,
+		AutoPopulateTalkgroups: 0,
 	})
 	if err != nil {
 		t.Fatalf("CreateSystem: %v", err)

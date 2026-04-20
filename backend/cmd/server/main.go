@@ -672,15 +672,15 @@ func (p *program) run() {
 		publicAccess = setting.Value
 	}
 
-	autoPopulate := ""
-	if setting, err := queries.GetSetting(context.Background(), "autoPopulate"); err == nil {
-		autoPopulate = setting.Value
+	autoPopulateSystems := ""
+	if setting, err := queries.GetSetting(context.Background(), "autoPopulateSystems"); err == nil {
+		autoPopulateSystems = setting.Value
 	}
 
 	slog.Debug("server: loaded settings from db",
 		"log_level", persistedLogLevel,
 		"public_access", publicAccess,
-		"auto_populate", autoPopulate,
+		"auto_populate_systems", autoPopulateSystems,
 	)
 
 	// Set up Gin router with registered routes.

@@ -16,6 +16,8 @@ import {
   useDeleteUnitMutation,
   useListGroupsQuery,
   useListTagsQuery,
+  useGetConfigQuery,
+  useUpdateConfigMutation,
 } from "@/hooks/useAdminWsOps";
 import type { AdminSystem, AdminTalkgroup, AdminUnit } from "@/types";
 
@@ -97,12 +99,12 @@ function SystemCard({
             </div>
             <label className="flex items-center gap-1 cursor-pointer">
               <span className="text-xs text-base-content/60">
-                Auto Populate
+                TG Auto Populate
               </span>
               <input
                 type="checkbox"
                 className="toggle toggle-primary toggle-xs"
-                checked={system.autoPopulate === 1}
+                checked={system.autoPopulateTalkgroups === 1}
                 onChange={onToggleAutoPopulate}
               />
             </label>
@@ -434,6 +436,22 @@ export default function SystemsPanel() {
   const { data: allUnits } = useListUnitsQuery();
   const { data: groups } = useListGroupsQuery();
   const { data: tags } = useListTagsQuery();
+  const { data: config } = useGetConfigQuery();
+  const [updateConfig] = useUpdateConfigMutation();
+
+  const autoPopulateSystems = useMemo(() => {
+    const s = config?.settings?.find((s) => s.key === "autoPopulateSystems");
+    return s?.value === "true";
+  }, [config]);
+
+  const handleToggleAutoPopulateSystems = useCallback(async () => {
+    await updateConfig([
+      {
+        key: "autoPopulateSystems",
+        value: autoPopulateSystems ? "false" : "true",
+      },
+    ]);
+  }, [updateConfig, autoPopulateSystems]);
 
   const [createSystem] = useCreateSystemMutation();
   const [updateSystem] = useUpdateSystemMutation();
@@ -582,7 +600,7 @@ export default function SystemsPanel() {
           id: editingSysId,
           systemId: Number(sysForm.systemId),
           label: sysForm.label,
-          autoPopulate: existing.autoPopulate,
+          autoPopulateTalkgroups: existing.autoPopulateTalkgroups,
           led: sysForm.led || null,
           blacklistsJson,
           order: existing.order,
@@ -591,7 +609,7 @@ export default function SystemsPanel() {
         await createSystem({
           systemId: Number(sysForm.systemId),
           label: sysForm.label,
-          autoPopulate: 0,
+          autoPopulateTalkgroups: 1,
           blacklistsJson,
           led: sysForm.led || null,
           order: sortedSystems.length,
@@ -625,7 +643,7 @@ export default function SystemsPanel() {
         id: sys.id,
         systemId: sys.systemId,
         label: sys.label,
-        autoPopulate: sys.autoPopulate ? 0 : 1,
+        autoPopulateTalkgroups: sys.autoPopulateTalkgroups ? 0 : 1,
         led: sys.led ?? null,
         blacklistsJson: sys.blacklistsJson ?? null,
         order: sys.order,
@@ -782,6 +800,23 @@ export default function SystemsPanel() {
         network (e.g. a county or agency). Each system contains talkgroups and
         units. Click a system to manage its talkgroups and units.
       </p>
+
+      <label className="flex items-center gap-3 mb-4 cursor-pointer">
+        <input
+          type="checkbox"
+          className="toggle toggle-primary"
+          checked={autoPopulateSystems}
+          onChange={handleToggleAutoPopulateSystems}
+        />
+        <div>
+          <span className="text-sm font-medium">Auto-Populate Systems</span>
+          <p className="text-xs text-base-content/60">
+            Automatically create new systems from incoming calls. Each
+            auto-created system will have talkgroup auto-populate enabled by
+            default.
+          </p>
+        </div>
+      </label>
 
       <div className="flex flex-col gap-3">
         {sortedSystems.map((sys) => (

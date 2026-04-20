@@ -278,10 +278,10 @@ func TestHandleFile_Integration_TrunkRecorder(t *testing.T) {
 	ctx := context.Background()
 	_, queries := newWatcherTestDB(t)
 
-	// Configure settings: enable autoPopulate, disable FFmpeg conversion,
+	// Configure settings: enable autoPopulateSystems, disable FFmpeg conversion,
 	// and disable duplicate detection so we don't need to worry about timing.
 	for _, kv := range [][2]string{
-		{"autoPopulate", "true"},
+		{"autoPopulateSystems", "true"},
 		{"audioConversion", "0"},
 		{"disableDuplicateDetection", "true"},
 	} {
@@ -329,13 +329,13 @@ func TestHandleFile_Integration_TrunkRecorder(t *testing.T) {
 }
 
 // TestHandleFile_Integration_NoSystemID_Fails verifies that ingestCall
-// rejects a parsed call with SystemID == 0 (and autoPopulate=false).
+// rejects a parsed call with SystemID == 0 (and autoPopulateSystems=false).
 func TestHandleFile_Integration_MissingSystemID_Rejected(t *testing.T) {
 	ctx := context.Background()
 	_, queries := newWatcherTestDB(t)
 
-	// autoPopulate disabled — system/talkgroup must exist.
-	if err := queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulate", Value: "false"}); err != nil {
+	// autoPopulateSystems disabled — system/talkgroup must exist.
+	if err := queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "autoPopulateSystems", Value: "false"}); err != nil {
 		t.Fatalf("UpsertSetting: %v", err)
 	}
 	if err := queries.UpsertSetting(ctx, db.UpsertSettingParams{Key: "audioConversion", Value: "0"}); err != nil {
@@ -380,7 +380,7 @@ func TestIngestCall_SDRTrunk_SystemLabelResolvesSystem(t *testing.T) {
 	_, queries := newWatcherTestDB(t)
 
 	for _, kv := range [][2]string{
-		{"autoPopulate", "true"},
+		{"autoPopulateSystems", "true"},
 		{"audioConversion", "0"},
 		{"disableDuplicateDetection", "true"},
 	} {
@@ -394,7 +394,7 @@ func TestIngestCall_SDRTrunk_SystemLabelResolvesSystem(t *testing.T) {
 	systemDBID, err := queries.CreateSystem(ctx, db.CreateSystemParams{
 		SystemID:     1,
 		Label:        systemLabel,
-		AutoPopulate: 1,
+		AutoPopulateTalkgroups: 1,
 	})
 	if err != nil {
 		t.Fatalf("CreateSystem: %v", err)
@@ -439,13 +439,13 @@ func TestIngestCall_SDRTrunk_SystemLabelResolvesSystem(t *testing.T) {
 }
 
 // TestHandleFile_Integration_AutoPopulate verifies that systems and talkgroups
-// are auto-created when autoPopulate=true.
+// are auto-created when autoPopulateSystems=true.
 func TestHandleFile_Integration_AutoPopulate(t *testing.T) {
 	ctx := context.Background()
 	_, queries := newWatcherTestDB(t)
 
 	for _, kv := range [][2]string{
-		{"autoPopulate", "true"},
+		{"autoPopulateSystems", "true"},
 		{"audioConversion", "0"},
 		{"disableDuplicateDetection", "true"},
 	} {
