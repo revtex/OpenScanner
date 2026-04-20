@@ -19,7 +19,7 @@ OpenScanner is a modern reimplementation of [rdio-scanner](https://github.com/ch
 | Service daemon     | kardianos/service (systemd / Windows service / launchd)          |
 | Audio storage      | Filesystem (paths stored in DB)                                  |
 | Audio conversion   | FFmpeg (external subprocess) with bounded worker pool            |
-| Transcription      | Local Whisper binary (CPU or GPU via NVIDIA CUDA)                |
+| Transcription      | go-whisper HTTP API (whisper.cpp backend, CPU or GPU via CUDA/Vulkan) |
 | Push notifications | webpush-go (Web Push / VAPID)                                    |
 | Logging            | log/slog (structured, levelled)                                  |
 | Deployment         | go:embed frontend into single Go binary                          |
@@ -58,7 +58,7 @@ openscanner/                     ← monorepo root
 │   │   │   ├── processor.go     ← save file + FFmpeg conversion
 │   │   │   ├── duplicate.go     ← duplicate call detection
 │   │   │   ├── worker.go        ← bounded FFmpeg worker pool (channel queue)
-│   │   │   └── transcriber.go   ← Whisper transcription worker pool
+│   │   │   └── transcriber.go   ← go-whisper HTTP client + worker pool
 │   │   ├── dirwatch/            ← fsnotify-based directory watcher
 │   │   │   ├── watcher.go       ← fsnotify watcher + polling fallback
 │   │   │   ├── parsers.go       ← per-recorder-type file parsers
@@ -298,10 +298,11 @@ Every app option is a key/value pair here.
 | `darkMode`                    | `true`    | `true` = dark theme, `false` = light theme; persisted per-instance in localStorage too                |
 | `pushNotifications`           | `false`   | When `true`, browser push notification subscriptions are accepted                                     |
 | `webhooksEnabled`             | `false`   | When `true`, webhook delivery is active                                                               |
-| `transcriptionEnabled`        | `false`   | When `true`, calls are queued for local Whisper transcription                                         |
-| `transcriptionModel`          | `base`    | Whisper model size: `tiny`, `base`, `small`, `medium`, `large`                                        |
-| `transcriptionBinary`         | `whisper` | Path to local Whisper binary (e.g. `whisper`, `whisper.cpp`, or absolute path)                        |
+| `transcriptionEnabled`        | `false`   | When `true`, calls are queued for transcription via go-whisper                                         |
+| `transcriptionModel`          | `base`    | Whisper model name (e.g. `ggml-base`, `ggml-small.en-tdrz` for diarization)                          |
+| `transcriptionUrl`            | `http://localhost:8081` | URL of the go-whisper HTTP API server                                                    |
 | `transcriptionLanguage`       | `en`      | Language code for Whisper (ISO 639-1)                                                                 |
+| `transcriptionDiarize`        | `false`   | When `true`, use diarization model to label speakers in segments                                      |
 | `activityDashboard`           | `false`   | When `true`, activity stats are collected and dashboard is available                                  |
 | `afsSystems`                  | ``        | AFS/P25 system IDs (comma-separated); used by `#TGAFS` mask token and AFS-aware display formatting    |
 | `branding`                    | ``        | Custom text displayed in the status bar (`LEDPanel`); sent to clients via `VER` WS command            |
@@ -490,15 +491,16 @@ Browser push notification subscriptions.
 
 Speech-to-text results for calls.
 
-| Column        | Type                     | Notes                  |
-| ------------- | ------------------------ | ---------------------- |
-| `id`          | INTEGER PK AUTOINCREMENT |                        |
-| `call_id`     | INTEGER FK → calls       | CASCADE DELETE; UNIQUE |
-| `text`        | TEXT                     | Full transcript text   |
-| `language`    | TEXT                     | Detected language code |
-| `model`       | TEXT                     | Whisper model used     |
-| `duration_ms` | INTEGER                  | Processing time in ms  |
-| `created_at`  | INTEGER                  | Unix epoch seconds     |
+| Column        | Type                     | Notes                                          |
+| ------------- | ------------------------ | ---------------------------------------------- |
+| `id`          | INTEGER PK AUTOINCREMENT |                                                |
+| `call_id`     | INTEGER FK → calls       | CASCADE DELETE; UNIQUE                         |
+| `text`        | TEXT                     | Full transcript text (flat, all speakers)      |
+| `segments`    | TEXT (JSON)              | JSON array of `{speaker, start, end, text}`    |
+| `language`    | TEXT                     | Detected language code                         |
+| `model`       | TEXT                     | Model used (e.g. `ggml-base`, `ggml-small.en-tdrz`) |
+| `duration_ms` | INTEGER                  | Processing time in ms                          |
+| `created_at`  | INTEGER                  | Unix epoch seconds                             |
 
 **Index:** `CREATE INDEX idx_transcriptions_text ON transcriptions(text)` (for full-text search)
 
@@ -959,7 +961,8 @@ The scanner page is a single vertically-stacked column, centered, max-width 640p
 
 - Embedded between the 7-row display and history table, inside the same dark surface
 - Only rendered when `transcriptionEnabled` setting is `true` **and** the current call has a transcript
-- Single-line or multi-line text, font-size 13px, italic, `neutral-content` at 80% opacity
+- **Plain mode** (no diarization): single-line or multi-line text, font-size 13px, italic, `neutral-content` at 80% opacity
+- **Diarization mode** (segments available): each segment shows `[Speaker N] text` with timestamps on hover; alternating subtle background tints per speaker
 - Wrapped in a collapsible `<details>` element (open by default); clicking the summary row collapses/expands
 - Receives live updates via WS `TRN` event — text appears shortly after call finishes playing
 - If no transcript available: element is hidden (no empty placeholder)
@@ -1468,28 +1471,37 @@ All extended features are **configurable** — disabled by default (except keybo
 - `WebhooksPanel.tsx` in admin: CRUD for webhook configs + test button
 - Admin can filter per webhook which systems/TGs trigger delivery
 
-### Call Transcription (Local Whisper Binary)
+### Call Transcription (go-whisper HTTP API)
 
 - **Setting:** `transcriptionEnabled` (default: `false`)
-- Uses a local Whisper binary (e.g. `whisper.cpp`, OpenAI `whisper` CLI, or `faster-whisper`) — **not** an API service
+- Uses [go-whisper](https://github.com/mutablelogic/go-whisper) as an HTTP API sidecar for speech-to-text
+- **Architecture:** OpenScanner → HTTP POST → go-whisper server → whisper.cpp inference → JSON response
 - **Settings:**
-  - `transcriptionBinary` — path to Whisper executable (default: `whisper`)
-  - `transcriptionModel` — model size: `tiny`, `base`, `small`, `medium`, `large` (default: `base`)
+  - `transcriptionUrl` — URL of go-whisper server (default: `http://localhost:8081`)
+  - `transcriptionModel` — model name (default: `ggml-base`; use `ggml-small.en-tdrz` for diarization)
   - `transcriptionLanguage` — ISO 639-1 language code (default: `en`)
+  - `transcriptionDiarize` — enable speaker diarization (default: `false`)
+- **Diarization:**
+  - Local: use `ggml-small.en-tdrz` (tinydiarize) model — labels speakers in timestamped segments
+  - Segments stored as JSON array in `transcriptions.segments` column: `[{speaker, start, end, text}, ...]`
+  - Frontend renders speaker-labeled segments when available, falls back to flat text
 - **Processing pipeline:**
   1. After call ingest + audio conversion, call is queued for transcription
-  2. Transcription worker pool (bounded, default 1 worker for GPU exclusivity) invokes: `<binary> --model <model> --language <lang> --output-format txt <audio_file>`
-  3. Output text stored in `transcriptions` table (one row per call)
-  4. WS broadcast `TRN` event to connected clients with `{callId, text}`
+  2. Transcription worker pool (bounded, default 2 workers) sends audio to go-whisper API: `POST /v1/audio/transcriptions` with model, language, and format parameters
+  3. Response parsed (JSON with segments when diarization enabled, plain text otherwise)
+  4. Flat text + segments stored in `transcriptions` table
+  5. WS broadcast `TRN` event to connected clients with `{callId, text, segments}`
 - **Frontend:**
   - `TranscriptPanel.tsx` — expandable panel below the display showing transcript of current call
+  - When diarization is available, renders speaker-labeled segments with timestamps
   - Search panel gains a "Search transcripts" text input — queries `GET /api/calls?transcript=<text>` which performs a `LIKE` search on `transcriptions.text`
   - Transcript text displayed in call share page when available
-- **Docker GPU passthrough:**
-  - `Dockerfile` has a separate build target: `FROM nvidia/cuda:12.6.0-runtime-ubuntu24.04 AS runtime-gpu`
-  - `docker-compose.yml` includes a `gpu` service profile with `deploy.resources.reservations.devices` for NVIDIA GPU
-  - Non-GPU image uses CPU-only Whisper (slower but functional)
-  - Startup check: if `transcriptionEnabled` is true and binary is not found, log warning and disable transcription (non-fatal)
+- **Deployment:**
+  - go-whisper runs as a Docker sidecar (CPU or GPU) or standalone service
+  - CPU: `docker run -d -v whisper:/data -p 8081:8081 ghcr.io/mutablelogic/go-whisper run`
+  - GPU (CUDA): `docker run -d --gpus all -v whisper:/data -p 8081:8081 ghcr.io/mutablelogic/go-whisper-cuda run`
+  - Models downloaded on first use via go-whisper's model management API
+  - Startup check: if `transcriptionEnabled` is true and go-whisper URL is unreachable, log warning and disable transcription (non-fatal)
 
 ---
 
@@ -1929,33 +1941,37 @@ All extended features are **configurable** — disabled by default (except keybo
 
 ### Phase 18 — Call Transcription
 
-**Goal:** Local Whisper-based speech-to-text for all ingested calls.
+**Goal:** Speech-to-text for all ingested calls via go-whisper HTTP API, with optional speaker diarization.
 
-1. `internal/audio/transcriber.go` — transcription worker pool (default 1 worker for GPU exclusivity):
-   - Reads `transcriptionBinary`, `transcriptionModel`, `transcriptionLanguage` from settings
-   - Invokes Whisper via `exec.CommandContext` with arg slice (never shell string): `<binary> --model <model> --language <lang> --output-format txt <audio_file>`
-   - Captures stdout as transcript text; stores in `transcriptions` table
+1. `internal/audio/transcriber.go` — transcription worker pool (default 2 workers):
+   - Reads `transcriptionUrl`, `transcriptionModel`, `transcriptionLanguage`, `transcriptionDiarize` from settings
+   - Sends audio to go-whisper: `POST <url>/v1/audio/transcriptions` with multipart form (file, model, language, response_format)
+   - Parses JSON response for segments (with speaker labels when diarization enabled)
+   - Stores flat text + segments JSON in `transcriptions` table
    - On failure: logs error, does not retry automatically (admin can retry via API)
-2. `transcriptions` migration + sqlc queries: `CreateTranscription`, `GetTranscriptionByCallID`, `SearchTranscriptions`
-3. After call ingest + audio conversion, if `transcriptionEnabled` is `true`, queue call for transcription
-4. On transcription complete, broadcast `TRN` WS event to all connected clients: `["TRN", {callId, text}]`
-5. `src/components/scanner/TranscriptPanel.tsx` — collapsible panel below display; shows transcript of current call; updates live when `TRN` event arrives
-6. Search panel: add "Search transcripts" text input; `GET /api/calls?transcript=<text>` queries `transcriptions.text` via `LIKE %text%`
-7. `SharedCall.tsx` — show transcript text below audio player (if available)
-8. `GET /api/admin/transcriptions/status` — returns queue depth, completed count, average processing time, current model
-9. `POST /api/admin/transcriptions/retry/:id` — re-queue a specific call for transcription
-10. `Dockerfile` additions:
-    - Default image: include `whisper.cpp` CPU build (or `faster-whisper` pip install)
-    - GPU target: `FROM nvidia/cuda:12.6.0-runtime-ubuntu24.04` base with cuBLAS; install `whisper.cpp` with CUDA support
-    - `docker-compose.yml`: add `gpu` profile with `deploy.resources.reservations.devices: [{driver: nvidia, count: 1, capabilities: [gpu]}]`
-11. Startup: if `transcriptionEnabled` is `true`, check binary exists; if not found, log warning and set `transcriptionEnabled` to `false`
-12. Unit tests: transcriber invocation args, transcript storage, search query, TRN event broadcast
+2. `transcriptions` migration update — add `segments` TEXT column (JSON array of `{speaker, start, end, text}`)
+3. sqlc queries: `CreateTranscription`, `GetTranscriptionByCallID`, `SearchTranscriptions`
+4. After call ingest + audio conversion, if `transcriptionEnabled` is `true`, queue call for transcription
+5. On transcription complete, broadcast `TRN` WS event to all connected clients: `["TRN", {callId, text, segments}]`
+6. `src/components/scanner/TranscriptPanel.tsx` — collapsible panel below display; shows transcript of current call; renders speaker-labeled segments when available; updates live when `TRN` event arrives
+7. Search panel: add "Search transcripts" text input; `GET /api/calls?transcript=<text>` queries `transcriptions.text` via `LIKE %text%`
+8. `SharedCall.tsx` — show transcript text below audio player (if available)
+9. `GET /api/admin/transcriptions/status` — returns queue depth, completed count, average processing time, current model, go-whisper connectivity status
+10. `POST /api/admin/transcriptions/retry/:id` — re-queue a specific call for transcription
+11. `docker-compose.yml` additions:
+    - Add `whisper` service using `ghcr.io/mutablelogic/go-whisper` image with volume mount for models
+    - Default: CPU-only container on port 8081
+    - GPU profile: same image with `--gpus all` and CUDA/Vulkan support
+    - Model auto-download: on first transcription request, go-whisper downloads the configured model
+12. Startup: if `transcriptionEnabled` is `true`, ping go-whisper health endpoint; if unreachable, log warning and set `transcriptionEnabled` to `false`
+13. Admin settings UI: replace `transcriptionBinary` with `transcriptionUrl`, add `transcriptionDiarize` toggle
+14. Unit tests: HTTP client mocking, transcript storage, search query, TRN event broadcast, diarization segment parsing
 
-**Deliverables:** Uploaded call gets transcribed within 30s (model-dependent); transcript visible on scanner; searchable by text; GPU container transcribes in real-time.
+**Deliverables:** Uploaded call gets transcribed within 30s (model-dependent); transcript visible on scanner with optional speaker labels; searchable by text; GPU container transcribes in real-time.
 
-**Agents:** Go Expert (transcriber worker pool, Whisper exec, transcription API, TRN WS event), React Expert (TranscriptPanel, search transcript input, SharedCall transcript), Database Expert (transcriptions queries), Docs Expert (Dockerfile GPU target instructions), Testing Expert (unit tests), Reviewer (command injection review for Whisper invocation).
+**Agents:** Go Expert (transcriber HTTP client, worker pool, transcription API, TRN WS event), React Expert (TranscriptPanel with diarization, search transcript input, SharedCall transcript), Database Expert (transcriptions queries + segments column), Docs Expert (docker-compose whisper service docs), Testing Expert (unit tests), Reviewer (HTTP client security review).
 
-**References:** [Call Transcription](#call-transcription-local-whisper-binary) (Extended Features), [Transcript Panel](#transcript-panel-transcriptpaneltsx) (wireframe), [`transcriptions` table](#transcriptions), [Transcriptions](#transcriptions-when-transcriptionenabled-enabled) endpoints, [WebSocket Commands](#websocket-commands) (`TRN`), [Settings](#settings) (`transcriptionEnabled`, `transcriptionBinary`, `transcriptionModel`, `transcriptionLanguage`).
+**References:** [Call Transcription](#call-transcription-go-whisper-http-api) (Extended Features), [Transcript Panel](#transcript-panel-transcriptpaneltsx) (wireframe), [`transcriptions` table](#transcriptions), [Transcriptions](#transcriptions-when-transcriptionenabled-enabled) endpoints, [WebSocket Commands](#websocket-commands) (`TRN`), [Settings](#settings) (`transcriptionEnabled`, `transcriptionUrl`, `transcriptionModel`, `transcriptionLanguage`, `transcriptionDiarize`).
 
 ---
 
