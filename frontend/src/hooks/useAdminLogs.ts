@@ -39,6 +39,13 @@ export function useAdminLogs(params: LogQueryParams, autoRefresh: boolean) {
     fetchLogs();
   }, [fetchLogs, params.from, params.to, params.level, params.q, params.limit]);
 
+  // Re-fetch when WS (re)connects — first load may race with socket open
+  useEffect(() => {
+    return adminWsClient.on("__connected__", () => {
+      fetchLogs();
+    });
+  }, [fetchLogs]);
+
   // Listen for logs.append events (new log entries pushed from server)
   useEffect(() => {
     if (!autoRefresh) return;
@@ -77,11 +84,17 @@ export function useAdminLogLevel() {
 
   useEffect(() => {
     fetchLevel();
-    // Listen for config changes that might affect log level
-    const unsub = adminWsClient.on("config.updated", () => {
+    // Re-fetch on WS connect and config changes
+    const unsubConnect = adminWsClient.on("__connected__", () => {
       fetchLevel();
     });
-    return unsub;
+    const unsubConfig = adminWsClient.on("config.updated", () => {
+      fetchLevel();
+    });
+    return () => {
+      unsubConnect();
+      unsubConfig();
+    };
   }, [fetchLevel]);
 
   return { level, refetch: fetchLevel };

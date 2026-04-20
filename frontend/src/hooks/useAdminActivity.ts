@@ -35,17 +35,18 @@ export function useAdminActivity() {
   useEffect(() => {
     fetchAll();
     const interval = setInterval(fetchAll, REFRESH_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchAll]);
 
-  // Also listen for activity.delta events from server
-  useEffect(() => {
-    const unsub = adminWsClient.on("activity.delta", (_topic, data) => {
-      const delta = data as Partial<ActivityStats>;
-      setStats((prev) => (prev ? { ...prev, ...delta } : null));
+    // Fetch immediately when WS (re)connects — on first load the
+    // socket may not be open yet when fetchAll() runs above.
+    const unsubConnect = adminWsClient.on("__connected__", () => {
+      fetchAll();
     });
-    return unsub;
-  }, []);
+
+    return () => {
+      clearInterval(interval);
+      unsubConnect();
+    };
+  }, [fetchAll]);
 
   return { stats, chart, topTG, isLoading, refetch: fetchAll };
 }

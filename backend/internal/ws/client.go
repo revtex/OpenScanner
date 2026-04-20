@@ -503,7 +503,7 @@ func (c *Client) opLogsQuery(_ context.Context, params json.RawMessage) (any, er
 		resp[i] = map[string]any{
 			"dateTime": e.Time.Unix(),
 			"level":    e.Level,
-			"msg":      e.Message,
+			"message":  e.Message,
 			"attrs":    e.Attrs,
 		}
 	}
