@@ -722,7 +722,9 @@ func (p *program) run() {
 	}
 
 	// Set up transcription pool (go-whisper HTTP API).
-	var transcriber *audio.TranscriberPool
+	// Set up transcription manager (go-whisper HTTP API, hot-reloadable).
+	var initialPool *audio.TranscriberPool
+	var poolCancel context.CancelFunc
 	hasWhisper := false
 	if tEnabled, _ := queries.GetSetting(context.Background(), "transcriptionEnabled"); tEnabled.Value == "true" {
 		tURL, _ := queries.GetSetting(context.Background(), "transcriptionUrl")
@@ -739,17 +741,22 @@ func (p *program) run() {
 			model = "ggml-base"
 		}
 
-		tp, err := audio.NewTranscriberPool(ctx, 2, baseURL, model, tLang.Value, tDiarize.Value == "true")
+		poolCtx, pCancel := context.WithCancel(ctx)
+		tp, err := audio.NewTranscriberPool(poolCtx, 2, baseURL, model, tLang.Value, tDiarize.Value == "true")
 		if err != nil {
+			pCancel()
 			slog.Warn("transcription pool creation failed, disabling", "error", err)
-		} else if err := tp.Ping(ctx); err != nil {
+		} else if err := tp.Ping(poolCtx); err != nil {
+			pCancel()
 			slog.Warn("go-whisper unreachable, disabling transcription", "url", baseURL, "error", err)
 		} else {
-			transcriber = tp
+			initialPool = tp
+			poolCancel = pCancel
 			hasWhisper = true
 			slog.Info("transcription enabled", "url", baseURL, "model", model, "diarize", tDiarize.Value == "true")
 		}
 	}
+	transcriberMgr := audio.NewTranscriberManager(ctx, initialPool, poolCancel)
 
 	// Start background call pruner.
 	go audio.PruneLoop(ctx, queries, cfg.RecordingsDir)
@@ -780,24 +787,23 @@ func (p *program) run() {
 	dsService.Start(ctx)
 
 	hub := ws.NewHub(queries, config.Version, ws.HubDeps{
-		SQLDB:            sqlDB,
-		DirMonitorReload: nil, // set below after dwService is created
-		DownstreamReload: dsService,
-		FFmpegAvailable:  hasFFmpeg,
-		FDKAACAvailable:  hasFDKAAC,
-		WhisperAvailable: hasWhisper,
-		RecordingsDir:    cfg.RecordingsDir,
+		SQLDB:              sqlDB,
+		DirMonitorReload:   nil, // set below after dwService is created
+		DownstreamReload:   dsService,
+		TranscriberReload:  transcriberMgr,
+		FFmpegAvailable:    hasFFmpeg,
+		FDKAACAvailable:    hasFDKAAC,
+		WhisperAvailable:   hasWhisper,
+		RecordingsDir:      cfg.RecordingsDir,
 	})
 	go hub.Run(ctx)
 
-	dwService := dirmonitor.NewService(queries, processor, hub, dsService, transcriber)
+	dwService := dirmonitor.NewService(queries, processor, hub, dsService, transcriberMgr)
 	dwService.Start(ctx)
 	hub.SetDirMonitorReloader(dwService)
 
 	// Start transcription result consumer (stores results in DB, broadcasts TRN).
-	if transcriber != nil {
-		go consumeTranscriptionResults(ctx, queries, hub, transcriber)
-	}
+	go consumeTranscriptionResults(ctx, queries, hub, transcriberMgr)
 
 	api.RegisterRoutes(router, api.Deps{
 		Queries:            queries,
@@ -808,7 +814,7 @@ func (p *program) run() {
 		DirMonitorReloader: dwService,
 		DownstreamReloader: dsService,
 		DownstreamNotifier: dsService,
-		Transcriber:        transcriber,
+		Transcriber:        transcriberMgr,
 		Version:            config.Version,
 		FFmpegAvailable:    hasFFmpeg,
 		FDKAACAvailable:    hasFDKAAC,
@@ -960,12 +966,12 @@ func checkExternalTools() {
 
 // consumeTranscriptionResults reads completed transcription jobs, stores them
 // in the database, and broadcasts TRN events to WebSocket clients.
-func consumeTranscriptionResults(ctx context.Context, queries *db.Queries, hub *ws.Hub, tp *audio.TranscriberPool) {
+func consumeTranscriptionResults(ctx context.Context, queries *db.Queries, hub *ws.Hub, mgr *audio.TranscriberManager) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case res, ok := <-tp.Results():
+		case res, ok := <-mgr.Results():
 			if !ok {
 				return
 			}
@@ -992,7 +998,7 @@ func consumeTranscriptionResults(ctx context.Context, queries *db.Queries, hub *
 				Text:       res.Result.Text,
 				Segments:   segmentsJSON,
 				Language:   sql.NullString{String: res.Result.Language, Valid: res.Result.Language != ""},
-				Model:      sql.NullString{String: tp.Model(), Valid: true},
+				Model:      sql.NullString{String: mgr.Model(), Valid: true},
 				DurationMs: sql.NullInt64{Int64: time.Since(start).Milliseconds(), Valid: true},
 				CreatedAt:  time.Now().Unix(),
 			})

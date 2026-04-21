@@ -48,7 +48,7 @@ type Deps struct {
 	DirMonitorReloader DirMonitorReloader
 	DownstreamReloader DownstreamReloader
 	DownstreamNotifier DownstreamNotifier
-	Transcriber        *audio.TranscriberPool // nil when transcription is disabled
+	Transcriber        audio.Transcriber     // nil when transcription is disabled
 	Version            string
 	FFmpegAvailable    bool
 	FDKAACAvailable    bool

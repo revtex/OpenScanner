@@ -58,13 +58,13 @@ type CallHandler struct {
 	processor   *audio.Processor
 	hub         *ws.Hub
 	dsNotifier  DownstreamNotifier
-	transcriber *audio.TranscriberPool // nil when transcription is disabled
+	transcriber audio.Transcriber // nil when transcription is disabled
 	mu          sync.Mutex
 	limiters    map[int64]*apiKeyLimiter
 }
 
 // NewCallHandler creates a CallHandler.
-func NewCallHandler(queries *db.Queries, processor *audio.Processor, hub *ws.Hub, dsNotifier DownstreamNotifier, transcriber *audio.TranscriberPool) *CallHandler {
+func NewCallHandler(queries *db.Queries, processor *audio.Processor, hub *ws.Hub, dsNotifier DownstreamNotifier, transcriber audio.Transcriber) *CallHandler {
 	return &CallHandler{
 		queries:     queries,
 		processor:   processor,

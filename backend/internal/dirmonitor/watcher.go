@@ -34,7 +34,7 @@ type Service struct {
 	processor   *audio.Processor
 	hub         *ws.Hub
 	dsNotifier  DownstreamNotifier
-	transcriber *audio.TranscriberPool // nil when transcription is disabled
+	transcriber audio.Transcriber // nil when transcription is disabled
 	mu          sync.Mutex
 	reloadMu    sync.Mutex // serialises Reload calls to prevent duplicate goroutine spawning
 	appCtx      context.Context
@@ -43,7 +43,7 @@ type Service struct {
 }
 
 // NewService creates a DirMonitor service.
-func NewService(queries *db.Queries, processor *audio.Processor, hub *ws.Hub, dsNotifier DownstreamNotifier, transcriber *audio.TranscriberPool) *Service {
+func NewService(queries *db.Queries, processor *audio.Processor, hub *ws.Hub, dsNotifier DownstreamNotifier, transcriber audio.Transcriber) *Service {
 	return &Service{
 		queries:     queries,
 		processor:   processor,

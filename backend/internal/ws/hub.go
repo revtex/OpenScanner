@@ -16,15 +16,22 @@ type Reloader interface {
 	Reload()
 }
 
+// TranscriberReloader can hot-reload the transcription subsystem.
+type TranscriberReloader interface {
+	Reload(enabled bool, baseURL, model, language string, diarize bool) bool
+	Enabled() bool
+}
+
 // HubDeps holds optional dependencies injected into the Hub for admin WS operations.
 type HubDeps struct {
-	SQLDB            *sql.DB
-	DirMonitorReload Reloader
-	DownstreamReload Reloader
-	FFmpegAvailable  bool
-	FDKAACAvailable  bool
-	WhisperAvailable bool
-	RecordingsDir    string
+	SQLDB              *sql.DB
+	DirMonitorReload   Reloader
+	DownstreamReload   Reloader
+	TranscriberReload  TranscriberReloader
+	FFmpegAvailable    bool
+	FDKAACAvailable    bool
+	WhisperAvailable   bool
+	RecordingsDir      string
 }
 
 // StartTime is the process start time, used for uptime calculations.

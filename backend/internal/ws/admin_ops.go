@@ -1963,6 +1963,41 @@ func (c *Client) opConfigUpdate(ctx context.Context, params json.RawMessage) (an
 		}
 	}
 
+	// Hot-reload transcription if any transcription setting changed.
+	if c.hub.deps.TranscriberReload != nil {
+		transcriptionKeys := map[string]bool{
+			"transcriptionEnabled":  true,
+			"transcriptionUrl":      true,
+			"transcriptionModel":    true,
+			"transcriptionLanguage": true,
+			"transcriptionDiarize":  true,
+		}
+		needsReload := false
+		for _, s := range settings {
+			if transcriptionKeys[s.Key] {
+				needsReload = true
+				break
+			}
+		}
+		if needsReload {
+			// Read current settings from DB (just committed).
+			tEnabled, _ := c.hub.queries.GetSetting(ctx, "transcriptionEnabled")
+			tURL, _ := c.hub.queries.GetSetting(ctx, "transcriptionUrl")
+			tModel, _ := c.hub.queries.GetSetting(ctx, "transcriptionModel")
+			tLang, _ := c.hub.queries.GetSetting(ctx, "transcriptionLanguage")
+			tDiarize, _ := c.hub.queries.GetSetting(ctx, "transcriptionDiarize")
+
+			ok := c.hub.deps.TranscriberReload.Reload(
+				tEnabled.Value == "true",
+				tURL.Value,
+				tModel.Value,
+				tLang.Value,
+				tDiarize.Value == "true",
+			)
+			c.hub.deps.WhisperAvailable = ok && tEnabled.Value == "true"
+		}
+	}
+
 	// Broadcast updated config to all WS clients.
 	allSettings, err := c.hub.queries.ListSettings(ctx)
 	if err != nil {
