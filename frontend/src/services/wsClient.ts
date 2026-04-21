@@ -20,11 +20,6 @@ type AudioReceivedCallback = (
 ) => void;
 type CallFilter = (call: Call) => boolean;
 type TokenExpiredCallback = () => Promise<string | null>;
-type TranscriptReceivedCallback = (
-  callId: number,
-  text: string,
-  segments?: TranscriptionSegment[],
-) => void;
 
 interface WsAuth {
   token?: string;
@@ -51,7 +46,6 @@ class WsClient {
   private audioCallback: AudioReceivedCallback | null = null;
   private callFilter: CallFilter | null = null;
   private tokenExpiredCallback: TokenExpiredCallback | null = null;
-  private transcriptCallback: TranscriptReceivedCallback | null = null;
   private intentionalClose = false;
   private recentCallIds: number[] = [];
 
@@ -99,10 +93,6 @@ class WsClient {
 
   onTokenExpired(cb: TokenExpiredCallback): void {
     this.tokenExpiredCallback = cb;
-  }
-
-  onTranscriptReceived(cb: TranscriptReceivedCallback): void {
-    this.transcriptCallback = cb;
   }
 
   private doConnect(): void {
@@ -300,7 +290,6 @@ class WsClient {
             segments?: TranscriptionSegment[];
           };
           this.dispatch?.(transcriptReceived(trn));
-          this.transcriptCallback?.(trn.callId, trn.text, trn.segments);
         }
         break;
       default:

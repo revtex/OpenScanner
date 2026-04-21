@@ -10,7 +10,6 @@ import { BookmarkButton } from "@/components/scanner/BookmarkButton";
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { useShareCallMutation } from "@/app/slices/shareSlice";
 import { HistoryPanel } from "@/components/scanner/HistoryPanel";
-import { TranscriptPanel } from "@/components/scanner/TranscriptPanel";
 import { useActiveUnit } from "@/hooks/useActiveUnit";
 import type { AvoidEntry, Call } from "@/types";
 
@@ -409,9 +408,6 @@ export function DisplayPanel({
           </div>
         </>
       )}
-
-      {/* Transcript */}
-      <TranscriptPanel call={currentCall} />
 
       {/* History */}
       <HistoryPanel history={history} time12hFormat={time12hFormat} />
