@@ -451,7 +451,7 @@ type tgSelectionRequest struct {
 type avoidTGEntry struct {
 	TalkgroupID int64 `json:"talkgroupId"`
 	ExpiresAt   int64 `json:"expiresAt"`
-}
+} // @name AvoidTGEntry
 
 // GetTGSelection handles GET /api/auth/tg-selection (JWT required).
 // Returns the list of talkgroup IDs the user has disabled.

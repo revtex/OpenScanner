@@ -1567,7 +1567,7 @@ type transcriptResponse struct {
 	Segments []audio.TranscriptionSegment `json:"segments"`
 	Language string                       `json:"language"`
 	Model    string                       `json:"model"`
-}
+} // @name TranscriptResponse
 
 // GetCallTranscript handles GET /api/calls/:id/transcript.
 // Returns the transcription for a call if one exists.

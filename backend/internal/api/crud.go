@@ -34,7 +34,7 @@ type transcriptionStatusResponse struct {
 	Diarize             bool   `json:"diarize"`
 	TotalTranscriptions int64  `json:"totalTranscriptions"`
 	WhisperAvailable    bool   `json:"whisperAvailable"`
-}
+} // @name TranscriptionStatusResponse
 
 // GetTranscriptionStatus handles GET /api/admin/transcriptions/status.
 // Returns the current transcription configuration and statistics.

@@ -24,7 +24,7 @@ type TranscriptionSegment struct {
 	Start   float64 `json:"start"`
 	End     float64 `json:"end"`
 	Text    string  `json:"text"`
-}
+} // @name TranscriptionSegment
 
 // transcribeResponse is the raw JSON response from go-whisper.
 type transcribeResponse struct {
