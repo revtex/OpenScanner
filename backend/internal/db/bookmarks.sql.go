@@ -132,11 +132,13 @@ SELECT
     t.label AS talkgroup_label,
     t.name  AS talkgroup_name,
     t.led   AS talkgroup_led,
-    t.talkgroup_id AS talkgroup_radio_id
+    t.talkgroup_id AS talkgroup_radio_id,
+    tr.text AS transcript_text
 FROM bookmarks b
 JOIN calls c ON c.id = b.call_id
 LEFT JOIN systems s ON s.id = c.system_id
 LEFT JOIN talkgroups t ON t.id = c.talkgroup_id
+LEFT JOIN transcriptions tr ON tr.call_id = c.id
 WHERE b.user_id = ?
 ORDER BY b.created_at DESC
 LIMIT 100
@@ -168,6 +170,7 @@ type ListBookmarkCallsByUserRow struct {
 	TalkgroupName    sql.NullString `db:"talkgroup_name" json:"talkgroup_name"`
 	TalkgroupLed     sql.NullString `db:"talkgroup_led" json:"talkgroup_led"`
 	TalkgroupRadioID sql.NullInt64  `db:"talkgroup_radio_id" json:"talkgroup_radio_id"`
+	TranscriptText   sql.NullString `db:"transcript_text" json:"transcript_text"`
 }
 
 func (q *Queries) ListBookmarkCallsByUser(ctx context.Context, userID sql.NullInt64) ([]ListBookmarkCallsByUserRow, error) {
@@ -205,6 +208,7 @@ func (q *Queries) ListBookmarkCallsByUser(ctx context.Context, userID sql.NullIn
 			&i.TalkgroupName,
 			&i.TalkgroupLed,
 			&i.TalkgroupRadioID,
+			&i.TranscriptText,
 		); err != nil {
 			return nil, err
 		}

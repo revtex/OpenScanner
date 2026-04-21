@@ -32,11 +32,13 @@ SELECT
     t.label AS talkgroup_label,
     t.name  AS talkgroup_name,
     t.led   AS talkgroup_led,
-    t.talkgroup_id AS talkgroup_radio_id
+    t.talkgroup_id AS talkgroup_radio_id,
+    tr.text AS transcript_text
 FROM bookmarks b
 JOIN calls c ON c.id = b.call_id
 LEFT JOIN systems s ON s.id = c.system_id
 LEFT JOIN talkgroups t ON t.id = c.talkgroup_id
+LEFT JOIN transcriptions tr ON tr.call_id = c.id
 WHERE b.user_id = ?
 ORDER BY b.created_at DESC
 LIMIT 100;

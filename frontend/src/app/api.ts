@@ -134,6 +134,7 @@ export const api = createApi({
           source?: number;
           errorCount?: number;
           spikeCount?: number;
+          transcript?: string;
           bookmarked: boolean;
         }[];
       },

@@ -187,6 +187,9 @@ func (h *BookmarkHandler) GetBookmarkCalls(c *gin.Context) {
 		if row.Decoder.Valid {
 			r.Decoder = row.Decoder.String
 		}
+		if row.TranscriptText.Valid {
+			r.Transcript = row.TranscriptText.String
+		}
 		r.Bookmarked = true
 		results = append(results, r)
 	}

@@ -954,6 +954,12 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                           <span>S:{call.spikeCount}</span>
                         )}
                       </div>
+                      {/* Row 4: transcript preview */}
+                      {call.transcript && (
+                        <div className="text-[10px] italic text-base-content/50 truncate max-w-[40ch]">
+                          {call.transcript}
+                        </div>
+                      )}
                     </div>
                     {/* Date/time + action buttons */}
                     <div className="flex shrink-0 flex-col items-end gap-0.5">
