@@ -415,9 +415,7 @@ export function DisplayPanel({
       )}
 
       {/* Transcript (when enabled in admin) */}
-      {liveTranscriptDisplay && (
-        <TranscriptPanel call={currentCall} />
-      )}
+      {liveTranscriptDisplay && <TranscriptPanel call={currentCall} />}
 
       {/* History */}
       <HistoryPanel history={history} time12hFormat={time12hFormat} />

@@ -236,9 +236,7 @@ export default function TranscriptionPanel() {
             {/* Live display toggle */}
             <label className="flex items-center justify-between cursor-pointer">
               <div>
-                <span className="text-sm font-medium">
-                  Show in Live Player
-                </span>
+                <span className="text-sm font-medium">Show in Live Player</span>
                 <p className="text-xs text-base-content/60">
                   Display transcripts in the scanner during playback
                 </p>
@@ -446,7 +444,9 @@ export default function TranscriptionPanel() {
             <div className="loading loading-spinner loading-sm" />
           ) : modelsError ? (
             <div className="flex items-center gap-2 text-sm text-warning">
-              <span>Could not load models — is the go-whisper URL configured?</span>
+              <span>
+                Could not load models — is the go-whisper URL configured?
+              </span>
               <button className="btn btn-ghost btn-xs" onClick={refetchModels}>
                 Retry
               </button>

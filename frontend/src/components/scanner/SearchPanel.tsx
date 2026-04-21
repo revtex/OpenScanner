@@ -512,6 +512,11 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     () => new Set<number>(),
   );
 
+  // Re-measure virtualized rows when transcripts expand/collapse.
+  useEffect(() => {
+    virtualizer.measure();
+  }, [expandedTranscripts, virtualizer]);
+
   const handleToggleSection = useCallback((sectionId: string) => {
     setOpenFilterSection((prev) => (prev === sectionId ? "" : sectionId));
   }, []);
@@ -983,12 +988,11 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                           Transcription
                         </button>
                       )}
-                      {call.transcript &&
-                        expandedTranscripts.has(call.id) && (
-                          <div className="text-[11px] italic text-base-content/60 whitespace-pre-wrap mt-0.5">
-                            {call.transcript}
-                          </div>
-                        )}
+                      {call.transcript && expandedTranscripts.has(call.id) && (
+                        <div className="text-[11px] italic text-base-content/60 whitespace-pre-wrap mt-0.5">
+                          {call.transcript}
+                        </div>
+                      )}
                     </div>
                     {/* Date/time + action buttons */}
                     <div className="flex shrink-0 flex-col items-end gap-0.5">
