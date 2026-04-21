@@ -84,6 +84,11 @@ export function useAudioPlayer() {
       // tgSelection: undefined = enabled; only explicit false rejects
       return tgSelection[call.talkgroup] !== false;
     });
+
+    // Stop all audio when the hook unmounts (e.g. navigating away).
+    return () => {
+      audioPlayer.clearQueue();
+    };
   }, [dispatch]);
 
   // Flush queue + skip current when hold activates
