@@ -53,6 +53,15 @@ export function useAudioPlayer() {
       audioPlayer.play(call, audioData, audioUrl);
     });
 
+    // Forward transcript events to audioPlayer so buffered calls get
+    // their transcript attached before playback starts.
+    wsClient.onTranscriptReceived((callId, text, segments) => {
+      audioPlayer.resolveTranscript(callId, text, segments);
+    });
+
+    // Enable transcript-synced playback by default.
+    audioPlayer.setSyncTranscripts(true);
+
     // If restored as paused (e.g. after refresh), tell audioPlayer so
     // incoming calls queue instead of trying to auto-play.
     if (store.getState().scanner.isPaused) {

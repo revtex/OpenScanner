@@ -42,7 +42,7 @@ export function TranscriptPanel({ call }: TranscriptPanelProps) {
       {hasDiarization ? (
         <DiarizedTranscript segments={segments} />
       ) : (
-        <p className="text-xs italic text-base-content/80 whitespace-pre-wrap px-1">
+        <p className="text-xs italic opacity-70 whitespace-pre-wrap px-1">
           {call.transcript}
         </p>
       )}

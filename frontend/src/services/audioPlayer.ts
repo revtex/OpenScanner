@@ -1,4 +1,4 @@
-import type { Call } from "@/types";
+import type { Call, TranscriptionSegment } from "@/types";
 import { bootstrapBeepContext } from "@/services/beepPlayer";
 
 interface QueueItem {
@@ -6,6 +6,18 @@ interface QueueItem {
   audioData: ArrayBuffer;
   audioUrl: string; // blob URL kept for download only
 }
+
+/** Item waiting for its transcript before being queued for playback. */
+interface PendingItem {
+  call: Call;
+  audioData: ArrayBuffer;
+  audioUrl: string;
+  timer: ReturnType<typeof setTimeout>;
+  seq: number; // insertion order — used to preserve FIFO
+}
+
+/** Max time (ms) to wait for a transcript before playing anyway. */
+const TRANSCRIPT_WAIT_MS = 20_000;
 
 // Extend window for Safari's prefixed AudioContext
 declare global {
@@ -28,6 +40,12 @@ class AudioPlayer {
   private callStartCb: ((call: Call) => void) | null = null;
   private callEndCb: (() => void) | null = null;
   private queueChangeCb: ((length: number) => void) | null = null;
+
+  /** Calls waiting for their transcript before being released to the queue. */
+  private pendingTranscript: Map<number, PendingItem> = new Map();
+  private pendingSeq = 0;
+  /** Whether to wait for transcripts before playing. */
+  private _syncTranscripts = false;
 
   constructor() {
     this.bootstrapAudio();
@@ -90,17 +108,35 @@ class AudioPlayer {
   }
 
   play(call: Call, audioData: ArrayBuffer, audioUrl: string): void {
+    // When transcript sync is enabled, hold the call in a pending buffer
+    // until TRN arrives or the timeout fires.
+    if (this._syncTranscripts) {
+      const seq = this.pendingSeq++;
+      const timer = setTimeout(() => {
+        this.releasePending(call.id);
+      }, TRANSCRIPT_WAIT_MS);
+      this.pendingTranscript.set(call.id, {
+        call,
+        audioData,
+        audioUrl,
+        timer,
+        seq,
+      });
+      this.notifyQueueChange();
+      return;
+    }
+
     const item: QueueItem = { call, audioData, audioUrl };
     if (this._paused) {
       this.queue.push(item);
-      this.queueChangeCb?.(this.queue.length);
+      this.notifyQueueChange();
       return;
     }
     if (!this.currentItem) {
       this.startPlayback(item);
     } else {
       this.queue.push(item);
-      this.queueChangeCb?.(this.queue.length);
+      this.notifyQueueChange();
     }
   }
 
@@ -113,7 +149,7 @@ class AudioPlayer {
     this.stopSource();
     this.queue.unshift(this.currentItem);
     this.currentItem = null;
-    this.queueChangeCb?.(this.queue.length);
+    this.notifyQueueChange();
     this.startPlayback(item);
   }
 
@@ -207,6 +243,12 @@ class AudioPlayer {
       this.cleanup(item.audioUrl);
     }
     this.queue = [];
+    // Also clear pending transcript buffer.
+    for (const p of this.pendingTranscript.values()) {
+      clearTimeout(p.timer);
+      this.cleanup(p.audioUrl);
+    }
+    this.pendingTranscript.clear();
     this.queueChangeCb?.(0);
     if (this.currentItem) {
       this.stopSource();
@@ -227,7 +269,60 @@ class AudioPlayer {
       }
     }
     this.queue = kept;
-    this.queueChangeCb?.(this.queue.length);
+    // Also filter pending transcript buffer.
+    for (const [id, pending] of this.pendingTranscript) {
+      if (!predicate(pending.call)) {
+        clearTimeout(pending.timer);
+        this.cleanup(pending.audioUrl);
+        this.pendingTranscript.delete(id);
+      }
+    }
+    this.notifyQueueChange();
+  }
+
+  /**
+   * Enable/disable waiting for transcripts before playing.
+   * When enabled, calls are buffered until resolveTranscript() is called
+   * or TRANSCRIPT_WAIT_MS elapses.
+   */
+  setSyncTranscripts(enabled: boolean): void {
+    this._syncTranscripts = enabled;
+    // If disabling, flush all pending items into the queue immediately.
+    if (!enabled) {
+      this.flushAllPending();
+    }
+  }
+
+  /**
+   * Called when a TRN message arrives. Attaches the transcript to the
+   * pending call and releases it (in order) to the playback queue.
+   */
+  resolveTranscript(
+    callId: number,
+    text: string,
+    segments?: TranscriptionSegment[],
+  ): void {
+    const pending = this.pendingTranscript.get(callId);
+    if (pending) {
+      clearTimeout(pending.timer);
+      pending.call.transcript = text;
+      pending.call.transcriptSegments = segments;
+      this.pendingTranscript.delete(callId);
+      this.flushReady();
+    }
+    // Also update the current playing call or queued items.
+    if (this.currentItem?.call.id === callId) {
+      this.currentItem.call.transcript = text;
+      this.currentItem.call.transcriptSegments = segments;
+      // Re-fire callStartCb so Redux gets the updated call.
+      this.callStartCb?.(this.currentItem.call);
+    }
+    for (const item of this.queue) {
+      if (item.call.id === callId) {
+        item.call.transcript = text;
+        item.call.transcriptSegments = segments;
+      }
+    }
   }
 
   getCurrentCall(): Call | null {
@@ -376,7 +471,7 @@ class AudioPlayer {
 
   private playNext(): void {
     const next = this.queue.shift();
-    this.queueChangeCb?.(this.queue.length);
+    this.notifyQueueChange();
     if (next) {
       this.startPlayback(next);
     } else {
@@ -391,6 +486,71 @@ class AudioPlayer {
       URL.revokeObjectURL(url);
     } catch {
       // ignore
+    }
+  }
+
+  /**
+   * Release a pending item (by callId) into the playback queue.
+   * Called on timeout or when transcript arrives.
+   */
+  private releasePending(callId: number): void {
+    const pending = this.pendingTranscript.get(callId);
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    this.pendingTranscript.delete(callId);
+    this.enqueueItem({
+      call: pending.call,
+      audioData: pending.audioData,
+      audioUrl: pending.audioUrl,
+    });
+  }
+
+  /**
+   * Flush pending items that are ready. When an item gets its transcript
+   * or times out, it is released. We release contiguous items from the
+   * front (lowest seq) to preserve call order.
+   */
+  private flushReady(): void {
+    // Find the lowest seq still pending.
+    let minPendingSeq = Infinity;
+    for (const p of this.pendingTranscript.values()) {
+      if (p.seq < minPendingSeq) minPendingSeq = p.seq;
+    }
+    // Nothing else to flush — releasePending already enqueued the item.
+    this.notifyQueueChange();
+  }
+
+  /** Move all pending items into the playback queue, ordered by seq. */
+  private flushAllPending(): void {
+    const items = [...this.pendingTranscript.values()].sort(
+      (a, b) => a.seq - b.seq,
+    );
+    for (const p of items) {
+      clearTimeout(p.timer);
+    }
+    this.pendingTranscript.clear();
+    for (const p of items) {
+      this.enqueueItem({ call: p.call, audioData: p.audioData, audioUrl: p.audioUrl });
+    }
+  }
+
+  /** Total items waiting (pending transcript + queued). */
+  private notifyQueueChange(): void {
+    this.queueChangeCb?.(this.queue.length + this.pendingTranscript.size);
+  }
+
+  /** Push an item to the queue or start playback if idle. */
+  private enqueueItem(item: QueueItem): void {
+    if (this._paused) {
+      this.queue.push(item);
+      this.notifyQueueChange();
+      return;
+    }
+    if (!this.currentItem) {
+      this.startPlayback(item);
+    } else {
+      this.queue.push(item);
+      this.notifyQueueChange();
     }
   }
 }
