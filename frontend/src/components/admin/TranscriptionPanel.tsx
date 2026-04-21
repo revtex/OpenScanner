@@ -164,7 +164,7 @@ export default function TranscriptionPanel() {
     }
   };
 
-  const models = modelsData?.models ?? [];
+  const models = modelsData ?? [];
   const downloadedIds = new Set(models.map((m) => m.id));
   const availableForDownload = KNOWN_MODELS.filter(
     (m) => !downloadedIds.has(m),

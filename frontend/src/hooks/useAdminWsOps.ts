@@ -22,7 +22,6 @@ import type {
   RRApplyRequest,
   RRApplyResponse,
   TranscriptionStatus,
-  TranscriptionModelsResponse,
   WhisperModel,
 } from "@/types";
 
@@ -403,7 +402,7 @@ export function useTranscriptionStatusQuery() {
 }
 
 export function useTranscriptionModelsQuery() {
-  return useWsQuery<TranscriptionModelsResponse>("transcription.models");
+  return useWsQuery<WhisperModel[]>("transcription.models");
 }
 
 export function useTranscriptionDownloadMutation() {
