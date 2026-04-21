@@ -5,6 +5,7 @@ interface QueueItem {
   call: Call;
   audioData: ArrayBuffer;
   audioUrl: string; // blob URL kept for download only
+  onDemand?: boolean; // true for search/bookmark plays, false for ingested
 }
 
 // Extend window for Safari's prefixed AudioContext
@@ -104,14 +105,32 @@ class AudioPlayer {
     }
   }
 
+  /**
+   * Play a call immediately from search/bookmarks.
+   *
+   * - If nothing is playing, just play.
+   * - If an ingested (live) call is playing, push it back to the front
+   *   of the queue so it resumes after this on-demand call finishes.
+   * - If another on-demand call is playing, discard it (don't re-queue).
+   * - Ingested calls in the queue are never touched.
+   */
   playNow(call: Call, audioData: ArrayBuffer, audioUrl: string): void {
-    const item: QueueItem = { call, audioData, audioUrl };
+    const item: QueueItem = { call, audioData, audioUrl, onDemand: true };
     if (!this.currentItem) {
       this.startPlayback(item);
       return;
     }
+
     this.stopSource();
-    this.queue.unshift(this.currentItem);
+
+    if (this.currentItem.onDemand) {
+      // Currently playing an on-demand call — discard it.
+      this.cleanup(this.currentItem.audioUrl);
+    } else {
+      // Currently playing an ingested call — push it back to front of queue.
+      this.queue.unshift(this.currentItem);
+    }
+
     this.currentItem = null;
     this.queueChangeCb?.(this.queue.length);
     this.startPlayback(item);
