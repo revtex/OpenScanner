@@ -14,6 +14,7 @@ const BOOLEAN_KEYS = [
   "pushNotifications",
   "webhooksEnabled",
   "transcriptionEnabled",
+  "transcriptionDiarize",
   "time12hFormat",
   "disableDuplicateDetection",
   "sortTalkgroups",
@@ -45,7 +46,14 @@ const HE_AAC_PRESETS = new Set(["he_aac_12k", "he_aac_8k"]);
 
 const KEYPAD_BEEPS = ["disabled", "uniden", "whistler"] as const;
 
-const TRANSCRIPTION_MODELS = ["tiny", "base", "small", "medium", "large"];
+const TRANSCRIPTION_MODELS = [
+  "ggml-tiny",
+  "ggml-base",
+  "ggml-small",
+  "ggml-medium",
+  "ggml-large",
+  "ggml-small.en-tdrz",
+];
 interface SettingSection {
   title: string;
   keys: string[];
@@ -55,10 +63,6 @@ interface SettingSection {
 const PLANNED_ONLY_KEYS = [
   "pushNotifications",
   "webhooksEnabled",
-  "transcriptionEnabled",
-  "transcriptionBinary",
-  "transcriptionModel",
-  "transcriptionLanguage",
   "sortTalkgroups",
   "tagsToggle",
   "playbackGoesLive",
@@ -107,9 +111,10 @@ const SECTIONS: SettingSection[] = [
     title: "Transcription",
     keys: [
       "transcriptionEnabled",
-      "transcriptionBinary",
+      "transcriptionUrl",
       "transcriptionModel",
       "transcriptionLanguage",
+      "transcriptionDiarize",
     ],
   },
 ];
@@ -125,9 +130,10 @@ const LABELS: Record<string, string> = {
   pushNotifications: "Push Notifications",
   webhooksEnabled: "Webhooks Enabled",
   transcriptionEnabled: "Transcription Enabled",
-  transcriptionBinary: "Transcription Binary Path",
+  transcriptionUrl: "go-whisper Server URL",
   transcriptionModel: "Transcription Model",
   transcriptionLanguage: "Transcription Language",
+  transcriptionDiarize: "Speaker Diarization",
   audioConversion: "Audio Conversion (FFmpeg)",
   audioEncodingPreset: "Audio Encoding Preset",
   branding: "Branding Label",
@@ -256,6 +262,14 @@ export default function OptionsPanel() {
   };
 
   const updateSetting = (key: string, value: string) => {
+    if (key === "transcriptionDiarize" && value === "true") {
+      setLocalSettings((prev) => ({
+        ...prev,
+        [key]: value,
+        transcriptionModel: "ggml-small.en-tdrz",
+      }));
+      return;
+    }
     setLocalSettings((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -276,6 +290,7 @@ export default function OptionsPanel() {
   };
 
   const transcriptionEnabled = localSettings["transcriptionEnabled"] === "true";
+  const diarizeEnabled = localSettings["transcriptionDiarize"] === "true";
 
   const renderSettingInput = (key: string) => {
     const value = localSettings[key] ?? "";
@@ -446,7 +461,7 @@ export default function OptionsPanel() {
           <select
             className="select w-full max-w-xs"
             value={value}
-            disabled={plannedOnly}
+            disabled={diarizeEnabled}
             onChange={(e) => updateSetting(key, e.target.value)}
           >
             {TRANSCRIPTION_MODELS.map((model) => (
@@ -455,9 +470,10 @@ export default function OptionsPanel() {
               </option>
             ))}
           </select>
-          {plannedOnly && (
-            <p className="text-xs text-warning/80 mt-1">
-              Saved to config, but not wired to runtime behavior yet.
+          {diarizeEnabled && (
+            <p className="text-xs text-info/80 mt-1">
+              Model locked to ggml-small.en-tdrz while Speaker Diarization is
+              enabled.
             </p>
           )}
         </div>

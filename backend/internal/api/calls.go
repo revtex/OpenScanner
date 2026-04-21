@@ -54,22 +54,24 @@ func (l *apiKeyLimiter) allow() bool {
 
 // CallHandler handles call upload endpoints.
 type CallHandler struct {
-	queries    *db.Queries
-	processor  *audio.Processor
-	hub        *ws.Hub
-	dsNotifier DownstreamNotifier
-	mu         sync.Mutex
-	limiters   map[int64]*apiKeyLimiter
+	queries     *db.Queries
+	processor   *audio.Processor
+	hub         *ws.Hub
+	dsNotifier  DownstreamNotifier
+	transcriber *audio.TranscriberPool // nil when transcription is disabled
+	mu          sync.Mutex
+	limiters    map[int64]*apiKeyLimiter
 }
 
 // NewCallHandler creates a CallHandler.
-func NewCallHandler(queries *db.Queries, processor *audio.Processor, hub *ws.Hub, dsNotifier DownstreamNotifier) *CallHandler {
+func NewCallHandler(queries *db.Queries, processor *audio.Processor, hub *ws.Hub, dsNotifier DownstreamNotifier, transcriber *audio.TranscriberPool) *CallHandler {
 	return &CallHandler{
-		queries:    queries,
-		processor:  processor,
-		hub:        hub,
-		dsNotifier: dsNotifier,
-		limiters:   make(map[int64]*apiKeyLimiter),
+		queries:     queries,
+		processor:   processor,
+		hub:         hub,
+		dsNotifier:  dsNotifier,
+		transcriber: transcriber,
+		limiters:    make(map[int64]*apiKeyLimiter),
 	}
 }
 
@@ -797,6 +799,17 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 			TalkerAlias:    talkerAliasCol.String,
 		})
 		slog.Debug("call-upload: downstream notify queued", "call_id", callID)
+	}
+
+	// Enqueue transcription (non-blocking, after response is sent).
+	if h.transcriber != nil {
+		absPath := filepath.Join(h.processor.RecordingsDir(), relPath)
+		if err := h.transcriber.Submit(ctx, audio.TranscriptionJob{
+			CallID:    callID,
+			AudioPath: absPath,
+		}); err != nil {
+			slog.Warn("call-upload: failed to enqueue transcription", "call_id", callID, "error", err)
+		}
 	}
 }
 
@@ -1544,4 +1557,70 @@ func aggregateErrorSpikeCounts(raw string) (sql.NullInt64, sql.NullInt64) {
 	}
 	return sql.NullInt64{Int64: totalErrors, Valid: true},
 		sql.NullInt64{Int64: totalSpikes, Valid: true}
+}
+
+// transcriptResponse is the JSON shape returned by GetCallTranscript.
+type transcriptResponse struct {
+	Text     string                       `json:"text"`
+	Segments []audio.TranscriptionSegment `json:"segments"`
+	Language string                       `json:"language"`
+	Model    string                       `json:"model"`
+}
+
+// GetCallTranscript handles GET /api/calls/:id/transcript.
+// Returns the transcription for a call if one exists.
+//
+//	@Summary		Get call transcript
+//	@Description	Returns the transcription text, segments, language and model for a call.
+//	@Tags			Calls
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int	true	"Call ID"
+//	@Success		200	{object}	transcriptResponse
+//	@Failure		400	{object}	ErrorResponse
+//	@Failure		404	{object}	ErrorResponse
+//	@Failure		500	{object}	ErrorResponse
+//	@Router			/calls/{id}/transcript [get]
+func (h *CallHandler) GetCallTranscript(c *gin.Context) {
+	ctx := c.Request.Context()
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid call id"})
+		return
+	}
+
+	// Require authentication or publicAccess.
+	_, hasUser := c.Get("userID")
+	if !hasUser && h.getSettingValue(c, "publicAccess") != "true" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+		return
+	}
+
+	trx, err := h.queries.GetTranscriptionByCallID(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "transcript not found"})
+			return
+		}
+		slog.Error("failed to get transcript", "callID", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	var segments []audio.TranscriptionSegment
+	if trx.Segments.Valid && trx.Segments.String != "" {
+		if err := json.Unmarshal([]byte(trx.Segments.String), &segments); err != nil {
+			slog.Warn("failed to parse transcript segments", "callID", id, "error", err)
+		}
+	}
+	if segments == nil {
+		segments = []audio.TranscriptionSegment{}
+	}
+
+	c.JSON(http.StatusOK, transcriptResponse{
+		Text:     trx.Text,
+		Segments: segments,
+		Language: trx.Language.String,
+		Model:    trx.Model.String,
+	})
 }

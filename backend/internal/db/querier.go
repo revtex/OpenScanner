@@ -13,6 +13,7 @@ type Querier interface {
 	CountActiveRefreshTokenFamilies(ctx context.Context, arg CountActiveRefreshTokenFamiliesParams) (int64, error)
 	CountCalls(ctx context.Context) (int64, error)
 	CountCallsFiltered(ctx context.Context, arg CountCallsFilteredParams) (int64, error)
+	CountTranscriptions(ctx context.Context) (int64, error)
 	CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (int64, error)
 	CreateBookmark(ctx context.Context, arg CreateBookmarkParams) (int64, error)
 	CreateCall(ctx context.Context, arg CreateCallParams) (int64, error)
@@ -49,6 +50,7 @@ type Querier interface {
 	DeleteTalkgroup(ctx context.Context, id int64) error
 	DeleteTalkgroupsBySystem(ctx context.Context, systemID int64) error
 	DeleteTranscription(ctx context.Context, id int64) error
+	DeleteTranscriptionByCallID(ctx context.Context, callID int64) error
 	DeleteUnit(ctx context.Context, id int64) error
 	DeleteUnitsBySystem(ctx context.Context, systemID int64) error
 	DeleteUser(ctx context.Context, id int64) error
@@ -125,6 +127,7 @@ type Querier interface {
 	RevokeAllRefreshTokensForUser(ctx context.Context, userID int64) error
 	RevokeRefreshToken(ctx context.Context, id int64) error
 	RevokeRefreshTokenFamily(ctx context.Context, familyID string) error
+	SearchTranscriptions(ctx context.Context, arg SearchTranscriptionsParams) ([]SearchTranscriptionsRow, error)
 	SetSetupComplete(ctx context.Context, setupComplete int64) error
 	UpdateAPIKey(ctx context.Context, arg UpdateAPIKeyParams) error
 	UpdateDirMonitor(ctx context.Context, arg UpdateDirMonitorParams) error

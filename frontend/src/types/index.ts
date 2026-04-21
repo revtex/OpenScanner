@@ -27,7 +27,15 @@ export interface Call {
   talkgroupGroup?: string; // populated from config
   talkgroupLedColor?: string; // CSS color for LED
   transcript?: string;
+  transcriptSegments?: TranscriptionSegment[];
   audioUrl?: string; // object URL for audio playback
+}
+
+export interface TranscriptionSegment {
+  speaker?: string;
+  start: number;
+  end: number;
+  text: string;
 }
 
 // System/talkgroup config from CFG event

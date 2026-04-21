@@ -11,7 +11,7 @@ OpenScanner is a modern web-based radio call manager — a reimplementation of r
 - **Database:** SQLite (WAL mode) — all application configuration is stored in the DB
 - **Server config:** CLI flags, environment variables, or optional INI file (for listen address, DB path, TLS)
 - **Audio:** Files stored on filesystem, FFmpeg for conversion (4 modes: disabled/enabled/norm/loudnorm), bounded worker pool
-- **Transcription:** Local Whisper binary (CPU or GPU via NVIDIA CUDA); configurable model size
+- **Transcription:** go-whisper HTTP API sidecar (whisper.cpp, CPU or GPU); supports diarization via tinydiarize model
 - **Dev tooling:** air (Go hot-reload) + Vite proxy (single `make dev`)
 
 ## Project Structure
@@ -51,7 +51,7 @@ openscanner/
 4. bcrypt cost ≥ 12 for passwords
 5. No secrets in logs or error responses
 6. Audio file paths sanitised — no `../` traversal
-7. FFmpeg and Whisper invoked with arg slice, never shell string
+7. FFmpeg invoked with arg slice, never shell string; go-whisper accessed via HTTP only (no subprocess)
 8. Role-based access: listener JWT cannot access admin endpoints (403)
 9. Public access mode (`publicAccess` setting) allows unauthenticated scanner listening; admin routes are never public
 10. Webhook secrets use HMAC-SHA256 for payload signing

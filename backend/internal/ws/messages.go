@@ -83,11 +83,16 @@ func NewLCLMessage(calls any, total int64) ([]byte, error) {
 }
 
 // NewTRNMessage builds a TRN (transcript ready) message.
-func NewTRNMessage(callID int64, text string) ([]byte, error) {
-	return json.Marshal([]any{CmdTRN, map[string]any{
+// When segments is non-nil, they are included for diarization-aware clients.
+func NewTRNMessage(callID int64, text string, segments any) ([]byte, error) {
+	payload := map[string]any{
 		"callId": callID,
 		"text":   text,
-	}})
+	}
+	if segments != nil {
+		payload["segments"] = segments
+	}
+	return json.Marshal([]any{CmdTRN, payload})
 }
 
 // ParseCommand extracts the command string from a JSON array message.

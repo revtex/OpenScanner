@@ -48,6 +48,7 @@ type Deps struct {
 	DirMonitorReloader DirMonitorReloader
 	DownstreamReloader DownstreamReloader
 	DownstreamNotifier DownstreamNotifier
+	Transcriber        *audio.TranscriberPool // nil when transcription is disabled
 	Version            string
 	FFmpegAvailable    bool
 	FDKAACAvailable    bool
@@ -58,7 +59,7 @@ type Deps struct {
 func RegisterRoutes(r *gin.Engine, deps Deps) {
 	setupHandler := NewSetupHandler(deps.Queries)
 	authHandler := NewAuthHandler(deps.Queries, deps.RateLimiter)
-	callHandler := NewCallHandler(deps.Queries, deps.Processor, deps.Hub, deps.DownstreamNotifier)
+	callHandler := NewCallHandler(deps.Queries, deps.Processor, deps.Hub, deps.DownstreamNotifier, deps.Transcriber)
 	bookmarkHandler := &BookmarkHandler{queries: deps.Queries}
 	recordingsDir := "."
 	if deps.Processor != nil {
@@ -100,6 +101,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	// Call search — public access with optional auth for bookmarks.
 	api.GET("/calls", middleware.OptionalJWTAuth(), callHandler.GetCalls)
 	api.GET("/calls/:id/audio", middleware.OptionalJWTAuth(), callHandler.GetCallAudio)
+	api.GET("/calls/:id/transcript", middleware.OptionalJWTAuth(), callHandler.GetCallTranscript)
 
 	// Shared calls — token-based public access (no auth required).
 	api.GET("/shared/:token", callHandler.GetSharedCallByToken)
@@ -139,6 +141,9 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 
 		// RadioReference CSV preview (file upload — must stay REST)
 		admin.POST("/radioreference/preview/csv", adminHandler.RadioReferencePreviewCSV)
+
+		// Transcription status
+		admin.GET("/transcriptions/status", adminHandler.GetTranscriptionStatus)
 
 		// Swagger: issue a short-lived HTTP-only cookie so Swagger UI
 		// can be opened in a new browser tab without exposing the JWT.

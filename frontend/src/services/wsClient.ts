@@ -8,7 +8,7 @@ import {
   transcriptReceived,
 } from "@/app/slices/scannerSlice";
 import { clearCredentials } from "@/app/slices/authSlice";
-import type { Call, WsCommand } from "@/types";
+import type { Call, WsCommand, TranscriptionSegment } from "@/types";
 
 const MAX_BACKOFF = 30_000;
 const DEDUP_SIZE = 100;
@@ -281,7 +281,13 @@ class WsClient {
           "text" in payload
         ) {
           this.dispatch?.(
-            transcriptReceived(payload as { callId: number; text: string }),
+            transcriptReceived(
+              payload as {
+                callId: number;
+                text: string;
+                segments?: TranscriptionSegment[];
+              },
+            ),
           );
         }
         break;

@@ -155,6 +155,7 @@ type Transcription struct {
 	ID         int64          `db:"id" json:"id"`
 	CallID     int64          `db:"call_id" json:"call_id"`
 	Text       string         `db:"text" json:"text"`
+	Segments   sql.NullString `db:"segments" json:"segments"`
 	Language   sql.NullString `db:"language" json:"language"`
 	Model      sql.NullString `db:"model" json:"model"`
 	DurationMs sql.NullInt64  `db:"duration_ms" json:"duration_ms"`
