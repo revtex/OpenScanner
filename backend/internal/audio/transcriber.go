@@ -3,15 +3,18 @@ package audio
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -163,19 +166,49 @@ func (p *TranscriberPool) Ping(ctx context.Context) error {
 	return nil
 }
 
-// transcribe performs a single transcription HTTP call and sends the result.
+// maxRetries is the number of times to retry on transient go-whisper errors
+// (connection refused, EOF, connection reset — e.g. sidecar crash/restart).
+const maxRetries = 3
+
+// transcribe performs a single transcription HTTP call with retries and sends the result.
 func (p *TranscriberPool) transcribe(ctx context.Context, job TranscriptionJob) {
 	result := TranscriptionJobResult{CallID: job.CallID}
 
-	tr, err := p.doTranscribe(ctx, job)
-	if err != nil {
-		result.Err = err
-		slog.Error("transcription failed", "callID", job.CallID, "error", err)
-	} else {
-		result.Result = tr
-		slog.Debug("transcription completed", "callID", job.CallID, "language", tr.Language, "segments", len(tr.Segments))
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			backoff := time.Duration(attempt) * 2 * time.Second
+			slog.Info("transcriber: retrying after transient error",
+				"callID", job.CallID, "attempt", attempt, "backoff", backoff)
+			select {
+			case <-ctx.Done():
+				result.Err = ctx.Err()
+				p.sendResult(ctx, result)
+				return
+			case <-time.After(backoff):
+			}
+		}
+
+		tr, err := p.doTranscribe(ctx, job)
+		if err == nil {
+			result.Result = tr
+			slog.Debug("transcription completed", "callID", job.CallID, "language", tr.Language, "segments", len(tr.Segments))
+			p.sendResult(ctx, result)
+			return
+		}
+		lastErr = err
+
+		if !isTransientError(err) {
+			break
+		}
 	}
 
+	result.Err = lastErr
+	p.sendResult(ctx, result)
+}
+
+// sendResult delivers a result to the results channel.
+func (p *TranscriberPool) sendResult(ctx context.Context, result TranscriptionJobResult) {
 	select {
 	case p.results <- result:
 	case <-ctx.Done():
@@ -277,4 +310,28 @@ func (p *TranscriberPool) doTranscribe(ctx context.Context, job TranscriptionJob
 		Segments: parsed.Segments,
 		Language: parsed.Language,
 	}, nil
+}
+
+// isTransientError returns true for network errors caused by go-whisper being
+// temporarily unavailable (crash/restart, connection refused, EOF, reset).
+func isTransientError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	// Fast path: common substrings in wrapped network errors.
+	if strings.Contains(s, "connection refused") ||
+		strings.Contains(s, "connection reset") ||
+		strings.Contains(s, ": EOF") {
+		return true
+	}
+	// Unwrap and check typed errors.
+	var netErr *net.OpError
+	if errors.As(err, &netErr) {
+		return true
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNREFUSED) || errors.Is(err, syscall.ECONNRESET) {
+		return true
+	}
+	return false
 }

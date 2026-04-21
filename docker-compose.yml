@@ -24,23 +24,36 @@ services:
   # Transcription sidecar (go-whisper).
   # Set transcriptionEnabled=true and transcriptionUrl=http://whisper:8081
   # in OpenScanner admin settings.
+  #
+  # Default: CPU-only (most compatible). See GPU examples below.
   whisper:
     image: ghcr.io/mutablelogic/go-whisper
     volumes:
       - whisper-data:/data
-    # Intel iGPU (UHD 630, Arc, etc.) — OpenCL via /dev/dri
-    # Verify GIDs on your host:  stat -c '%g' /dev/dri/render* /dev/dri/card*
-    # Common values: render=109..110, video=44
-    devices:
-      - /dev/dri:/dev/dri
-    group_add:
-      - "110"   # render — adjust to match your host GID
-      - "44"    # video  — adjust to match your host GID
     environment:
       - GOWHISPER_DIR=/data
       - GOWHISPER_ADDR=0.0.0.0:8081
     command: ["run"]
     restart: unless-stopped
+
+  # # --- Intel iGPU (UHD 630, Arc, etc.) — Vulkan/OpenCL via /dev/dri ---
+  # # NOTE: Vulkan backend may crash with "vk::DeviceLostError" on some drivers.
+  # # If you see repeated crashes, use the CPU-only config above instead.
+  # # Verify GIDs on your host:  stat -c '%g' /dev/dri/render* /dev/dri/card*
+  # whisper:
+  #   image: ghcr.io/mutablelogic/go-whisper
+  #   volumes:
+  #     - whisper-data:/data
+  #   devices:
+  #     - /dev/dri:/dev/dri
+  #   group_add:
+  #     - "110"   # render — adjust to match your host GID
+  #     - "44"    # video  — adjust to match your host GID
+  #   environment:
+  #     - GOWHISPER_DIR=/data
+  #     - GOWHISPER_ADDR=0.0.0.0:8081
+  #   command: ["run"]
+  #   restart: unless-stopped
 
   # # --- NVIDIA GPU example ---
   # whisper:
@@ -71,17 +84,6 @@ services:
   #   group_add:
   #     - "render"
   #     - "video"
-  #   environment:
-  #     - GOWHISPER_DIR=/data
-  #     - GOWHISPER_ADDR=0.0.0.0:8081
-  #   command: ["run"]
-  #   restart: unless-stopped
-
-  # # --- CPU only (no GPU passthrough) ---
-  # whisper:
-  #   image: ghcr.io/mutablelogic/go-whisper
-  #   volumes:
-  #     - whisper-data:/data
   #   environment:
   #     - GOWHISPER_DIR=/data
   #     - GOWHISPER_ADDR=0.0.0.0:8081
