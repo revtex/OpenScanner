@@ -20,13 +20,14 @@ package main
 import (
 	"bufio"
 	"context"
+	"database/sql"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -714,8 +715,35 @@ func (p *program) run() {
 		}
 	}
 
-	// Check whisper availability.
-	hasWhisper := checkWhisper()
+	// Set up transcription pool (go-whisper HTTP API).
+	var transcriber *audio.TranscriberPool
+	hasWhisper := false
+	if tEnabled, _ := queries.GetSetting(context.Background(), "transcriptionEnabled"); tEnabled.Value == "true" {
+		tURL, _ := queries.GetSetting(context.Background(), "transcriptionUrl")
+		tModel, _ := queries.GetSetting(context.Background(), "transcriptionModel")
+		tLang, _ := queries.GetSetting(context.Background(), "transcriptionLanguage")
+		tDiarize, _ := queries.GetSetting(context.Background(), "transcriptionDiarize")
+
+		baseURL := tURL.Value
+		if baseURL == "" {
+			baseURL = "http://localhost:8081"
+		}
+		model := tModel.Value
+		if model == "" {
+			model = "ggml-base"
+		}
+
+		tp, err := audio.NewTranscriberPool(ctx, 2, baseURL, model, tLang.Value, tDiarize.Value == "true")
+		if err != nil {
+			slog.Warn("transcription pool creation failed, disabling", "error", err)
+		} else if err := tp.Ping(ctx); err != nil {
+			slog.Warn("go-whisper unreachable, disabling transcription", "url", baseURL, "error", err)
+		} else {
+			transcriber = tp
+			hasWhisper = true
+			slog.Info("transcription enabled", "url", baseURL, "model", model, "diarize", tDiarize.Value == "true")
+		}
+	}
 
 	// Start background call pruner.
 	go audio.PruneLoop(ctx, queries, cfg.RecordingsDir)
@@ -756,9 +784,14 @@ func (p *program) run() {
 	})
 	go hub.Run(ctx)
 
-	dwService := dirmonitor.NewService(queries, processor, hub, dsService)
+	dwService := dirmonitor.NewService(queries, processor, hub, dsService, transcriber)
 	dwService.Start(ctx)
 	hub.SetDirMonitorReloader(dwService)
+
+	// Start transcription result consumer (stores results in DB, broadcasts TRN).
+	if transcriber != nil {
+		go consumeTranscriptionResults(ctx, queries, hub, transcriber)
+	}
 
 	api.RegisterRoutes(router, api.Deps{
 		Queries:            queries,
@@ -769,6 +802,7 @@ func (p *program) run() {
 		DirMonitorReloader: dwService,
 		DownstreamReloader: dsService,
 		DownstreamNotifier: dsService,
+		Transcriber:        transcriber,
 		Version:            config.Version,
 		FFmpegAvailable:    hasFFmpeg,
 		FDKAACAvailable:    hasFDKAAC,
@@ -915,14 +949,56 @@ func (p *program) startAutoCertServer(cfg *config.Config, handler http.Handler, 
 // checkExternalTools logs warnings if optional external tools are not available.
 func checkExternalTools() {
 	// Startup-only advisory messages; actual enforcement is in audio.CheckFFmpeg
-	// and checkWhisper which return booleans used to gate features.
+	// which returns a boolean used to gate features.
 }
 
-// checkWhisper returns true if a whisper binary is on PATH.
-func checkWhisper() bool {
-	if _, err := exec.LookPath("whisper"); err != nil {
-		slog.Warn("whisper not found on PATH, transcription disabled")
-		return false
+// consumeTranscriptionResults reads completed transcription jobs, stores them
+// in the database, and broadcasts TRN events to WebSocket clients.
+func consumeTranscriptionResults(ctx context.Context, queries *db.Queries, hub *ws.Hub, tp *audio.TranscriberPool) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case res, ok := <-tp.Results():
+			if !ok {
+				return
+			}
+			if res.Err != nil {
+				slog.Error("transcription failed", "callID", res.CallID, "error", res.Err)
+				continue
+			}
+
+			start := time.Now()
+
+			// Serialise segments to JSON.
+			var segmentsJSON sql.NullString
+			if len(res.Result.Segments) > 0 {
+				raw, err := json.Marshal(res.Result.Segments)
+				if err != nil {
+					slog.Error("transcription: failed to marshal segments", "callID", res.CallID, "error", err)
+					continue
+				}
+				segmentsJSON = sql.NullString{String: string(raw), Valid: true}
+			}
+
+			_, err := queries.CreateTranscription(ctx, db.CreateTranscriptionParams{
+				CallID:     res.CallID,
+				Text:       res.Result.Text,
+				Segments:   segmentsJSON,
+				Language:   sql.NullString{String: res.Result.Language, Valid: res.Result.Language != ""},
+				Model:      sql.NullString{String: tp.Model(), Valid: true},
+				DurationMs: sql.NullInt64{Int64: time.Since(start).Milliseconds(), Valid: true},
+				CreatedAt:  time.Now().Unix(),
+			})
+			if err != nil {
+				slog.Error("transcription: failed to store", "callID", res.CallID, "error", err)
+				continue
+			}
+
+			slog.Info("transcription stored", "callID", res.CallID, "language", res.Result.Language, "segments", len(res.Result.Segments))
+
+			// Broadcast TRN to all connected clients.
+			hub.BroadcastTRN(res.CallID, res.Result.Text, res.Result.Segments)
+		}
 	}
-	return true
 }

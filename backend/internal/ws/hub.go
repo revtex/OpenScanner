@@ -167,6 +167,20 @@ func (h *Hub) BroadcastAdminEvent(topic string, data any) {
 	})
 }
 
+// BroadcastTRN sends a transcript-ready message to all connected listener
+// clients. segments may be nil when diarization is disabled.
+func (h *Hub) BroadcastTRN(callID int64, text string, segments any) {
+	if h == nil {
+		return
+	}
+	msg, err := NewTRNMessage(callID, text, segments)
+	if err != nil {
+		slog.Error("ws: failed to build TRN message", "callID", callID, "error", err)
+		return
+	}
+	h.Broadcast(msg, nil)
+}
+
 // ClientCount returns the number of non-admin (listener) clients.
 func (h *Hub) ClientCount() int {
 	h.mu.RLock()

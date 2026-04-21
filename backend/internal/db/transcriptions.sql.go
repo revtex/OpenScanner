@@ -10,10 +10,22 @@ import (
 	"database/sql"
 )
 
+const countTranscriptions = `-- name: CountTranscriptions :one
+SELECT COUNT(*) FROM transcriptions
+`
+
+func (q *Queries) CountTranscriptions(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countTranscriptions)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createTranscription = `-- name: CreateTranscription :one
 INSERT INTO transcriptions (
     call_id,
     text,
+    segments,
     language,
     model,
     duration_ms,
@@ -24,13 +36,15 @@ INSERT INTO transcriptions (
     ?3,
     ?4,
     ?5,
-    ?6
+    ?6,
+    ?7
 ) RETURNING id
 `
 
 type CreateTranscriptionParams struct {
 	CallID     int64          `db:"call_id" json:"call_id"`
 	Text       string         `db:"text" json:"text"`
+	Segments   sql.NullString `db:"segments" json:"segments"`
 	Language   sql.NullString `db:"language" json:"language"`
 	Model      sql.NullString `db:"model" json:"model"`
 	DurationMs sql.NullInt64  `db:"duration_ms" json:"duration_ms"`
@@ -41,6 +55,7 @@ func (q *Queries) CreateTranscription(ctx context.Context, arg CreateTranscripti
 	row := q.db.QueryRowContext(ctx, createTranscription,
 		arg.CallID,
 		arg.Text,
+		arg.Segments,
 		arg.Language,
 		arg.Model,
 		arg.DurationMs,
@@ -60,8 +75,17 @@ func (q *Queries) DeleteTranscription(ctx context.Context, id int64) error {
 	return err
 }
 
+const deleteTranscriptionByCallID = `-- name: DeleteTranscriptionByCallID :exec
+DELETE FROM transcriptions WHERE call_id = ?
+`
+
+func (q *Queries) DeleteTranscriptionByCallID(ctx context.Context, callID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteTranscriptionByCallID, callID)
+	return err
+}
+
 const getTranscription = `-- name: GetTranscription :one
-SELECT id, call_id, text, language, model, duration_ms, created_at FROM transcriptions WHERE id = ? LIMIT 1
+SELECT id, call_id, text, segments, language, model, duration_ms, created_at FROM transcriptions WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetTranscription(ctx context.Context, id int64) (Transcription, error) {
@@ -71,6 +95,7 @@ func (q *Queries) GetTranscription(ctx context.Context, id int64) (Transcription
 		&i.ID,
 		&i.CallID,
 		&i.Text,
+		&i.Segments,
 		&i.Language,
 		&i.Model,
 		&i.DurationMs,
@@ -80,7 +105,7 @@ func (q *Queries) GetTranscription(ctx context.Context, id int64) (Transcription
 }
 
 const getTranscriptionByCallID = `-- name: GetTranscriptionByCallID :one
-SELECT id, call_id, text, language, model, duration_ms, created_at FROM transcriptions WHERE call_id = ? LIMIT 1
+SELECT id, call_id, text, segments, language, model, duration_ms, created_at FROM transcriptions WHERE call_id = ? LIMIT 1
 `
 
 func (q *Queries) GetTranscriptionByCallID(ctx context.Context, callID int64) (Transcription, error) {
@@ -90,10 +115,77 @@ func (q *Queries) GetTranscriptionByCallID(ctx context.Context, callID int64) (T
 		&i.ID,
 		&i.CallID,
 		&i.Text,
+		&i.Segments,
 		&i.Language,
 		&i.Model,
 		&i.DurationMs,
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const searchTranscriptions = `-- name: SearchTranscriptions :many
+SELECT t.id, t.call_id, t.text, t.segments, t.language, t.model,
+       t.duration_ms, t.created_at,
+       c.date_time, c.system_id, c.talkgroup_id
+FROM transcriptions t
+JOIN calls c ON c.id = t.call_id
+WHERE t.text LIKE '%' || ?1 || '%'
+ORDER BY c.date_time DESC
+LIMIT ?3 OFFSET ?2
+`
+
+type SearchTranscriptionsParams struct {
+	Query sql.NullString `db:"query" json:"query"`
+	Off   int64          `db:"off" json:"off"`
+	Lim   int64          `db:"lim" json:"lim"`
+}
+
+type SearchTranscriptionsRow struct {
+	ID          int64          `db:"id" json:"id"`
+	CallID      int64          `db:"call_id" json:"call_id"`
+	Text        string         `db:"text" json:"text"`
+	Segments    sql.NullString `db:"segments" json:"segments"`
+	Language    sql.NullString `db:"language" json:"language"`
+	Model       sql.NullString `db:"model" json:"model"`
+	DurationMs  sql.NullInt64  `db:"duration_ms" json:"duration_ms"`
+	CreatedAt   int64          `db:"created_at" json:"created_at"`
+	DateTime    int64          `db:"date_time" json:"date_time"`
+	SystemID    int64          `db:"system_id" json:"system_id"`
+	TalkgroupID sql.NullInt64  `db:"talkgroup_id" json:"talkgroup_id"`
+}
+
+func (q *Queries) SearchTranscriptions(ctx context.Context, arg SearchTranscriptionsParams) ([]SearchTranscriptionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, searchTranscriptions, arg.Query, arg.Off, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchTranscriptionsRow{}
+	for rows.Next() {
+		var i SearchTranscriptionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CallID,
+			&i.Text,
+			&i.Segments,
+			&i.Language,
+			&i.Model,
+			&i.DurationMs,
+			&i.CreatedAt,
+			&i.DateTime,
+			&i.SystemID,
+			&i.TalkgroupID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

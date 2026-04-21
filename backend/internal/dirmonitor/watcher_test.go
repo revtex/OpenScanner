@@ -52,7 +52,7 @@ func TestNewService_ReturnsNonNil(t *testing.T) {
 	_, queries := newWatcherTestDB(t)
 	processor, _ := newWatcherProcessor(t)
 
-	svc := NewService(queries, processor, nil, nil)
+	svc := NewService(queries, processor, nil, nil, nil)
 	if svc == nil {
 		t.Fatal("NewService returned nil")
 	}
@@ -65,7 +65,7 @@ func TestService_Start_NoDirMonitors_NoPanic(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	svc := NewService(queries, processor, nil, nil)
+	svc := NewService(queries, processor, nil, nil, nil)
 	// Fresh DB has no active dirmonitors → no goroutines should be spawned.
 	svc.Start(ctx)
 
@@ -80,7 +80,7 @@ func TestService_Reload_NoPanic(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	svc := NewService(queries, processor, nil, nil)
+	svc := NewService(queries, processor, nil, nil, nil)
 	svc.Start(ctx)
 
 	// Reload should stop existing watchers and restart from DB — no panic even
@@ -93,7 +93,7 @@ func TestService_StopBeforeStart_NoPanic(t *testing.T) {
 	_, queries := newWatcherTestDB(t)
 	processor, _ := newWatcherProcessor(t)
 
-	svc := NewService(queries, processor, nil, nil)
+	svc := NewService(queries, processor, nil, nil, nil)
 	// Calling stop() before Start() should be a no-op.
 	svc.stop()
 }
@@ -105,7 +105,7 @@ func TestService_MultipleReloads_NoPanic(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	svc := NewService(queries, processor, nil, nil)
+	svc := NewService(queries, processor, nil, nil, nil)
 	svc.Start(ctx)
 
 	for i := 0; i < 3; i++ {
@@ -559,7 +559,7 @@ func TestService_Reload_UsesAppContext(t *testing.T) {
 	appCtx, appCancel := context.WithCancel(context.Background())
 	defer appCancel()
 
-	svc := NewService(queries, processor, nil, nil)
+	svc := NewService(queries, processor, nil, nil, nil)
 	svc.Start(appCtx)
 
 	// Reload no longer accepts a context; it reuses the app context from Start.
@@ -588,7 +588,7 @@ func TestService_Reload_BeforeStart_NoPanic(t *testing.T) {
 	_, queries := newWatcherTestDB(t)
 	processor, _ := newWatcherProcessor(t)
 
-	svc := NewService(queries, processor, nil, nil)
+	svc := NewService(queries, processor, nil, nil, nil)
 	// Reload before Start — appCtx is nil, should be a no-op.
 	svc.Reload()
 }

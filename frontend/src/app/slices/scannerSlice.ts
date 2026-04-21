@@ -4,6 +4,7 @@ import type {
   AvoidEntry,
   ConnectionStatus,
   ScannerConfig,
+  TranscriptionSegment,
 } from "@/types";
 
 const MAX_HISTORY = 5;
@@ -301,15 +302,17 @@ export const scannerSlice = createSlice({
     },
     transcriptReceived(
       state,
-      action: PayloadAction<{ callId: number; text: string }>,
+      action: PayloadAction<{ callId: number; text: string; segments?: TranscriptionSegment[] }>,
     ) {
-      const { callId, text } = action.payload;
+      const { callId, text, segments } = action.payload;
       if (state.currentCall?.id === callId) {
         state.currentCall.transcript = text;
+        state.currentCall.transcriptSegments = segments;
       }
       const histItem = state.history.find((c) => c.id === callId);
       if (histItem) {
         histItem.transcript = text;
+        histItem.transcriptSegments = segments;
       }
     },
   },

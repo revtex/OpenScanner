@@ -20,3 +20,38 @@ services:
       start_period: 10s
       retries: 3
     restart: unless-stopped
+
+  # Transcription sidecar (go-whisper). Uncomment to enable.
+  # After starting, set transcriptionEnabled=true and
+  # transcriptionUrl=http://whisper:8081 in OpenScanner admin settings.
+  #
+  # whisper:
+  #   image: ghcr.io/mutablelogic/go-whisper
+  #   volumes:
+  #     - whisper-data:/data
+  #   environment:
+  #     - GOWHISPER_DIR=/data
+  #     - GOWHISPER_ADDR=0.0.0.0:8081
+  #   command: ["run"]
+  #   restart: unless-stopped
+  #
+  # # For NVIDIA GPU acceleration, use this instead:
+  # # whisper:
+  # #   image: ghcr.io/mutablelogic/go-whisper-cuda
+  # #   volumes:
+  # #     - whisper-data:/data
+  # #   environment:
+  # #     - GOWHISPER_DIR=/data
+  # #     - GOWHISPER_ADDR=0.0.0.0:8081
+  # #   command: ["run"]
+  # #   deploy:
+  # #     resources:
+  # #       reservations:
+  # #         devices:
+  # #           - driver: nvidia
+  # #             count: 1
+  # #             capabilities: [gpu]
+  # #   restart: unless-stopped
+
+# volumes:
+#   whisper-data:

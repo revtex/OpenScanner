@@ -30,24 +30,26 @@ type DownstreamNotifier interface {
 
 // Service manages all active DirMonitor watchers.
 type Service struct {
-	queries    *db.Queries
-	processor  *audio.Processor
-	hub        *ws.Hub
-	dsNotifier DownstreamNotifier
-	mu         sync.Mutex
-	reloadMu   sync.Mutex // serialises Reload calls to prevent duplicate goroutine spawning
-	appCtx     context.Context
-	cancel     context.CancelFunc
-	wg         sync.WaitGroup
+	queries     *db.Queries
+	processor   *audio.Processor
+	hub         *ws.Hub
+	dsNotifier  DownstreamNotifier
+	transcriber *audio.TranscriberPool // nil when transcription is disabled
+	mu          sync.Mutex
+	reloadMu    sync.Mutex // serialises Reload calls to prevent duplicate goroutine spawning
+	appCtx      context.Context
+	cancel      context.CancelFunc
+	wg          sync.WaitGroup
 }
 
 // NewService creates a DirMonitor service.
-func NewService(queries *db.Queries, processor *audio.Processor, hub *ws.Hub, dsNotifier DownstreamNotifier) *Service {
+func NewService(queries *db.Queries, processor *audio.Processor, hub *ws.Hub, dsNotifier DownstreamNotifier, transcriber *audio.TranscriberPool) *Service {
 	return &Service{
-		queries:    queries,
-		processor:  processor,
-		hub:        hub,
-		dsNotifier: dsNotifier,
+		queries:     queries,
+		processor:   processor,
+		hub:         hub,
+		dsNotifier:  dsNotifier,
+		transcriber: transcriber,
 	}
 }
 
@@ -777,6 +779,17 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 			TalkgroupGroup: groupLabel,
 			TalkgroupTag:   tagLabel,
 		})
+	}
+
+	// ── Enqueue transcription ───────────────────────────────────────────────
+	if s.transcriber != nil {
+		absPath := filepath.Join(s.processor.RecordingsDir(), relPath)
+		if err := s.transcriber.Submit(ctx, audio.TranscriptionJob{
+			CallID:    callID,
+			AudioPath: absPath,
+		}); err != nil {
+			slog.Warn("dirmonitor: failed to enqueue transcription", "call_id", callID, "error", err)
+		}
 	}
 
 	// ── Delete source file if configured ────────────────────────────────────
