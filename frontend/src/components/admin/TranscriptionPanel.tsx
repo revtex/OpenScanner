@@ -89,6 +89,15 @@ export default function TranscriptionPanel() {
     }
   }, [status]);
 
+  // Auto-disable diarize when the active model doesn't support it.
+  useEffect(() => {
+    if (!status?.model) return;
+    if (!status.model.includes("tdrz") && diarize) {
+      setDiarize(false);
+      setDirty(true);
+    }
+  }, [status?.model, diarize]);
+
   const showToast = useCallback((msg: string, type: "error" | "success") => {
     setToast(msg);
     setToastType(type);
@@ -188,6 +197,8 @@ export default function TranscriptionPanel() {
   const availableForDownload = KNOWN_MODELS.filter(
     (m) => !downloadedIds.has(m),
   );
+  const activeModelSupportsDiarize =
+    !!status?.model && status.model.includes("tdrz");
 
   if (statusLoading) {
     return <div className="loading loading-spinner loading-md" />;
@@ -284,17 +295,20 @@ export default function TranscriptionPanel() {
             </label>
 
             {/* Diarize */}
-            <label className="flex items-center justify-between cursor-pointer">
+            <label className={`flex items-center justify-between${activeModelSupportsDiarize ? " cursor-pointer" : " opacity-50 cursor-not-allowed"}`}>
               <div>
                 <span className="text-sm font-medium">Speaker Diarization</span>
                 <p className="text-xs text-base-content/60">
-                  Requires a tdrz model (e.g. ggml-small.en-tdrz)
+                  {activeModelSupportsDiarize
+                    ? "Requires a tdrz model (e.g. ggml-small.en-tdrz)"
+                    : "Active model does not support diarization — switch to a tdrz model"}
                 </p>
               </div>
               <input
                 type="checkbox"
                 className="toggle toggle-primary"
                 checked={diarize}
+                disabled={!activeModelSupportsDiarize}
                 onChange={(e) => {
                   setDiarize(e.target.checked);
                   setDirty(true);
