@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { useGetBookmarkCallsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { useAppSelector } from "@/app/store";
 import { selectToken } from "@/app/slices/authSlice";
 import { audioPlayer } from "@/services/audioPlayer";
-import { X, Play, Download, Star } from "lucide-react";
+import { X, Play, Download, Star, ChevronDown } from "lucide-react";
 import type { Call } from "@/types";
 
 interface BookmarksPanelProps {
@@ -80,6 +81,9 @@ export default function BookmarksPanel({
   );
 
   const [toggleBookmark] = useToggleBookmarkMutation();
+  const [expandedTranscripts, setExpandedTranscripts] = useState(
+    () => new Set<number>(),
+  );
 
   const bookmarkedCalls = bookmarkData?.calls ?? [];
 
@@ -210,9 +214,32 @@ export default function BookmarksPanel({
                     <span>S:{call.spikeCount}</span>
                   )}
                 </div>
-                {/* Row 4: transcript preview */}
+                {/* Row 4: transcript fold-down */}
                 {call.transcript && (
-                  <div className="text-[10px] italic text-base-content/50 truncate">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-[10px] text-base-content/50 hover:text-base-content/70 mt-0.5"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedTranscripts((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(call.id)) next.delete(call.id);
+                        else next.add(call.id);
+                        return next;
+                      });
+                    }}
+                  >
+                    <ChevronDown
+                      size={12}
+                      className={`transition-transform ${
+                        expandedTranscripts.has(call.id) ? "rotate-180" : ""
+                      }`}
+                    />
+                    Transcription
+                  </button>
+                )}
+                {call.transcript && expandedTranscripts.has(call.id) && (
+                  <div className="text-[11px] italic text-base-content/60 whitespace-pre-wrap mt-0.5">
                     {call.transcript}
                   </div>
                 )}

@@ -508,6 +508,9 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   );
 
   const [showFilters, setShowFilters] = useState(false);
+  const [expandedTranscripts, setExpandedTranscripts] = useState(
+    () => new Set<number>(),
+  );
 
   const handleToggleSection = useCallback((sectionId: string) => {
     setOpenFilterSection((prev) => (prev === sectionId ? "" : sectionId));
@@ -954,12 +957,38 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                           <span>S:{call.spikeCount}</span>
                         )}
                       </div>
-                      {/* Row 4: transcript preview */}
+                      {/* Row 4: transcript fold-down */}
                       {call.transcript && (
-                        <div className="text-[10px] italic text-base-content/50 truncate max-w-[40ch]">
-                          {call.transcript}
-                        </div>
+                        <button
+                          type="button"
+                          className="flex items-center gap-1 text-[10px] text-base-content/50 hover:text-base-content/70 mt-0.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedTranscripts((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(call.id)) next.delete(call.id);
+                              else next.add(call.id);
+                              return next;
+                            });
+                          }}
+                        >
+                          <ChevronDown
+                            size={12}
+                            className={`transition-transform ${
+                              expandedTranscripts.has(call.id)
+                                ? "rotate-180"
+                                : ""
+                            }`}
+                          />
+                          Transcription
+                        </button>
                       )}
+                      {call.transcript &&
+                        expandedTranscripts.has(call.id) && (
+                          <div className="text-[11px] italic text-base-content/60 whitespace-pre-wrap mt-0.5">
+                            {call.transcript}
+                          </div>
+                        )}
                     </div>
                     {/* Date/time + action buttons */}
                     <div className="flex shrink-0 flex-col items-end gap-0.5">

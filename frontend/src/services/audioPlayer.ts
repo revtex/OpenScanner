@@ -393,7 +393,6 @@ class AudioPlayer {
       // ignore
     }
   }
-
 }
 
 export const audioPlayer = new AudioPlayer();
