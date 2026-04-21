@@ -330,10 +330,10 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
     (tg: TalkgroupConfig) => {
       if (!searchLower) return true;
       return (
-        tg.label.toLowerCase().includes(searchLower) ||
-        tg.name.toLowerCase().includes(searchLower) ||
-        tg.group.toLowerCase().includes(searchLower) ||
-        tg.tag.toLowerCase().includes(searchLower) ||
+        (tg.label ?? "").toLowerCase().includes(searchLower) ||
+        (tg.name ?? "").toLowerCase().includes(searchLower) ||
+        (tg.group ?? "").toLowerCase().includes(searchLower) ||
+        (tg.tag ?? "").toLowerCase().includes(searchLower) ||
         String(tg.talkgroupId).includes(searchLower)
       );
     },
