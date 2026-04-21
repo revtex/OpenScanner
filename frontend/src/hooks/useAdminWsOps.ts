@@ -419,5 +419,10 @@ export function useTranscriptionDeleteMutation() {
 }
 
 export function useTranscriptionStatsQuery() {
-  return useWsQuery<import("@/types").TranscriptionStats>("transcription.stats");
+  return useWsQuery<import("@/types").TranscriptionStats>(
+    "transcription.stats",
+    undefined,
+    undefined,
+    30_000, // Auto-refresh every 30 seconds
+  );
 }

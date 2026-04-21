@@ -48,9 +48,10 @@ type TranscriptionJob struct {
 
 // TranscriptionJobResult is the outcome of a transcription attempt.
 type TranscriptionJobResult struct {
-	CallID int64
-	Result *TranscriptionResult
-	Err    error
+	CallID     int64
+	Result     *TranscriptionResult
+	DurationMs int64 // Wall-clock time spent transcribing (HTTP call to go-whisper).
+	Err        error
 }
 
 // TranscriberPool runs go-whisper transcription jobs with bounded concurrency.
@@ -173,6 +174,7 @@ const maxRetries = 3
 // transcribe performs a single transcription HTTP call with retries and sends the result.
 func (p *TranscriberPool) transcribe(ctx context.Context, job TranscriptionJob) {
 	result := TranscriptionJobResult{CallID: job.CallID}
+	start := time.Now()
 
 	var lastErr error
 	for attempt := 0; attempt <= maxRetries; attempt++ {
@@ -183,6 +185,7 @@ func (p *TranscriberPool) transcribe(ctx context.Context, job TranscriptionJob) 
 			select {
 			case <-ctx.Done():
 				result.Err = ctx.Err()
+				result.DurationMs = time.Since(start).Milliseconds()
 				p.sendResult(ctx, result)
 				return
 			case <-time.After(backoff):
@@ -192,7 +195,8 @@ func (p *TranscriberPool) transcribe(ctx context.Context, job TranscriptionJob) 
 		tr, err := p.doTranscribe(ctx, job)
 		if err == nil {
 			result.Result = tr
-			slog.Debug("transcription completed", "callID", job.CallID, "language", tr.Language, "segments", len(tr.Segments))
+			result.DurationMs = time.Since(start).Milliseconds()
+			slog.Debug("transcription completed", "callID", job.CallID, "language", tr.Language, "segments", len(tr.Segments), "durationMs", result.DurationMs)
 			p.sendResult(ctx, result)
 			return
 		}
@@ -203,6 +207,7 @@ func (p *TranscriberPool) transcribe(ctx context.Context, job TranscriptionJob) 
 		}
 	}
 
+	result.DurationMs = time.Since(start).Milliseconds()
 	result.Err = lastErr
 	p.sendResult(ctx, result)
 }

@@ -15,11 +15,13 @@ interface WsQueryResult<T> {
  * Hook that fetches data via admin WebSocket.
  * Mirrors RTK Query's useQuery return shape.
  * Re-fetches on mount, when op/params change, on WS connect, and on topic events.
+ * Optional pollingInterval (ms) enables periodic auto-refresh.
  */
 export function useWsQuery<T>(
   op: string,
   params?: Record<string, unknown>,
   invalidateTopic?: string,
+  pollingInterval?: number,
 ): WsQueryResult<T> {
   const [data, setData] = useState<T | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +71,13 @@ export function useWsQuery<T>(
       doFetch();
     });
   }, [doFetch, invalidateTopic]);
+
+  // Polling interval for periodic refresh
+  useEffect(() => {
+    if (!pollingInterval || pollingInterval <= 0) return;
+    const id = setInterval(doFetch, pollingInterval);
+    return () => clearInterval(id);
+  }, [doFetch, pollingInterval]);
 
   return { data, isLoading, isError, error, refetch: doFetch };
 }

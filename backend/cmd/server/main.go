@@ -980,8 +980,6 @@ func consumeTranscriptionResults(ctx context.Context, queries *db.Queries, hub *
 				continue
 			}
 
-			start := time.Now()
-
 			// Serialise segments to JSON.
 			var segmentsJSON sql.NullString
 			if len(res.Result.Segments) > 0 {
@@ -999,7 +997,7 @@ func consumeTranscriptionResults(ctx context.Context, queries *db.Queries, hub *
 				Segments:   segmentsJSON,
 				Language:   sql.NullString{String: res.Result.Language, Valid: res.Result.Language != ""},
 				Model:      sql.NullString{String: mgr.Model(), Valid: true},
-				DurationMs: sql.NullInt64{Int64: time.Since(start).Milliseconds(), Valid: true},
+				DurationMs: sql.NullInt64{Int64: res.DurationMs, Valid: true},
 				CreatedAt:  time.Now().Unix(),
 			})
 			if err != nil {
