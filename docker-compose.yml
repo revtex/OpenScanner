@@ -29,11 +29,13 @@ services:
     volumes:
       - whisper-data:/data
     # Intel iGPU (UHD 630, Arc, etc.) — OpenCL via /dev/dri
+    # Verify GIDs on your host:  stat -c '%g' /dev/dri/render* /dev/dri/card*
+    # Common values: render=109..110, video=44
     devices:
       - /dev/dri:/dev/dri
     group_add:
-      - "render"
-      - "video"
+      - "110"   # render — adjust to match your host GID
+      - "44"    # video  — adjust to match your host GID
     environment:
       - GOWHISPER_DIR=/data
       - GOWHISPER_ADDR=0.0.0.0:8081
