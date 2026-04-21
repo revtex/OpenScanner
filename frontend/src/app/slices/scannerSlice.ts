@@ -347,8 +347,8 @@ export const scannerSlice = createSlice({
         state.pendingTranscripts[callId] = { text, segments };
         // Cap pending map to avoid unbounded growth.
         const ids = Object.keys(state.pendingTranscripts);
-        if (ids.length > 50) {
-          for (const old of ids.slice(0, ids.length - 50)) {
+        if (ids.length > 500) {
+          for (const old of ids.slice(0, ids.length - 500)) {
             delete state.pendingTranscripts[Number(old)];
           }
         }

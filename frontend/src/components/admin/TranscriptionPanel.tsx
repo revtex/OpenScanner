@@ -295,7 +295,9 @@ export default function TranscriptionPanel() {
             </label>
 
             {/* Diarize */}
-            <label className={`flex items-center justify-between${activeModelSupportsDiarize ? " cursor-pointer" : " opacity-50 cursor-not-allowed"}`}>
+            <label
+              className={`flex items-center justify-between${activeModelSupportsDiarize ? " cursor-pointer" : " opacity-50 cursor-not-allowed"}`}
+            >
               <div>
                 <span className="text-sm font-medium">Speaker Diarization</span>
                 <p className="text-xs text-base-content/60">
