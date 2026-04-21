@@ -262,6 +262,14 @@ export default function OptionsPanel() {
   };
 
   const updateSetting = (key: string, value: string) => {
+    if (key === "transcriptionDiarize" && value === "true") {
+      setLocalSettings((prev) => ({
+        ...prev,
+        [key]: value,
+        transcriptionModel: "ggml-small.en-tdrz",
+      }));
+      return;
+    }
     setLocalSettings((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -282,6 +290,7 @@ export default function OptionsPanel() {
   };
 
   const transcriptionEnabled = localSettings["transcriptionEnabled"] === "true";
+  const diarizeEnabled = localSettings["transcriptionDiarize"] === "true";
 
   const renderSettingInput = (key: string) => {
     const value = localSettings[key] ?? "";
@@ -452,6 +461,7 @@ export default function OptionsPanel() {
           <select
             className="select w-full max-w-xs"
             value={value}
+            disabled={diarizeEnabled}
             onChange={(e) => updateSetting(key, e.target.value)}
           >
             {TRANSCRIPTION_MODELS.map((model) => (
@@ -460,6 +470,12 @@ export default function OptionsPanel() {
               </option>
             ))}
           </select>
+          {diarizeEnabled && (
+            <p className="text-xs text-info/80 mt-1">
+              Model locked to ggml-small.en-tdrz while Speaker Diarization is
+              enabled.
+            </p>
+          )}
         </div>
       );
     }

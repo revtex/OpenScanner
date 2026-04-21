@@ -124,6 +124,12 @@ func handleLocalSetupCommands() bool {
 	}
 
 	switch os.Args[1] {
+	case "help":
+		topic := ""
+		if len(os.Args) > 2 {
+			topic = os.Args[2]
+		}
+		os.Exit(config.RunHelp(topic))
 	case "setup":
 		os.Exit(runSetup(os.Args[2:]))
 	case "upgrade":

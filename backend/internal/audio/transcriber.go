@@ -52,11 +52,11 @@ type TranscriptionJobResult struct {
 
 // TranscriberPool runs go-whisper transcription jobs with bounded concurrency.
 type TranscriberPool struct {
-	jobs    chan TranscriptionJob
-	results chan TranscriptionJobResult
-	client  *http.Client
-	baseURL string
-	model   string
+	jobs     chan TranscriptionJob
+	results  chan TranscriptionJobResult
+	client   *http.Client
+	baseURL  string
+	model    string
 	language string
 	diarize  bool
 }

@@ -302,7 +302,11 @@ export const scannerSlice = createSlice({
     },
     transcriptReceived(
       state,
-      action: PayloadAction<{ callId: number; text: string; segments?: TranscriptionSegment[] }>,
+      action: PayloadAction<{
+        callId: number;
+        text: string;
+        segments?: TranscriptionSegment[];
+      }>,
     ) {
       const { callId, text, segments } = action.payload;
       if (state.currentCall?.id === callId) {

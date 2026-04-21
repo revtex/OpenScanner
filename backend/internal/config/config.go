@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"os"
@@ -71,6 +72,8 @@ func Load() (*Config, error) {
 	flag.BoolVar(&cfg.ConfigSave, "config-save", false, "Write current flags to JSON config file and exit")
 	flag.BoolVar(&cfg.ShowVersion, "version", false, "Print version and exit")
 	flag.StringVar(&cfg.Service, "service", "", "Service command: install, uninstall, start, stop, restart")
+
+	flag.Usage = func() { PrintUsage(os.Stderr) }
 	flag.Parse()
 
 	// Capture which flags were explicitly set on the command line and their values,
@@ -284,4 +287,216 @@ func ensureDirWritable(path string) error {
 		return err
 	}
 	return os.Remove(name)
+}
+
+// PrintUsage writes the full CLI help text to w.
+func PrintUsage(w io.Writer) {
+	fmt.Fprintf(w, `OpenScanner — Radio Call Manager (v%s)
+
+Usage:
+  openscanner [flags]                   Start the server
+  openscanner <command> [args]          Run a command
+  openscanner help [command]            Show help for a command
+
+Commands:
+  setup               Install OpenScanner as a system service
+  upgrade             Upgrade the installed binary (with service restart)
+  config validate     Validate a JSON config file
+  service doctor      Show service installation and status diagnostics
+  login               Authenticate with a running server (saves token)
+  logout              Remove saved authentication token
+  change-password     Change the current user's password
+  config-get [key]    Retrieve application settings (all or by key)
+  config-set <k> <v>  Update an application setting
+  user-add            Create a new user (interactive)
+  user-remove <user>  Delete a user by username
+
+Server Flags:
+  --listen <addr>         HTTP listen address (default ":3022")
+  --db-file <path>        SQLite database file path (default "openscanner.db")
+  --recordings-dir <dir>  Directory for call audio recordings
+  --timezone <tz>         IANA timezone (e.g. America/New_York)
+  --config <path>         Path to JSON config file (default "openscanner.json")
+  --config-save           Write current flags to JSON config file and exit
+  --version               Print version and exit
+
+SSL/TLS Flags:
+  --ssl-listen <addr>     HTTPS listen address (default ":443" when SSL enabled)
+  --ssl-cert <path>       TLS certificate file (PEM)
+  --ssl-key <path>        TLS private key file (PEM)
+  --ssl-auto-cert <host>  Enable Let's Encrypt for this domain
+
+Service Flags:
+  --service <action>      Service control: install, uninstall, start, stop, restart
+  --admin-password <pw>   Reset first admin user's password on startup
+
+CLI Flags (for remote commands):
+  --server <url>          Server URL (default "http://localhost:3022")
+                          Also: OPENSCANNER_SERVER env var
+
+Environment Variables:
+  OPENSCANNER_LISTEN          Equivalent to --listen
+  OPENSCANNER_DB_FILE         Equivalent to --db-file
+  OPENSCANNER_RECORDINGS_DIR  Equivalent to --recordings-dir
+  OPENSCANNER_SSL_LISTEN      Equivalent to --ssl-listen
+  OPENSCANNER_SSL_CERT        Equivalent to --ssl-cert
+  OPENSCANNER_SSL_KEY         Equivalent to --ssl-key
+  OPENSCANNER_SSL_AUTO_CERT   Equivalent to --ssl-auto-cert
+  OPENSCANNER_ADMIN_PASSWORD  Equivalent to --admin-password
+  OPENSCANNER_TIMEZONE        Equivalent to --timezone
+  OPENSCANNER_SERVER          Server URL for CLI commands
+  TZ                          Fallback timezone
+
+Configuration Precedence:
+  CLI flags > environment variables > JSON config file > built-in defaults
+
+Run 'openscanner help <command>' for details on a specific command.
+`, Version)
+}
+
+// commandHelp maps command names to their detailed help text.
+var commandHelp = map[string]string{
+	"setup": `Usage: openscanner setup [flags]
+
+Install OpenScanner as a system service. Creates config file, database
+directory, recordings directory, copies the binary, and registers the service.
+
+Flags:
+  --listen <addr>          HTTP listen address (default "127.0.0.1:3022")
+  --db-file <path>         SQLite database file path
+  --recordings-dir <dir>   Directory for call audio recordings
+  --config <path>          Path to JSON config file
+  --install-binary <path>  Path where executable is installed
+  --interactive            Prompt for setup values interactively
+  --force                  Overwrite/reinstall when setup already exists
+
+Examples:
+  openscanner setup --interactive
+  openscanner setup --listen 0.0.0.0:8080 --force`,
+
+	"upgrade": `Usage: openscanner upgrade [flags]
+
+Upgrade the installed OpenScanner binary. Stops the service, copies the
+new binary, and restarts if it was previously running.
+
+Flags:
+  --binary <path>          Path to new executable (default: current executable)
+  --install-binary <path>  Installed executable path
+  --config <path>          Path to JSON config file
+
+Examples:
+  openscanner upgrade
+  openscanner upgrade --binary /tmp/openscanner-new`,
+
+	"config": `Usage: openscanner config validate [flags]
+
+Validate a JSON configuration file. Checks JSON syntax, required fields,
+listen address format, and filesystem permissions.
+
+Flags:
+  --config <path>  Path to JSON config file
+
+Examples:
+  openscanner config validate
+  openscanner config validate --config /etc/openscanner/openscanner.json`,
+
+	"service": `Usage: openscanner service doctor
+
+Show service installation status and diagnostics, including whether the
+service is installed, running, and the default config/binary paths.
+
+Examples:
+  openscanner service doctor`,
+
+	"login": `Usage: openscanner login [flags]
+
+Authenticate with a running OpenScanner server. Prompts for username and
+password interactively. On success, saves the JWT to ~/.openscanner-token.
+
+Flags:
+  --server <url>  Server URL (default "http://localhost:3022")
+
+Examples:
+  openscanner login
+  openscanner login --server https://scanner.example.com`,
+
+	"logout": `Usage: openscanner logout
+
+Remove the saved authentication token (~/.openscanner-token).
+
+Examples:
+  openscanner logout`,
+
+	"change-password": `Usage: openscanner change-password [flags]
+
+Change the current user's password. Prompts for the current password
+and the new password (with confirmation). Requires prior login.
+
+Flags:
+  --server <url>  Server URL (default "http://localhost:3022")
+
+Examples:
+  openscanner change-password`,
+
+	"config-get": `Usage: openscanner config-get [key] [flags]
+
+Retrieve application settings from the running server. Without a key,
+prints all settings. With a key, prints only that setting. Requires
+admin login.
+
+Flags:
+  --server <url>  Server URL (default "http://localhost:3022")
+
+Examples:
+  openscanner config-get
+  openscanner config-get audioConversion`,
+
+	"config-set": `Usage: openscanner config-set <key> <value> [flags]
+
+Update an application setting on the running server. Requires admin login.
+
+Flags:
+  --server <url>  Server URL (default "http://localhost:3022")
+
+Examples:
+  openscanner config-set audioConversion 2
+  openscanner config-set transcriptionEnabled true`,
+
+	"user-add": `Usage: openscanner user-add [flags]
+
+Create a new user on the running server. Prompts for username, password,
+and role (admin or listener) interactively. Requires admin login.
+
+Flags:
+  --server <url>  Server URL (default "http://localhost:3022")
+
+Examples:
+  openscanner user-add`,
+
+	"user-remove": `Usage: openscanner user-remove <username> [flags]
+
+Delete a user by username on the running server. Requires admin login.
+
+Flags:
+  --server <url>  Server URL (default "http://localhost:3022")
+
+Examples:
+  openscanner user-remove jdoe`,
+}
+
+// RunHelp prints help for a specific command, or the general usage.
+// Returns 0 on success, 1 if the command is unknown.
+func RunHelp(topic string) int {
+	if topic == "" {
+		PrintUsage(os.Stdout)
+		return 0
+	}
+
+	text, ok := commandHelp[topic]
+	if !ok {
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\nRun 'openscanner help' for a list of commands.\n", topic)
+		return 1
+	}
+	fmt.Println(text)
+	return 0
 }

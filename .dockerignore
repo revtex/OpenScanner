@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Build outputs
+build/
+frontend/dist/
+frontend/tmp/
+backend/tmp/
+
+# Dependencies (rebuilt in container)
+frontend/node_modules/
+backend/vendor/
+
+# Data & runtime files
+data/
+*.db
+*.db-wal
+*.db-shm
+*.log
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Environment & secrets
+.env
+.env.*
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Documentation & CI (not needed in build)
+docs/
+.github/
+README.md
+systems-config/

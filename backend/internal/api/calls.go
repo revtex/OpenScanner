@@ -1561,10 +1561,10 @@ func aggregateErrorSpikeCounts(raw string) (sql.NullInt64, sql.NullInt64) {
 
 // transcriptResponse is the JSON shape returned by GetCallTranscript.
 type transcriptResponse struct {
-	Text     string                     `json:"text"`
+	Text     string                       `json:"text"`
 	Segments []audio.TranscriptionSegment `json:"segments"`
-	Language string                     `json:"language"`
-	Model    string                     `json:"model"`
+	Language string                       `json:"language"`
+	Model    string                       `json:"model"`
 }
 
 // GetCallTranscript handles GET /api/calls/:id/transcript.

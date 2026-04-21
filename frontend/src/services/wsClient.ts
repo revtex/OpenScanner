@@ -281,7 +281,13 @@ class WsClient {
           "text" in payload
         ) {
           this.dispatch?.(
-            transcriptReceived(payload as { callId: number; text: string; segments?: TranscriptionSegment[] }),
+            transcriptReceived(
+              payload as {
+                callId: number;
+                text: string;
+                segments?: TranscriptionSegment[];
+              },
+            ),
           );
         }
         break;

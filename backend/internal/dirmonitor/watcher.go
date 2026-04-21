@@ -418,8 +418,8 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 				label = strconv.FormatInt(parsed.SystemID, 10)
 			}
 			newID, cerr := s.queries.CreateSystem(ctx, db.CreateSystemParams{
-				SystemID:     parsed.SystemID,
-				Label:        label,
+				SystemID:               parsed.SystemID,
+				Label:                  label,
 				AutoPopulateTalkgroups: 1,
 			})
 			if cerr != nil {
@@ -452,8 +452,8 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 			}
 
 			newID, cerr := s.queries.CreateSystem(ctx, db.CreateSystemParams{
-				SystemID:     nextSystemID,
-				Label:        label,
+				SystemID:               nextSystemID,
+				Label:                  label,
 				AutoPopulateTalkgroups: 1,
 			})
 			if cerr != nil {
