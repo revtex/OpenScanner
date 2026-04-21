@@ -1886,13 +1886,16 @@ func (c *Client) opConfigGet(ctx context.Context, _ json.RawMessage) (any, error
 }
 
 func (c *Client) opConfigUpdate(ctx context.Context, params json.RawMessage) (any, error) {
-	var settings []struct {
-		Key   string `json:"key"`
-		Value string `json:"value"`
+	var body struct {
+		Settings []struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		} `json:"settings"`
 	}
-	if err := json.Unmarshal(params, &settings); err != nil {
+	if err := json.Unmarshal(params, &body); err != nil {
 		return nil, userError("invalid request body")
 	}
+	settings := body.Settings
 
 	// Validate all keys first.
 	for _, s := range settings {
