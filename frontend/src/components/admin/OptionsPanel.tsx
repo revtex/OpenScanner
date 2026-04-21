@@ -270,6 +270,17 @@ export default function OptionsPanel() {
       }));
       return;
     }
+    if (key === "audioConversion" && value !== "0") {
+      setLocalSettings((prev) => {
+        const preset = prev["audioEncodingPreset"];
+        return {
+          ...prev,
+          [key]: value,
+          ...(!preset ? { audioEncodingPreset: "mp3_32k" } : {}),
+        };
+      });
+      return;
+    }
     setLocalSettings((prev) => ({ ...prev, [key]: value }));
   };
 
