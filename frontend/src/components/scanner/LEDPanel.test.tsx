@@ -88,6 +88,7 @@ describe("LEDPanel", () => {
       keypadBeeps: "uniden",
       shareableLinks: false,
       transcriptionEnabled: false,
+      liveTranscriptDisplay: false,
     };
     renderLED({
       scanner: {
@@ -121,6 +122,7 @@ describe("LEDPanel", () => {
       keypadBeeps: "uniden",
       shareableLinks: false,
       transcriptionEnabled: false,
+      liveTranscriptDisplay: false,
     };
     renderLED({
       scanner: {

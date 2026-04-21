@@ -202,6 +202,7 @@ export const scannerSlice = createSlice({
           playbackGoesLive: false,
           shareableLinks: false,
           transcriptionEnabled: false,
+          liveTranscriptDisplay: false,
           keypadBeeps: "",
           ...action.payload,
         };

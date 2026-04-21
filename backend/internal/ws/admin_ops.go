@@ -102,6 +102,7 @@ var wsAllowedSettingKeys = map[string]bool{
 	"transcriptionDiarize":        true,
 	"transcriptionEnabled":        true,
 	"transcriptionLanguage":       true,
+	"liveTranscriptDisplay":       true,
 	"transcriptionModel":          true,
 	"transcriptionUrl":            true,
 	"vapidPrivateKey":             true,
@@ -2893,6 +2894,7 @@ func (c *Client) opTranscriptionStatus(ctx context.Context, _ json.RawMessage) (
 	model := getVal("transcriptionModel")
 	language := getVal("transcriptionLanguage")
 	diarize := getVal("transcriptionDiarize") == "true"
+	liveDisplay := getVal("liveTranscriptDisplay") == "true"
 
 	// Check live connection to go-whisper.
 	connected := false
@@ -2911,12 +2913,13 @@ func (c *Client) opTranscriptionStatus(ctx context.Context, _ json.RawMessage) (
 	}
 
 	return map[string]any{
-		"enabled":   enabled,
-		"url":       baseURL,
-		"model":     model,
-		"language":  language,
-		"diarize":   diarize,
-		"connected": connected,
+		"enabled":     enabled,
+		"url":         baseURL,
+		"model":       model,
+		"language":    language,
+		"diarize":     diarize,
+		"liveDisplay": liveDisplay,
+		"connected":   connected,
 	}, nil
 }
 

@@ -76,6 +76,7 @@ export default function TranscriptionPanel() {
   const [toastType, setToastType] = useState<"error" | "success">("error");
   const [selectedDownload, setSelectedDownload] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [liveDisplay, setLiveDisplay] = useState(false);
 
   // Sync form state from server status
   useEffect(() => {
@@ -83,6 +84,7 @@ export default function TranscriptionPanel() {
       setUrl(status.url);
       setLanguage(status.language || "en");
       setDiarize(status.diarize);
+      setLiveDisplay(status.liveDisplay);
       setDirty(false);
     }
   }, [status]);
@@ -106,6 +108,23 @@ export default function TranscriptionPanel() {
       );
     } catch {
       showToast("Failed to toggle transcription", "error");
+    }
+  };
+
+  const handleToggleLiveDisplay = async () => {
+    try {
+      await updateConfig([
+        { key: "liveTranscriptDisplay", value: String(!liveDisplay) },
+      ]).unwrap();
+      refetchStatus();
+      showToast(
+        liveDisplay
+          ? "Live transcript display disabled"
+          : "Live transcript display enabled",
+        "success",
+      );
+    } catch {
+      showToast("Failed to toggle live display", "error");
     }
   };
 
@@ -211,6 +230,24 @@ export default function TranscriptionPanel() {
                 className="toggle toggle-primary"
                 checked={status?.enabled ?? false}
                 onChange={handleToggleEnabled}
+              />
+            </label>
+
+            {/* Live display toggle */}
+            <label className="flex items-center justify-between cursor-pointer">
+              <div>
+                <span className="text-sm font-medium">
+                  Show in Live Player
+                </span>
+                <p className="text-xs text-base-content/60">
+                  Display transcripts in the scanner during playback
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                checked={liveDisplay}
+                onChange={handleToggleLiveDisplay}
               />
             </label>
 

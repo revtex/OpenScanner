@@ -106,6 +106,7 @@ const testConfig: ScannerConfig = {
   keypadBeeps: "uniden",
   shareableLinks: false,
   transcriptionEnabled: false,
+  liveTranscriptDisplay: false,
 };
 
 function scannerState(

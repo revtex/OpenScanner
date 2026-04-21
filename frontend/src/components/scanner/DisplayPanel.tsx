@@ -10,7 +10,9 @@ import { BookmarkButton } from "@/components/scanner/BookmarkButton";
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { useShareCallMutation } from "@/app/slices/shareSlice";
 import { HistoryPanel } from "@/components/scanner/HistoryPanel";
+import { TranscriptPanel } from "@/components/scanner/TranscriptPanel";
 import { useActiveUnit } from "@/hooks/useActiveUnit";
+import { useAppSelector } from "@/app/store";
 import type { AvoidEntry, Call } from "@/types";
 
 interface DisplayPanelProps {
@@ -113,6 +115,9 @@ export function DisplayPanel({
   isLive,
 }: DisplayPanelProps) {
   const clock = useClock();
+  const liveTranscriptDisplay = useAppSelector(
+    (s) => s.scanner.config?.liveTranscriptDisplay ?? false,
+  );
   const [brightness, setBrightness] = useState(() => {
     const saved = localStorage.getItem("lcd-brightness");
     return saved ? Number(saved) : 50;
@@ -407,6 +412,11 @@ export function DisplayPanel({
             <span>&nbsp;</span>
           </div>
         </>
+      )}
+
+      {/* Transcript (when enabled in admin) */}
+      {liveTranscriptDisplay && (
+        <TranscriptPanel call={currentCall} />
       )}
 
       {/* History */}

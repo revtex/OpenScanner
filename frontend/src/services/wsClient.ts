@@ -202,6 +202,7 @@ class WsClient {
             shareableLinks?: boolean | string;
             keypadBeeps?: string;
             transcriptionEnabled?: boolean | string;
+            liveTranscriptDisplay?: boolean | string;
           };
           // CFG carries systems + display prefs. Branding/email/version
           // arrive separately via VER, so only override if CFG explicitly
@@ -226,6 +227,9 @@ class WsClient {
               transcriptionEnabled:
                 cfg.transcriptionEnabled === true ||
                 cfg.transcriptionEnabled === "true",
+              liveTranscriptDisplay:
+                cfg.liveTranscriptDisplay === true ||
+                cfg.liveTranscriptDisplay === "true",
             }),
           );
         }

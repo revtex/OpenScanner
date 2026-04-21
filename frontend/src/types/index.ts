@@ -69,6 +69,7 @@ export interface ScannerConfig {
   shareableLinks: boolean;
   keypadBeeps: string;
   transcriptionEnabled: boolean;
+  liveTranscriptDisplay: boolean;
 }
 
 // WS message: JSON array [command, payload?, flags?]
@@ -404,6 +405,7 @@ export interface TranscriptionStatus {
   model: string;
   language: string;
   diarize: boolean;
+  liveDisplay: boolean;
   connected: boolean;
 }
 

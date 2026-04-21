@@ -672,6 +672,9 @@ func buildCFGMessage(ctx context.Context, queries *db.Queries) ([]byte, error) {
 	if s, err := queries.GetSetting(ctx, "transcriptionEnabled"); err == nil {
 		cfgPayload["transcriptionEnabled"] = s.Value == "true"
 	}
+	if s, err := queries.GetSetting(ctx, "liveTranscriptDisplay"); err == nil {
+		cfgPayload["liveTranscriptDisplay"] = s.Value == "true"
+	}
 
 	return NewCFGMessage(cfgPayload)
 }
