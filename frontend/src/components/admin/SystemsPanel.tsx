@@ -286,35 +286,35 @@ function TalkgroupList({
           </thead>
           <tbody>
             {filtered.map((tg) => (
-                <tr key={tg.id}>
-                  <td>{tg.talkgroupId}</td>
-                  <td>{tg.label ?? "—"}</td>
-                  <td>{tg.name ?? "—"}</td>
-                  <td>
-                    {tg.frequency != null
-                      ? `${(tg.frequency / 1e6).toFixed(4)} MHz`
-                      : "—"}
-                  </td>
-                  <td>{tg.groupId ?? "—"}</td>
-                  <td>{tg.tagId ?? "—"}</td>
-                  <td className="flex gap-1">
-                    <button
-                      className="btn btn-ghost btn-xs"
-                      onClick={() => onEdit(tg)}
-                      aria-label="Edit talkgroup"
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </button>
-                    <button
-                      className="btn btn-ghost btn-xs"
-                      onClick={() => onDelete(tg)}
-                      aria-label="Delete talkgroup"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              <tr key={tg.id}>
+                <td>{tg.talkgroupId}</td>
+                <td>{tg.label ?? "—"}</td>
+                <td>{tg.name ?? "—"}</td>
+                <td>
+                  {tg.frequency != null
+                    ? `${(tg.frequency / 1e6).toFixed(4)} MHz`
+                    : "—"}
+                </td>
+                <td>{tg.groupId ?? "—"}</td>
+                <td>{tg.tagId ?? "—"}</td>
+                <td className="flex gap-1">
+                  <button
+                    className="btn btn-ghost btn-xs"
+                    onClick={() => onEdit(tg)}
+                    aria-label="Edit talkgroup"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-xs"
+                    onClick={() => onDelete(tg)}
+                    aria-label="Delete talkgroup"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

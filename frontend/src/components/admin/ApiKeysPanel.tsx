@@ -6,6 +6,7 @@ import {
   useUpdateApiKeyMutation,
   useDeleteApiKeyMutation,
   useListSystemsQuery,
+  useGetConfigQuery,
 } from "@/hooks/useAdminWsOps";
 import type { AdminApiKey } from "@/types";
 
@@ -56,9 +57,21 @@ function CopyButton({ text }: { text: string }) {
 export default function ApiKeysPanel() {
   const { data: apiKeys, isLoading } = useListApiKeysQuery();
   const { data: systems } = useListSystemsQuery();
+  const { data: config } = useGetConfigQuery();
   const [createApiKey] = useCreateApiKeyMutation();
   const [updateApiKey] = useUpdateApiKeyMutation();
   const [deleteApiKey] = useDeleteApiKeyMutation();
+
+  const globalRateLimit = useMemo(() => {
+    const val = config?.settings?.find(
+      (s) => s.key === "apiKeyCallRate",
+    )?.value;
+    if (val) {
+      const n = Number(val);
+      if (n > 0) return n;
+    }
+    return 60; // hardcoded server default
+  }, [config]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -285,8 +298,8 @@ export default function ApiKeysPanel() {
             {editingId != null ? "Edit API Key" : "Create API Key"}
           </h3>
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-            <div className="flex flex-col">
-              <span className="text-sm">Identifier</span>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Identifier</span>
               <input
                 type="text"
                 className="input w-full"
@@ -294,32 +307,48 @@ export default function ApiKeysPanel() {
                 onChange={(e) => updateField("ident", e.target.value)}
                 placeholder="Optional description"
               />
+              <span className="text-xs text-base-content/60">
+                A label to help you identify this key (e.g. &ldquo;Trunk
+                Recorder North Site&rdquo;).
+              </span>
             </div>
 
             {systems && systems.length > 0 && (
-              <div className="flex flex-col">
-                <span className="text-sm">Systems (none = all)</span>
-                <div className="flex flex-wrap gap-2">
-                  {systems.map((sys) => (
-                    <label
-                      key={sys.id}
-                      className="flex items-center cursor-pointer gap-2"
-                    >
-                      <input
-                        type="checkbox"
-                        className="checkbox checkbox-sm"
-                        checked={selectedSystems.includes(sys.id)}
-                        onChange={() => toggleSystem(sys.id)}
-                      />
-                      <span className="text-sm">{sys.label}</span>
-                    </label>
-                  ))}
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium">Systems</span>
+                <span className="text-xs text-base-content/60">
+                  Select which systems this key can upload to. If none are
+                  selected, the key has access to all systems.
+                </span>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {systems.map((sys) => {
+                    const selected = selectedSystems.includes(sys.id);
+                    return (
+                      <button
+                        key={sys.id}
+                        type="button"
+                        className={`badge badge-lg gap-1.5 cursor-pointer transition-colors ${
+                          selected
+                            ? "badge-primary"
+                            : "badge-ghost hover:badge-outline"
+                        }`}
+                        onClick={() => toggleSystem(sys.id)}
+                      >
+                        <span
+                          className={`inline-block w-2 h-2 rounded-full ${selected ? "bg-primary-content" : "bg-base-content/30"}`}
+                        />
+                        {sys.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            <div className="flex flex-col">
-              <span className="text-sm">Call Rate Limit (per minute)</span>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium">
+                Call Rate Limit (per minute)
+              </span>
               <input
                 type="number"
                 min={1}
@@ -327,11 +356,11 @@ export default function ApiKeysPanel() {
                 className="input w-full"
                 value={form.callRateLimit}
                 onChange={(e) => updateField("callRateLimit", e.target.value)}
-                placeholder="Leave blank to use global default"
+                placeholder={`Global default: ${globalRateLimit}/min`}
               />
-              <span className="text-xs text-base-content/60 mt-1">
-                Set per-key inbound call upload limit. Blank uses global
-                setting.
+              <span className="text-xs text-base-content/60">
+                Override the per-key inbound call upload limit. Leave blank to
+                use the global default ({globalRateLimit}/min).
               </span>
             </div>
 
