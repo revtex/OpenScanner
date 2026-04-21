@@ -23,12 +23,13 @@ RUN go build -ldflags="-s -w" -o /openscanner ./cmd/server
 
 # Stage 3: Minimal runtime image
 FROM alpine:3.21
-RUN apk add --no-cache ffmpeg ca-certificates tzdata && \
+RUN apk add --no-cache ffmpeg ca-certificates tzdata su-exec && \
   adduser -D -u 1001 appuser && \
   mkdir -p /data/recordings && chown -R appuser:appuser /data
 WORKDIR /app
 COPY --from=go-builder /openscanner ./openscanner
-USER appuser
+COPY entrypoint.sh ./entrypoint.sh
+RUN chmod +x entrypoint.sh
 # Defaults for standalone docker run; override via environment or compose.
 ENV OPENSCANNER_LISTEN=0.0.0.0:3022
 ENV OPENSCANNER_DB_FILE=/data/openscanner.db
@@ -36,4 +37,4 @@ ENV OPENSCANNER_RECORDINGS_DIR=/data/recordings
 EXPOSE 3022
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:3022/api/health || exit 1
-ENTRYPOINT ["./openscanner"]
+ENTRYPOINT ["./entrypoint.sh"]
