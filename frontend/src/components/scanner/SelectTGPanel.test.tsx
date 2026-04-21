@@ -62,6 +62,7 @@ const testConfig: ScannerConfig = {
   playbackGoesLive: false,
   keypadBeeps: "uniden",
   shareableLinks: false,
+  transcriptionEnabled: false,
 };
 
 function scannerState(

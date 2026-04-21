@@ -669,6 +669,9 @@ func buildCFGMessage(ctx context.Context, queries *db.Queries) ([]byte, error) {
 	if s, err := queries.GetSetting(ctx, "shareableLinks"); err == nil {
 		cfgPayload["shareableLinks"] = s.Value == "true"
 	}
+	if s, err := queries.GetSetting(ctx, "transcriptionEnabled"); err == nil {
+		cfgPayload["transcriptionEnabled"] = s.Value == "true"
+	}
 
 	return NewCFGMessage(cfgPayload)
 }

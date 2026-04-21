@@ -228,6 +228,7 @@ describe("scannerSlice", () => {
       playbackGoesLive: false,
       keypadBeeps: "uniden",
       shareableLinks: false,
+      transcriptionEnabled: false,
     };
 
     it("enables all talkgroups", () => {

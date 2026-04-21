@@ -14,6 +14,9 @@ export function useAudioPlayer() {
   const isLive = useAppSelector((s) => s.scanner.isLive);
   const heldTG = useAppSelector((s) => s.scanner.heldTG);
   const heldSystem = useAppSelector((s) => s.scanner.heldSystem);
+  const transcriptionEnabled = useAppSelector(
+    (s) => s.scanner.config?.transcriptionEnabled ?? false,
+  );
   const [volume, setVolumeState] = useState(() => audioPlayer.getVolume());
   const [playing, setPlaying] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -58,9 +61,6 @@ export function useAudioPlayer() {
     wsClient.onTranscriptReceived((callId, text, segments) => {
       audioPlayer.resolveTranscript(callId, text, segments);
     });
-
-    // Enable transcript-synced playback by default.
-    audioPlayer.setSyncTranscripts(true);
 
     // If restored as paused (e.g. after refresh), tell audioPlayer so
     // incoming calls queue instead of trying to auto-play.
@@ -129,6 +129,12 @@ export function useAudioPlayer() {
       dispatch(setAudioActive(false));
     }
   }, [dispatch, isLive]);
+
+  // Only buffer calls for transcript sync when transcription is enabled.
+  // When disabled, calls play immediately without waiting for TRN.
+  useEffect(() => {
+    audioPlayer.setSyncTranscripts(transcriptionEnabled);
+  }, [transcriptionEnabled]);
 
   const skip = useCallback(() => {
     audioPlayer.skip();

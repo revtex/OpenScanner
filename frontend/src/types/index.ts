@@ -68,6 +68,7 @@ export interface ScannerConfig {
   playbackGoesLive: boolean;
   shareableLinks: boolean;
   keypadBeeps: string;
+  transcriptionEnabled: boolean;
 }
 
 // WS message: JSON array [command, payload?, flags?]
