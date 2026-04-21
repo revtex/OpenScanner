@@ -530,7 +530,11 @@ class AudioPlayer {
     }
     this.pendingTranscript.clear();
     for (const p of items) {
-      this.enqueueItem({ call: p.call, audioData: p.audioData, audioUrl: p.audioUrl });
+      this.enqueueItem({
+        call: p.call,
+        audioData: p.audioData,
+        audioUrl: p.audioUrl,
+      });
     }
   }
 
