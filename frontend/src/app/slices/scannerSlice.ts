@@ -98,6 +98,15 @@ export const scannerSlice = createSlice({
           state.currentCall.transcriptSegments = pending.segments;
           delete state.pendingTranscripts[state.currentCall.id];
         }
+
+        // Purge stale entries — any pending transcript for a call ID older
+        // than the current call was skipped/filtered and will never play.
+        const currentId = state.currentCall.id;
+        for (const key of Object.keys(state.pendingTranscripts)) {
+          if (Number(key) < currentId) {
+            delete state.pendingTranscripts[Number(key)];
+          }
+        }
       }
     },
     clearCurrentCall(state) {
@@ -343,15 +352,9 @@ export const scannerSlice = createSlice({
       }
 
       // Call is likely still in the audioPlayer queue — stash for later.
+      // Consumed by setCurrentCall when the call starts playing.
       if (!matched) {
         state.pendingTranscripts[callId] = { text, segments };
-        // Cap pending map to avoid unbounded growth.
-        const ids = Object.keys(state.pendingTranscripts);
-        if (ids.length > 500) {
-          for (const old of ids.slice(0, ids.length - 500)) {
-            delete state.pendingTranscripts[Number(old)];
-          }
-        }
       }
     },
   },
