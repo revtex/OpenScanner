@@ -305,11 +305,13 @@ export function DisplayPanel({
                   />
                 )}
               </div>
-              <BookmarkButton
-                isBookmarked={bookmarkedCallIds.includes(currentCall.id)}
-                onToggle={() => handleToggleBookmark(currentCall.id)}
-              />
-              {shareableLinks && (
+              {isAuthenticated && (
+                <BookmarkButton
+                  isBookmarked={bookmarkedCallIds.includes(currentCall.id)}
+                  onToggle={() => handleToggleBookmark(currentCall.id)}
+                />
+              )}
+              {isAuthenticated && shareableLinks && (
                 <button
                   className="btn btn-ghost btn-xs btn-circle opacity-50 hover:opacity-50"
                   onClick={handleShare}
