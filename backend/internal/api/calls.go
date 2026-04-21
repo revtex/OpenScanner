@@ -843,7 +843,7 @@ type CallSearchResult struct {
 // GetCallAudio handles GET /api/calls/:id/audio.
 //
 //	@Summary		Get call audio file
-//	@Description	Stream the audio file for a specific call. Requires authentication or public access mode.
+//	@Description	Stream the audio file for a specific call. Authentication is optional when the publicAccess setting is enabled; otherwise a valid JWT is required.
 //	@Tags			Calls
 //	@Security		BearerAuth
 //	@Produce		application/octet-stream
@@ -935,7 +935,7 @@ type CallSearchResponse struct {
 // GetCalls handles GET /api/calls — paginated call archive search.
 //
 //	@Summary		Search calls
-//	@Description	Paginated search of the call archive with optional filters.
+//	@Description	Paginated search of the call archive with optional filters. Authentication is optional when the publicAccess setting is enabled; otherwise a valid JWT is required.
 //	@Tags			Calls
 //	@Security		BearerAuth
 //	@Produce		json
@@ -1573,7 +1573,7 @@ type transcriptResponse struct {
 // Returns the transcription for a call if one exists.
 //
 //	@Summary		Get call transcript
-//	@Description	Returns the transcription text, segments, language and model for a call.
+//	@Description	Returns the transcription text, segments, language and model for a call. Authentication is optional when the publicAccess setting is enabled; otherwise a valid JWT is required.
 //	@Tags			Calls
 //	@Produce		json
 //	@Security		BearerAuth
