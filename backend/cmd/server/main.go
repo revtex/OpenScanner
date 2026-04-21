@@ -787,14 +787,14 @@ func (p *program) run() {
 	dsService.Start(ctx)
 
 	hub := ws.NewHub(queries, config.Version, ws.HubDeps{
-		SQLDB:              sqlDB,
-		DirMonitorReload:   nil, // set below after dwService is created
-		DownstreamReload:   dsService,
-		TranscriberReload:  transcriberMgr,
-		FFmpegAvailable:    hasFFmpeg,
-		FDKAACAvailable:    hasFDKAAC,
-		WhisperAvailable:   hasWhisper,
-		RecordingsDir:      cfg.RecordingsDir,
+		SQLDB:             sqlDB,
+		DirMonitorReload:  nil, // set below after dwService is created
+		DownstreamReload:  dsService,
+		TranscriberReload: transcriberMgr,
+		FFmpegAvailable:   hasFFmpeg,
+		FDKAACAvailable:   hasFDKAAC,
+		WhisperAvailable:  hasWhisper,
+		RecordingsDir:     cfg.RecordingsDir,
 	})
 	go hub.Run(ctx)
 

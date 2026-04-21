@@ -430,11 +430,18 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / filters.limit));
 
+  const [expandedTranscripts, setExpandedTranscripts] = useState(
+    () => new Set<number>(),
+  );
+
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: calls.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 62,
+    estimateSize: (index) => {
+      const call = calls[index];
+      return call && expandedTranscripts.has(call.id) ? 120 : 62;
+    },
     overscan: 5,
   });
 
@@ -508,14 +515,6 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   );
 
   const [showFilters, setShowFilters] = useState(false);
-  const [expandedTranscripts, setExpandedTranscripts] = useState(
-    () => new Set<number>(),
-  );
-
-  // Re-measure virtualized rows when transcripts expand/collapse.
-  useEffect(() => {
-    virtualizer.measure();
-  }, [expandedTranscripts, virtualizer]);
 
   const handleToggleSection = useCallback((sectionId: string) => {
     setOpenFilterSection((prev) => (prev === sectionId ? "" : sectionId));
@@ -928,7 +927,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                     key={call.id}
                     data-index={virtualRow.index}
                     ref={virtualizer.measureElement}
-                    className="absolute left-0 flex w-full items-start gap-2 border-b border-base-300 px-3 py-2 hover:bg-base-200"
+                    className="absolute left-0 flex w-full items-start gap-2 border-b border-base-300 px-3 py-2 hover:bg-base-200 overflow-hidden"
                     style={{ top: virtualRow.start }}
                   >
                     {/* Call details */}
