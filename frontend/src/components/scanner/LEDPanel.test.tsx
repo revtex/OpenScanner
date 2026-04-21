@@ -105,6 +105,7 @@ describe("LEDPanel", () => {
         config,
         tgSelection: {},
         tgSelectionReady: true,
+        pendingTranscripts: {},
       },
     });
     expect(screen.getByText("MY SCANNER")).toBeInTheDocument();
@@ -139,6 +140,7 @@ describe("LEDPanel", () => {
         config,
         tgSelection: {},
         tgSelectionReady: true,
+        pendingTranscripts: {},
       },
     });
     expect(screen.getByText("OPENSCANNER")).toBeInTheDocument();
@@ -172,6 +174,7 @@ describe("LEDPanel", () => {
         config: null,
         tgSelection: {},
         tgSelectionReady: true,
+        pendingTranscripts: {},
       },
     });
     const led = document.querySelector(
@@ -197,6 +200,7 @@ describe("LEDPanel", () => {
         config: null,
         tgSelection: {},
         tgSelectionReady: true,
+        pendingTranscripts: {},
       },
     });
     const led = document.querySelector(
@@ -222,6 +226,7 @@ describe("LEDPanel", () => {
         config: null,
         tgSelection: {},
         tgSelectionReady: true,
+        pendingTranscripts: {},
       },
     });
     const led = document.querySelector(".animate-pulse") as HTMLElement;
@@ -244,6 +249,7 @@ describe("LEDPanel", () => {
         config: null,
         tgSelection: {},
         tgSelectionReady: true,
+        pendingTranscripts: {},
       },
     });
     const led = document.querySelector(".animate-pulse");
@@ -266,6 +272,7 @@ describe("LEDPanel", () => {
         config: null,
         tgSelection: {},
         tgSelectionReady: true,
+        pendingTranscripts: {},
       },
     });
     const led = document.querySelector(
@@ -291,6 +298,7 @@ describe("LEDPanel", () => {
         config: null,
         tgSelection: {},
         tgSelectionReady: true,
+        pendingTranscripts: {},
       },
     });
     const led = document.querySelector(

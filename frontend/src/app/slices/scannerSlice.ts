@@ -9,6 +9,11 @@ import type {
 
 const MAX_HISTORY = 5;
 
+interface PendingTranscript {
+  text: string;
+  segments?: TranscriptionSegment[];
+}
+
 interface ScannerState {
   isLive: boolean;
   isPaused: boolean;
@@ -23,6 +28,7 @@ interface ScannerState {
   config: ScannerConfig | null;
   tgSelection: Record<number, boolean>;
   tgSelectionReady: boolean;
+  pendingTranscripts: Record<number, PendingTranscript>;
 }
 
 const initialState: ScannerState = {
@@ -41,6 +47,7 @@ const initialState: ScannerState = {
   config: null,
   tgSelection: {},
   tgSelectionReady: false,
+  pendingTranscripts: {},
 };
 
 export const scannerSlice = createSlice({
@@ -82,6 +89,16 @@ export const scannerSlice = createSlice({
         );
       }
       state.currentCall = action.payload;
+
+      // Merge any transcript that arrived while the call was queued.
+      if (state.currentCall) {
+        const pending = state.pendingTranscripts[state.currentCall.id];
+        if (pending) {
+          state.currentCall.transcript = pending.text;
+          state.currentCall.transcriptSegments = pending.segments;
+          delete state.pendingTranscripts[state.currentCall.id];
+        }
+      }
     },
     clearCurrentCall(state) {
       // Move the finished call into history (skip if already there)
@@ -311,14 +328,30 @@ export const scannerSlice = createSlice({
       }>,
     ) {
       const { callId, text, segments } = action.payload;
+      let matched = false;
+
       if (state.currentCall?.id === callId) {
         state.currentCall.transcript = text;
         state.currentCall.transcriptSegments = segments;
+        matched = true;
       }
       const histItem = state.history.find((c) => c.id === callId);
       if (histItem) {
         histItem.transcript = text;
         histItem.transcriptSegments = segments;
+        matched = true;
+      }
+
+      // Call is likely still in the audioPlayer queue — stash for later.
+      if (!matched) {
+        state.pendingTranscripts[callId] = { text, segments };
+        // Cap pending map to avoid unbounded growth.
+        const ids = Object.keys(state.pendingTranscripts);
+        if (ids.length > 50) {
+          for (const old of ids.slice(0, ids.length - 50)) {
+            delete state.pendingTranscripts[Number(old)];
+          }
+        }
       }
     },
   },

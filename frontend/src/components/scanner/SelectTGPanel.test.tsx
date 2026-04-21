@@ -83,6 +83,7 @@ function scannerState(
     config: testConfig,
     tgSelection: {},
     tgSelectionReady: true,
+    pendingTranscripts: {},
     ...overrides,
   };
 }
