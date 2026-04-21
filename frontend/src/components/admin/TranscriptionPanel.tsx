@@ -51,8 +51,11 @@ const LANGUAGES = [
 ];
 
 export default function TranscriptionPanel() {
-  const { data: status, isLoading: statusLoading } =
-    useTranscriptionStatusQuery();
+  const {
+    data: status,
+    isLoading: statusLoading,
+    refetch: refetchStatus,
+  } = useTranscriptionStatusQuery();
   const {
     data: modelsData,
     isLoading: modelsLoading,
@@ -95,6 +98,7 @@ export default function TranscriptionPanel() {
       await updateConfig([
         { key: "transcriptionEnabled", value: String(!status.enabled) },
       ]).unwrap();
+      refetchStatus();
       showToast(
         status.enabled ? "Transcription disabled" : "Transcription enabled",
         "success",
@@ -112,6 +116,7 @@ export default function TranscriptionPanel() {
         { key: "transcriptionDiarize", value: String(diarize) },
       ]).unwrap();
       setDirty(false);
+      refetchStatus();
       showToast("Settings saved", "success");
     } catch {
       showToast("Failed to save settings", "error");
@@ -123,6 +128,7 @@ export default function TranscriptionPanel() {
       await updateConfig([
         { key: "transcriptionModel", value: modelId },
       ]).unwrap();
+      refetchStatus();
       showToast(`Active model set to ${modelId}`, "success");
     } catch {
       showToast("Failed to set active model", "error");
@@ -135,7 +141,8 @@ export default function TranscriptionPanel() {
       await downloadModel({ model: selectedDownload }).unwrap();
       showToast(`Model ${selectedDownload} downloaded`, "success");
       setSelectedDownload("");
-      refetchModels();
+      // Delay refetch slightly — go-whisper needs a moment to rescan its store
+      setTimeout(() => refetchModels(), 500);
     } catch {
       showToast(`Failed to download ${selectedDownload}`, "error");
     }
@@ -148,6 +155,7 @@ export default function TranscriptionPanel() {
       await deleteModel({ id: model.id }).unwrap();
       showToast(`Model ${model.id} deleted`, "success");
       refetchModels();
+      refetchStatus();
     } catch {
       showToast(`Failed to delete ${model.id}`, "error");
     } finally {
