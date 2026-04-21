@@ -113,8 +113,16 @@ func (h *SetupHandler) PostSetup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "username must not be empty"})
 		return
 	}
+	if len(req.Username) > 64 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username must be at most 64 characters"})
+		return
+	}
 	if len(req.Password) < 8 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "password must be at least 8 characters"})
+		return
+	}
+	if len(req.Password) > 128 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "password must be at most 128 characters"})
 		return
 	}
 

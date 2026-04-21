@@ -48,7 +48,7 @@ type Deps struct {
 	DirMonitorReloader DirMonitorReloader
 	DownstreamReloader DownstreamReloader
 	DownstreamNotifier DownstreamNotifier
-	Transcriber        audio.Transcriber     // nil when transcription is disabled
+	Transcriber        audio.Transcriber // nil when transcription is disabled
 	Version            string
 	FFmpegAvailable    bool
 	FDKAACAvailable    bool
@@ -82,11 +82,11 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 
 	// First-run setup — unauthenticated.
 	api.GET("/setup/status", setupHandler.GetSetupStatus)
-	api.POST("/setup", setupHandler.PostSetup)
+	api.POST("/setup", middleware.MaxBodySize(1<<20), setupHandler.PostSetup)
 
 	// Auth — login and refresh are unauthenticated; the rest require a valid JWT.
 	api.POST("/auth/login", middleware.MaxBodySize(1<<20), middleware.RateLimit(deps.RateLimiter), authHandler.PostLogin)
-	api.POST("/auth/refresh", middleware.RateLimit(deps.RateLimiter), authHandler.PostRefresh)
+	api.POST("/auth/refresh", middleware.MaxBodySize(1<<20), middleware.RateLimit(deps.RateLimiter), authHandler.PostRefresh)
 
 	authRequired := api.Group("/auth")
 	authRequired.Use(middleware.JWTAuth())

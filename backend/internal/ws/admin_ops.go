@@ -450,8 +450,14 @@ func (c *Client) opUsersCreate(ctx context.Context, params json.RawMessage) (any
 	if req.Username == "" {
 		return nil, userError("username is required")
 	}
+	if len(req.Username) > 64 {
+		return nil, userError("username must be at most 64 characters")
+	}
 	if len(req.Password) < 8 {
 		return nil, userError("password must be at least 8 characters")
+	}
+	if len(req.Password) > 128 {
+		return nil, userError("password must be at most 128 characters")
 	}
 	if req.Role == "" {
 		req.Role = "listener"
@@ -512,6 +518,9 @@ func (c *Client) opUsersUpdate(ctx context.Context, params json.RawMessage) (any
 	}
 	if req.Username == "" {
 		return nil, userError("username is required")
+	}
+	if len(req.Username) > 64 {
+		return nil, userError("username must be at most 64 characters")
 	}
 	if req.Role == "" {
 		return nil, userError("role is required")
@@ -2008,22 +2017,9 @@ func (c *Client) opConfigUpdate(ctx context.Context, params json.RawMessage) (an
 		}
 	}
 
-	// Broadcast updated config to all WS clients.
-	allSettings, err := c.hub.queries.ListSettings(ctx)
-	if err != nil {
-		slog.Warn("failed to reload settings for CFG broadcast", "error", err)
-	} else {
-		cfgMap := make(map[string]string, len(allSettings))
-		for _, s := range allSettings {
-			cfgMap[s.Key] = s.Value
-		}
-		msg, err := NewCFGMessage(cfgMap)
-		if err != nil {
-			slog.Warn("failed to build CFG message", "error", err)
-		} else {
-			c.hub.Broadcast(msg, nil)
-		}
-	}
+	// Broadcast updated config to all WS clients using the safe,
+	// curated CFG builder (excludes secrets like VAPID keys).
+	c.hub.BroadcastCFG(ctx)
 
 	c.hub.BroadcastAdminEvent("config.updated", nil)
 	return map[string]bool{"ok": true}, nil

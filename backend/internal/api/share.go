@@ -85,13 +85,21 @@ func (h *CallHandler) PostShareCall(c *gin.Context) {
 	}
 
 	// Verify call exists.
-	if _, err := h.queries.GetCall(ctx, id); err != nil {
+	call, err := h.queries.GetCall(ctx, id)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "call not found"})
 			return
 		}
 		slog.Error("failed to get call for sharing", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	// Enforce per-user grants — restricted listeners cannot share calls
+	// outside their authorised scope.
+	if grants := h.loadUserGrants(c); !isGranted(grants, call.SystemID, call.TalkgroupID.Int64) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "call not found"})
 		return
 	}
 

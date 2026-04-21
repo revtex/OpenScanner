@@ -369,6 +369,10 @@ func (h *AuthHandler) PutPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "new password must be at least 8 characters"})
 		return
 	}
+	if len(req.NewPassword) > 128 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "new password must be at most 128 characters"})
+		return
+	}
 
 	user, err := h.queries.GetUser(c.Request.Context(), userID)
 	if err != nil {

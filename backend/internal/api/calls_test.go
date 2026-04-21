@@ -41,11 +41,11 @@ func newTestEngineWithCalls(t *testing.T) (*gin.Engine, *db.Queries) {
 	return router, queries
 }
 
-// seedAPIKey inserts an enabled API key and returns its row ID.
+// seedAPIKey inserts an enabled API key (hashed) and returns its row ID.
 func seedAPIKey(t *testing.T, q *db.Queries, key string) int64 {
 	t.Helper()
 	id, err := q.CreateAPIKey(context.Background(), db.CreateAPIKeyParams{
-		Key:      key,
+		Key:      auth.HashAPIKey(key),
 		Disabled: 0,
 	})
 	if err != nil {

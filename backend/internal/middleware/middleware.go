@@ -232,10 +232,6 @@ func APIKeyAuth(queries *db.Queries) gin.HandlerFunc {
 		hashed := auth.HashAPIKey(key)
 		apiKey, err := queries.GetAPIKeyByKey(c.Request.Context(), hashed)
 		if err != nil {
-			// Backward compatibility for legacy rows that still store plaintext keys.
-			apiKey, err = queries.GetAPIKeyByKey(c.Request.Context(), key)
-		}
-		if err != nil {
 			slog.Warn("api key auth: invalid key",
 				"request_id", requestID,
 				"ip", c.ClientIP(),
