@@ -409,6 +409,7 @@ export function useTranscriptionModelsQuery() {
 export function useTranscriptionDownloadMutation() {
   return useWsMutation<WhisperModel, { model: string }>(
     "transcription.download",
+    { timeoutMs: 5 * 60_000 },
   );
 }
 

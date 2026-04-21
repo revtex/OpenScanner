@@ -2865,13 +2865,17 @@ func (c *Client) opRadioReferenceApply(ctx context.Context, params json.RawMessa
 // transcriptionBaseURL reads the transcriptionUrl setting from DB.
 func (c *Client) transcriptionBaseURL(ctx context.Context) (string, error) {
 	s, err := c.hub.queries.GetSetting(ctx, "transcriptionUrl")
-	if err != nil || s.Value == "" {
-		return "", userError("transcriptionUrl setting is not configured")
+	if err == nil && s.Value != "" && wsValidHTTPURL(s.Value) {
+		return strings.TrimRight(s.Value, "/"), nil
 	}
-	if !wsValidHTTPURL(s.Value) {
-		return "", userError("transcriptionUrl is not a valid HTTP URL")
+	// Fall back to the live manager's URL (e.g. when DB setting was just saved
+	// but the query above fails due to timing).
+	if tr := c.hub.deps.TranscriberReload; tr != nil {
+		if u := tr.BaseURL(); u != "" {
+			return strings.TrimRight(u, "/"), nil
+		}
 	}
-	return strings.TrimRight(s.Value, "/"), nil
+	return "", userError("transcriptionUrl setting is not configured")
 }
 
 func (c *Client) opTranscriptionStatus(ctx context.Context, _ json.RawMessage) (any, error) {

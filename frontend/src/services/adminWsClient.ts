@@ -10,7 +10,7 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>;
 }
 
-const REQUEST_TIMEOUT = 10_000;
+const REQUEST_TIMEOUT = 30_000;
 const MAX_BACKOFF = 30_000;
 
 class AdminWsClient {
@@ -58,6 +58,7 @@ class AdminWsClient {
   request<T = unknown>(
     op: string,
     params?: Record<string, unknown>,
+    timeoutMs?: number,
   ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -69,7 +70,7 @@ class AdminWsClient {
       const timer = setTimeout(() => {
         this.pendingRequests.delete(reqId);
         reject(new Error(`Admin WS request timed out: ${op}`));
-      }, REQUEST_TIMEOUT);
+      }, timeoutMs ?? REQUEST_TIMEOUT);
 
       this.pendingRequests.set(reqId, {
         resolve: resolve as (data: unknown) => void,

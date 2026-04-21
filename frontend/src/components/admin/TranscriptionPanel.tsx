@@ -59,6 +59,7 @@ export default function TranscriptionPanel() {
   const {
     data: modelsData,
     isLoading: modelsLoading,
+    isError: modelsError,
     refetch: refetchModels,
   } = useTranscriptionModelsQuery();
   const [downloadModel, { isLoading: isDownloading }] =
@@ -406,6 +407,13 @@ export default function TranscriptionPanel() {
           {/* Models table */}
           {modelsLoading ? (
             <div className="loading loading-spinner loading-sm" />
+          ) : modelsError ? (
+            <div className="flex items-center gap-2 text-sm text-warning">
+              <span>Could not load models — is the go-whisper URL configured?</span>
+              <button className="btn btn-ghost btn-xs" onClick={refetchModels}>
+                Retry
+              </button>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="table table-zebra w-full">

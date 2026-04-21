@@ -87,6 +87,8 @@ interface MutationState {
 interface WsMutationOptions<TArg> {
   /** Transform the argument before sending as params. */
   transformArg?: (arg: TArg) => Record<string, unknown>;
+  /** Custom timeout in ms (default: REQUEST_TIMEOUT from adminWsClient). */
+  timeoutMs?: number;
 }
 
 /**
@@ -113,7 +115,7 @@ export function useWsMutation<TResult = void, TArg = Record<string, unknown>>(
     setIsError(false);
 
     const promise = adminWsClient
-      .request<TResult>(opRef.current, params)
+      .request<TResult>(opRef.current, params, optionsRef.current?.timeoutMs)
       .then((result) => {
         setIsLoading(false);
         return result;
