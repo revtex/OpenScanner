@@ -23,7 +23,7 @@ RUN go build -ldflags="-s -w" -o /openscanner ./cmd/server
 
 # Stage 3: Minimal runtime image
 FROM alpine:3.21
-RUN apk add --no-cache ffmpeg ca-certificates && \
+RUN apk add --no-cache ffmpeg ca-certificates tzdata && \
   adduser -D -u 1001 appuser && \
   mkdir -p /data/recordings && chown -R appuser:appuser /data
 WORKDIR /app
