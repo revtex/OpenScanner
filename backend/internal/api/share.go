@@ -112,11 +112,11 @@ func (h *CallHandler) PostShareCall(c *gin.Context) {
 
 	token := uuid.New().String()
 
-	// Compute expires_at from the global sharedLinkExpiry setting.
+	// Compute expires_at from the global sharedLinkExpiry setting (stored as days).
 	var expiresAt sql.NullInt64
 	if expStr := h.getSettingValue(c, "sharedLinkExpiry"); expStr != "" && expStr != "0" {
-		if expSecs, err := strconv.ParseInt(expStr, 10, 64); err == nil && expSecs > 0 {
-			expiresAt = sql.NullInt64{Int64: time.Now().Unix() + expSecs, Valid: true}
+		if expDays, err := strconv.ParseInt(expStr, 10, 64); err == nil && expDays > 0 {
+			expiresAt = sql.NullInt64{Int64: time.Now().Unix() + expDays*86400, Valid: true}
 		}
 	}
 
@@ -193,16 +193,16 @@ func (h *CallHandler) DeleteShareCall(c *gin.Context) {
 
 // isSharedLinkExpired checks if a shared link has expired.
 // It checks the explicit expires_at first, then falls back to the global
-// sharedLinkExpiry setting applied to created_at. Returns false if no expiry is set.
+// sharedLinkExpiry setting (days) applied to created_at. Returns false if no expiry is set.
 func (h *CallHandler) isSharedLinkExpired(c *gin.Context, expiresAt sql.NullInt64, createdAt int64) bool {
 	now := time.Now().Unix()
 	if expiresAt.Valid && expiresAt.Int64 > 0 {
 		return now > expiresAt.Int64
 	}
-	// Fallback: global setting applied to creation time.
+	// Fallback: global setting (days) applied to creation time.
 	if expStr := h.getSettingValue(c, "sharedLinkExpiry"); expStr != "" && expStr != "0" {
-		if expSecs, err := strconv.ParseInt(expStr, 10, 64); err == nil && expSecs > 0 {
-			return now > createdAt+expSecs
+		if expDays, err := strconv.ParseInt(expStr, 10, 64); err == nil && expDays > 0 {
+			return now > createdAt+expDays*86400
 		}
 	}
 	return false

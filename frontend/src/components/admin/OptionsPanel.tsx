@@ -107,7 +107,7 @@ const SAVEABLE_KEYS = new Set(SECTIONS.flatMap((s) => s.keys));
 const LABELS: Record<string, string> = {
   publicAccess: "Public Access",
   shareableLinks: "Shareable Links",
-  sharedLinkExpiry: "Shared Link Expiry (seconds)",
+  sharedLinkExpiry: "Shared Link Expiry (days)",
   pushNotifications: "Push Notifications",
   webhooksEnabled: "Webhooks Enabled",
   audioConversion: "Audio Conversion (FFmpeg)",
@@ -158,7 +158,7 @@ const DESCRIPTIONS: Record<string, string> = {
   keypadBeeps:
     "Audio feedback style when pressing buttons. Disabled turns off beeps.",
   sharedLinkExpiry:
-    "Time in seconds before shared links expire. Set to 0 to disable (links never expire).",
+    "Number of days before shared links expire. Set to 0 to disable (links never expire).",
 };
 
 function isBooleanKey(key: string): boolean {
@@ -195,7 +195,7 @@ export default function OptionsPanel() {
     }
     for (const key of SAVEABLE_KEYS) {
       if (!(key in map)) {
-        map[key] = isBooleanKey(key) ? "false" : "";
+        map[key] = isBooleanKey(key) ? "false" : "0";
       }
     }
     return map;
@@ -210,7 +210,7 @@ export default function OptionsPanel() {
     // never persisted to the DB yet.
     for (const key of SAVEABLE_KEYS) {
       if (!(key in map)) {
-        map[key] = isBooleanKey(key) ? "false" : "";
+        map[key] = isBooleanKey(key) ? "false" : "0";
       }
     }
     setLocalSettings(map);
