@@ -53,7 +53,8 @@ function Sparkline({
   const maxCount = Math.max(...buckets.map((b) => b.count), 1);
   const n = buckets.length;
 
-  const xOf = (i: number) => PAD.left + (i / (n - 1)) * chartW;
+  const xOf = (i: number) =>
+    PAD.left + (n > 1 ? (i / (n - 1)) * chartW : chartW / 2);
   const yOf = (v: number) => PAD.top + chartH - (v / maxCount) * chartH;
 
   // Build smooth polyline points
