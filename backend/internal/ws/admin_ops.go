@@ -2969,6 +2969,12 @@ func (c *Client) opTranscriptionDownload(ctx context.Context, params json.RawMes
 		model += ".bin"
 	}
 
+	// tdrz (tinydiarize) models live in a different HuggingFace repo.
+	// go-whisper's store accepts a full URL as the model path for non-default repos.
+	if strings.Contains(model, "tdrz") {
+		model = "https://huggingface.co/akashmjn/tinydiarize-whisper.cpp/resolve/main/ggml-" + strings.TrimPrefix(model, "ggml-")
+	}
+
 	baseURL, err := c.transcriptionBaseURL(ctx)
 	if err != nil {
 		return nil, err
