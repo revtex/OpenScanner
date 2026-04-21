@@ -213,10 +213,7 @@ export default function AdminLayout() {
               <Route path="tools" element={<ToolsPanel />} />
               <Route path="webhooks" element={<WebhooksPanel />} />
               <Route path="shared-links" element={<SharedLinksPanel />} />
-              <Route
-                path="transcription"
-                element={<TranscriptionPanel />}
-              />
+              <Route path="transcription" element={<TranscriptionPanel />} />
               <Route path="*" element={<Navigate to="activity" replace />} />
             </Routes>
           </main>

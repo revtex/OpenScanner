@@ -2962,12 +2962,18 @@ func (c *Client) opTranscriptionDownload(ctx context.Context, params json.RawMes
 		return nil, userError("model name is required")
 	}
 
+	// go-whisper expects model names with .bin extension
+	model := req.Model
+	if !strings.HasSuffix(model, ".bin") {
+		model += ".bin"
+	}
+
 	baseURL, err := c.transcriptionBaseURL(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	reqBody, _ := json.Marshal(map[string]string{"model": req.Model})
+	reqBody, _ := json.Marshal(map[string]string{"model": model})
 
 	// Model downloads can take a long time (500MB+).
 	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)

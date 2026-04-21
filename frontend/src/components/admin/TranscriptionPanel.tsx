@@ -52,8 +52,11 @@ const LANGUAGES = [
 export default function TranscriptionPanel() {
   const { data: status, isLoading: statusLoading } =
     useTranscriptionStatusQuery();
-  const { data: modelsData, isLoading: modelsLoading, refetch: refetchModels } =
-    useTranscriptionModelsQuery();
+  const {
+    data: modelsData,
+    isLoading: modelsLoading,
+    refetch: refetchModels,
+  } = useTranscriptionModelsQuery();
   const [downloadModel, { isLoading: isDownloading }] =
     useTranscriptionDownloadMutation();
   const [deleteModel] = useTranscriptionDeleteMutation();
@@ -191,9 +194,7 @@ export default function TranscriptionPanel() {
           <div className="flex flex-col gap-4">
             {/* Enable toggle */}
             <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-sm font-medium">
-                Enable Transcription
-              </span>
+              <span className="text-sm font-medium">Enable Transcription</span>
               <input
                 type="checkbox"
                 className="toggle toggle-primary"
@@ -239,9 +240,7 @@ export default function TranscriptionPanel() {
             {/* Diarize */}
             <label className="flex items-center justify-between cursor-pointer">
               <div>
-                <span className="text-sm font-medium">
-                  Speaker Diarization
-                </span>
+                <span className="text-sm font-medium">Speaker Diarization</span>
                 <p className="text-xs text-base-content/60">
                   Requires a tdrz model (e.g. ggml-small.en-tdrz)
                 </p>
@@ -325,7 +324,10 @@ export default function TranscriptionPanel() {
                   {models.map((m) => {
                     const isActive = m.id === status?.model;
                     return (
-                      <tr key={m.id} className={isActive ? "bg-primary/10" : ""}>
+                      <tr
+                        key={m.id}
+                        className={isActive ? "bg-primary/10" : ""}
+                      >
                         <td className="font-mono text-sm flex items-center gap-2">
                           <Mic className="w-4 h-4 shrink-0 opacity-50" />
                           {m.id}
