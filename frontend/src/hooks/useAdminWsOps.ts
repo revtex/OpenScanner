@@ -417,3 +417,7 @@ export function useTranscriptionDeleteMutation() {
     "transcription.delete",
   );
 }
+
+export function useTranscriptionStatsQuery() {
+  return useWsQuery<import("@/types").TranscriptionStats>("transcription.stats");
+}

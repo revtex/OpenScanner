@@ -13,6 +13,7 @@ import {
   useTranscriptionModelsQuery,
   useTranscriptionDownloadMutation,
   useTranscriptionDeleteMutation,
+  useTranscriptionStatsQuery,
   useUpdateConfigMutation,
 } from "@/hooks/useAdminWsOps";
 import type { WhisperModel } from "@/types";
@@ -61,6 +62,7 @@ export default function TranscriptionPanel() {
     useTranscriptionDownloadMutation();
   const [deleteModel] = useTranscriptionDeleteMutation();
   const [updateConfig] = useUpdateConfigMutation();
+  const { data: stats } = useTranscriptionStatsQuery();
 
   const [url, setUrl] = useState("");
   const [language, setLanguage] = useState("en");
@@ -269,6 +271,93 @@ export default function TranscriptionPanel() {
           </div>
         </div>
       </div>
+
+      {/* ─── Stats Card ─── */}
+      {stats && stats.total > 0 && (
+        <div className="card bg-base-200 mb-4">
+          <div className="card-body">
+            <h2 className="card-title text-base mb-3">Statistics</h2>
+
+            {/* Summary row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="stat bg-base-300 rounded-lg p-3">
+                <div className="stat-title text-xs">Total</div>
+                <div className="stat-value text-lg">
+                  {stats.total.toLocaleString()}
+                </div>
+              </div>
+              <div className="stat bg-base-300 rounded-lg p-3">
+                <div className="stat-title text-xs">Last 24h</div>
+                <div className="stat-value text-lg">
+                  {stats.recent24h.toLocaleString()}
+                </div>
+              </div>
+              <div className="stat bg-base-300 rounded-lg p-3">
+                <div className="stat-title text-xs">Avg Duration</div>
+                <div className="stat-value text-lg">
+                  {stats.avgDurationMs > 0
+                    ? `${(stats.avgDurationMs / 1000).toFixed(1)}s`
+                    : "—"}
+                </div>
+              </div>
+              <div className="stat bg-base-300 rounded-lg p-3">
+                <div className="stat-title text-xs">Queue</div>
+                <div className="stat-value text-lg">
+                  {stats.poolEnabled ? stats.queueDepth : "Off"}
+                </div>
+              </div>
+            </div>
+
+            {/* Duration range */}
+            {stats.minDurationMs > 0 && (
+              <p className="text-xs text-base-content/60 mb-3">
+                Processing range: {(stats.minDurationMs / 1000).toFixed(1)}s –{" "}
+                {(stats.maxDurationMs / 1000).toFixed(1)}s
+              </p>
+            )}
+
+            {/* Breakdowns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {stats.byLanguage.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium mb-2">By Language</h3>
+                  <div className="space-y-1">
+                    {stats.byLanguage.map((l) => (
+                      <div
+                        key={l.language}
+                        className="flex justify-between text-sm"
+                      >
+                        <span className="uppercase">{l.language}</span>
+                        <span className="text-base-content/60">
+                          {l.count.toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {stats.byModel.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium mb-2">By Model</h3>
+                  <div className="space-y-1">
+                    {stats.byModel.map((m) => (
+                      <div
+                        key={m.model}
+                        className="flex justify-between text-sm"
+                      >
+                        <span className="font-mono text-xs">{m.model}</span>
+                        <span className="text-base-content/60">
+                          {m.count.toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── Models Card ─── */}
       <div className="card bg-base-200">

@@ -411,6 +411,7 @@ func (c *Client) adminOpHandlers() map[string]adminOpHandler {
 		"transcription.models":   c.opTranscriptionModels,
 		"transcription.download": c.opTranscriptionDownload,
 		"transcription.delete":   c.opTranscriptionDelete,
+		"transcription.stats":    c.opTranscriptionStats,
 	}
 }
 
@@ -3051,4 +3052,71 @@ func (c *Client) opTranscriptionDelete(ctx context.Context, params json.RawMessa
 	}
 
 	return map[string]any{"deleted": true}, nil
+}
+
+func (c *Client) opTranscriptionStats(ctx context.Context, _ json.RawMessage) (any, error) {
+	// DB aggregate stats — "recent" = last 24 hours.
+	since := time.Now().Add(-24 * time.Hour).Unix()
+	stats, err := c.hub.queries.TranscriptionStats(ctx, since)
+	if err != nil {
+		return nil, fmt.Errorf("query transcription stats: %w", err)
+	}
+
+	byLang, err := c.hub.queries.TranscriptionsByLanguage(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query transcriptions by language: %w", err)
+	}
+
+	byModel, err := c.hub.queries.TranscriptionsByModel(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query transcriptions by model: %w", err)
+	}
+
+	// Pool stats (live).
+	queueDepth := 0
+	poolEnabled := false
+	if tr := c.hub.deps.TranscriberReload; tr != nil {
+		poolEnabled = tr.Enabled()
+		queueDepth = tr.QueueDepth()
+	}
+
+	// Convert interface{} values from COALESCE/AVG to int64.
+	toInt64 := func(v interface{}) int64 {
+		switch n := v.(type) {
+		case int64:
+			return n
+		case float64:
+			return int64(n)
+		default:
+			return 0
+		}
+	}
+
+	langBreakdown := make([]map[string]any, 0, len(byLang))
+	for _, l := range byLang {
+		langBreakdown = append(langBreakdown, map[string]any{
+			"language": l.Lang,
+			"count":    l.Cnt,
+		})
+	}
+
+	modelBreakdown := make([]map[string]any, 0, len(byModel))
+	for _, m := range byModel {
+		modelBreakdown = append(modelBreakdown, map[string]any{
+			"model": m.ModelName,
+			"count": m.Cnt,
+		})
+	}
+
+	return map[string]any{
+		"total":         stats.Total,
+		"recent24h":     stats.RecentCount,
+		"avgDurationMs": toInt64(stats.AvgDurationMs),
+		"minDurationMs": toInt64(stats.MinDurationMs),
+		"maxDurationMs": toInt64(stats.MaxDurationMs),
+		"queueDepth":    queueDepth,
+		"poolEnabled":   poolEnabled,
+		"byLanguage":    langBreakdown,
+		"byModel":       modelBreakdown,
+	}, nil
 }

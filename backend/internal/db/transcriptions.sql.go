@@ -189,3 +189,106 @@ func (q *Queries) SearchTranscriptions(ctx context.Context, arg SearchTranscript
 	}
 	return items, nil
 }
+
+const transcriptionStats = `-- name: TranscriptionStats :one
+SELECT
+    COUNT(*) AS total,
+    COALESCE(AVG(duration_ms), 0) AS avg_duration_ms,
+    COALESCE(MIN(duration_ms), 0) AS min_duration_ms,
+    COALESCE(MAX(duration_ms), 0) AS max_duration_ms,
+    COUNT(CASE WHEN created_at >= ?1 THEN 1 END) AS recent_count
+FROM transcriptions
+`
+
+type TranscriptionStatsRow struct {
+	Total         int64       `db:"total" json:"total"`
+	AvgDurationMs interface{} `db:"avg_duration_ms" json:"avg_duration_ms"`
+	MinDurationMs interface{} `db:"min_duration_ms" json:"min_duration_ms"`
+	MaxDurationMs interface{} `db:"max_duration_ms" json:"max_duration_ms"`
+	RecentCount   int64       `db:"recent_count" json:"recent_count"`
+}
+
+func (q *Queries) TranscriptionStats(ctx context.Context, since int64) (TranscriptionStatsRow, error) {
+	row := q.db.QueryRowContext(ctx, transcriptionStats, since)
+	var i TranscriptionStatsRow
+	err := row.Scan(
+		&i.Total,
+		&i.AvgDurationMs,
+		&i.MinDurationMs,
+		&i.MaxDurationMs,
+		&i.RecentCount,
+	)
+	return i, err
+}
+
+const transcriptionsByLanguage = `-- name: TranscriptionsByLanguage :many
+SELECT COALESCE(language, 'unknown') AS lang, COUNT(*) AS cnt
+FROM transcriptions
+GROUP BY language
+ORDER BY cnt DESC
+LIMIT 10
+`
+
+type TranscriptionsByLanguageRow struct {
+	Lang string `db:"lang" json:"lang"`
+	Cnt  int64  `db:"cnt" json:"cnt"`
+}
+
+func (q *Queries) TranscriptionsByLanguage(ctx context.Context) ([]TranscriptionsByLanguageRow, error) {
+	rows, err := q.db.QueryContext(ctx, transcriptionsByLanguage)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TranscriptionsByLanguageRow{}
+	for rows.Next() {
+		var i TranscriptionsByLanguageRow
+		if err := rows.Scan(&i.Lang, &i.Cnt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const transcriptionsByModel = `-- name: TranscriptionsByModel :many
+SELECT COALESCE(model, 'unknown') AS model_name, COUNT(*) AS cnt
+FROM transcriptions
+GROUP BY model
+ORDER BY cnt DESC
+LIMIT 10
+`
+
+type TranscriptionsByModelRow struct {
+	ModelName string `db:"model_name" json:"model_name"`
+	Cnt       int64  `db:"cnt" json:"cnt"`
+}
+
+func (q *Queries) TranscriptionsByModel(ctx context.Context) ([]TranscriptionsByModelRow, error) {
+	rows, err := q.db.QueryContext(ctx, transcriptionsByModel)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TranscriptionsByModelRow{}
+	for rows.Next() {
+		var i TranscriptionsByModelRow
+		if err := rows.Scan(&i.ModelName, &i.Cnt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

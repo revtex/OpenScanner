@@ -129,6 +129,9 @@ type Querier interface {
 	RevokeRefreshTokenFamily(ctx context.Context, familyID string) error
 	SearchTranscriptions(ctx context.Context, arg SearchTranscriptionsParams) ([]SearchTranscriptionsRow, error)
 	SetSetupComplete(ctx context.Context, setupComplete int64) error
+	TranscriptionStats(ctx context.Context, since int64) (TranscriptionStatsRow, error)
+	TranscriptionsByLanguage(ctx context.Context) ([]TranscriptionsByLanguageRow, error)
+	TranscriptionsByModel(ctx context.Context) ([]TranscriptionsByModelRow, error)
 	UpdateAPIKey(ctx context.Context, arg UpdateAPIKeyParams) error
 	UpdateDirMonitor(ctx context.Context, arg UpdateDirMonitorParams) error
 	UpdateDownstream(ctx context.Context, arg UpdateDownstreamParams) error

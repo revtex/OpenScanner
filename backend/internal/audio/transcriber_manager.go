@@ -83,6 +83,16 @@ func (m *TranscriberManager) BaseURL() string {
 	return m.pool.baseURL
 }
 
+// QueueDepth returns the number of jobs currently buffered, or 0 if disabled.
+func (m *TranscriberManager) QueueDepth() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.pool == nil {
+		return 0
+	}
+	return m.pool.QueueDepth()
+}
+
 // Reload stops the current pool (if any) and starts a new one with the given config.
 // If enabled is false, the pool is stopped and transcription is disabled.
 func (m *TranscriberManager) Reload(enabled bool, baseURL, model, language string, diarize bool) bool {

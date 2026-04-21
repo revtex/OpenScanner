@@ -418,3 +418,15 @@ export interface TranscriptionModelsResponse {
   object: string;
   models: WhisperModel[];
 }
+
+export interface TranscriptionStats {
+  total: number;
+  recent24h: number;
+  avgDurationMs: number;
+  minDurationMs: number;
+  maxDurationMs: number;
+  queueDepth: number;
+  poolEnabled: boolean;
+  byLanguage: { language: string; count: number }[];
+  byModel: { model: string; count: number }[];
+}
