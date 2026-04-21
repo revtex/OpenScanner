@@ -55,6 +55,12 @@ export function HistoryPanel({ history, time12hFormat }: HistoryPanelProps) {
               </>
             )}
           </div>
+          {/* Line 3: transcript preview */}
+          {call.transcript && (
+            <div className="text-[10px] italic text-base-content/60 truncate">
+              {call.transcript}
+            </div>
+          )}
         </div>
       ))}
     </div>
