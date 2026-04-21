@@ -20,11 +20,12 @@ import (
 )
 
 const (
-	writeWait      = 10 * time.Second
-	pingPeriod     = 30 * time.Second
-	sendBufSize    = 256
-	authTimeout    = 10 * time.Second
-	maxMessageSize = 4096
+	writeWait        = 10 * time.Second
+	pingPeriod       = 30 * time.Second
+	sendBufSize      = 256
+	authTimeout      = 10 * time.Second
+	maxMessageSize   = 4096
+	revalidatePeriod = 5 * time.Minute
 )
 
 // systemGrant represents a system-level grant with optional talkgroup filtering.
@@ -41,6 +42,7 @@ type Client struct {
 	grants  []systemGrant // nil/empty = receive all
 	isAdmin bool
 	userID  int64
+	queries *db.Queries // for periodic account revalidation
 }
 
 // adminRequest is the envelope for admin WS request messages.
@@ -158,9 +160,10 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 		}
 
 		client := &Client{
-			hub:  hub,
-			conn: conn,
-			send: make(chan []byte, sendBufSize),
+			hub:     hub,
+			conn:    conn,
+			send:    make(chan []byte, sendBufSize),
+			queries: queries,
 		}
 
 		if publicAccess {
@@ -286,6 +289,21 @@ func HandleAdminWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
+		// Verify user is not disabled or expired (OWASP A01).
+		user, err := queries.GetUser(r.Context(), claims.UserID)
+		if err != nil || user.Disabled != 0 {
+			slog.Info("ws: admin user not found or disabled", "user_id", claims.UserID)
+			http.Error(w, "account disabled", http.StatusForbidden)
+			return
+		}
+		if user.Expiration.Valid && user.Expiration.Int64 > 0 {
+			if time.Now().Unix() > user.Expiration.Int64 {
+				slog.Info("ws: expired admin user", "user_id", claims.UserID)
+				http.Error(w, "account expired", http.StatusForbidden)
+				return
+			}
+		}
+
 		conn, err := websocket.Accept(w, r, wsAcceptOptions(r))
 		if err != nil {
 			slog.Error("ws: failed to accept admin connection",
@@ -306,6 +324,7 @@ func HandleAdminWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 			send:    make(chan []byte, sendBufSize),
 			isAdmin: true,
 			userID:  claims.UserID,
+			queries: queries,
 		}
 
 		hub.Register(client)
@@ -513,9 +532,20 @@ func (c *Client) opLogsQuery(_ context.Context, params json.RawMessage) (any, er
 // writePump sends messages from the send channel to the WebSocket connection
 // and sends periodic pings for keepalive.
 func (c *Client) writePump(ctx context.Context) {
-	ticker := time.NewTicker(pingPeriod)
+	pingTicker := time.NewTicker(pingPeriod)
+	// Periodic account revalidation: check disabled/expired every 5 min.
+	// Only for authenticated (non-public) clients with a DB reference.
+	var revalidateTicker *time.Ticker
+	var revalidateCh <-chan time.Time
+	if c.userID != 0 && c.queries != nil {
+		revalidateTicker = time.NewTicker(revalidatePeriod)
+		revalidateCh = revalidateTicker.C
+	}
 	defer func() {
-		ticker.Stop()
+		pingTicker.Stop()
+		if revalidateTicker != nil {
+			revalidateTicker.Stop()
+		}
 		c.conn.Close(websocket.StatusNormalClosure, "")
 	}()
 
@@ -534,12 +564,26 @@ func (c *Client) writePump(ctx context.Context) {
 			if err != nil {
 				return
 			}
-		case <-ticker.C:
+		case <-pingTicker.C:
 			pingCtx, cancel := context.WithTimeout(ctx, writeWait)
 			err := c.conn.Ping(pingCtx)
 			cancel()
 			if err != nil {
 				return
+			}
+		case <-revalidateCh:
+			user, err := c.queries.GetUser(ctx, c.userID)
+			if err != nil || user.Disabled != 0 {
+				slog.Info("ws: revalidation failed, disconnecting", "user_id", c.userID, "reason", "disabled or not found")
+				sendExpiredAndClose(ctx, c.conn)
+				return
+			}
+			if user.Expiration.Valid && user.Expiration.Int64 > 0 {
+				if time.Now().Unix() > user.Expiration.Int64 {
+					slog.Info("ws: revalidation failed, disconnecting", "user_id", c.userID, "reason", "expired")
+					sendExpiredAndClose(ctx, c.conn)
+					return
+				}
 			}
 		}
 	}

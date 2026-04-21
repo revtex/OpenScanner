@@ -110,7 +110,12 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 
 	h.rateLimiter.Reset(ip)
 
-	token, jti, err := auth.GenerateToken(user.ID, user.Username, user.Role)
+	var accountExp int64
+	if user.Expiration.Valid {
+		accountExp = user.Expiration.Int64
+	}
+
+	token, jti, err := auth.GenerateToken(user.ID, user.Username, user.Role, accountExp)
 	if err != nil {
 		slog.Error("auth: failed to generate token", "user_id", user.ID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
@@ -293,7 +298,11 @@ func (h *AuthHandler) PostRefresh(c *gin.Context) {
 	}
 
 	// Generate new access token.
-	accessToken, jti, err := auth.GenerateToken(user.ID, user.Username, user.Role)
+	var accountExp int64
+	if user.Expiration.Valid {
+		accountExp = user.Expiration.Int64
+	}
+	accessToken, jti, err := auth.GenerateToken(user.ID, user.Username, user.Role, accountExp)
 	if err != nil {
 		slog.Error("auth: failed to generate token on refresh", "user_id", user.ID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})

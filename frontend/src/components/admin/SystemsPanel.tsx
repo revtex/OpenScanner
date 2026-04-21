@@ -143,7 +143,7 @@ function SystemCard({
               <div className="mb-3">
                 <input
                   type="text"
-                  placeholder="Search by talkgroup ID..."
+                  placeholder="Search by ID, label, or name..."
                   value={talkgroupSearchFilter}
                   onChange={(e) => onTalkgroupSearchChange(e.target.value)}
                   className="input input-sm input-bordered w-full"
@@ -175,7 +175,7 @@ function SystemCard({
               <div className="mb-3">
                 <input
                   type="text"
-                  placeholder="Search by unit ID..."
+                  placeholder="Search by ID or label..."
                   value={unitSearchFilter}
                   onChange={(e) => onUnitSearchChange(e.target.value)}
                   className="input input-sm input-bordered w-full"
@@ -195,11 +195,14 @@ function SystemCard({
                     </thead>
                     <tbody>
                       {units
-                        .filter(
-                          (u) =>
-                            unitSearchFilter === "" ||
-                            String(u.unitId).includes(unitSearchFilter),
-                        )
+                        .filter((u) => {
+                          if (unitSearchFilter === "") return true;
+                          const q = unitSearchFilter.toLowerCase();
+                          return (
+                            String(u.unitId).includes(q) ||
+                            (u.label ?? "").toLowerCase().includes(q)
+                          );
+                        })
                         .map((u) => (
                           <tr key={u.id}>
                             <td>{u.unitId}</td>
@@ -251,8 +254,12 @@ function TalkgroupList({
 
   const filtered = useMemo(() => {
     if (!searchFilter) return talkgroups;
-    return talkgroups.filter((tg) =>
-      String(tg.talkgroupId).includes(searchFilter),
+    const q = searchFilter.toLowerCase();
+    return talkgroups.filter(
+      (tg) =>
+        String(tg.talkgroupId).includes(q) ||
+        (tg.label ?? "").toLowerCase().includes(q) ||
+        (tg.name ?? "").toLowerCase().includes(q),
     );
   }, [talkgroups, searchFilter]);
 

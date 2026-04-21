@@ -45,7 +45,7 @@ func newAdminTestEngine(t *testing.T) (*gin.Engine, *db.Queries) {
 // adminToken returns a signed JWT for an admin user.
 func adminToken(t *testing.T, userID int64, username string) string {
 	t.Helper()
-	tok, _, err := auth.GenerateToken(userID, username, auth.RoleAdmin)
+	tok, _, err := auth.GenerateToken(userID, username, auth.RoleAdmin, 0)
 	if err != nil {
 		t.Fatalf("generate admin token: %v", err)
 	}
@@ -55,7 +55,7 @@ func adminToken(t *testing.T, userID int64, username string) string {
 // listenerToken returns a signed JWT for a listener user.
 func listenerToken(t *testing.T, userID int64, username string) string {
 	t.Helper()
-	tok, _, err := auth.GenerateToken(userID, username, auth.RoleListener)
+	tok, _, err := auth.GenerateToken(userID, username, auth.RoleListener, 0)
 	if err != nil {
 		t.Fatalf("generate listener token: %v", err)
 	}

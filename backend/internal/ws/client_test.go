@@ -192,7 +192,7 @@ func TestHandleListenerWS_ValidJWT(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 
-	token, _, err := auth.GenerateToken(userID, "listener1", auth.RoleListener)
+	token, _, err := auth.GenerateToken(userID, "listener1", auth.RoleListener, 0)
 	if err != nil {
 		t.Fatalf("generate token: %v", err)
 	}
@@ -245,7 +245,7 @@ func TestHandleListenerWS_AdminJWTAccepted(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 
-	token, _, err := auth.GenerateToken(userID, "admin1", auth.RoleAdmin)
+	token, _, err := auth.GenerateToken(userID, "admin1", auth.RoleAdmin, 0)
 	if err != nil {
 		t.Fatalf("generate token: %v", err)
 	}
@@ -298,7 +298,7 @@ func TestHandleAdminWS_ValidToken(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 
-	token, _, err := auth.GenerateToken(userID, "admin1", auth.RoleAdmin)
+	token, _, err := auth.GenerateToken(userID, "admin1", auth.RoleAdmin, 0)
 	if err != nil {
 		t.Fatalf("generate token: %v", err)
 	}
@@ -349,7 +349,7 @@ func TestHandleAdminWS_ListenerJWTRejected(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 
-	token, _, err := auth.GenerateToken(userID, "listener1", auth.RoleListener)
+	token, _, err := auth.GenerateToken(userID, "listener1", auth.RoleListener, 0)
 	if err != nil {
 		t.Fatalf("generate token: %v", err)
 	}

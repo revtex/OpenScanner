@@ -150,6 +150,12 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
+		// Check account expiration embedded in JWT claims (OWASP A01).
+		if claims.AccountExp > 0 && time.Now().Unix() > claims.AccountExp {
+			c.AbortWithStatusJSON(401, gin.H{"error": "account expired"})
+			return
+		}
+
 		slog.Debug("middleware: jwt auth success", "user_id", claims.UserID, "role", claims.Role)
 		c.Set("userID", claims.UserID)
 		c.Set("username", claims.Username)
@@ -178,6 +184,12 @@ func OptionalJWTAuth() gin.HandlerFunc {
 		}
 
 		if auth.Tokens.IsRevoked(claims.ID) {
+			c.Next()
+			return
+		}
+
+		// Check account expiration embedded in JWT claims (OWASP A01).
+		if claims.AccountExp > 0 && time.Now().Unix() > claims.AccountExp {
 			c.Next()
 			return
 		}

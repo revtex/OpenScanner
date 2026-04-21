@@ -69,9 +69,10 @@ func init() {
 
 // Claims is the JWT payload.
 type Claims struct {
-	UserID   int64  `json:"userId"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
+	UserID     int64  `json:"userId"`
+	Username   string `json:"username"`
+	Role       string `json:"role"`
+	AccountExp int64  `json:"accountExp,omitempty"` // unix epoch; 0 = never expires
 	jwt.RegisteredClaims
 }
 
@@ -90,14 +91,16 @@ func CheckPassword(password, hash string) bool {
 }
 
 // GenerateToken signs a new HS256 JWT for the given user, valid for AccessTokenExpiry.
+// accountExp is the user's account expiration as a unix epoch (0 means no expiry).
 // Returns the signed token string and the unique JTI (token ID).
-func GenerateToken(userID int64, username, role string) (string, string, error) {
+func GenerateToken(userID int64, username, role string, accountExp int64) (string, string, error) {
 	now := time.Now()
 	jti := uuid.New().String()
 	claims := Claims{
-		UserID:   userID,
-		Username: username,
-		Role:     role,
+		UserID:     userID,
+		Username:   username,
+		Role:       role,
+		AccountExp: accountExp,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        jti,
 			IssuedAt:  jwt.NewNumericDate(now),

@@ -257,98 +257,136 @@ export default function UsersPanel() {
 
       {/* Create / Edit Modal */}
       <dialog className={`modal ${modalOpen ? "modal-open" : ""}`}>
-        <div className="modal-box">
-          <h3 className="font-bold text-lg mb-4">
+        <div className="modal-box max-w-lg">
+          <h3 className="font-bold text-lg mb-1">
             {editingId != null ? "Edit User" : "Create User"}
           </h3>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <label className="flex flex-col w-full">
-              <span className="text-sm">Username</span>
-              <input
-                type="text"
-                className="input w-full"
-                value={form.username}
-                onChange={(e) => updateField("username", e.target.value)}
-                required
-              />
-            </label>
+          <p className="text-sm text-base-content/60 mb-4">
+            {editingId != null
+              ? "Update this user's account settings and access controls."
+              : "Add a new user account. They can log in immediately after creation."}
+          </p>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {/* Account section */}
+            <fieldset className="fieldset bg-base-200 border-base-300 rounded-box border p-4">
+              <legend className="fieldset-legend px-1 text-sm font-semibold">
+                Account
+              </legend>
+              <div className="flex flex-col gap-3">
+                <label className="flex flex-col w-full">
+                  <span className="text-sm font-medium mb-1">Username</span>
+                  <input
+                    type="text"
+                    className="input w-full"
+                    value={form.username}
+                    onChange={(e) => updateField("username", e.target.value)}
+                    required
+                  />
+                </label>
 
-            <label className="flex flex-col w-full">
-              <span className="text-sm">
-                Password{editingId != null ? " (leave blank to keep)" : ""}
-              </span>
-              <input
-                type="password"
-                className="input w-full"
-                value={form.password}
-                onChange={(e) => updateField("password", e.target.value)}
-                required={editingId == null}
-              />
-            </label>
+                <label className="flex flex-col w-full">
+                  <span className="text-sm font-medium mb-1">Password</span>
+                  <input
+                    type="password"
+                    className="input w-full"
+                    value={form.password}
+                    onChange={(e) => updateField("password", e.target.value)}
+                    required={editingId == null}
+                  />
+                  {editingId != null && (
+                    <span className="text-xs text-base-content/50 mt-1">
+                      Leave blank to keep the current password.
+                    </span>
+                  )}
+                </label>
 
-            <label className="flex flex-col w-full">
-              <span className="text-sm">Role</span>
-              <select
-                className="select w-full"
-                value={form.role}
-                disabled={editingId === 1}
-                onChange={(e) =>
-                  updateField("role", e.target.value as "admin" | "listener")
-                }
-              >
-                <option value="listener">Listener</option>
-                <option value="admin">Admin</option>
-              </select>
-              {editingId === 1 && (
-                <span className="text-xs opacity-60 text-warning">
-                  Role is locked for the primary admin
-                </span>
-              )}
-            </label>
+                <label className="flex flex-col w-full">
+                  <span className="text-sm font-medium mb-1">Role</span>
+                  <select
+                    className="select w-full"
+                    value={form.role}
+                    disabled={editingId === 1}
+                    onChange={(e) =>
+                      updateField(
+                        "role",
+                        e.target.value as "admin" | "listener",
+                      )
+                    }
+                  >
+                    <option value="listener">Listener</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  {editingId === 1 && (
+                    <span className="text-xs text-warning/80 mt-1">
+                      Role is locked for the primary admin.
+                    </span>
+                  )}
+                </label>
+              </div>
+            </fieldset>
 
-            <label className="flex flex-col w-full">
-              <span className="text-sm">Expiration</span>
-              <input
-                type="date"
-                className="input w-full"
-                value={form.expiration}
-                disabled={editingId === 1}
-                onChange={(e) => updateField("expiration", e.target.value)}
-              />
-              {editingId === 1 && (
-                <span className="text-xs opacity-60 text-warning">
-                  Expiration is locked for the primary admin
-                </span>
-              )}
-            </label>
+            {/* Access Controls section */}
+            <fieldset className="fieldset bg-base-200 border-base-300 rounded-box border p-4">
+              <legend className="fieldset-legend px-1 text-sm font-semibold">
+                Access Controls
+              </legend>
+              <div className="flex flex-col gap-3">
+                <label className="flex flex-col w-full">
+                  <span className="text-sm font-medium mb-1">
+                    Account Expiration
+                  </span>
+                  <input
+                    type="date"
+                    className="input w-full"
+                    value={form.expiration}
+                    disabled={editingId === 1}
+                    onChange={(e) => updateField("expiration", e.target.value)}
+                  />
+                  <span className="text-xs text-base-content/50 mt-1">
+                    {editingId === 1
+                      ? "Expiration is locked for the primary admin."
+                      : "Optional. The account will be disabled after this date."}
+                  </span>
+                </label>
 
-            <label className="flex flex-col w-full">
-              <span className="text-sm">Concurrent Limit</span>
-              <input
-                type="number"
-                className="input w-full"
-                value={form.limit}
-                disabled={editingId === 1}
-                onChange={(e) => updateField("limit", e.target.value)}
-                min={0}
-              />
-              {editingId === 1 && (
-                <span className="text-xs opacity-60 text-warning">
-                  Concurrent limit is locked for the primary admin
-                </span>
-              )}
-            </label>
+                <label className="flex flex-col w-full">
+                  <span className="text-sm font-medium mb-1">
+                    Max Simultaneous Sessions
+                  </span>
+                  <input
+                    type="number"
+                    className="input w-full"
+                    value={form.limit}
+                    disabled={editingId === 1}
+                    onChange={(e) => updateField("limit", e.target.value)}
+                    min={0}
+                    placeholder="Unlimited"
+                  />
+                  <span className="text-xs text-base-content/50 mt-1">
+                    {editingId === 1
+                      ? "Session limit is locked for the primary admin."
+                      : "How many devices/browsers can be logged in at the same time. Leave empty for unlimited."}
+                  </span>
+                </label>
 
-            <label className="flex flex-col w-full">
-              <span className="text-sm">Systems JSON</span>
-              <textarea
-                className="textarea w-full"
-                rows={3}
-                value={form.systemsJson}
-                onChange={(e) => updateField("systemsJson", e.target.value)}
-                placeholder="e.g. [1, 2, 3]"
-              />
-            </label>
+                <label className="flex flex-col w-full">
+                  <span className="text-sm font-medium mb-1">
+                    Allowed Systems
+                  </span>
+                  <textarea
+                    className="textarea w-full font-mono text-sm"
+                    rows={2}
+                    value={form.systemsJson}
+                    onChange={(e) => updateField("systemsJson", e.target.value)}
+                    placeholder="e.g. [1, 2, 3]"
+                  />
+                  <span className="text-xs text-base-content/50 mt-1">
+                    JSON array of system IDs this user can access. Leave empty
+                    to grant access to all systems.
+                  </span>
+                </label>
+              </div>
+            </fieldset>
 
             <div className="modal-action">
               <button

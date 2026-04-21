@@ -123,7 +123,7 @@ func TestGetMe_Valid(t *testing.T) {
 	engine, queries := newTestEngine(t)
 	seedAdminUser(t, queries, "alice", "password123")
 
-	token, _, err := auth.GenerateToken(1, "alice", auth.RoleAdmin)
+	token, _, err := auth.GenerateToken(1, "alice", auth.RoleAdmin, 0)
 	if err != nil {
 		t.Fatalf("GenerateToken: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestRequireAdmin_ListenerGets403(t *testing.T) {
 		func(c *gin.Context) { c.Status(http.StatusOK) },
 	)
 
-	token, _, err := auth.GenerateToken(2, "listener", auth.RoleListener)
+	token, _, err := auth.GenerateToken(2, "listener", auth.RoleListener, 0)
 	if err != nil {
 		t.Fatalf("GenerateToken: %v", err)
 	}
@@ -215,7 +215,7 @@ func TestRequireAdmin_AdminGets200(t *testing.T) {
 		func(c *gin.Context) { c.Status(http.StatusOK) },
 	)
 
-	token, _, err := auth.GenerateToken(1, "admin", auth.RoleAdmin)
+	token, _, err := auth.GenerateToken(1, "admin", auth.RoleAdmin, 0)
 	if err != nil {
 		t.Fatalf("GenerateToken: %v", err)
 	}

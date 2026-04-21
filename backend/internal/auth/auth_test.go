@@ -68,7 +68,7 @@ func TestGenerateAndParseToken(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tokenStr, _, err := auth.GenerateToken(tc.userID, tc.username, tc.role)
+			tokenStr, _, err := auth.GenerateToken(tc.userID, tc.username, tc.role, 0)
 			if err != nil {
 				t.Fatalf("GenerateToken: %v", err)
 			}
@@ -204,7 +204,7 @@ func TestTokenTracker_ExpiredTokensCleanedUp(t *testing.T) {
 }
 
 func TestGenerateToken_ReturnsJTI(t *testing.T) {
-	_, jti, err := auth.GenerateToken(1, "alice", auth.RoleAdmin)
+	_, jti, err := auth.GenerateToken(1, "alice", auth.RoleAdmin, 0)
 	if err != nil {
 		t.Fatalf("GenerateToken: %v", err)
 	}
