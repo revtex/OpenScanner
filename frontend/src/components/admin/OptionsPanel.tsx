@@ -193,6 +193,11 @@ export default function OptionsPanel() {
         map[s.key] = s.value;
       }
     }
+    for (const key of SAVEABLE_KEYS) {
+      if (!(key in map)) {
+        map[key] = isBooleanKey(key) ? "false" : "";
+      }
+    }
     return map;
   }, [settings]);
 
@@ -200,6 +205,13 @@ export default function OptionsPanel() {
     const map: Record<string, string> = {};
     for (const s of settings) {
       map[s.key] = s.value;
+    }
+    // Seed keys declared in SECTIONS so they always render, even if
+    // never persisted to the DB yet.
+    for (const key of SAVEABLE_KEYS) {
+      if (!(key in map)) {
+        map[key] = isBooleanKey(key) ? "false" : "";
+      }
     }
     setLocalSettings(map);
     setConfigLoaded(true);
