@@ -5,6 +5,7 @@ import {
   useCreateDownstreamMutation,
   useUpdateDownstreamMutation,
   useDeleteDownstreamMutation,
+  useListSystemsQuery,
 } from "@/hooks/useAdminWsOps";
 import type { AdminDownstream } from "@/types";
 
@@ -48,6 +49,7 @@ function CopyButton({ text }: { text: string }) {
 
 export default function DownstreamsPanel() {
   const { data: downstreams, isLoading } = useListDownstreamsQuery();
+  const { data: systems } = useListSystemsQuery();
   const [createDownstream] = useCreateDownstreamMutation();
   const [updateDownstream] = useUpdateDownstreamMutation();
   const [deleteDownstream] = useDeleteDownstreamMutation();
@@ -136,10 +138,35 @@ export default function DownstreamsPanel() {
   const systemsList = (json: string | null) => {
     if (!json) return "All";
     try {
-      return (JSON.parse(json) as number[]).join(", ");
+      const ids = JSON.parse(json) as number[];
+      if (!systems || systems.length === 0) return ids.join(", ");
+      return ids
+        .map((id) => systems.find((s) => s.id === id)?.label ?? String(id))
+        .join(", ");
     } catch {
       return json;
     }
+  };
+
+  // Parse selected systems for checkbox UI
+  const selectedSystems: number[] = form.systemsJson
+    ? (() => {
+        try {
+          return JSON.parse(form.systemsJson) as number[];
+        } catch {
+          return [];
+        }
+      })()
+    : [];
+
+  const toggleSystem = (systemId: number) => {
+    const updated = selectedSystems.includes(systemId)
+      ? selectedSystems.filter((id) => id !== systemId)
+      : [...selectedSystems, systemId];
+    setForm({
+      ...form,
+      systemsJson: updated.length > 0 ? JSON.stringify(updated) : "",
+    });
   };
 
   if (isLoading) return <div className="loading loading-spinner loading-md" />;
@@ -226,51 +253,77 @@ export default function DownstreamsPanel() {
           <h3 className="font-bold text-lg mb-4">
             {editingId != null ? "Edit Downstream" : "Create Downstream"}
           </h3>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <label className="flex flex-col w-full">
-              <span className="text-sm">URL</span>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium">URL</span>
               <input
                 type="url"
                 className="input w-full"
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
+                placeholder="https://remote-server/api/call-upload"
                 required
               />
-            </label>
-            <label className="flex flex-col w-full">
-              <span className="text-sm">API Key</span>
+              <span className="text-xs text-base-content/60">
+                The call-upload endpoint of the remote OpenScanner instance.
+              </span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium">API Key</span>
               <input
                 type="text"
-                className="input w-full"
+                className="input w-full font-mono"
                 value={form.apiKey}
                 onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
                 required
               />
-            </label>
-            <label className="flex flex-col w-full">
-              <span className="text-sm">Systems JSON (optional)</span>
-              <textarea
-                className="textarea w-full"
-                value={form.systemsJson}
+              <span className="text-xs text-base-content/60">
+                The API key configured on the remote server for authentication.
+              </span>
+            </div>
+
+            {systems && systems.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium">Systems</span>
+                <span className="text-xs text-base-content/60">
+                  Select which systems to forward. If none are selected, all
+                  systems are forwarded.
+                </span>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {systems.map((sys) => {
+                    const selected = selectedSystems.includes(sys.id);
+                    return (
+                      <button
+                        key={sys.id}
+                        type="button"
+                        className={`badge badge-lg gap-1.5 cursor-pointer transition-colors ${
+                          selected
+                            ? "badge-primary"
+                            : "badge-ghost hover:badge-outline"
+                        }`}
+                        onClick={() => toggleSystem(sys.id)}
+                      >
+                        <span
+                          className={`inline-block w-2 h-2 rounded-full ${selected ? "bg-primary-content" : "bg-base-content/30"}`}
+                        />
+                        {sys.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                checked={form.disabled === 1}
                 onChange={(e) =>
-                  setForm({ ...form, systemsJson: e.target.value })
+                  setForm({ ...form, disabled: e.target.checked ? 1 : 0 })
                 }
-                placeholder="e.g. [1, 2]"
-                rows={2}
               />
-            </label>
-            <div className="flex flex-col">
-              <label className="flex items-center cursor-pointer justify-start gap-3">
-                <input
-                  type="checkbox"
-                  className="toggle toggle-primary"
-                  checked={form.disabled === 1}
-                  onChange={(e) =>
-                    setForm({ ...form, disabled: e.target.checked ? 1 : 0 })
-                  }
-                />
-                <span className="text-sm">Disabled</span>
-              </label>
+              <span className="text-sm font-medium">Disabled</span>
             </div>
             <div className="modal-action">
               <button
