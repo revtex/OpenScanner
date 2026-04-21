@@ -13,9 +13,12 @@ FROM golang:1.25-alpine AS go-builder
 WORKDIR /src/backend
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
+RUN go install github.com/swaggo/swag/cmd/swag@latest
 COPY backend/ .
 # Copy the built frontend dist into the go:embed target path
 COPY --from=node-builder /src/frontend/dist ./internal/static/dist/
+# Generate Swagger docs (gitignored, must be built in CI)
+RUN swag init -g cmd/server/main.go --parseDependency --parseInternal
 RUN go build -ldflags="-s -w" -o /openscanner ./cmd/server
 
 # Stage 3: Minimal runtime image
