@@ -198,6 +198,7 @@ describe("scannerSlice", () => {
           id: 1,
           systemId: 100,
           label: "System 1",
+          ledColor: "",
           talkgroups: [
             {
               id: 10,

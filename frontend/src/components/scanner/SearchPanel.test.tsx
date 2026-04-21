@@ -59,6 +59,7 @@ const testConfig: ScannerConfig = {
       id: 1,
       systemId: 100,
       label: "System Alpha",
+      ledColor: "",
       talkgroups: [
         {
           id: 10,
@@ -84,6 +85,7 @@ const testConfig: ScannerConfig = {
       id: 2,
       systemId: 101,
       label: "System Beta",
+      ledColor: "",
       talkgroups: [
         {
           id: 20,

@@ -43,6 +43,7 @@ export interface SystemConfig {
   id: number;
   systemId: number;
   label: string;
+  ledColor: string;
   talkgroups: TalkgroupConfig[];
 }
 

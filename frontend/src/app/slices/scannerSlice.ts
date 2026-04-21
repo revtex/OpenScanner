@@ -68,7 +68,7 @@ export const scannerSlice = createSlice({
                 call.talkgroupName = tg.name;
                 call.talkgroupTag = tg.tag;
                 call.talkgroupGroup = tg.group;
-                call.talkgroupLedColor = tg.ledColor;
+                call.talkgroupLedColor = tg.ledColor || sys.ledColor;
                 break;
               }
             }

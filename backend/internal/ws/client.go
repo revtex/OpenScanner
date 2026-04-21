@@ -614,11 +614,15 @@ func buildCFGMessage(ctx context.Context, queries *db.Queries) ([]byte, error) {
 		ID         int64   `json:"id"`
 		SystemID   int64   `json:"systemId"`
 		Label      string  `json:"label"`
+		LedColor   string  `json:"ledColor,omitempty"`
 		Talkgroups []tgCfg `json:"talkgroups"`
 	}
 	sysCfgs := []sysCfg{} // never nil — serialises as [] not null
 	for _, s := range systems {
 		sc := sysCfg{ID: s.ID, SystemID: s.SystemID, Label: s.Label, Talkgroups: []tgCfg{}}
+		if s.Led.Valid {
+			sc.LedColor = s.Led.String
+		}
 		tgs, err := queries.ListTalkgroupsBySystem(ctx, s.ID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, err
