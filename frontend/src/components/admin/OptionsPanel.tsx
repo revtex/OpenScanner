@@ -284,7 +284,8 @@ export default function OptionsPanel() {
       showToast("Settings saved successfully", "success");
       // RTK Query invalidates "Config" tag → refetch updates serverSettings
       // automatically via the useMemo, so isDirty clears on its own.
-    } catch {
+    } catch (err) {
+      console.error("Failed to save settings:", err);
       showToast("Failed to save settings", "error");
     }
   };
