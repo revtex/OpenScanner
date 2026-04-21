@@ -27,6 +27,7 @@ const (
 	defaultCallRatePerMin = 60
 	maxCallRatePerMin     = 600
 	rateWindowDuration    = time.Minute
+	shareRatePerMin       = 10
 )
 
 // apiKeyLimiter is a per-API-key sliding-window rate limiter.
@@ -54,24 +55,27 @@ func (l *apiKeyLimiter) allow() bool {
 
 // CallHandler handles call upload endpoints.
 type CallHandler struct {
-	queries     *db.Queries
-	processor   *audio.Processor
-	hub         *ws.Hub
-	dsNotifier  DownstreamNotifier
-	transcriber audio.Transcriber // nil when transcription is disabled
-	mu          sync.Mutex
-	limiters    map[int64]*apiKeyLimiter
+	queries       *db.Queries
+	processor     *audio.Processor
+	hub           *ws.Hub
+	dsNotifier    DownstreamNotifier
+	transcriber   audio.Transcriber // nil when transcription is disabled
+	mu            sync.Mutex
+	limiters      map[int64]*apiKeyLimiter
+	shareMu       sync.Mutex
+	shareLimiters map[int64]*apiKeyLimiter
 }
 
 // NewCallHandler creates a CallHandler.
 func NewCallHandler(queries *db.Queries, processor *audio.Processor, hub *ws.Hub, dsNotifier DownstreamNotifier, transcriber audio.Transcriber) *CallHandler {
 	return &CallHandler{
-		queries:     queries,
-		processor:   processor,
-		hub:         hub,
-		dsNotifier:  dsNotifier,
-		transcriber: transcriber,
-		limiters:    make(map[int64]*apiKeyLimiter),
+		queries:       queries,
+		processor:     processor,
+		hub:           hub,
+		dsNotifier:    dsNotifier,
+		transcriber:   transcriber,
+		limiters:      make(map[int64]*apiKeyLimiter),
+		shareLimiters: make(map[int64]*apiKeyLimiter),
 	}
 }
 
@@ -104,6 +108,34 @@ func (h *CallHandler) getLimiter(apiKeyID int64, rateLimit int) *apiKeyLimiter {
 		l.mu.Lock()
 		l.rateLimit = rateLimit
 		l.mu.Unlock()
+	}
+	return l
+}
+
+// getShareLimiter returns a per-user rate limiter for share creation.
+func (h *CallHandler) getShareLimiter(userID int64) *apiKeyLimiter {
+	h.shareMu.Lock()
+	defer h.shareMu.Unlock()
+
+	if len(h.shareLimiters) > 100 {
+		now := time.Now()
+		for id, l := range h.shareLimiters {
+			l.mu.Lock()
+			stale := now.Sub(l.windowStart) >= 2*rateWindowDuration
+			l.mu.Unlock()
+			if stale {
+				delete(h.shareLimiters, id)
+			}
+		}
+	}
+
+	l, ok := h.shareLimiters[userID]
+	if !ok {
+		l = &apiKeyLimiter{
+			windowStart: time.Now(),
+			rateLimit:   shareRatePerMin,
+		}
+		h.shareLimiters[userID] = l
 	}
 	return l
 }

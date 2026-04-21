@@ -127,11 +127,15 @@ class AdminWsClient {
     }
 
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${proto}//${location.host}/api/admin/ws?token=${encodeURIComponent(this.token ?? "")}`;
+    const url = `${proto}//${location.host}/api/admin/ws`;
 
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
+      // Send JWT as first message for auth (token never appears in URL).
+      if (this.token && this.ws) {
+        this.ws.send(JSON.stringify([this.token]));
+      }
       this.backoff = 1000;
       this.connected = true;
       // Emit connection event so hooks can re-fetch

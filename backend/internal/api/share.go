@@ -74,6 +74,12 @@ func (h *CallHandler) PostShareCall(c *gin.Context) {
 		return
 	}
 
+	// Per-user rate limit: 10 shares per minute.
+	if !h.getShareLimiter(userID).allow() {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "share rate limit exceeded, try again later"})
+		return
+	}
+
 	// Check if already shared — return existing token.
 	existing, err := h.queries.GetSharedLinkByCallID(ctx, id)
 	if err == nil {

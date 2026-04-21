@@ -233,6 +233,52 @@ func (h *Hub) countByUser(userID int64) int {
 	return count
 }
 
+// DisconnectByUser closes all WS connections for the given user ID.
+// Sends an XPR message before closing so the client knows to re-authenticate.
+func (h *Hub) DisconnectByUser(userID int64) {
+	h.mu.RLock()
+	var targets []*Client
+	for c := range h.clients {
+		if c.userID == userID {
+			targets = append(targets, c)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, c := range targets {
+		slog.Info("ws: disconnecting user session", "user_id", userID, "is_admin", c.isAdmin)
+		msg, _ := NewXPRMessage()
+		select {
+		case c.send <- msg:
+		default:
+		}
+		h.Unregister(c)
+	}
+}
+
+// DisconnectByJTI closes the WS connection associated with the given JWT ID.
+func (h *Hub) DisconnectByJTI(jti string) {
+	h.mu.RLock()
+	var target *Client
+	for c := range h.clients {
+		if c.jti == jti {
+			target = c
+			break
+		}
+	}
+	h.mu.RUnlock()
+
+	if target != nil {
+		slog.Info("ws: disconnecting session by JTI", "jti", jti, "user_id", target.userID)
+		msg, _ := NewXPRMessage()
+		select {
+		case target.send <- msg:
+		default:
+		}
+		h.Unregister(target)
+	}
+}
+
 // SetDirMonitorReloader sets the DirMonitor reloader after hub creation.
 // This handles the circular dependency where dwService needs hub but hub
 // needs dwService's Reloader.

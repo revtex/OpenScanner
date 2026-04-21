@@ -58,7 +58,7 @@ type Deps struct {
 // RegisterRoutes wires all API routes onto the Gin engine.
 func RegisterRoutes(r *gin.Engine, deps Deps) {
 	setupHandler := NewSetupHandler(deps.Queries)
-	authHandler := NewAuthHandler(deps.Queries, deps.RateLimiter)
+	authHandler := NewAuthHandler(deps.Queries, deps.RateLimiter, deps.Hub)
 	callHandler := NewCallHandler(deps.Queries, deps.Processor, deps.Hub, deps.DownstreamNotifier, deps.Transcriber)
 	bookmarkHandler := &BookmarkHandler{queries: deps.Queries}
 	recordingsDir := "."
@@ -104,8 +104,10 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	api.GET("/calls/:id/transcript", middleware.OptionalJWTAuth(), callHandler.GetCallTranscript)
 
 	// Shared calls — token-based public access (no auth required).
-	api.GET("/shared/:token", callHandler.GetSharedCallByToken)
-	api.GET("/shared/:token/audio", callHandler.GetSharedCallAudio)
+	// Rate-limited to 30 req/min per IP to prevent bandwidth exhaustion.
+	sharedRateLimit := middleware.RateLimitByIP(30)
+	api.GET("/shared/:token", sharedRateLimit, callHandler.GetSharedCallByToken)
+	api.GET("/shared/:token/audio", sharedRateLimit, callHandler.GetSharedCallAudio)
 
 	// Share management — JWT required.
 	api.POST("/calls/:id/share", middleware.JWTAuth(), callHandler.PostShareCall)

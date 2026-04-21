@@ -312,8 +312,8 @@ func TestHandleAdminWS_ValidToken(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-	// Admin WS uses token query param.
-	wsURL := "ws" + srv.URL[len("http"):] + "?token=" + token
+	// Admin WS uses first-message auth (no token in URL).
+	wsURL := "ws" + srv.URL[len("http"):]
 
 	conn, _, err := websocket.Dial(ctx, wsURL, nil)
 	if err != nil {
@@ -321,9 +321,13 @@ func TestHandleAdminWS_ValidToken(t *testing.T) {
 	}
 	defer func() { _ = conn.CloseNow() }()
 
-	// Admin WS doesn't send VER but should be connected. Verify by checking
-	// hub has 0 listener clients (admin doesn't count) — just verify no error.
-	// The connection stays open, which means auth succeeded.
+	// Send token as first message.
+	tokenMsg, _ := json.Marshal([]any{token})
+	if err := conn.Write(ctx, websocket.MessageText, tokenMsg); err != nil {
+		t.Fatalf("write token: %v", err)
+	}
+
+	// Admin WS should be connected. Verify by checking hub registers an admin client.
 	// Give the hub time to register.
 	time.Sleep(100 * time.Millisecond)
 
@@ -363,16 +367,25 @@ func TestHandleAdminWS_ListenerJWTRejected(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-	// Send listener JWT to admin endpoint.
-	wsURL := "ws" + srv.URL[len("http"):] + "?token=" + token
+	// Connect without token in URL.
+	wsURL := "ws" + srv.URL[len("http"):]
 
-	// The admin handler should reject with HTTP 403 before upgrade.
-	conn, resp, err := websocket.Dial(ctx, wsURL, nil)
-	if err == nil {
-		_ = conn.CloseNow()
-		t.Fatal("expected error dialing with listener JWT, got nil")
+	conn, _, err := websocket.Dial(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
 	}
-	if resp != nil && resp.StatusCode != http.StatusForbidden {
-		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusForbidden)
+	defer func() { _ = conn.CloseNow() }()
+
+	// Send listener JWT as first message — should be rejected with XPR.
+	tokenMsg, _ := json.Marshal([]any{token})
+	if err := conn.Write(ctx, websocket.MessageText, tokenMsg); err != nil {
+		t.Fatalf("write token: %v", err)
+	}
+
+	// Should receive XPR (expired/rejected).
+	msg := readTextMessage(t, ctx, conn, 5*time.Second)
+	cmd := extractCommand(t, msg)
+	if cmd != "XPR" {
+		t.Errorf("expected XPR for listener JWT on admin endpoint, got %q", cmd)
 	}
 }

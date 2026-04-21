@@ -564,6 +564,9 @@ func (c *Client) opUsersUpdate(ctx context.Context, params json.RawMessage) (any
 	// Revoke all tokens so stale claims are not trusted after update.
 	auth.Tokens.RevokeAllForUser(req.ID)
 
+	// Immediately disconnect all active WS sessions for the updated user.
+	c.hub.DisconnectByUser(req.ID)
+
 	user, err := c.hub.queries.GetUser(ctx, req.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch updated user: %w", err)
@@ -600,6 +603,11 @@ func (c *Client) opUsersDelete(ctx context.Context, params json.RawMessage) (any
 	if err := c.hub.queries.DeleteUser(ctx, req.ID); err != nil {
 		return nil, fmt.Errorf("failed to delete user: %w", err)
 	}
+
+	// Revoke tokens and disconnect active WS sessions for the deleted user.
+	auth.Tokens.RevokeAllForUser(req.ID)
+	c.hub.DisconnectByUser(req.ID)
+
 	slog.Info("admin: user deleted", "id", req.ID, "by", c.userID)
 	c.hub.BroadcastAdminEvent("users.updated", nil)
 	return map[string]bool{"ok": true}, nil

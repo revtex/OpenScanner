@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -308,6 +309,55 @@ func SwaggerCookieAuth() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "swagger session required"})
 			return
 		}
+		c.Next()
+	}
+}
+
+// ipBucket is a per-IP sliding-window counter.
+type ipBucket struct {
+	windowStart time.Time
+	count       int
+}
+
+// RateLimitByIP returns middleware that limits requests per IP per minute.
+// Designed for unauthenticated, public endpoints (e.g. shared call access).
+func RateLimitByIP(rpm int) gin.HandlerFunc {
+	var mu sync.Mutex
+	buckets := make(map[string]*ipBucket)
+	window := time.Minute
+
+	return func(c *gin.Context) {
+		ip := c.ClientIP()
+		now := time.Now()
+
+		mu.Lock()
+
+		// Periodic cleanup: remove stale entries to bound memory.
+		if len(buckets) > 1000 {
+			for k, b := range buckets {
+				if now.Sub(b.windowStart) >= 2*window {
+					delete(buckets, k)
+				}
+			}
+		}
+
+		b, ok := buckets[ip]
+		if !ok {
+			b = &ipBucket{windowStart: now}
+			buckets[ip] = b
+		}
+		if now.Sub(b.windowStart) >= window {
+			b.windowStart = now
+			b.count = 0
+		}
+		if b.count >= rpm {
+			mu.Unlock()
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "rate limit exceeded"})
+			return
+		}
+		b.count++
+		mu.Unlock()
+
 		c.Next()
 	}
 }

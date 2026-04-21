@@ -42,6 +42,7 @@ type Client struct {
 	grants  []systemGrant // nil/empty = receive all
 	isAdmin bool
 	userID  int64
+	jti     string      // JWT token ID, for single-session disconnect
 	queries *db.Queries // for periodic account revalidation
 }
 
@@ -250,6 +251,7 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 			}
 		}
 		client.userID = user.ID
+		client.jti = claims.ID
 		client.grants = parseGrants(user.SystemsJson)
 		slog.Debug("ws: listener authenticated via jwt", "user_id", user.ID, "grants", len(client.grants))
 
@@ -266,44 +268,10 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 }
 
 // HandleAdminWS upgrades the HTTP connection for an admin WebSocket.
+// Auth is performed via the first message (JWT token) after upgrade,
+// matching the listener WS pattern — token never appears in the URL.
 func HandleAdminWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Admin WS auth via query param since WebSocket can't send headers.
-		tokenStr := r.URL.Query().Get("token")
-		if tokenStr == "" {
-			http.Error(w, "token required", http.StatusUnauthorized)
-			return
-		}
-
-		// Strip the token from the URL immediately to prevent it from being
-		// logged in access logs, error reports, or proxy logs (OWASP A09).
-		r.URL.RawQuery = ""
-
-		claims, err := auth.ParseToken(tokenStr)
-		if err != nil || auth.Tokens.IsRevoked(claims.ID) {
-			http.Error(w, "invalid token", http.StatusUnauthorized)
-			return
-		}
-		if claims.Role != auth.RoleAdmin {
-			http.Error(w, "admin access required", http.StatusForbidden)
-			return
-		}
-
-		// Verify user is not disabled or expired (OWASP A01).
-		user, err := queries.GetUser(r.Context(), claims.UserID)
-		if err != nil || user.Disabled != 0 {
-			slog.Info("ws: admin user not found or disabled", "user_id", claims.UserID)
-			http.Error(w, "account disabled", http.StatusForbidden)
-			return
-		}
-		if user.Expiration.Valid && user.Expiration.Int64 > 0 {
-			if time.Now().Unix() > user.Expiration.Int64 {
-				slog.Info("ws: expired admin user", "user_id", claims.UserID)
-				http.Error(w, "account expired", http.StatusForbidden)
-				return
-			}
-		}
-
 		conn, err := websocket.Accept(w, r, wsAcceptOptions(r))
 		if err != nil {
 			slog.Error("ws: failed to accept admin connection",
@@ -314,9 +282,58 @@ func HandleAdminWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
-		slog.Debug("ws: admin connection accepted", "user_id", claims.UserID)
-
 		ctx := r.Context()
+
+		// Wait for auth message with timeout.
+		authCtx, cancel := context.WithTimeout(ctx, authTimeout)
+		defer cancel()
+
+		typ, data, err := conn.Read(authCtx)
+		if err != nil {
+			slog.Info("ws: admin auth timeout or read error", "error", err)
+			conn.Close(websocket.StatusPolicyViolation, "auth timeout")
+			return
+		}
+		if typ != websocket.MessageText {
+			conn.Close(websocket.StatusPolicyViolation, "expected text message")
+			return
+		}
+
+		// Parse the first message as a JWT token.
+		cmd, _, err := ParseCommand(data)
+		if err != nil {
+			conn.Close(websocket.StatusPolicyViolation, "invalid message")
+			return
+		}
+
+		claims, err := auth.ParseToken(cmd)
+		if err != nil || auth.Tokens.IsRevoked(claims.ID) {
+			slog.Info("ws: invalid or revoked JWT on admin WS")
+			sendExpiredAndClose(ctx, conn)
+			return
+		}
+		if claims.Role != auth.RoleAdmin {
+			slog.Info("ws: non-admin JWT on admin WS", "role", claims.Role)
+			sendExpiredAndClose(ctx, conn)
+			return
+		}
+
+		// Verify user is not disabled or expired (OWASP A01).
+		user, err := queries.GetUser(ctx, claims.UserID)
+		if err != nil || user.Disabled != 0 {
+			slog.Info("ws: admin user not found or disabled", "user_id", claims.UserID)
+			sendExpiredAndClose(ctx, conn)
+			return
+		}
+		if user.Expiration.Valid && user.Expiration.Int64 > 0 {
+			if time.Now().Unix() > user.Expiration.Int64 {
+				slog.Info("ws: expired admin user", "user_id", claims.UserID)
+				sendExpiredAndClose(ctx, conn)
+				return
+			}
+		}
+
+		slog.Debug("ws: admin authenticated via first-message JWT", "user_id", claims.UserID)
 
 		client := &Client{
 			hub:     hub,
@@ -324,6 +341,7 @@ func HandleAdminWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 			send:    make(chan []byte, sendBufSize),
 			isAdmin: true,
 			userID:  claims.UserID,
+			jti:     claims.ID,
 			queries: queries,
 		}
 

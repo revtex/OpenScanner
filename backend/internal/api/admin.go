@@ -19,13 +19,21 @@ import (
 type AuthHandler struct {
 	queries     *db.Queries
 	rateLimiter *auth.RateLimiter
+	hub         WSDisconnecter
+}
+
+// WSDisconnecter is the subset of ws.Hub used by AuthHandler for session eviction.
+type WSDisconnecter interface {
+	DisconnectByUser(userID int64)
+	DisconnectByJTI(jti string)
 }
 
 // NewAuthHandler constructs an AuthHandler.
-func NewAuthHandler(queries *db.Queries, rateLimiter *auth.RateLimiter) *AuthHandler {
+func NewAuthHandler(queries *db.Queries, rateLimiter *auth.RateLimiter, hub WSDisconnecter) *AuthHandler {
 	return &AuthHandler{
 		queries:     queries,
 		rateLimiter: rateLimiter,
+		hub:         hub,
 	}
 }
 
@@ -212,6 +220,10 @@ func (h *AuthHandler) PostLogout(c *gin.Context) {
 	if jtiVal, ok := c.Get("jti"); ok {
 		if jti, ok := jtiVal.(string); ok {
 			auth.Tokens.Revoke(jti)
+			// Immediately disconnect the WS session using this token.
+			if h.hub != nil {
+				h.hub.DisconnectByJTI(jti)
+			}
 		}
 	}
 
@@ -417,6 +429,11 @@ func (h *AuthHandler) PutPassword(c *gin.Context) {
 	// Revoke all existing tokens so compromised sessions are immediately invalidated.
 	auth.Tokens.RevokeAllForUser(userID)
 	_ = h.queries.RevokeAllRefreshTokensForUser(c.Request.Context(), userID)
+
+	// Disconnect all active WS sessions for this user.
+	if h.hub != nil {
+		h.hub.DisconnectByUser(userID)
+	}
 
 	ip := c.ClientIP()
 	slog.Info("auth: password changed", "user_id", userID, "ip", ip)
