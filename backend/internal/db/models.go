@@ -116,11 +116,12 @@ type Setting struct {
 }
 
 type SharedLink struct {
-	ID        int64  `db:"id" json:"id"`
-	CallID    int64  `db:"call_id" json:"call_id"`
-	UserID    int64  `db:"user_id" json:"user_id"`
-	Token     string `db:"token" json:"token"`
-	CreatedAt int64  `db:"created_at" json:"created_at"`
+	ID        int64         `db:"id" json:"id"`
+	CallID    int64         `db:"call_id" json:"call_id"`
+	UserID    int64         `db:"user_id" json:"user_id"`
+	Token     string        `db:"token" json:"token"`
+	CreatedAt int64         `db:"created_at" json:"created_at"`
+	ExpiresAt sql.NullInt64 `db:"expires_at" json:"expires_at"`
 }
 
 type System struct {

@@ -1,6 +1,6 @@
 -- name: CreateSharedLink :one
-INSERT INTO shared_links (call_id, user_id, token, created_at)
-VALUES (?, ?, ?, unixepoch())
+INSERT INTO shared_links (call_id, user_id, token, created_at, expires_at)
+VALUES (?, ?, ?, unixepoch(), ?)
 ON CONFLICT (call_id) DO UPDATE SET call_id = call_id
 RETURNING *;
 
@@ -42,6 +42,7 @@ SELECT
     sl.call_id,
     sl.token,
     sl.created_at,
+    sl.expires_at,
     u.username   AS shared_by,
     c.date_time,
     c.duration,

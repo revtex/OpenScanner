@@ -358,6 +358,7 @@ export interface SharedLinkAdmin {
   systemLabel: string;
   talkgroupLabel: string;
   talkgroupName: string;
+  expiresAt: number | null;
 }
 
 // --- Maintenance types ---

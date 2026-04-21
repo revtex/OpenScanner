@@ -95,6 +95,7 @@ var wsAllowedSettingKeys = map[string]bool{
 	"pushNotifications":           true,
 	"searchPatchedTalkgroups":     true,
 	"shareableLinks":              true,
+	"sharedLinkExpiry":            true,
 	"showListenersCount":          true,
 	"sortTalkgroups":              true,
 	"tagsToggle":                  true,
@@ -293,7 +294,7 @@ func mapWebhooks(ws []db.Webhook) []map[string]any {
 }
 
 func mapSharedLink(r db.ListSharedLinksRow) map[string]any {
-	return map[string]any{
+	m := map[string]any{
 		"id":             r.ID,
 		"callId":         r.CallID,
 		"token":          r.Token,
@@ -305,6 +306,12 @@ func mapSharedLink(r db.ListSharedLinksRow) map[string]any {
 		"talkgroupLabel": r.TalkgroupLabel.String,
 		"talkgroupName":  r.TalkgroupName.String,
 	}
+	if r.ExpiresAt.Valid {
+		m["expiresAt"] = r.ExpiresAt.Int64
+	} else {
+		m["expiresAt"] = nil
+	}
+	return m
 }
 
 // ── Handler map ──

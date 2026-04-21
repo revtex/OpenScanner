@@ -65,6 +65,7 @@ export default function SharedLinksPanel() {
                 <th className="w-24">Duration</th>
                 <th className="w-32">Shared By</th>
                 <th className="w-44">Shared At</th>
+                <th className="w-36">Expires</th>
                 <th className="w-20">Actions</th>
               </tr>
             </thead>
@@ -109,6 +110,13 @@ export default function SharedLinksPanel() {
                   </td>
                   <td className="whitespace-nowrap text-sm">
                     {formatDate(link.createdAt)}
+                  </td>
+                  <td className="whitespace-nowrap text-sm">
+                    {link.expiresAt ? (
+                      formatDate(link.expiresAt)
+                    ) : (
+                      <span className="text-base-content/40">Never</span>
+                    )}
                   </td>
                   <td className="align-top">
                     <div className="flex gap-1 whitespace-nowrap">

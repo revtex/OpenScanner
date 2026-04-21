@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -110,10 +111,20 @@ func (h *CallHandler) PostShareCall(c *gin.Context) {
 	}
 
 	token := uuid.New().String()
+
+	// Compute expires_at from the global sharedLinkExpiry setting.
+	var expiresAt sql.NullInt64
+	if expStr := h.getSettingValue(c, "sharedLinkExpiry"); expStr != "" && expStr != "0" {
+		if expSecs, err := strconv.ParseInt(expStr, 10, 64); err == nil && expSecs > 0 {
+			expiresAt = sql.NullInt64{Int64: time.Now().Unix() + expSecs, Valid: true}
+		}
+	}
+
 	sl, err := h.queries.CreateSharedLink(ctx, db.CreateSharedLinkParams{
-		CallID: id,
-		UserID: userID,
-		Token:  token,
+		CallID:    id,
+		UserID:    userID,
+		Token:     token,
+		ExpiresAt: expiresAt,
 	})
 	if err != nil {
 		slog.Error("failed to create shared link", "call_id", id, "error", err)
@@ -180,6 +191,23 @@ func (h *CallHandler) DeleteShareCall(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"shared": false})
 }
 
+// isSharedLinkExpired checks if a shared link has expired.
+// It checks the explicit expires_at first, then falls back to the global
+// sharedLinkExpiry setting applied to created_at. Returns false if no expiry is set.
+func (h *CallHandler) isSharedLinkExpired(c *gin.Context, expiresAt sql.NullInt64, createdAt int64) bool {
+	now := time.Now().Unix()
+	if expiresAt.Valid && expiresAt.Int64 > 0 {
+		return now > expiresAt.Int64
+	}
+	// Fallback: global setting applied to creation time.
+	if expStr := h.getSettingValue(c, "sharedLinkExpiry"); expStr != "" && expStr != "0" {
+		if expSecs, err := strconv.ParseInt(expStr, 10, 64); err == nil && expSecs > 0 {
+			return now > createdAt+expSecs
+		}
+	}
+	return false
+}
+
 // GetSharedCallByToken handles GET /api/shared/:token.
 // Returns call metadata as JSON for public viewing. No authentication required.
 //
@@ -210,6 +238,11 @@ func (h *CallHandler) GetSharedCallByToken(c *gin.Context) {
 		}
 		slog.Error("failed to get shared link by token", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	if h.isSharedLinkExpired(c, sl.ExpiresAt, sl.CreatedAt) {
+		c.JSON(http.StatusGone, gin.H{"error": "shared link has expired"})
 		return
 	}
 
@@ -262,6 +295,11 @@ func (h *CallHandler) GetSharedCallAudio(c *gin.Context) {
 		}
 		slog.Error("failed to get shared link for audio", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	if h.isSharedLinkExpired(c, sl.ExpiresAt, sl.CreatedAt) {
+		c.JSON(http.StatusGone, gin.H{"error": "shared link has expired"})
 		return
 	}
 

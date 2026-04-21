@@ -94,7 +94,7 @@ const SECTIONS: SettingSection[] = [
   },
   {
     title: "Sharing & Notifications",
-    keys: ["shareableLinks", "pushNotifications"],
+    keys: ["shareableLinks", "sharedLinkExpiry", "pushNotifications"],
   },
   { title: "Webhooks", keys: ["webhooksEnabled"] },
 ];
@@ -107,6 +107,7 @@ const SAVEABLE_KEYS = new Set(SECTIONS.flatMap((s) => s.keys));
 const LABELS: Record<string, string> = {
   publicAccess: "Public Access",
   shareableLinks: "Shareable Links",
+  sharedLinkExpiry: "Shared Link Expiry (seconds)",
   pushNotifications: "Push Notifications",
   webhooksEnabled: "Webhooks Enabled",
   audioConversion: "Audio Conversion (FFmpeg)",
@@ -156,6 +157,8 @@ const DESCRIPTIONS: Record<string, string> = {
     "Automatically delete calls older than this many days. Set to 0 to disable.",
   keypadBeeps:
     "Audio feedback style when pressing buttons. Disabled turns off beeps.",
+  sharedLinkExpiry:
+    "Time in seconds before shared links expire. Set to 0 to disable (links never expire).",
 };
 
 function isBooleanKey(key: string): boolean {
@@ -432,7 +435,8 @@ export default function OptionsPanel() {
     if (
       key === "maxClients" ||
       key === "pruneDays" ||
-      key === "duplicateDetectionTimeFrame"
+      key === "duplicateDetectionTimeFrame" ||
+      key === "sharedLinkExpiry"
     ) {
       return (
         <div className="flex flex-col">
