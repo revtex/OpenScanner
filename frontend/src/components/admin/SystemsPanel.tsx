@@ -249,20 +249,27 @@ function TalkgroupList({
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
 
+  const filtered = useMemo(() => {
+    if (!searchFilter) return talkgroups;
+    return talkgroups.filter((tg) =>
+      String(tg.talkgroupId).includes(searchFilter),
+    );
+  }, [talkgroups, searchFilter]);
+
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
-    count: talkgroups.length,
+    count: filtered.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 41,
     overscan: 10,
   });
 
-  if (talkgroups.length === 0) {
+  if (filtered.length === 0) {
     return <p className="text-sm opacity-60 py-2">No talkgroups</p>;
   }
 
   // For small lists, skip virtualization
-  if (talkgroups.length <= 50) {
+  if (filtered.length <= 50) {
     return (
       <div className="overflow-x-auto">
         <table className="table table-zebra table-xs w-full">
@@ -278,13 +285,7 @@ function TalkgroupList({
             </tr>
           </thead>
           <tbody>
-            {talkgroups
-              .filter(
-                (tg) =>
-                  searchFilter === "" ||
-                  String(tg.talkgroupId).includes(searchFilter),
-              )
-              .map((tg) => (
+            {filtered.map((tg) => (
                 <tr key={tg.id}>
                   <td>{tg.talkgroupId}</td>
                   <td>{tg.label ?? "—"}</td>
@@ -345,7 +346,7 @@ function TalkgroupList({
           }}
         >
           {virtualizer.getVirtualItems().map((virtualRow) => {
-            const tg = talkgroups[virtualRow.index];
+            const tg = filtered[virtualRow.index];
             return (
               <div
                 key={tg.id}
