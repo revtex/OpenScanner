@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import {
   useListUsersQuery,
+  useListSystemsQuery,
   useCreateUserMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
@@ -75,6 +76,7 @@ function formToUpdatePayload(form: UserFormState): UpdateUserPayload {
 
 export default function UsersPanel() {
   const { data: users, isLoading } = useListUsersQuery();
+  const { data: systems } = useListSystemsQuery();
   const [createUser] = useCreateUserMutation();
   const [updateUser] = useUpdateUserMutation();
   const [deleteUser] = useDeleteUserMutation();
@@ -152,6 +154,26 @@ export default function UsersPanel() {
     value: UserFormState[K],
   ) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const selectedSystems: number[] = form.systemsJson
+    ? (() => {
+        try {
+          return JSON.parse(form.systemsJson) as number[];
+        } catch {
+          return [];
+        }
+      })()
+    : [];
+
+  const toggleSystem = (systemId: number) => {
+    const updated = selectedSystems.includes(systemId)
+      ? selectedSystems.filter((id) => id !== systemId)
+      : [...selectedSystems, systemId];
+    updateField(
+      "systemsJson",
+      updated.length > 0 ? JSON.stringify(updated) : "",
+    );
   };
 
   if (isLoading) {
@@ -272,7 +294,7 @@ export default function UsersPanel() {
               <legend className="fieldset-legend px-1 text-sm font-semibold">
                 Account
               </legend>
-              <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <label className="flex flex-col w-full">
                   <span className="text-sm font-medium mb-1">Username</span>
                   <input
@@ -295,7 +317,7 @@ export default function UsersPanel() {
                   />
                   {editingId != null && (
                     <span className="text-xs text-base-content/50 mt-1">
-                      Leave blank to keep the current password.
+                      Leave blank to keep current.
                     </span>
                   )}
                 </label>
@@ -316,11 +338,21 @@ export default function UsersPanel() {
                     <option value="listener">Listener</option>
                     <option value="admin">Admin</option>
                   </select>
-                  {editingId === 1 && (
-                    <span className="text-xs text-warning/80 mt-1">
-                      Role is locked for the primary admin.
-                    </span>
-                  )}
+                </label>
+
+                <label className="flex flex-col w-full">
+                  <span className="text-sm font-medium mb-1">Disabled</span>
+                  <div className="flex items-center h-[3rem]">
+                    <input
+                      type="checkbox"
+                      className="toggle toggle-primary"
+                      checked={form.disabled === 1}
+                      disabled={editingId === 1}
+                      onChange={(e) =>
+                        updateField("disabled", e.target.checked ? 1 : 0)
+                      }
+                    />
+                  </div>
                 </label>
               </div>
             </fieldset>
@@ -330,11 +362,9 @@ export default function UsersPanel() {
               <legend className="fieldset-legend px-1 text-sm font-semibold">
                 Access Controls
               </legend>
-              <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <label className="flex flex-col w-full">
-                  <span className="text-sm font-medium mb-1">
-                    Account Expiration
-                  </span>
+                  <span className="text-sm font-medium mb-1">Expiration</span>
                   <input
                     type="date"
                     className="input w-full"
@@ -344,15 +374,13 @@ export default function UsersPanel() {
                   />
                   <span className="text-xs text-base-content/50 mt-1">
                     {editingId === 1
-                      ? "Expiration is locked for the primary admin."
-                      : "Optional. The account will be disabled after this date."}
+                      ? "Locked for primary admin."
+                      : "Optional. Account disabled after this date."}
                   </span>
                 </label>
 
                 <label className="flex flex-col w-full">
-                  <span className="text-sm font-medium mb-1">
-                    Max Simultaneous Sessions
-                  </span>
+                  <span className="text-sm font-medium mb-1">Max Sessions</span>
                   <input
                     type="number"
                     className="input w-full"
@@ -364,28 +392,51 @@ export default function UsersPanel() {
                   />
                   <span className="text-xs text-base-content/50 mt-1">
                     {editingId === 1
-                      ? "Session limit is locked for the primary admin."
-                      : "How many devices/browsers can be logged in at the same time. Leave empty for unlimited."}
-                  </span>
-                </label>
-
-                <label className="flex flex-col w-full">
-                  <span className="text-sm font-medium mb-1">
-                    Allowed Systems
-                  </span>
-                  <textarea
-                    className="textarea w-full font-mono text-sm"
-                    rows={2}
-                    value={form.systemsJson}
-                    onChange={(e) => updateField("systemsJson", e.target.value)}
-                    placeholder="e.g. [1, 2, 3]"
-                  />
-                  <span className="text-xs text-base-content/50 mt-1">
-                    JSON array of system IDs this user can access. Leave empty
-                    to grant access to all systems.
+                      ? "Locked for primary admin."
+                      : "Simultaneous logins. Empty = unlimited."}
                   </span>
                 </label>
               </div>
+
+              {/* System badges */}
+              {systems && systems.length > 0 && (
+                <div className="flex flex-col gap-1 mt-3">
+                  <span className="text-sm font-medium">Allowed Systems</span>
+                  <span className="text-xs text-base-content/60">
+                    Select which systems this user can access. If none selected,
+                    all systems are allowed.
+                  </span>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {systems
+                      .slice()
+                      .sort((a, b) => a.order - b.order)
+                      .map((sys) => {
+                        const selected = selectedSystems.includes(sys.id);
+                        return (
+                          <button
+                            key={sys.id}
+                            type="button"
+                            className={`badge badge-lg gap-1.5 cursor-pointer transition-colors ${
+                              selected
+                                ? "badge-primary"
+                                : "badge-ghost hover:badge-outline"
+                            }`}
+                            onClick={() => toggleSystem(sys.id)}
+                          >
+                            <span
+                              className={`inline-block w-2 h-2 rounded-full ${
+                                selected
+                                  ? "bg-primary-content"
+                                  : "bg-base-content/30"
+                              }`}
+                            />
+                            {sys.label}
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
             </fieldset>
 
             <div className="modal-action">
