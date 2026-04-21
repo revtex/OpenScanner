@@ -42,6 +42,7 @@ type ShareCreateResponse struct {
 // @Summary      Share a call
 // @Description  Creates a shared_links record for the call and returns the token + URL.
 // @Tags         Sharing
+// @Produce      json
 // @Security     BearerAuth
 // @Param        id   path      int  true  "Call ID"
 // @Success      201  {object}  ShareCreateResponse
@@ -118,6 +119,7 @@ func (h *CallHandler) PostShareCall(c *gin.Context) {
 // @Summary      Unshare a call
 // @Description  Removes the shared_links record. Only the original sharer or an admin can unshare.
 // @Tags         Sharing
+// @Produce      json
 // @Security     BearerAuth
 // @Param        id   path      int  true  "Call ID"
 // @Success      200  {object}  object{shared=bool}
@@ -170,6 +172,7 @@ func (h *CallHandler) DeleteShareCall(c *gin.Context) {
 // @Summary      Get shared call by token
 // @Description  Returns call metadata as JSON for public viewing. No authentication required.
 // @Tags         Sharing
+// @Produce      json
 // @Param        token  path      string  true  "Share token"
 // @Failure      400    {object}  ErrorResponse
 // @Success      200    {object}  ShareResponse
@@ -293,6 +296,7 @@ func (h *CallHandler) GetSharedCallAudio(c *gin.Context) {
 // @Summary      Get call share status
 // @Description  Returns the share token for a call if it exists, for authenticated users.
 // @Tags         Sharing
+// @Produce      json
 // @Security     BearerAuth
 // @Param        id   path      int  true  "Call ID"
 // @Success      200  {object}  ShareCreateResponse

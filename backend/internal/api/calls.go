@@ -845,6 +845,7 @@ type CallSearchResult struct {
 //	@Summary		Get call audio file
 //	@Description	Stream the audio file for a specific call. Requires authentication or public access mode.
 //	@Tags			Calls
+//	@Security		BearerAuth
 //	@Produce		application/octet-stream
 //	@Param			id	path	int	true	"Call ID"
 //	@Success		200	{file}	binary			"Audio file"
@@ -936,6 +937,7 @@ type CallSearchResponse struct {
 //	@Summary		Search calls
 //	@Description	Paginated search of the call archive with optional filters.
 //	@Tags			Calls
+//	@Security		BearerAuth
 //	@Produce		json
 //	@Param			system_ids		query	string	false	"CSV system DB IDs (e.g. 1,2,3)"
 //	@Param			talkgroup_ids	query	string	false	"CSV talkgroup DB IDs (e.g. 10,11)"
