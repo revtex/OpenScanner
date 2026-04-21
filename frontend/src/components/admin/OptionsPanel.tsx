@@ -13,8 +13,6 @@ const BOOLEAN_KEYS = [
   "shareableLinks",
   "pushNotifications",
   "webhooksEnabled",
-  "transcriptionEnabled",
-  "transcriptionDiarize",
   "time12hFormat",
   "disableDuplicateDetection",
   "sortTalkgroups",
@@ -46,14 +44,6 @@ const HE_AAC_PRESETS = new Set(["he_aac_12k", "he_aac_8k"]);
 
 const KEYPAD_BEEPS = ["disabled", "uniden", "whistler"] as const;
 
-const TRANSCRIPTION_MODELS = [
-  "ggml-tiny",
-  "ggml-base",
-  "ggml-small",
-  "ggml-medium",
-  "ggml-large",
-  "ggml-small.en-tdrz",
-];
 interface SettingSection {
   title: string;
   keys: string[];
@@ -107,16 +97,6 @@ const SECTIONS: SettingSection[] = [
     keys: ["shareableLinks", "pushNotifications"],
   },
   { title: "Webhooks", keys: ["webhooksEnabled"] },
-  {
-    title: "Transcription",
-    keys: [
-      "transcriptionEnabled",
-      "transcriptionUrl",
-      "transcriptionModel",
-      "transcriptionLanguage",
-      "transcriptionDiarize",
-    ],
-  },
 ];
 
 // Only keys that appear in SECTIONS should be sent to the backend.
@@ -129,11 +109,6 @@ const LABELS: Record<string, string> = {
   shareableLinks: "Shareable Links",
   pushNotifications: "Push Notifications",
   webhooksEnabled: "Webhooks Enabled",
-  transcriptionEnabled: "Transcription Enabled",
-  transcriptionUrl: "go-whisper Server URL",
-  transcriptionModel: "Transcription Model",
-  transcriptionLanguage: "Transcription Language",
-  transcriptionDiarize: "Speaker Diarization",
   audioConversion: "Audio Conversion (FFmpeg)",
   audioEncodingPreset: "Audio Encoding Preset",
   branding: "Branding Label",
@@ -262,14 +237,6 @@ export default function OptionsPanel() {
   };
 
   const updateSetting = (key: string, value: string) => {
-    if (key === "transcriptionDiarize" && value === "true") {
-      setLocalSettings((prev) => ({
-        ...prev,
-        [key]: value,
-        transcriptionModel: "ggml-small.en-tdrz",
-      }));
-      return;
-    }
     if (key === "audioConversion" && value !== "0") {
       setLocalSettings((prev) => {
         const preset = prev["audioEncodingPreset"];
@@ -300,9 +267,6 @@ export default function OptionsPanel() {
       showToast("Failed to save settings", "error");
     }
   };
-
-  const transcriptionEnabled = localSettings["transcriptionEnabled"] === "true";
-  const diarizeEnabled = localSettings["transcriptionDiarize"] === "true";
 
   const renderSettingInput = (key: string) => {
     const value = localSettings[key] ?? "";
@@ -465,33 +429,6 @@ export default function OptionsPanel() {
       );
     }
 
-    if (key === "transcriptionModel") {
-      return (
-        <div className="flex flex-col">
-          {label}
-          {description}
-          <select
-            className="select w-full max-w-xs"
-            value={value}
-            disabled={diarizeEnabled}
-            onChange={(e) => updateSetting(key, e.target.value)}
-          >
-            {TRANSCRIPTION_MODELS.map((model) => (
-              <option key={model} value={model}>
-                {model}
-              </option>
-            ))}
-          </select>
-          {diarizeEnabled && (
-            <p className="text-xs text-info/80 mt-1">
-              Model locked to ggml-small.en-tdrz while Speaker Diarization is
-              enabled.
-            </p>
-          )}
-        </div>
-      );
-    }
-
     if (
       key === "maxClients" ||
       key === "pruneDays" ||
@@ -595,13 +532,7 @@ export default function OptionsPanel() {
       <div className="card bg-base-200">
         <div className="card-body space-y-6">
           {SECTIONS.map((section) => {
-            // Hide transcription sub-settings when disabled
-            const keys =
-              section.title === "Transcription"
-                ? section.keys.filter(
-                    (k) => k === "transcriptionEnabled" || transcriptionEnabled,
-                  )
-                : section.keys;
+            const keys = section.keys;
 
             // Only show section if we have settings for it
             const hasSettings = keys.some((k) => k in localSettings);

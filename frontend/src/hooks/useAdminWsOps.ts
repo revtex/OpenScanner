@@ -21,6 +21,9 @@ import type {
   MissingAudioCleanupResponse,
   RRApplyRequest,
   RRApplyResponse,
+  TranscriptionStatus,
+  TranscriptionModelsResponse,
+  WhisperModel,
 } from "@/types";
 
 // ─── Payload types ──────────────────────────────────────────────────────────
@@ -391,4 +394,26 @@ export function useCleanupMissingAudioCallsMutation() {
 
 export function useRrApplyMutation() {
   return useWsMutation<RRApplyResponse, RRApplyRequest>("radioreference.apply");
+}
+
+// ─── Transcription ──────────────────────────────────────────────────────────
+
+export function useTranscriptionStatusQuery() {
+  return useWsQuery<TranscriptionStatus>("transcription.status");
+}
+
+export function useTranscriptionModelsQuery() {
+  return useWsQuery<TranscriptionModelsResponse>("transcription.models");
+}
+
+export function useTranscriptionDownloadMutation() {
+  return useWsMutation<WhisperModel, { model: string }>(
+    "transcription.download",
+  );
+}
+
+export function useTranscriptionDeleteMutation() {
+  return useWsMutation<{ deleted: boolean }, { id: string }>(
+    "transcription.delete",
+  );
 }

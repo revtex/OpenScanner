@@ -394,3 +394,27 @@ export interface ServerDirectoryListResponse {
   parent: string | null;
   directories: ServerDirectoryEntry[];
 }
+
+// --- Transcription types ---
+
+export interface TranscriptionStatus {
+  enabled: boolean;
+  url: string;
+  model: string;
+  language: string;
+  diarize: boolean;
+  connected: boolean;
+}
+
+export interface WhisperModel {
+  id: string;
+  object: string;
+  path: string;
+  created: number;
+  owned_by: string;
+}
+
+export interface TranscriptionModelsResponse {
+  object: string;
+  models: WhisperModel[];
+}

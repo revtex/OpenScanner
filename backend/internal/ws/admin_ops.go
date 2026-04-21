@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -403,6 +405,12 @@ func (c *Client) adminOpHandlers() map[string]adminOpHandler {
 
 		// RadioReference
 		"radioreference.apply": c.opRadioReferenceApply,
+
+		// Transcription model management
+		"transcription.status":   c.opTranscriptionStatus,
+		"transcription.models":   c.opTranscriptionModels,
+		"transcription.download": c.opTranscriptionDownload,
+		"transcription.delete":   c.opTranscriptionDelete,
 	}
 }
 
@@ -2847,4 +2855,194 @@ func (c *Client) opRadioReferenceApply(ctx context.Context, params json.RawMessa
 	resp["errors"] = errCount
 	resp["rowErrors"] = rowErrors
 	return resp, nil
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TRANSCRIPTION MODEL MANAGEMENT
+// ══════════════════════════════════════════════════════════════════════════════
+
+// transcriptionBaseURL reads the transcriptionUrl setting from DB.
+func (c *Client) transcriptionBaseURL(ctx context.Context) (string, error) {
+	s, err := c.hub.queries.GetSetting(ctx, "transcriptionUrl")
+	if err != nil || s.Value == "" {
+		return "", userError("transcriptionUrl setting is not configured")
+	}
+	if !wsValidHTTPURL(s.Value) {
+		return "", userError("transcriptionUrl is not a valid HTTP URL")
+	}
+	return strings.TrimRight(s.Value, "/"), nil
+}
+
+func (c *Client) opTranscriptionStatus(ctx context.Context, _ json.RawMessage) (any, error) {
+	// Read settings from DB.
+	getVal := func(key string) string {
+		s, err := c.hub.queries.GetSetting(ctx, key)
+		if err != nil {
+			return ""
+		}
+		return s.Value
+	}
+
+	enabled := getVal("transcriptionEnabled") == "true"
+	baseURL := getVal("transcriptionUrl")
+	model := getVal("transcriptionModel")
+	language := getVal("transcriptionLanguage")
+	diarize := getVal("transcriptionDiarize") == "true"
+
+	// Check live connection to go-whisper.
+	connected := false
+	if baseURL != "" && wsValidHTTPURL(baseURL) {
+		trimmed := strings.TrimRight(baseURL, "/")
+		reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, trimmed+"/api/whisper/model", nil)
+		if err == nil {
+			resp, err := http.DefaultClient.Do(req)
+			if err == nil {
+				resp.Body.Close()
+				connected = resp.StatusCode >= 200 && resp.StatusCode < 400
+			}
+		}
+	}
+
+	return map[string]any{
+		"enabled":   enabled,
+		"url":       baseURL,
+		"model":     model,
+		"language":  language,
+		"diarize":   diarize,
+		"connected": connected,
+	}, nil
+}
+
+func (c *Client) opTranscriptionModels(ctx context.Context, _ json.RawMessage) (any, error) {
+	baseURL, err := c.transcriptionBaseURL(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	reqCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, baseURL+"/api/whisper/model", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("go-whisper unreachable: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("go-whisper returned status %d", resp.StatusCode)
+	}
+
+	var result json.RawMessage
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("invalid JSON from go-whisper: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) opTranscriptionDownload(ctx context.Context, params json.RawMessage) (any, error) {
+	var req struct {
+		Model string `json:"model"`
+	}
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, userError("invalid request body")
+	}
+	if req.Model == "" {
+		return nil, userError("model name is required")
+	}
+
+	baseURL, err := c.transcriptionBaseURL(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	reqBody, _ := json.Marshal(map[string]string{"model": req.Model})
+
+	// Model downloads can take a long time (500MB+).
+	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
+	httpReq, err := http.NewRequestWithContext(reqCtx, http.MethodPost, baseURL+"/api/whisper/model", strings.NewReader(string(reqBody)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("go-whisper unreachable: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		slog.Warn("go-whisper model download failed", "status", resp.StatusCode, "body", string(body))
+		return nil, fmt.Errorf("go-whisper returned status %d", resp.StatusCode)
+	}
+
+	var result json.RawMessage
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("invalid JSON from go-whisper: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) opTranscriptionDelete(ctx context.Context, params json.RawMessage) (any, error) {
+	var req struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, userError("invalid request body")
+	}
+	if req.ID == "" {
+		return nil, userError("model id is required")
+	}
+
+	// Sanitise: model ID should be alphanumeric + hyphens/dots/underscores only.
+	for _, ch := range req.ID {
+		if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '.' || ch == '_') {
+			return nil, userError("invalid model id")
+		}
+	}
+
+	baseURL, err := c.transcriptionBaseURL(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	reqCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	httpReq, err := http.NewRequestWithContext(reqCtx, http.MethodDelete, baseURL+"/api/whisper/model/"+req.ID, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("go-whisper unreachable: %w", err)
+	}
+	defer resp.Body.Close()
+	io.Copy(io.Discard, resp.Body) //nolint:errcheck
+
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("go-whisper returned status %d", resp.StatusCode)
+	}
+
+	return map[string]any{"deleted": true}, nil
 }

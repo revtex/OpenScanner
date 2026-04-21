@@ -27,6 +27,7 @@ import {
   Home,
   Menu,
   X,
+  AudioLines,
 } from "lucide-react";
 import { useAppSelector, useAppDispatch } from "@/app/store";
 import {
@@ -48,6 +49,7 @@ import ToolsPanel from "@/components/admin/ToolsPanel";
 import WebhooksPanel from "@/components/admin/WebhooksPanel";
 import ActivityPanel from "@/components/admin/ActivityPanel";
 import SharedLinksPanel from "@/components/admin/SharedLinksPanel";
+import TranscriptionPanel from "@/components/admin/TranscriptionPanel";
 
 const navItems = [
   { to: "/admin/activity", label: "Activity", icon: Activity },
@@ -58,6 +60,7 @@ const navItems = [
   { to: "/admin/dirmonitors", label: "Monitors", icon: FolderSearch },
   { to: "/admin/downstreams", label: "Downstreams", icon: ArrowDownToLine },
   { to: "/admin/shared-links", label: "Shared Links", icon: Share2 },
+  { to: "/admin/transcription", label: "Transcription", icon: AudioLines },
   { to: "/admin/options", label: "Options", icon: Settings },
   { to: "/admin/logs", label: "Logs", icon: ScrollText },
   { to: "/admin/tools", label: "Tools", icon: Wrench },
@@ -210,6 +213,10 @@ export default function AdminLayout() {
               <Route path="tools" element={<ToolsPanel />} />
               <Route path="webhooks" element={<WebhooksPanel />} />
               <Route path="shared-links" element={<SharedLinksPanel />} />
+              <Route
+                path="transcription"
+                element={<TranscriptionPanel />}
+              />
               <Route path="*" element={<Navigate to="activity" replace />} />
             </Routes>
           </main>

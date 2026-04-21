@@ -73,6 +73,16 @@ func (m *TranscriberManager) Enabled() bool {
 	return m.pool != nil
 }
 
+// BaseURL returns the current pool's base URL, or empty string if disabled.
+func (m *TranscriberManager) BaseURL() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.pool == nil {
+		return ""
+	}
+	return m.pool.baseURL
+}
+
 // Reload stops the current pool (if any) and starts a new one with the given config.
 // If enabled is false, the pool is stopped and transcription is disabled.
 func (m *TranscriberManager) Reload(enabled bool, baseURL, model, language string, diarize bool) bool {

@@ -20,6 +20,7 @@ type Reloader interface {
 type TranscriberReloader interface {
 	Reload(enabled bool, baseURL, model, language string, diarize bool) bool
 	Enabled() bool
+	BaseURL() string
 }
 
 // HubDeps holds optional dependencies injected into the Hub for admin WS operations.
