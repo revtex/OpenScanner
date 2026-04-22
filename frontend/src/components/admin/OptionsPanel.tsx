@@ -560,39 +560,41 @@ export default function OptionsPanel() {
         </p>
       </div>
 
-      {SECTIONS.map((section) => {
-        const keys = section.keys;
-        const hasSettings = keys.some((k) => k in localSettings);
-        if (!hasSettings) return null;
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {SECTIONS.map((section) => {
+          const keys = section.keys;
+          const hasSettings = keys.some((k) => k in localSettings);
+          if (!hasSettings) return null;
 
-        return (
-          <section key={section.title}>
-            <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
-              {section.icon} {section.title}
-            </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {keys.map((key) =>
-                key in localSettings ? (
-                  <div
-                    key={key}
-                    className={`relative card bg-base-200 ${isPlannedKey(key) ? "opacity-60" : ""}`}
-                  >
-                    {localSettings[key] !== serverSettings[key] && (
-                      <span
-                        className="absolute right-2 top-2 w-2 h-2 rounded-full bg-warning"
-                        title="Modified"
-                      />
-                    )}
-                    <div className="card-body p-3 gap-0">
-                      {renderSettingInput(key)}
+          return (
+            <section key={section.title}>
+              <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
+                {section.icon} {section.title}
+              </h2>
+              <div className="space-y-3">
+                {keys.map((key) =>
+                  key in localSettings ? (
+                    <div
+                      key={key}
+                      className={`relative card bg-base-200 ${isPlannedKey(key) ? "opacity-60" : ""}`}
+                    >
+                      {localSettings[key] !== serverSettings[key] && (
+                        <span
+                          className="absolute right-2 top-2 w-2 h-2 rounded-full bg-warning"
+                          title="Modified"
+                        />
+                      )}
+                      <div className="card-body p-3 gap-0">
+                        {renderSettingInput(key)}
+                      </div>
                     </div>
-                  </div>
-                ) : null,
-              )}
-            </div>
-          </section>
-        );
-      })}
+                  ) : null,
+                )}
+              </div>
+            </section>
+          );
+        })}
+      </div>
 
       {/* ── Save Bar ──────────────────────────────────── */}
       <div className="sticky bottom-0 z-10 flex items-center gap-3 rounded-lg border border-base-300 bg-base-200 p-3">
