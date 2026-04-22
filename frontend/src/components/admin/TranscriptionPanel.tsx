@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Wifi,
-  WifiOff,
   Trash2,
   Download,
   Check,
@@ -205,359 +204,379 @@ export default function TranscriptionPanel() {
   }
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold mb-4">Transcription</h1>
-      <p className="text-sm text-base-content/70 mb-4">
-        Manage the go-whisper transcription sidecar. Enable transcription,
-        configure the connection, and manage whisper models.
-      </p>
-
-      {/* ─── Settings Card ─── */}
-      <div className="card bg-base-200 mb-4">
-        <div className="card-body">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="card-title text-base">Status &amp; Settings</h2>
-            <div className="flex items-center gap-3">
-              {status?.connected ? (
-                <div className="flex items-center gap-1.5 text-success text-sm">
-                  <Wifi className="w-4 h-4" />
-                  Connected
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 text-error text-sm">
-                  <WifiOff className="w-4 h-4" />
-                  Disconnected
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            {/* Enable toggle */}
-            <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-sm font-medium">Enable Transcription</span>
-              <input
-                type="checkbox"
-                className="toggle toggle-primary"
-                checked={status?.enabled ?? false}
-                onChange={handleToggleEnabled}
-              />
-            </label>
-
-            {/* Live display toggle */}
-            <label className="flex items-center justify-between cursor-pointer">
-              <div>
-                <span className="text-sm font-medium">Show in Live Player</span>
-                <p className="text-xs text-base-content/60">
-                  Display transcripts in the scanner during playback
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                className="toggle toggle-primary"
-                checked={liveDisplay}
-                onChange={handleToggleLiveDisplay}
-              />
-            </label>
-
-            {/* URL */}
-            <label className="flex flex-col w-full">
-              <span className="text-sm mb-1">go-whisper Server URL</span>
-              <input
-                type="url"
-                className="input w-full"
-                placeholder="http://localhost:9673"
-                value={url}
-                onChange={(e) => {
-                  setUrl(e.target.value);
-                  setDirty(true);
-                }}
-              />
-            </label>
-
-            {/* Language */}
-            <label className="flex flex-col w-full">
-              <span className="text-sm mb-1">Language</span>
-              <select
-                className="select w-full"
-                value={language}
-                onChange={(e) => {
-                  setLanguage(e.target.value);
-                  setDirty(true);
-                }}
-              >
-                {LANGUAGES.map((l) => (
-                  <option key={l.value} value={l.value}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {/* Diarize */}
-            <label
-              className={`flex items-center justify-between${activeModelSupportsDiarize ? " cursor-pointer" : " opacity-50 cursor-not-allowed"}`}
-            >
-              <div>
-                <span className="text-sm font-medium">Speaker Diarization</span>
-                <p className="text-xs text-base-content/60">
-                  {activeModelSupportsDiarize
-                    ? "Requires a tdrz model (e.g. ggml-small.en-tdrz)"
-                    : "Active model does not support diarization — switch to a tdrz model"}
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                className="toggle toggle-primary"
-                checked={diarize}
-                disabled={!activeModelSupportsDiarize}
-                onChange={(e) => {
-                  setDiarize(e.target.checked);
-                  setDirty(true);
-                }}
-              />
-            </label>
-
-            {/* Save */}
-            <div className="flex justify-end">
-              <button
-                className="btn btn-primary btn-sm"
-                disabled={!dirty}
-                onClick={handleSaveSettings}
-              >
-                Save Settings
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold mb-1">Transcription</h1>
+        <p className="text-sm text-base-content/70">
+          Manage the go-whisper transcription sidecar, configure the connection,
+          and manage whisper models.
+        </p>
       </div>
 
-      {/* ─── Stats Card ─── */}
-      {stats && stats.total > 0 && (
-        <div className="card bg-base-200 mb-4">
-          <div className="card-body">
-            <h2 className="card-title text-base mb-3">Statistics</h2>
+      <div className="columns-1 lg:columns-2 gap-6 space-y-6">
+        {/* ─── Status & Settings ─── */}
+        <section className="break-inside-avoid">
+          <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
+            <Wifi className="w-4 h-4" /> Status &amp; Settings
+            {status?.connected ? (
+              <span className="badge badge-sm border-success/30 bg-success/10 text-success ml-auto">
+                Connected
+              </span>
+            ) : (
+              <span className="badge badge-sm border-error/30 bg-error/10 text-error ml-auto">
+                Disconnected
+              </span>
+            )}
+          </h2>
+          <div className="card bg-base-200">
+            <div className="card-body gap-3">
+              {/* Enable toggle */}
+              <label className="flex items-center justify-between cursor-pointer rounded-lg border border-base-300 bg-base-100/60 p-3">
+                <span className="text-sm font-medium">
+                  Enable Transcription
+                </span>
+                <input
+                  type="checkbox"
+                  className="toggle toggle-primary"
+                  checked={status?.enabled ?? false}
+                  onChange={handleToggleEnabled}
+                />
+              </label>
 
-            {/* Summary row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              <div className="stat bg-base-300 rounded-lg p-3">
-                <div className="stat-title text-xs">Total</div>
-                <div className="stat-value text-lg">
-                  {stats.total.toLocaleString()}
+              {/* Live display toggle */}
+              <label className="flex items-center justify-between cursor-pointer rounded-lg border border-base-300 bg-base-100/60 p-3">
+                <div>
+                  <span className="text-sm font-medium">
+                    Show in Live Player
+                  </span>
+                  <p className="text-xs text-base-content/60">
+                    Display transcripts in the scanner during playback
+                  </p>
                 </div>
+                <input
+                  type="checkbox"
+                  className="toggle toggle-primary"
+                  checked={liveDisplay}
+                  onChange={handleToggleLiveDisplay}
+                />
+              </label>
+
+              {/* URL */}
+              <div className="rounded-lg border border-base-300 bg-base-100/60 p-3">
+                <label className="flex flex-col w-full">
+                  <span className="text-sm font-medium mb-1">
+                    go-whisper Server URL
+                  </span>
+                  <input
+                    type="url"
+                    className="input w-full"
+                    placeholder="http://localhost:9673"
+                    value={url}
+                    onChange={(e) => {
+                      setUrl(e.target.value);
+                      setDirty(true);
+                    }}
+                  />
+                </label>
               </div>
-              <div className="stat bg-base-300 rounded-lg p-3">
-                <div className="stat-title text-xs">Last 24h</div>
-                <div className="stat-value text-lg">
-                  {stats.recent24h.toLocaleString()}
-                </div>
+
+              {/* Language */}
+              <div className="rounded-lg border border-base-300 bg-base-100/60 p-3">
+                <label className="flex flex-col w-full">
+                  <span className="text-sm font-medium mb-1">Language</span>
+                  <select
+                    className="select w-full"
+                    value={language}
+                    onChange={(e) => {
+                      setLanguage(e.target.value);
+                      setDirty(true);
+                    }}
+                  >
+                    {LANGUAGES.map((l) => (
+                      <option key={l.value} value={l.value}>
+                        {l.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
-              <div className="stat bg-base-300 rounded-lg p-3">
-                <div className="stat-title text-xs">Avg Duration</div>
-                <div className="stat-value text-lg">
-                  {stats.avgDurationMs > 0
-                    ? `${(stats.avgDurationMs / 1000).toFixed(1)}s`
-                    : "—"}
+
+              {/* Diarize */}
+              <label
+                className={`flex items-center justify-between rounded-lg border border-base-300 bg-base-100/60 p-3${activeModelSupportsDiarize ? " cursor-pointer" : " opacity-50 cursor-not-allowed"}`}
+              >
+                <div>
+                  <span className="text-sm font-medium">
+                    Speaker Diarization
+                  </span>
+                  <p className="text-xs text-base-content/60">
+                    {activeModelSupportsDiarize
+                      ? "Requires a tdrz model (e.g. ggml-small.en-tdrz)"
+                      : "Active model does not support diarization — switch to a tdrz model"}
+                  </p>
                 </div>
-                {stats.minDurationMs > 0 && (
-                  <div className="stat-desc text-[10px]">
-                    {(stats.minDurationMs / 1000).toFixed(1)}s –{" "}
-                    {(stats.maxDurationMs / 1000).toFixed(1)}s
-                  </div>
-                )}
-              </div>
-              <div className="stat bg-base-300 rounded-lg p-3">
-                <div className="stat-title text-xs">Queue</div>
-                <div className="stat-value text-lg">
-                  {stats.poolEnabled ? stats.queueDepth : "Off"}
-                </div>
+                <input
+                  type="checkbox"
+                  className="toggle toggle-primary"
+                  checked={diarize}
+                  disabled={!activeModelSupportsDiarize}
+                  onChange={(e) => {
+                    setDiarize(e.target.checked);
+                    setDirty(true);
+                  }}
+                />
+              </label>
+
+              {/* Save */}
+              <div className="flex justify-end">
+                <button
+                  className="btn btn-primary btn-sm"
+                  disabled={!dirty}
+                  onClick={handleSaveSettings}
+                >
+                  Save Settings
+                </button>
               </div>
             </div>
+          </div>
+        </section>
 
-            {/* Breakdowns */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {stats.byLanguage.length > 0 && (
-                <div className="bg-base-300 rounded-lg p-3">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-base-content/50 mb-3">
-                    By Language
-                  </h3>
-                  <div className="space-y-2">
-                    {stats.byLanguage.map((l) => {
-                      const pct = (l.count / stats.total) * 100;
-                      return (
-                        <div key={l.language}>
-                          <div className="flex justify-between text-sm mb-0.5">
-                            <span className="uppercase font-medium">
-                              {l.language}
-                            </span>
-                            <span className="text-base-content/60 tabular-nums">
-                              {l.count.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="w-full bg-base-100 rounded-full h-1.5">
-                            <div
-                              className="bg-primary rounded-full h-1.5 transition-all"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+        {/* ─── Model Management ─── */}
+        <section className="break-inside-avoid">
+          <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
+            <Mic className="w-4 h-4" /> Model Management
+          </h2>
+          <div className="card bg-base-200">
+            <div className="card-body gap-3">
+              {/* Download section */}
+              {availableForDownload.length > 0 && (
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <select
+                    className="select flex-1"
+                    value={selectedDownload}
+                    onChange={(e) => setSelectedDownload(e.target.value)}
+                    disabled={isDownloading}
+                  >
+                    <option value="">Select a model to download…</option>
+                    {availableForDownload.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="btn btn-primary btn-sm gap-2"
+                    disabled={!selectedDownload || isDownloading}
+                    onClick={handleDownload}
+                  >
+                    {isDownloading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
+                    {isDownloading ? "Downloading…" : "Download"}
+                  </button>
                 </div>
               )}
-              {stats.byModel.length > 0 && (
-                <div className="bg-base-300 rounded-lg p-3">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-base-content/50 mb-3">
-                    By Model
-                  </h3>
-                  <div className="space-y-2">
-                    {stats.byModel.map((m) => {
-                      const pct = (m.count / stats.total) * 100;
-                      return (
-                        <div key={m.model}>
-                          <div className="flex justify-between text-sm mb-0.5">
-                            <span className="font-mono text-xs font-medium">
-                              {m.model}
-                            </span>
-                            <span className="text-base-content/60 tabular-nums">
-                              {m.count.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="w-full bg-base-100 rounded-full h-1.5">
-                            <div
-                              className="bg-secondary rounded-full h-1.5 transition-all"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+
+              {/* Models table */}
+              {modelsLoading ? (
+                <div className="loading loading-spinner loading-sm" />
+              ) : modelsError ? (
+                <div className="flex items-center gap-2 text-sm text-warning">
+                  <span>
+                    Could not load models — is the go-whisper URL configured?
+                  </span>
+                  <button
+                    className="btn btn-ghost btn-xs"
+                    onClick={refetchModels}
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="table table-zebra w-full">
+                    <thead>
+                      <tr>
+                        <th>Model</th>
+                        <th>Created</th>
+                        <th>Active</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {models.map((m) => {
+                        const isActive = m.id === status?.model;
+                        return (
+                          <tr
+                            key={m.id}
+                            className={isActive ? "bg-primary/10" : ""}
+                          >
+                            <td className="font-mono text-sm flex items-center gap-2">
+                              <Mic className="w-4 h-4 shrink-0 opacity-50" />
+                              {m.id}
+                            </td>
+                            <td className="text-sm">
+                              {new Date(
+                                m.created * 1000,
+                              ).toLocaleDateString()}
+                            </td>
+                            <td>
+                              {isActive ? (
+                                <span className="badge badge-success badge-sm gap-1">
+                                  <Check className="w-3 h-3" /> Active
+                                </span>
+                              ) : (
+                                <button
+                                  className="btn btn-ghost btn-xs"
+                                  onClick={() => handleSetActiveModel(m.id)}
+                                >
+                                  Set Active
+                                </button>
+                              )}
+                            </td>
+                            <td>
+                              <button
+                                className="btn btn-ghost btn-xs"
+                                onClick={() => handleDelete(m)}
+                                disabled={deletingId === m.id}
+                                aria-label={`Delete model ${m.id}`}
+                              >
+                                {deletingId === m.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {models.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="text-center opacity-60">
+                            No models downloaded
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* ─── Models Card ─── */}
-      <div className="card bg-base-200">
-        <div className="card-body">
-          <h2 className="card-title text-base mb-2">Model Management</h2>
+        {/* ─── Statistics ─── */}
+        {stats && stats.total > 0 && (
+          <section className="break-inside-avoid">
+            <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
+              <Loader2 className="w-4 h-4" /> Statistics
+            </h2>
+            <div className="card bg-base-200">
+              <div className="card-body gap-3">
+                {/* Summary row */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="stat bg-base-300 rounded-lg p-3">
+                    <div className="stat-title text-xs">Total</div>
+                    <div className="stat-value text-lg">
+                      {stats.total.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="stat bg-base-300 rounded-lg p-3">
+                    <div className="stat-title text-xs">Last 24h</div>
+                    <div className="stat-value text-lg">
+                      {stats.recent24h.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="stat bg-base-300 rounded-lg p-3">
+                    <div className="stat-title text-xs">Avg Duration</div>
+                    <div className="stat-value text-lg">
+                      {stats.avgDurationMs > 0
+                        ? `${(stats.avgDurationMs / 1000).toFixed(1)}s`
+                        : "—"}
+                    </div>
+                    {stats.minDurationMs > 0 && (
+                      <div className="stat-desc text-[10px]">
+                        {(stats.minDurationMs / 1000).toFixed(1)}s –{" "}
+                        {(stats.maxDurationMs / 1000).toFixed(1)}s
+                      </div>
+                    )}
+                  </div>
+                  <div className="stat bg-base-300 rounded-lg p-3">
+                    <div className="stat-title text-xs">Queue</div>
+                    <div className="stat-value text-lg">
+                      {stats.poolEnabled ? stats.queueDepth : "Off"}
+                    </div>
+                  </div>
+                </div>
 
-          {/* Download section */}
-          {availableForDownload.length > 0 && (
-            <div className="flex flex-col sm:flex-row gap-2 mb-4">
-              <select
-                className="select flex-1"
-                value={selectedDownload}
-                onChange={(e) => setSelectedDownload(e.target.value)}
-                disabled={isDownloading}
-              >
-                <option value="">Select a model to download…</option>
-                {availableForDownload.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-              <button
-                className="btn btn-primary btn-sm gap-2"
-                disabled={!selectedDownload || isDownloading}
-                onClick={handleDownload}
-              >
-                {isDownloading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4" />
+                {/* Breakdowns */}
+                {stats.byLanguage.length > 0 && (
+                  <div className="bg-base-300 rounded-lg p-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-base-content/50 mb-3">
+                      By Language
+                    </h3>
+                    <div className="space-y-2">
+                      {stats.byLanguage.map((l) => {
+                        const pct = (l.count / stats.total) * 100;
+                        return (
+                          <div key={l.language}>
+                            <div className="flex justify-between text-sm mb-0.5">
+                              <span className="uppercase font-medium">
+                                {l.language}
+                              </span>
+                              <span className="text-base-content/60 tabular-nums">
+                                {l.count.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="w-full bg-base-100 rounded-full h-1.5">
+                              <div
+                                className="bg-primary rounded-full h-1.5 transition-all"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
-                {isDownloading ? "Downloading…" : "Download"}
-              </button>
+                {stats.byModel.length > 0 && (
+                  <div className="bg-base-300 rounded-lg p-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-base-content/50 mb-3">
+                      By Model
+                    </h3>
+                    <div className="space-y-2">
+                      {stats.byModel.map((m) => {
+                        const pct = (m.count / stats.total) * 100;
+                        return (
+                          <div key={m.model}>
+                            <div className="flex justify-between text-sm mb-0.5">
+                              <span className="font-mono text-xs font-medium">
+                                {m.model}
+                              </span>
+                              <span className="text-base-content/60 tabular-nums">
+                                {m.count.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="w-full bg-base-100 rounded-full h-1.5">
+                              <div
+                                className="bg-secondary rounded-full h-1.5 transition-all"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-
-          {/* Models table */}
-          {modelsLoading ? (
-            <div className="loading loading-spinner loading-sm" />
-          ) : modelsError ? (
-            <div className="flex items-center gap-2 text-sm text-warning">
-              <span>
-                Could not load models — is the go-whisper URL configured?
-              </span>
-              <button className="btn btn-ghost btn-xs" onClick={refetchModels}>
-                Retry
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="table table-zebra w-full">
-                <thead>
-                  <tr>
-                    <th>Model</th>
-                    <th>Created</th>
-                    <th>Active</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {models.map((m) => {
-                    const isActive = m.id === status?.model;
-                    return (
-                      <tr
-                        key={m.id}
-                        className={isActive ? "bg-primary/10" : ""}
-                      >
-                        <td className="font-mono text-sm flex items-center gap-2">
-                          <Mic className="w-4 h-4 shrink-0 opacity-50" />
-                          {m.id}
-                        </td>
-                        <td className="text-sm">
-                          {new Date(m.created * 1000).toLocaleDateString()}
-                        </td>
-                        <td>
-                          {isActive ? (
-                            <span className="badge badge-success badge-sm gap-1">
-                              <Check className="w-3 h-3" /> Active
-                            </span>
-                          ) : (
-                            <button
-                              className="btn btn-ghost btn-xs"
-                              onClick={() => handleSetActiveModel(m.id)}
-                            >
-                              Set Active
-                            </button>
-                          )}
-                        </td>
-                        <td>
-                          <button
-                            className="btn btn-ghost btn-xs"
-                            onClick={() => handleDelete(m)}
-                            disabled={deletingId === m.id}
-                            aria-label={`Delete model ${m.id}`}
-                          >
-                            {deletingId === m.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {models.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="text-center opacity-60">
-                        No models downloaded
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+          </section>
+        )}
       </div>
 
       {/* Toast */}
