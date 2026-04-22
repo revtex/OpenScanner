@@ -126,14 +126,14 @@ func NewTranscriberPool(ctx context.Context, numWorkers int, baseURL, model, lan
 		p.client.CloseIdleConnections()
 	}()
 
-	slog.Info("transcriber pool started", "workers", numWorkers, "baseURL", p.baseURL, "model", model, "diarize", diarize)
+	slog.Info("transcriber pool started", "workers", numWorkers, "base_url", p.baseURL, "model", model, "diarize", diarize)
 	return p, nil
 }
 
 // Submit enqueues a transcription job. Returns ctx.Err() if the context is
 // cancelled before the job can be queued.
 func (p *TranscriberPool) Submit(ctx context.Context, job TranscriptionJob) error {
-	slog.Debug("transcriber: submitting job", "callID", job.CallID, "audioPath", job.AudioPath)
+	slog.Debug("transcriber: submitting job", "call_id", job.CallID, "audio_path", job.AudioPath)
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -191,7 +191,7 @@ func (p *TranscriberPool) transcribe(ctx context.Context, job TranscriptionJob) 
 		if attempt > 0 {
 			backoff := time.Duration(attempt) * 2 * time.Second
 			slog.Info("transcriber: retrying after transient error",
-				"callID", job.CallID, "attempt", attempt, "backoff", backoff)
+				"call_id", job.CallID, "attempt", attempt, "backoff", backoff)
 			select {
 			case <-ctx.Done():
 				result.Err = ctx.Err()
@@ -206,7 +206,7 @@ func (p *TranscriberPool) transcribe(ctx context.Context, job TranscriptionJob) 
 		if err == nil {
 			result.Result = tr
 			result.DurationMs = time.Since(start).Milliseconds()
-			slog.Debug("transcription completed", "callID", job.CallID, "language", tr.Language, "segments", len(tr.Segments), "durationMs", result.DurationMs)
+			slog.Debug("transcription completed", "call_id", job.CallID, "language", tr.Language, "segments", len(tr.Segments), "duration_ms", result.DurationMs)
 			p.sendResult(ctx, result)
 			return
 		}

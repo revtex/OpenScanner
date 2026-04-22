@@ -2,6 +2,7 @@ package audio
 
 import (
 	"context"
+	"log/slog"
 	"math"
 	"os/exec"
 	"strconv"
@@ -20,11 +21,13 @@ func ProbeDuration(ctx context.Context, filePath string) int64 {
 	)
 	out, err := cmd.Output()
 	if err != nil {
+		slog.Debug("audio: ffprobe duration failed", "path", filePath, "error", err)
 		return 0
 	}
 	s := strings.TrimSpace(string(out))
 	f, err := strconv.ParseFloat(s, 64)
 	if err != nil || f <= 0 {
+		slog.Debug("audio: ffprobe returned non-positive duration", "path", filePath, "output", s)
 		return 0
 	}
 	return int64(math.Round(f))

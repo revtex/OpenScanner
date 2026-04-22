@@ -99,6 +99,8 @@ func CORS() gin.HandlerFunc {
 
 // Logger emits a structured slog line for every request including method, path,
 // status code, latency, request ID, and client IP.
+// Health check probes and CORS preflight requests are logged at Debug only so
+// they don't drown out real traffic in normal operation.
 func Logger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -117,10 +119,17 @@ func Logger() gin.HandlerFunc {
 			slogLevel = slog.LevelInfo
 		}
 
+		// Demote noisy low-signal endpoints to Debug when they succeed.
+		path := c.Request.URL.Path
+		if slogLevel == slog.LevelInfo &&
+			(path == "/api/health" || c.Request.Method == http.MethodOptions) {
+			slogLevel = slog.LevelDebug
+		}
+
 		requestID, _ := c.Get("requestID")
 		slog.Log(c.Request.Context(), slogLevel, "request",
 			"method", c.Request.Method,
-			"path", c.Request.URL.Path,
+			"path", path,
 			"status", status,
 			"latency_ms", latency.Milliseconds(),
 			"request_id", requestID,

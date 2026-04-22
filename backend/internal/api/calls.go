@@ -680,12 +680,10 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		return
 	}
 
-	slog.Info("call ingested", "id", callID)
-
 	slog.Debug("call-upload: db record inserted",
 		"call_id", callID,
-		"system", systemIDRaw,
-		"talkgroup", talkgroupIDRaw,
+		"system_id", systemIDRaw,
+		"talkgroup_id", talkgroupIDRaw,
 		"audio_path", relPath,
 	)
 
@@ -1636,7 +1634,7 @@ func (h *CallHandler) GetCallTranscript(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "transcript not found"})
 			return
 		}
-		slog.Error("failed to get transcript", "callID", id, "error", err)
+		slog.Error("failed to get transcript", "call_id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
@@ -1644,7 +1642,7 @@ func (h *CallHandler) GetCallTranscript(c *gin.Context) {
 	var segments []audio.TranscriptionSegment
 	if trx.Segments.Valid && trx.Segments.String != "" {
 		if err := json.Unmarshal([]byte(trx.Segments.String), &segments); err != nil {
-			slog.Warn("failed to parse transcript segments", "callID", id, "error", err)
+			slog.Warn("failed to parse transcript segments", "call_id", id, "error", err)
 		}
 	}
 	if segments == nil {

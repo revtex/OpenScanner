@@ -61,12 +61,12 @@ func pruneOldCalls(ctx context.Context, queries *db.Queries, recordingsDir strin
 			audioPath := filepath.Join(recordingsDir, row.AudioPath)
 			// Defense-in-depth: ensure resolved path stays within recordingsDir.
 			if !strings.HasPrefix(filepath.Clean(audioPath), cleanBase+string(filepath.Separator)) {
-				slog.Warn("pruner: audio path escapes recordingsDir, skipping file removal", "audio_path", row.AudioPath)
+				slog.Warn("pruner: audio path escapes recordingsDir, skipping file removal", "call_id", row.ID, "audio_path", row.AudioPath)
 			} else if err := os.Remove(audioPath); err != nil && !os.IsNotExist(err) {
-				slog.Warn("failed to remove audio file during prune", "error", err)
+				slog.Warn("failed to remove audio file during prune", "call_id", row.ID, "audio_path", row.AudioPath, "error", err)
 			}
 			if err := queries.DeleteCallBatch(ctx, row.ID); err != nil {
-				slog.Error("failed to delete call during prune", "id", row.ID, "error", err)
+				slog.Error("failed to delete call during prune", "call_id", row.ID, "error", err)
 			}
 			runtime.Gosched()
 		}

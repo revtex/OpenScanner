@@ -898,6 +898,14 @@ func (p *program) run() {
 		"ssl_enabled", sslEnabled,
 		"db", cfg.DBFile,
 		"recordings_dir", cfg.RecordingsDir,
+		"log_level", logging.GetLevel(),
+		"timezone", cfg.Timezone,
+		"encryption_key_loaded", cfg.EncryptionKey != "",
+		"ffmpeg_available", hasFFmpeg,
+		"fdk_aac_available", hasFDKAAC,
+		"whisper_available", hasWhisper,
+		"public_access", publicAccess == "true",
+		"auto_populate_systems", autoPopulateSystems == "true",
 	)
 
 	// Block until signal or server error.
@@ -1009,7 +1017,7 @@ func consumeTranscriptionResults(ctx context.Context, queries *db.Queries, hub *
 				return
 			}
 			if res.Err != nil {
-				slog.Error("transcription failed", "callID", res.CallID, "error", res.Err)
+				slog.Error("transcription failed", "call_id", res.CallID, "error", res.Err)
 				continue
 			}
 
@@ -1018,7 +1026,7 @@ func consumeTranscriptionResults(ctx context.Context, queries *db.Queries, hub *
 			if len(res.Result.Segments) > 0 {
 				raw, err := json.Marshal(res.Result.Segments)
 				if err != nil {
-					slog.Error("transcription: failed to marshal segments", "callID", res.CallID, "error", err)
+					slog.Error("transcription: failed to marshal segments", "call_id", res.CallID, "error", err)
 					continue
 				}
 				segmentsJSON = sql.NullString{String: string(raw), Valid: true}
@@ -1034,11 +1042,11 @@ func consumeTranscriptionResults(ctx context.Context, queries *db.Queries, hub *
 				CreatedAt:  time.Now().Unix(),
 			})
 			if err != nil {
-				slog.Error("transcription: failed to store", "callID", res.CallID, "error", err)
+				slog.Error("transcription: failed to store", "call_id", res.CallID, "error", err)
 				continue
 			}
 
-			slog.Info("transcription stored", "callID", res.CallID, "language", res.Result.Language, "segments", len(res.Result.Segments))
+			slog.Info("transcription stored", "call_id", res.CallID, "language", res.Result.Language, "segments", len(res.Result.Segments))
 
 			// Broadcast TRN to all connected clients.
 			hub.BroadcastTRN(res.CallID, res.Result.Text, res.Result.Segments)

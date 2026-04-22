@@ -181,7 +181,7 @@ func (h *Hub) BroadcastTRN(callID int64, text string, segments any) {
 	}
 	msg, err := NewTRNMessage(callID, text, segments)
 	if err != nil {
-		slog.Error("ws: failed to build TRN message", "callID", callID, "error", err)
+		slog.Error("ws: failed to build TRN message", "call_id", callID, "error", err)
 		return
 	}
 	h.Broadcast(msg, nil)

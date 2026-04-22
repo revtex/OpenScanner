@@ -183,7 +183,7 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 	}
 
 	h.logAuthEvent(c.Request.Context(), "info", "login success: "+user.Username, ip)
-	slog.Info("user logged in", "userId", user.ID, "username", user.Username, "ip", ip)
+	slog.Info("user logged in", "user_id", user.ID, "username", user.Username, "ip", ip)
 
 	c.JSON(http.StatusOK, loginResponse{
 		Token: token,
@@ -516,7 +516,7 @@ func (h *AuthHandler) GetTGSelection(c *gin.Context) {
 			// Backward compatibility: legacy format was a bare number[]
 			var legacyDisabled []int64
 			if legacyErr := json.Unmarshal(raw, &legacyDisabled); legacyErr != nil {
-				slog.Warn("malformed tg_selection_json", "userId", userID, "error", err)
+				slog.Warn("malformed tg_selection_json", "user_id", userID, "error", err)
 				// Return empty lists rather than failing
 			} else {
 				resp.DisabledTGs = legacyDisabled

@@ -109,7 +109,6 @@ func (e userError) Error() string { return string(e) }
 // the given system and talkgroup. If grants is nil/empty, everything is allowed.
 func (c *Client) CanReceive(systemID, talkgroupID int64) bool {
 	if len(c.grants) == 0 {
-		slog.Debug("ws: grant check (no grants, allow all)", "system", systemID, "talkgroup", talkgroupID)
 		return true
 	}
 	for _, g := range c.grants {
@@ -118,17 +117,14 @@ func (c *Client) CanReceive(systemID, talkgroupID int64) bool {
 		}
 		// No TG filter → all TGs in this system.
 		if len(g.Talkgroups) == 0 {
-			slog.Debug("ws: grant check allowed (system match, no tg filter)", "system", systemID, "talkgroup", talkgroupID)
 			return true
 		}
 		for _, tg := range g.Talkgroups {
 			if tg == talkgroupID {
-				slog.Debug("ws: grant check allowed", "system", systemID, "talkgroup", talkgroupID)
 				return true
 			}
 		}
 	}
-	slog.Debug("ws: grant check denied", "system", systemID, "talkgroup", talkgroupID)
 	return false
 }
 
