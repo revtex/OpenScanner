@@ -1,6 +1,3 @@
--- name: GetBookmark :one
-SELECT * FROM bookmarks WHERE id = ? LIMIT 1;
-
 -- name: ListBookmarksByUser :many
 SELECT * FROM bookmarks WHERE user_id = ? ORDER BY created_at DESC;
 
@@ -8,9 +5,6 @@ SELECT * FROM bookmarks WHERE user_id = ? ORDER BY created_at DESC;
 INSERT INTO bookmarks (call_id, user_id, session_id, created_at)
 VALUES (:call_id, :user_id, :session_id, :created_at)
 RETURNING id;
-
--- name: DeleteBookmark :exec
-DELETE FROM bookmarks WHERE id = ?;
 
 -- name: DeleteBookmarkByCallAndUser :exec
 DELETE FROM bookmarks WHERE call_id = ? AND user_id = ?;

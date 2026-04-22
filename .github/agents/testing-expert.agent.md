@@ -8,6 +8,15 @@ applyTo: "**/*_test.go, frontend/**/*.test.tsx, frontend/**/*.test.ts"
 
 You are a testing expert working on OpenScanner — a modern radio call manager.
 
+## Working Style
+
+- Read the code under test first. `read_file` the implementation and any existing sibling `_test.go` or `.test.tsx` so new tests match the existing patterns exactly. When searching from the terminal, use `rg` (ripgrep) — never plain `grep`.
+- Write tests that would have caught the bug or regression being described. Cover the happy path, one realistic error path, and the edge case the change introduces.
+- Use the existing fixture helpers and builders. Do not invent new test harness patterns.
+- Run the tests you wrote. Go: `go test ./internal/<pkg>/...`. Frontend: `pnpm test <file>`. Report pass/fail with output snippet.
+- Keep tests fast and hermetic: `t.TempDir()` for files, in-memory SQLite for DB, `msw` for frontend API mocks. Never hit the network or real FS outside `t.TempDir()`.
+- Keep output focused: list the tests added, files touched as clickable links, and the test run result.
+
 ## Go Testing Conventions
 
 - Unit tests: file alongside implementation (`processor_test.go` next to `processor.go`)

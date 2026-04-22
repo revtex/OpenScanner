@@ -12,7 +12,6 @@ const (
 	CmdCAL = "CAL" // Server → client: new call data
 	CmdCFG = "CFG" // Server → client: full config broadcast
 	CmdXPR = "XPR" // Server → client: session expired
-	CmdLCL = "LCL" // Server → client: paginated call list
 	CmdLSC = "LSC" // Server → client: active listeners count
 	CmdLFM = "LFM" // Bidirectional: live feed map update
 	CmdMAX = "MAX" // Server → client: max clients reached
@@ -67,14 +66,6 @@ func NewMAXMessage() ([]byte, error) {
 // NewLFMMessage builds an LFM (live feed map) message.
 func NewLFMMessage(feedMap map[string]any) ([]byte, error) {
 	return json.Marshal([]any{CmdLFM, feedMap})
-}
-
-// NewLCLMessage builds an LCL (call list) message.
-func NewLCLMessage(calls any, total int64) ([]byte, error) {
-	return json.Marshal([]any{CmdLCL, map[string]any{
-		"calls": calls,
-		"total": total,
-	}})
 }
 
 // NewTRNMessage builds a TRN (transcript ready) message.

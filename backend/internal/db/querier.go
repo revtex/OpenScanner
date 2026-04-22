@@ -31,7 +31,6 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (int64, error)
 	CreateWebhook(ctx context.Context, arg CreateWebhookParams) (int64, error)
 	DeleteAPIKey(ctx context.Context, id int64) error
-	DeleteBookmark(ctx context.Context, id int64) error
 	DeleteBookmarkByCallAndUser(ctx context.Context, arg DeleteBookmarkByCallAndUserParams) error
 	DeleteCallBatch(ctx context.Context, id int64) error
 	DeleteDirMonitor(ctx context.Context, id int64) error
@@ -51,7 +50,6 @@ type Querier interface {
 	// Returns aggregate stats: today's calls, this week's calls, total calls.
 	GetActivityStats(ctx context.Context, arg GetActivityStatsParams) (GetActivityStatsRow, error)
 	GetAppState(ctx context.Context) (AppState, error)
-	GetBookmark(ctx context.Context, id int64) (Bookmark, error)
 	GetBookmarkByCallAndUser(ctx context.Context, arg GetBookmarkByCallAndUserParams) (Bookmark, error)
 	GetCall(ctx context.Context, id int64) (GetCallRow, error)
 	GetCallIDsOlderThan(ctx context.Context, dateTime int64) ([]GetCallIDsOlderThanRow, error)

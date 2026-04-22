@@ -35,15 +35,6 @@ func (q *Queries) CreateBookmark(ctx context.Context, arg CreateBookmarkParams) 
 	return id, err
 }
 
-const deleteBookmark = `-- name: DeleteBookmark :exec
-DELETE FROM bookmarks WHERE id = ?
-`
-
-func (q *Queries) DeleteBookmark(ctx context.Context, id int64) error {
-	_, err := q.db.ExecContext(ctx, deleteBookmark, id)
-	return err
-}
-
 const deleteBookmarkByCallAndUser = `-- name: DeleteBookmarkByCallAndUser :exec
 DELETE FROM bookmarks WHERE call_id = ? AND user_id = ?
 `
@@ -56,23 +47,6 @@ type DeleteBookmarkByCallAndUserParams struct {
 func (q *Queries) DeleteBookmarkByCallAndUser(ctx context.Context, arg DeleteBookmarkByCallAndUserParams) error {
 	_, err := q.db.ExecContext(ctx, deleteBookmarkByCallAndUser, arg.CallID, arg.UserID)
 	return err
-}
-
-const getBookmark = `-- name: GetBookmark :one
-SELECT id, call_id, user_id, session_id, created_at FROM bookmarks WHERE id = ? LIMIT 1
-`
-
-func (q *Queries) GetBookmark(ctx context.Context, id int64) (Bookmark, error) {
-	row := q.db.QueryRowContext(ctx, getBookmark, id)
-	var i Bookmark
-	err := row.Scan(
-		&i.ID,
-		&i.CallID,
-		&i.UserID,
-		&i.SessionID,
-		&i.CreatedAt,
-	)
-	return i, err
 }
 
 const getBookmarkByCallAndUser = `-- name: GetBookmarkByCallAndUser :one
