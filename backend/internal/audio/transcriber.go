@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -65,6 +66,7 @@ type TranscriberPool struct {
 	model    string
 	language string
 	diarize  bool
+	wg       sync.WaitGroup // tracks worker goroutines so results can be closed safely
 }
 
 // maxResponseSize caps go-whisper response bodies at 10 MB.
@@ -97,8 +99,10 @@ func NewTranscriberPool(ctx context.Context, numWorkers int, baseURL, model, lan
 		diarize:  diarize,
 	}
 
+	p.wg.Add(numWorkers)
 	for i := 0; i < numWorkers; i++ {
 		go func() {
+			defer p.wg.Done()
 			for {
 				select {
 				case <-ctx.Done():
@@ -112,6 +116,15 @@ func NewTranscriberPool(ctx context.Context, numWorkers int, baseURL, model, lan
 			}
 		}()
 	}
+
+	// Once all workers have exited (pool context cancelled), close the results
+	// channel so pumpResults consumers can unblock, and reap idle HTTP keep-alive
+	// connections so the Transport's persistConn goroutines exit promptly.
+	go func() {
+		p.wg.Wait()
+		close(p.results)
+		p.client.CloseIdleConnections()
+	}()
 
 	slog.Info("transcriber pool started", "workers", numWorkers, "baseURL", p.baseURL, "model", model, "diarize", diarize)
 	return p, nil

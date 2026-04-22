@@ -99,54 +99,67 @@ func TestTranscriberManager_Reload_Disable(t *testing.T) {
 	}
 }
 
-// TestTranscriberManager_Reload_GoroutineLeak documents a known leak:
-// each successful Reload spawns a pumpResults goroutine that ranges over
-// pool.Results(). When the pool context is cancelled, the worker goroutines
-// exit but the results channel is never closed, so pumpResults blocks
-// forever on the range. Cancelling the appCtx eventually unblocks the select,
-// but only if there's a pending send — an idle pumpResults goroutine leaks
-// until the whole process shuts down.
-//
-// This test verifies the leak is bounded at shutdown: when the appCtx is
-// cancelled, we wait for goroutine count to settle near baseline. Currently
-// it does not (documented gap — not a test failure).
+// TestTranscriberManager_Reload_NoGoroutineLeak verifies that repeated
+// enable/disable cycles do not leak pumpResults goroutines. The pool closes
+// its results channel once all workers exit and reaps idle HTTP keep-alive
+// connections, so pumpResults and the Transport's persistConn goroutines
+// unwind cleanly when Reload cancels the pool context.
 func TestTranscriberManager_Reload_NoGoroutineLeak(t *testing.T) {
-	t.Skip("pumpResults goroutines leak on Reload because pool.results is never closed; see report")
-
 	srv := newFakeWhisper(t, http.StatusOK)
 
 	baseCtx, baseCancel := context.WithCancel(context.Background())
 	t.Cleanup(baseCancel)
 	m := audio.NewTranscriberManager(baseCtx, nil, nil)
 
+	// Warm up: one cycle so any first-run initialisation (DNS, TLS setup,
+	// httptest accept loops) is accounted for in the baseline.
+	if ok := m.Reload(true, srv.URL, "ggml-base", "", false); !ok {
+		t.Fatal("warm-up Reload(true) returned false")
+	}
+	if ok := m.Reload(false, "", "", "", false); !ok {
+		t.Fatal("warm-up Reload(false) returned false")
+	}
+	waitForGoroutinesToSettle(2 * time.Second)
 	base := runtime.NumGoroutine()
 
 	for i := 0; i < 5; i++ {
 		if ok := m.Reload(true, srv.URL, "ggml-base", "", false); !ok {
-			t.Fatalf("Reload #%d returned false", i)
+			t.Fatalf("Reload(true) #%d returned false", i)
 		}
 		if ok := m.Reload(false, "", "", "", false); !ok {
 			t.Fatalf("Reload(false) #%d returned false", i)
 		}
 	}
 
-	// Bounded poll for goroutine count to settle — no sleep.
-	deadline, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	waitForGoroutinesToSettle(2 * time.Second)
+	if final := runtime.NumGoroutine(); final > base+3 {
+		t.Fatalf("goroutine leak: baseline=%d final=%d (tolerance=3)", base, final)
+	}
+}
+
+// waitForGoroutinesToSettle yields to the scheduler and forces GC in a
+// bounded loop to give cancelled goroutines time to exit, without sleeping.
+func waitForGoroutinesToSettle(timeout time.Duration) {
+	deadline, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+	prev := -1
+	stable := 0
 	for {
-		select {
-		case <-deadline.Done():
-			final := runtime.NumGoroutine()
-			if final > base+5 {
-				t.Fatalf("goroutine leak: baseline=%d final=%d", base, final)
-			}
-			return
-		default:
-			runtime.GC()
-			if runtime.NumGoroutine() <= base+5 {
+		runtime.GC()
+		n := runtime.NumGoroutine()
+		if n == prev {
+			stable++
+			if stable >= 3 {
 				return
 			}
-			// Yield without sleeping.
+		} else {
+			stable = 0
+			prev = n
+		}
+		select {
+		case <-deadline.Done():
+			return
+		default:
 			runtime.Gosched()
 		}
 	}
