@@ -1,6 +1,10 @@
 package auth_test
 
 import (
+	"bytes"
+	"context"
+	"encoding/base64"
+	"strings"
 	"testing"
 	"time"
 
@@ -213,5 +217,184 @@ func TestGenerateToken_ReturnsJTI(t *testing.T) {
 	}
 	if len(jti) < 36 {
 		t.Errorf("JTI should be a UUID (len >= 36), got len=%d", len(jti))
+	}
+}
+
+// ── InitJWTSecret resolution order ────────────────────────────────────────────
+
+// fakeSecretLoader records calls to Get/Upsert so tests can assert on them.
+type fakeSecretLoader struct {
+	stored       string
+	storedErr    error
+	getCalled    bool
+	upsertCalls  []struct{ key, val string }
+	upsertErr    error
+}
+
+func (f *fakeSecretLoader) Get(_ context.Context, _ string) (string, error) {
+	f.getCalled = true
+	if f.storedErr != nil {
+		return "", f.storedErr
+	}
+	return f.stored, nil
+}
+
+func (f *fakeSecretLoader) Upsert(_ context.Context, key, value string) error {
+	f.upsertCalls = append(f.upsertCalls, struct{ key, val string }{key, value})
+	f.stored = value
+	if f.upsertErr != nil {
+		return f.upsertErr
+	}
+	return nil
+}
+
+func TestInitJWTSecret_EnvVar(t *testing.T) {
+	t.Setenv("OPENSCANNER_JWT_SECRET", "test-env-secret")
+	loader := &fakeSecretLoader{}
+
+	if err := auth.InitJWTSecret(context.Background(), loader, ""); err != nil {
+		t.Fatalf("InitJWTSecret: %v", err)
+	}
+
+	if got, want := string(auth.JWTSecret()), "test-env-secret"; got != want {
+		t.Errorf("JWTSecret() = %q, want %q", got, want)
+	}
+	if loader.getCalled {
+		t.Error("loader.Get should NOT be called when env var is set")
+	}
+	if len(loader.upsertCalls) != 0 {
+		t.Errorf("loader.Upsert should NOT be called when env var is set; got %d calls", len(loader.upsertCalls))
+	}
+}
+
+func TestInitJWTSecret_StoredEncrypted(t *testing.T) {
+	t.Setenv("OPENSCANNER_JWT_SECRET", "")
+	encKey := "test-encryption-key-do-not-use-in-prod"
+	// Build a stored value: 32 random bytes → base64 → encrypt with encKey.
+	raw := make([]byte, 32)
+	for i := range raw {
+		raw[i] = byte(i + 1)
+	}
+	encoded := base64.StdEncoding.EncodeToString(raw)
+	encrypted, err := auth.EncryptString(encoded, encKey)
+	if err != nil {
+		t.Fatalf("seed EncryptString: %v", err)
+	}
+	loader := &fakeSecretLoader{stored: encrypted}
+
+	if err := auth.InitJWTSecret(context.Background(), loader, encKey); err != nil {
+		t.Fatalf("InitJWTSecret: %v", err)
+	}
+
+	got := auth.JWTSecret()
+	if !bytes.Equal(got, raw) {
+		t.Errorf("JWTSecret() = %x, want %x", got, raw)
+	}
+	if len(loader.upsertCalls) != 0 {
+		t.Errorf("loader.Upsert should NOT be called when stored secret is valid; got %d calls", len(loader.upsertCalls))
+	}
+}
+
+func TestInitJWTSecret_StoredEncryptedWrongKey(t *testing.T) {
+	t.Setenv("OPENSCANNER_JWT_SECRET", "")
+	realKey := "real-key-12345"
+	wrongKey := "wrong-key-67890"
+	encrypted, err := auth.EncryptString("dGVzdA==", realKey) // "test" base64
+	if err != nil {
+		t.Fatalf("seed EncryptString: %v", err)
+	}
+	loader := &fakeSecretLoader{stored: encrypted}
+
+	err = auth.InitJWTSecret(context.Background(), loader, wrongKey)
+	if err == nil {
+		t.Fatal("InitJWTSecret should return an error for wrong encryption key")
+	}
+	if !strings.Contains(err.Error(), "decode") && !strings.Contains(err.Error(), "decrypt") {
+		t.Errorf("error should mention decode/decrypt failure, got: %v", err)
+	}
+}
+
+func TestInitJWTSecret_GenerateAndPersist(t *testing.T) {
+	t.Setenv("OPENSCANNER_JWT_SECRET", "")
+	encKey := "test-enc-key"
+	loader := &fakeSecretLoader{} // empty store
+
+	if err := auth.InitJWTSecret(context.Background(), loader, encKey); err != nil {
+		t.Fatalf("InitJWTSecret: %v", err)
+	}
+
+	if len(loader.upsertCalls) != 1 {
+		t.Fatalf("loader.Upsert call count = %d, want 1", len(loader.upsertCalls))
+	}
+	call := loader.upsertCalls[0]
+	if call.key != auth.JWTSecretKeyName {
+		t.Errorf("Upsert key = %q, want %q", call.key, auth.JWTSecretKeyName)
+	}
+	if !auth.IsEncrypted(call.val) {
+		t.Errorf("persisted value should have enc:: prefix, got %q", call.val)
+	}
+	// Round-trip: decrypt the stored value and confirm it decodes to the secret.
+	plain, err := auth.DecryptString(call.val, encKey)
+	if err != nil {
+		t.Fatalf("decrypt persisted value: %v", err)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(plain)
+	if err != nil {
+		t.Fatalf("base64 decode: %v", err)
+	}
+	if len(decoded) != 32 {
+		t.Errorf("generated secret length = %d, want 32", len(decoded))
+	}
+	if !bytes.Equal(auth.JWTSecret(), decoded) {
+		t.Error("JWTSecret() should match decrypted+decoded persisted value")
+	}
+}
+
+func TestInitJWTSecret_GeneratePlaintextWhenNoKey(t *testing.T) {
+	t.Setenv("OPENSCANNER_JWT_SECRET", "")
+	loader := &fakeSecretLoader{}
+
+	if err := auth.InitJWTSecret(context.Background(), loader, ""); err != nil {
+		t.Fatalf("InitJWTSecret: %v", err)
+	}
+
+	if len(loader.upsertCalls) != 1 {
+		t.Fatalf("Upsert call count = %d, want 1", len(loader.upsertCalls))
+	}
+	call := loader.upsertCalls[0]
+	if auth.IsEncrypted(call.val) {
+		t.Errorf("persisted value should NOT have enc:: prefix when no encryption key; got %q", call.val)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(call.val)
+	if err != nil {
+		t.Fatalf("persisted value is not valid base64: %v", err)
+	}
+	if len(decoded) != 32 {
+		t.Errorf("decoded secret length = %d, want 32", len(decoded))
+	}
+	if !bytes.Equal(auth.JWTSecret(), decoded) {
+		t.Error("JWTSecret() should match decoded persisted value")
+	}
+}
+
+func TestInitJWTSecret_PrecedenceEnvOverStored(t *testing.T) {
+	t.Setenv("OPENSCANNER_JWT_SECRET", "env-wins-value")
+	encKey := "some-key"
+	// Seed a valid stored value that *would* be used if env was empty.
+	encrypted, err := auth.EncryptString(base64.StdEncoding.EncodeToString(make([]byte, 32)), encKey)
+	if err != nil {
+		t.Fatalf("seed EncryptString: %v", err)
+	}
+	loader := &fakeSecretLoader{stored: encrypted}
+
+	if err := auth.InitJWTSecret(context.Background(), loader, encKey); err != nil {
+		t.Fatalf("InitJWTSecret: %v", err)
+	}
+
+	if got, want := string(auth.JWTSecret()), "env-wins-value"; got != want {
+		t.Errorf("JWTSecret() = %q, want %q", got, want)
+	}
+	if loader.getCalled {
+		t.Error("loader.Get should NOT be called when env var is set (env takes precedence)")
 	}
 }
