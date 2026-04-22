@@ -65,3 +65,4 @@ openscanner/
 - Documentation tasks → use **Docs Expert** agent
 - Code review/security → use **Reviewer** agent
 - Test writing → use **Testing Expert** agent
+- Dead code removal/cleanup → use **Cleanup Expert** agent

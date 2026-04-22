@@ -28,6 +28,10 @@ You are a security and code quality expert reviewing OpenScanner — a Go + Reac
 - [ ] JWT signing uses HS256 with a secret of ≥ 32 random bytes
 - [ ] JWT tokens have a finite expiry (`exp` claim set)
 - [ ] No sensitive data (tokens, passwords, API keys) in logs or error responses
+- [ ] Secrets at rest: downstream API keys and VAPID private key encrypted with AES-256-GCM (`enc::` prefix) when encryption key is configured
+- [ ] Encryption key derivation uses HKDF-SHA256 with fixed salt and info string — no weak KDF
+- [ ] Startup migration auto-encrypts plaintext secrets or fails fast on missing/wrong key
+- [ ] Config import validates encrypted values can be decrypted before applying
 
 ### A03 — Injection
 
@@ -45,7 +49,10 @@ You are a security and code quality expert reviewing OpenScanner — a Go + Reac
 
 - [ ] Login rate limiter: 3 failures → 10-minute lockout per IP
 - [ ] Max 5 concurrent JWT tokens enforced (oldest invalidated on 6th login)
-- [ ] JWT tokens are invalidated on logout (server-side token list)
+- [ ] JWT tokens are invalidated on logout (server-side token list)- [ ] Refresh tokens stored as SHA-256 hashes — never in plaintext
+- [ ] Refresh token family rotation: reuse of an old token revokes the entire family
+- [ ] Refresh cookie flags: httpOnly, Secure (in production), SameSite=Lax
+- [ ] Refresh tokens have a finite expiry (30 days) with hourly cleanup
 
 ### A09 — Security Logging & Monitoring
 
@@ -60,7 +67,7 @@ You are a security and code quality expert reviewing OpenScanner — a Go + Reac
 - [ ] WS hub broadcast is non-blocking (select with default)
 - [ ] Error values are handled, not silently discarded
 - [ ] No global mutable state outside of explicitly locked structures
-- [ ] React: no secrets stored in `localStorage` (JWT tokens for admin are sessionStorage or memory only)
+- [ ] React: no secrets stored in `localStorage` (JWT tokens are in memory only — Redux state; session persistence uses httpOnly refresh cookies)
 - [ ] React: no dangerouslySetInnerHTML usage
 
 ## Performance Checklist

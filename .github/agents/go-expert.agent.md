@@ -22,7 +22,7 @@ You are an expert Go backend developer working on OpenScanner — a modern radio
 - log/slog for structured logging (no log.Println — use slog.Info/Warn/Error with key-value pairs)
 - go:embed for embedding frontend dist/ into the binary
 - FFmpeg invoked as an external subprocess for audio conversion (bounded worker pool)
-- Whisper (local binary) for speech-to-text transcription (bounded worker pool, GPU-aware)
+- go-whisper HTTP API sidecar for speech-to-text transcription (whisper.cpp, CPU or GPU); supports diarization via tinydiarize model
 - github.com/SherClockHolmes/webpush-go for Web Push notifications
 
 ## Conventions
@@ -54,10 +54,13 @@ backend/
   internal/audio/            ← FFmpeg pipeline + duplicate detection + worker pool + Whisper transcriber
   internal/dirmonitor/         ← fsnotify watcher + per-recorder parsers
   internal/downstream/       ← call push to remote instances
-  internal/auth/             ← JWT + bcrypt + rate limiter + TokenTracker (max-5-token per user)
-  internal/notify/           ← Web Push notification delivery
+  internal/auth/             ← JWT + bcrypt + rate limiter + TokenTracker (max-5-token per user) + refresh tokens (family rotation, httpOnly cookies) + AES-256-GCM encryption-at-rest (crypto.go)
+  internal/notify/           ← Web Push notification delivery (stub — not yet wired)
   internal/seed/             ← first-run DB seed (settings, groups, tags)
-  internal/config/           ← server startup config (flags, env vars, INI)
+  internal/logging/          ← slog handler configuration
+  internal/cli/              ← CLI flag parsing and help
+  internal/config/           ← server startup config (flags, env vars, INI, encryption key)
+  internal/static/           ← embedded frontend assets (go:embed)
   internal/middleware/       ← Gin middleware (JWTAuth, APIKeyAuth, RateLimit, RequestID)
   migrations/                ← numbered .sql files
   sqlc/queries/              ← .sql query files
@@ -72,7 +75,7 @@ backend/
 - Duplicate detection: query last call per talkgroup within `duplicateDetectionTimeFrame` ms setting
 - Call pruning: background goroutine on 1-hour ticker deletes calls older than `pruneDays` in batches of 500; skips calls with bookmarks
 - Audio conversion: 4 modes (0=disabled, 1=enabled, 2=enabled+norm, 3=enabled+loudnorm); mode 3: `ffmpeg -i <input> -c:a aac -b:a 32k -af loudnorm <output.m4a>`; jobs run through bounded worker pool (`runtime.NumCPU()` workers)
-- Transcription: after audio conversion, queue call for Whisper transcription if `transcriptionEnabled` is true; worker pool (default 1 for GPU); invoke binary with arg slice (never shell string); broadcast `TRN` event on completion
+- Transcription: after audio conversion, queue call for go-whisper HTTP transcription if `transcriptionEnabled` is true; worker pool (default 1 for GPU); broadcast `TRN` event on completion
 - Downstream pusher: fan-out pattern — one goroutine per active downstream with buffered channel (1000 events); grant filtering via `systems_json`; multipart POST to remote `/api/call-upload` with `X-API-Key` header; exponential backoff retry (1s→30s cap, max 5, jitter); HTTP client disables redirects (SSRF); audio path traversal check; Reload triggered by admin CRUD; graceful Stop on shutdown
 - Webhook delivery: after call ingest, match webhooks by TG filter, deliver via goroutine pool; generic (JSON + HMAC-SHA256) or Discord (embed); retry 3× with backoff (stub — not yet implemented)
 - Push notifications: on call ingest, match `push_subscriptions` by TG filter; deliver via webpush-go; auto-delete expired subscriptions (stub — not yet implemented)
@@ -85,3 +88,5 @@ backend/
 - Graceful shutdown: `context.WithCancel` root context; `srv.Shutdown(ctx)` drains HTTP; hub drains WS connections
 - Per-API-key rate limiting on call upload (default 60/min)
 - All WS broadcast must be non-blocking (use `select` with default drop)
+- Refresh tokens: 30-day expiry, family-based rotation (reuse detection revokes entire family), stored as SHA-256 hashed values, delivered in httpOnly/Secure/SameSite=Lax cookies, hourly cleanup goroutine purges expired tokens
+- Secrets encryption at rest: AES-256-GCM with HKDF-SHA256 key derivation from passphrase; encrypted values prefixed with `enc::`; covers downstream API keys and VAPID private key; startup migration auto-encrypts plaintext or fails-fast on missing/wrong key; config import validates encrypted values can be decrypted before applying

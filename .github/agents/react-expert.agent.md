@@ -12,8 +12,8 @@ You are an expert React/TypeScript frontend developer working on OpenScanner —
 
 - React 18 with TypeScript strict mode
 - Vite as the build tool
-- DaisyUI components (Tailwind CSS component library)
-- Tailwind CSS for styling (dark/light theme toggle via DaisyUI dual themes)
+- DaisyUI 5 components (Tailwind CSS 4 component library)
+- Tailwind CSS 4 via @tailwindcss/vite for styling (dark/light theme toggle via DaisyUI dual themes)
 - Redux Toolkit for global state
 - RTK Query for all server data fetching and mutations
 - React Router v6 for client-side routing
@@ -47,7 +47,7 @@ Full visual specification with ASCII wireframes, color palette, component mappin
 - DaisyUI components are used via Tailwind CSS classes — no generated component files
 - Custom components live in `src/components/scanner/` and `src/components/admin/`
 - RTK Query slices extend the base API in `src/app/api.ts`
-- Redux state slices are in `src/app/slices/`
+- Redux state slices are in `src/app/slices/` (authSlice, scannerSlice, activitySlice, shareSlice, adminSlice, callsSlice)
 - Custom hooks are in `src/hooks/`
 - Shared TypeScript types are in `src/types/index.ts`
 - Never expose JWT token in console logs or error messages
@@ -56,8 +56,9 @@ Full visual specification with ASCII wireframes, color palette, component mappin
 ## Key Behaviours
 
 - On app load: call `GET /api/setup/status`; if `needsSetup=true` redirect to `/setup`; `publicAccess` flag determines auth behavior
-- Login: `POST /api/auth/login` with username + password; JWT stored in memory; role determines route access
+- Login: `POST /api/auth/login` with username + password; JWT stored in memory (Redux state only); httpOnly refresh cookie enables session persistence; role determines route access
 - RBAC: admin role → full dashboard access; listener role → scanner UI only; non-admin users are rejected from admin routes
+- Refresh tokens: `useAuthInit.ts` bootstraps session on page load via `POST /api/auth/refresh`; `useTokenRefresh.ts` schedules proactive token refresh before JWT expiry; refresh cookie is httpOnly/Secure/SameSite=Lax
 - Public access mode: when `publicAccess=true`, scanner opens directly — no login or access code needed; admin routes still require auth
 - WebSocket events dispatch to Redux; CAL event updates scanner display and call history; binary frames carry audio data
 - Listeners authenticate WS via JWT token (listener user) or PIN command (anonymous access code); public-access mode skips auth entirely

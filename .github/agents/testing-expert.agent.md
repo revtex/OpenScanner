@@ -48,6 +48,11 @@ You are a testing expert working on OpenScanner — a modern radio call manager.
 | Downstream retry with backoff + context cancellation   | `downstream/pusher_test.go` |
 | Downstream Notify fan-out + channel full drop          | `downstream/pusher_test.go` |
 | Downstream service lifecycle (Start/Stop/Reload)       | `downstream/pusher_test.go` |
+| Refresh token rotation — reuse revokes family          | `auth/auth_test.go`         |
+| Refresh token expiry and cleanup                       | `auth/auth_test.go`         |
+| AES-256-GCM encrypt/decrypt round-trip                 | `auth/crypto_test.go`       |
+| Decrypt with wrong key fails                           | `auth/crypto_test.go`       |
+| Config import rejects encrypted values with wrong key  | `ws/admin_ops_test.go`      |
 
 ### Frontend (Vitest)
 

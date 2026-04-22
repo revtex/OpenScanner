@@ -18,13 +18,25 @@ You are an expert technical writer working on OpenScanner documentation.
 
 ## Doc Files
 
-| File                           | Purpose                                           |
-| ------------------------------ | ------------------------------------------------- |
-| `docs/architecture.md`         | System diagram, component descriptions, data flow |
-| `docs/api.md`                  | Full OpenAPI 3.1 endpoint reference               |
-| `docs/admin-guide.md`          | UI walkthrough for the admin dashboard            |
-| `docs/deployment-guide.md`     | Bare metal, Docker, reverse proxy, Let's Encrypt  |
-| `docs/recorder-integration.md` | Per-recorder setup instructions                   |
+| File                       | Purpose                                                              |
+| -------------------------- | -------------------------------------------------------------------- |
+| `docs/admin-guide.md`      | UI walkthrough for the admin dashboard                               |
+| `docs/deployment-guide.md` | Bare metal, Docker, reverse proxy, Let's Encrypt, secrets encryption |
+| `docs/recorder-guide.md`   | Per-recorder setup instructions                                      |
+| `docs/plans/`              | Design plans and specs (architecture, API, etc.)                     |
+
+### Plans Directory (`docs/plans/`)
+
+| File                                    | Purpose                                           |
+| --------------------------------------- | ------------------------------------------------- |
+| `docs/plans/plan.md`                    | Master project plan and UI design spec            |
+| `docs/plans/architecture.md`            | System diagram, component descriptions, data flow |
+| `docs/plans/api.md`                     | Full API endpoint reference                       |
+| `docs/plans/recorder-integration.md`    | Recorder integration design                       |
+| `docs/plans/transcription.md`           | Transcription feature design (go-whisper)         |
+| `docs/plans/refresh-token-auth-plan.md` | Refresh token auth flow design                    |
+| `docs/plans/security-hardening-plan.md` | Security hardening roadmap                        |
+| Other plan files                        | Feature-specific implementation plans             |
 
 ## Key Diagrams to Maintain
 
