@@ -427,6 +427,14 @@ secrets:
     file: ./encryption_key.txt
 ```
 
+> **File permissions:** Set the key file to `0600` (owner read/write) or `0400` (owner read-only) on the host:
+>
+> ```bash
+> chmod 600 ./encryption_key.txt
+> ```
+>
+> Docker Swarm mounts secrets as `0444` inside the container. With Compose `file:` secrets, the container inherits the host file's permissions. OpenScanner only needs read access.
+
 ### Without Encryption
 
 If no key is configured, secrets are stored in plaintext and a warning is logged at startup. Everything works normally — encryption is optional.

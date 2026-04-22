@@ -4,14 +4,35 @@ services:
     # build: .  # uncomment to build locally instead
     ports:
       - "3022:3022"
+      # - "3443:3443"  # HTTPS — uncomment with SSL_LISTEN below
     volumes:
       - ./data:/data
     environment:
+      ## Core
       - OPENSCANNER_DB_FILE=/data/openscanner.db
       - OPENSCANNER_RECORDINGS_DIR=/data/recordings
       - OPENSCANNER_LISTEN=0.0.0.0:3022
-      # Set timezone for recorder timestamp interpretation (IANA format).
       - TZ=America/New_York
+      # - OPENSCANNER_TIMEZONE=America/New_York  # overrides TZ for OpenScanner only
+
+      ## TLS / HTTPS (pick one option)
+      # Option A — your own certificate:
+      # - OPENSCANNER_SSL_LISTEN=0.0.0.0:3443
+      # - OPENSCANNER_SSL_CERT=/data/tls/cert.pem
+      # - OPENSCANNER_SSL_KEY=/data/tls/key.pem
+      # Option B — automatic Let's Encrypt:
+      # - OPENSCANNER_SSL_AUTO_CERT=scanner.example.com
+
+      ## Secrets encryption (AES-256-GCM)
+      # Generate a key:  openssl rand -hex 32
+      # - OPENSCANNER_ENCRYPTION_KEY=your-key-here
+      # Or read from a Docker secret (chmod 600 the source file):
+      # - OPENSCANNER_ENCRYPTION_KEY_FILE=/run/secrets/encryption_key
+
+      ## Admin password reset (remove after first startup)
+      # - OPENSCANNER_ADMIN_PASSWORD=new-password
+    # secrets:
+    #   - encryption_key
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3022/api/health"]
       interval: 30s
@@ -19,3 +40,7 @@ services:
       start_period: 10s
       retries: 3
     restart: unless-stopped
+
+# secrets:
+#   encryption_key:
+#     file: ./encryption_key.txt
