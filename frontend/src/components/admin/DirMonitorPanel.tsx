@@ -58,7 +58,7 @@ const emptyForm: DirMonitorFormState = {
   frequency: "",
   delay: "",
   deleteAfter: 0,
-  usePolling: 0,
+  usePolling: 1,
   disabled: 0,
   systemId: "",
   talkgroupId: "",
