@@ -16,7 +16,7 @@ import (
 )
 
 // Version is set at build time via ldflags.
-var Version = "0.1.0"
+var Version = "1.0.0"
 
 // Config holds all server startup configuration.
 type Config struct {

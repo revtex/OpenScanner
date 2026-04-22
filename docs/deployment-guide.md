@@ -284,13 +284,60 @@ openscanner --ssl-listen :443 --ssl-cert /path/to/cert.pem --ssl-key /path/to/ke
 
 > **Warning:** This feature is implemented but has not been tested in production. Use at your own risk. For reliable TLS, consider using certificate files directly or a reverse proxy like Caddy.
 
-If your server is publicly accessible, OpenScanner can attempt to obtain and renew certificates automatically:
+If your server is publicly accessible, OpenScanner can obtain and renew TLS certificates automatically using Let's Encrypt.
 
 ```bash
 openscanner --ssl-auto-cert scanner.example.com
 ```
 
-In both modes, the HTTP listener automatically redirects all traffic to HTTPS.
+**How it works:**
+
+1. OpenScanner creates an ACME client using Go's `autocert` library.
+2. When Let's Encrypt needs to verify you control the domain, it sends an HTTP request to `http://your-domain/.well-known/acme-challenge/...`. OpenScanner's HTTP listener handles this automatically.
+3. Once verified, Let's Encrypt issues a certificate and OpenScanner starts serving HTTPS on port 443.
+4. Certificates are cached locally in an `autocert-cache/` directory (relative to the working directory) and renewed automatically before they expire.
+
+**Requirements:**
+
+- **Port 80** must be reachable from the internet (for the ACME HTTP-01 challenge)
+- **Port 443** must be reachable (for HTTPS traffic)
+- **DNS** must point your domain to the server's public IP
+- The domain passed to `--ssl-auto-cert` must match the DNS record exactly
+
+In both TLS modes, the HTTP listener automatically redirects all non-challenge traffic to HTTPS.
+
+### Adding TLS After Initial Setup
+
+The `openscanner setup` command does not configure TLS — it only sets the listen address, database path, and recordings directory. If you ran setup first and want to add TLS later, edit the JSON config file (default: `openscanner.json`) and add the SSL fields:
+
+```json
+{
+  "listen": ":3022",
+  "db_file": "/var/lib/openscanner/openscanner.db",
+  "recordings_dir": "/var/lib/openscanner/recordings",
+  "ssl_listen": ":443",
+  "ssl_cert_file": "/path/to/cert.pem",
+  "ssl_key_file": "/path/to/key.pem"
+}
+```
+
+Or use `--config-save` to merge new flags into your existing config file without editing JSON by hand:
+
+```bash
+openscanner --config /etc/openscanner/openscanner.json \
+  --ssl-listen :443 \
+  --ssl-cert /path/to/cert.pem \
+  --ssl-key /path/to/key.pem \
+  --config-save
+```
+
+Then restart the service:
+
+```bash
+openscanner --service restart
+```
+
+The installed service only passes `--config <path>` to OpenScanner, so all settings — including TLS — are read from the config file on every start. No reinstall is needed.
 
 ---
 

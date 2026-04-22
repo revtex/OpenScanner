@@ -342,7 +342,7 @@ export default function UsersPanel() {
 
                 <label className="flex flex-col w-full">
                   <span className="text-sm font-medium mb-1">Disabled</span>
-                  <div className="flex items-center h-[3rem]">
+                  <div className="flex items-center h-12">
                     <input
                       type="checkbox"
                       className="toggle toggle-primary"
