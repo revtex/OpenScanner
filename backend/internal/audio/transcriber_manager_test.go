@@ -4,20 +4,12 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"runtime"
 	"testing"
 	"time"
 
 	"github.com/openscanner/openscanner/internal/audio"
 )
-
-func init() {
-	// safehttp's loopback refusal is guarded by a sync.Once that reads this
-	// env var on first call. Set it before any transcriber test runs so
-	// httptest.NewServer (bound to 127.0.0.1) is reachable.
-	_ = os.Setenv("OPENSCANNER_ALLOW_INTERNAL_HTTP", "1")
-}
 
 // newFakeWhisper returns an httptest.Server that answers GET /api/whisper/model
 // with the given status. Closed via t.Cleanup.

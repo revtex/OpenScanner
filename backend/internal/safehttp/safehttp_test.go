@@ -12,13 +12,13 @@ import (
 	"time"
 )
 
-// resetAllowInternalForTest clears the cached AllowInternal() value so a
+// resetBlockInternalForTest clears the cached BlockInternal() value so a
 // subsequent env change takes effect. Tests only — production relies on
 // process-level caching.
-func resetAllowInternalForTest(t *testing.T) {
+func resetBlockInternalForTest(t *testing.T) {
 	t.Helper()
-	allowInternalOnce = sync.Once{}
-	allowInternalVal = false
+	blockInternalOnce = sync.Once{}
+	blockInternalVal = false
 }
 
 func TestIsBlockedIP(t *testing.T) {
@@ -61,40 +61,39 @@ func TestIsBlockedIP(t *testing.T) {
 }
 
 func TestSafeDialContext_BlocksPrivate(t *testing.T) {
-	// httptest.NewServer binds on 127.0.0.1 — a loopback address that must be
-	// rejected by default.
+	// httptest.NewServer binds on 127.0.0.1 — default behaviour must allow it
+	// (homelab-friendly), and OPENSCANNER_BLOCK_INTERNAL_HTTP must block it.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	t.Cleanup(srv.Close)
 
-	// Block by default.
-	resetAllowInternalForTest(t)
+	// Allowed by default.
+	resetBlockInternalForTest(t)
 	client := Client(2 * time.Second)
-	_, err := client.Get(srv.URL)
-	if err == nil {
-		t.Fatal("expected dial to be blocked by default, got nil error")
+	resp, err := client.Get(srv.URL)
+	if err != nil {
+		t.Fatalf("expected loopback dial to succeed by default, got %v", err)
 	}
-	// Unwrap through url.Error.
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	// Opt in to blocking via env — should now be rejected.
+	t.Setenv("OPENSCANNER_BLOCK_INTERNAL_HTTP", "1")
+	resetBlockInternalForTest(t)
+	client = Client(2 * time.Second)
+	_, err = client.Get(srv.URL)
+	if err == nil {
+		t.Fatal("expected dial to be blocked with BLOCK_INTERNAL_HTTP=1, got nil error")
+	}
 	var uerr *url.Error
 	if errors.As(err, &uerr) {
 		err = uerr.Err
 	}
 	if !errors.Is(err, ErrBlockedAddress) {
 		t.Fatalf("expected ErrBlockedAddress, got %v", err)
-	}
-
-	// Allow internal via env — should now succeed.
-	t.Setenv("OPENSCANNER_ALLOW_INTERNAL_HTTP", "1")
-	resetAllowInternalForTest(t)
-	client = Client(2 * time.Second)
-	resp, err := client.Get(srv.URL)
-	if err != nil {
-		t.Fatalf("expected success with allow-internal set, got %v", err)
-	}
-	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
 }
 
@@ -106,7 +105,7 @@ func TestSafeDialContext_DNSRebinding(t *testing.T) {
 	t.Skip("no resolver injection point; DNS-rebinding defense exercised indirectly via TestSafeDialContext_BlocksPrivate")
 }
 
-func TestAllowInternalEnvParsing(t *testing.T) {
+func TestBlockInternalEnvParsing(t *testing.T) {
 	tests := []struct {
 		name string
 		env  string
@@ -124,17 +123,17 @@ func TestAllowInternalEnvParsing(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("OPENSCANNER_ALLOW_INTERNAL_HTTP", tc.env)
-			resetAllowInternalForTest(t)
-			if got := AllowInternal(); got != tc.want {
-				t.Fatalf("AllowInternal() with env=%q = %v, want %v", tc.env, got, tc.want)
+			t.Setenv("OPENSCANNER_BLOCK_INTERNAL_HTTP", tc.env)
+			resetBlockInternalForTest(t)
+			if got := BlockInternal(); got != tc.want {
+				t.Fatalf("BlockInternal() with env=%q = %v, want %v", tc.env, got, tc.want)
 			}
 		})
 	}
 
 	// Leave the cache in a benign state for subsequent tests in this package.
 	t.Cleanup(func() {
-		resetAllowInternalForTest(t)
+		resetBlockInternalForTest(t)
 	})
 
 	// Silence unused-import lint in case context is pruned in the future.

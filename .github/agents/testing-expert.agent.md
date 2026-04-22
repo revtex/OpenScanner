@@ -139,7 +139,7 @@ These surfaces have implementation but **no current tests** — prioritise them 
 
 ### Backend
 
-- `backend/internal/safehttp/safehttp.go` — SSRF allow-list (RFC1918/loopback/link-local rejection, `OPENSCANNER_ALLOW_INTERNAL_HTTP` escape hatch)
+- `backend/internal/safehttp/safehttp.go` — SSRF hardening (redirects off, timeouts enforced, response size capped). Private-address blocking is opt-in via `OPENSCANNER_BLOCK_INTERNAL_HTTP=1` (default is allow, homelab-friendly)
 - `backend/internal/middleware/middleware.go`:
   - `MaxBodySize` middleware (rejects bodies over cap before auth)
   - `APIKeyAuth` precedence (header → query → form) and length cap (>128 chars rejected)

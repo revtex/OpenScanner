@@ -105,7 +105,7 @@ Detailed conventions live in the individual agent files. The non-negotiables for
 11. VAPID keys stored encrypted in settings table; push subscriptions validated before delivery
 12. Secrets at rest (downstream API keys, VAPID private key, webhook secrets) encrypted with AES-256-GCM using the `enc::` prefix; startup fails fast on missing/wrong encryption key
 13. Refresh tokens stored as SHA-256 hashes with family rotation; reuse revokes the entire family; delivered in httpOnly/Secure/SameSite=Lax cookies
-14. All outbound HTTP (downstream, webhooks, push) blocks redirects and enforces timeouts (SSRF defense)
+14. All outbound HTTP (downstream, webhooks, push) uses `safehttp.Client` — redirects disabled, timeouts enforced, response body capped. Private-address blocking is opt-in via `OPENSCANNER_BLOCK_INTERNAL_HTTP=1` (default allows LAN/loopback because OpenScanner is a self-hosted homelab tool)
 15. Max 5 concurrent JWT tokens per user; 3-strike lockout (10 min) on login; hourly cleanup goroutine for expired refresh tokens
 
 ## Tooling Conventions

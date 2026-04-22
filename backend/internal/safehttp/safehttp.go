@@ -1,10 +1,15 @@
 // Package safehttp provides an *http.Client with SSRF defenses:
-// redirects are disabled and connections to private / loopback / link-local
-// / multicast addresses are rejected unless the operator opts in via
-// OPENSCANNER_ALLOW_INTERNAL_HTTP=1.
+// redirects are disabled, response body size is capped, and timeouts are
+// always enforced.
 //
-// Deployments that run the go-whisper sidecar on localhost MUST set the
-// allow-internal env var — otherwise transcription HTTP calls will fail.
+// OpenScanner is a self-hosted homelab tool — almost every legitimate
+// downstream URL (go-whisper, rdio-scanner, Home Assistant, etc.) sits on
+// a private / LAN address. Blocking those by default would break normal
+// deployments, so private / loopback / link-local destinations are ALLOWED
+// by default. Operators running OpenScanner on a public network with
+// untrusted admins can opt in to SSRF-style blocking with
+// OPENSCANNER_BLOCK_INTERNAL_HTTP=1, which rejects RFC1918 / loopback /
+// link-local / multicast / unspecified targets (DNS-rebinding aware).
 package safehttp
 
 import (
@@ -18,31 +23,33 @@ import (
 	"time"
 )
 
-// envAllowInternal controls whether private/loopback/link-local/multicast
-// destinations are permitted. Intended for homelab deployments and tests.
-const envAllowInternal = "OPENSCANNER_ALLOW_INTERNAL_HTTP"
+// envBlockInternal, when truthy, opts in to SSRF-style blocking of
+// private/loopback/link-local/multicast destinations. Default: unset
+// (all destinations permitted — appropriate for homelab deployments).
+const envBlockInternal = "OPENSCANNER_BLOCK_INTERNAL_HTTP"
 
 // ErrBlockedAddress is returned when a dial target resolves to an address
 // that is blocked by the SSRF allow-list.
 var ErrBlockedAddress = errors.New("safehttp: blocked internal address")
 
 var (
-	allowInternalOnce sync.Once
-	allowInternalVal  bool
+	blockInternalOnce sync.Once
+	blockInternalVal  bool
 )
 
-// AllowInternal reports whether loopback / private addresses are permitted.
-// Cached for the lifetime of the process after the first call.
-func AllowInternal() bool {
-	allowInternalOnce.Do(func() {
-		v := strings.TrimSpace(os.Getenv(envAllowInternal))
-		allowInternalVal = v == "1" || strings.EqualFold(v, "true") || strings.EqualFold(v, "yes")
+// BlockInternal reports whether loopback / private / link-local addresses
+// should be rejected. Default false (homelab-friendly). Cached for the
+// lifetime of the process after the first call.
+func BlockInternal() bool {
+	blockInternalOnce.Do(func() {
+		v := strings.TrimSpace(os.Getenv(envBlockInternal))
+		blockInternalVal = v == "1" || strings.EqualFold(v, "true") || strings.EqualFold(v, "yes")
 	})
-	return allowInternalVal
+	return blockInternalVal
 }
 
 // isBlockedIP reports whether ip falls in a disallowed range when
-// AllowInternal() is false.
+// BlockInternal() is true.
 func isBlockedIP(ip net.IP) bool {
 	if ip == nil {
 		return true
@@ -58,7 +65,7 @@ func isBlockedIP(ip net.IP) bool {
 // addresses. It resolves the host, filters, and dials the first allowed IP.
 func safeDialContext(dialer *net.Dialer) func(ctx context.Context, network, addr string) (net.Conn, error) {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
-		if AllowInternal() {
+		if !BlockInternal() {
 			return dialer.DialContext(ctx, network, addr)
 		}
 		host, port, err := net.SplitHostPort(addr)
@@ -85,8 +92,9 @@ func safeDialContext(dialer *net.Dialer) func(ctx context.Context, network, addr
 }
 
 // Client returns an *http.Client that disables redirect following and
-// refuses to connect to private / loopback / link-local / multicast
-// addresses unless OPENSCANNER_ALLOW_INTERNAL_HTTP is set.
+// enforces the provided timeout. When OPENSCANNER_BLOCK_INTERNAL_HTTP is
+// set, connections to private / loopback / link-local / multicast
+// addresses are rejected at dial time.
 func Client(timeout time.Duration) *http.Client {
 	dialer := &net.Dialer{
 		Timeout:   30 * time.Second,
