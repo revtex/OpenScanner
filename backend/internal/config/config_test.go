@@ -1,4 +1,3 @@
-package config
 package config_test
 
 import (

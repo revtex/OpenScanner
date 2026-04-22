@@ -224,11 +224,11 @@ func TestGenerateToken_ReturnsJTI(t *testing.T) {
 
 // fakeSecretLoader records calls to Get/Upsert so tests can assert on them.
 type fakeSecretLoader struct {
-	stored       string
-	storedErr    error
-	getCalled    bool
-	upsertCalls  []struct{ key, val string }
-	upsertErr    error
+	stored      string
+	storedErr   error
+	getCalled   bool
+	upsertCalls []struct{ key, val string }
+	upsertErr   error
 }
 
 func (f *fakeSecretLoader) Get(_ context.Context, _ string) (string, error) {
