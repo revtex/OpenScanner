@@ -193,20 +193,15 @@ OpenScanner is designed as a drop-in replacement for [rdio-scanner](https://gith
 - **Admin WebSocket** — `/api/admin/ws` for live admin dashboard operations (CRUD, events, settings)
 - **Health check** — `GET /api/health` returns server status and version
 
-See [docs/api.md](docs/api.md) for detailed API documentation.
-
 ---
 
 ## Documentation
 
-| Document                                                     | Description                              |
-| ------------------------------------------------------------ | ---------------------------------------- |
-| [docs/architecture.md](docs/architecture.md)                 | Architecture and runtime data flow       |
-| [docs/api.md](docs/api.md)                                   | API behavior and integration workflows   |
-| [docs/admin-guide.md](docs/admin-guide.md)                   | Admin dashboard usage guide              |
-| [docs/deployment-guide.md](docs/deployment-guide.md)         | Build, run, and deployment operations    |
-| [docs/recorder-guide.md](docs/recorder-guide.md)             | Recorder setup guide                     |
-| [docs/recorder-integration.md](docs/recorder-integration.md) | DirMonitor internals and ingest behavior |
+| Document                                             | Description                           |
+| ---------------------------------------------------- | ------------------------------------- |
+| [docs/admin-guide.md](docs/admin-guide.md)           | Admin dashboard usage guide           |
+| [docs/deployment-guide.md](docs/deployment-guide.md) | Build, run, and deployment operations |
+| [docs/recorder-guide.md](docs/recorder-guide.md)     | Recorder setup guide                  |
 
 ---
 
@@ -231,4 +226,4 @@ make lint    # Lint Go + TypeScript
 
 ## License
 
-See [LICENSE](LICENSE) for details.
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
