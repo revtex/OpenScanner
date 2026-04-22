@@ -368,7 +368,7 @@ export default function OptionsPanel() {
           {label}
           {description}
           <select
-            className="select w-full max-w-xs"
+            className="select w-full"
             value={value}
             onChange={(e) => updateSetting(key, e.target.value)}
             disabled={!!ffmpegMissing}
@@ -411,7 +411,7 @@ export default function OptionsPanel() {
           {label}
           {description}
           <select
-            className="select w-full max-w-xs"
+            className="select w-full"
             value={selectedValue}
             onChange={(e) => updateSetting(key, e.target.value)}
             disabled={!!ffmpegMissing || conversionDisabled}
@@ -442,7 +442,7 @@ export default function OptionsPanel() {
           {label}
           {description}
           <select
-            className="select w-full max-w-xs"
+            className="select w-full"
             value={value}
             disabled={plannedOnly}
             onChange={(e) => updateSetting(key, e.target.value)}
@@ -474,7 +474,7 @@ export default function OptionsPanel() {
           {description}
           <input
             type="number"
-            className="input w-full max-w-xs"
+            className="input w-full"
             value={value}
             min={0}
             disabled={plannedOnly}
@@ -495,7 +495,7 @@ export default function OptionsPanel() {
           {label}
           {description}
           <textarea
-            className="textarea w-full max-w-xs"
+            className="textarea w-full"
             value={value}
             disabled={plannedOnly}
             placeholder="e.g. 1,2,5"
@@ -518,7 +518,7 @@ export default function OptionsPanel() {
         {description}
         <input
           type="text"
-          className="input w-full max-w-xs"
+          className="input w-full"
           value={value}
           disabled={plannedOnly}
           onChange={(e) => updateSetting(key, e.target.value)}
@@ -570,25 +570,25 @@ export default function OptionsPanel() {
             <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
               {section.icon} {section.title}
             </h2>
-            <div className="card bg-base-200">
-              <div className="card-body gap-3">
-                {keys.map((key) =>
-                  key in localSettings ? (
-                    <div
-                      key={key}
-                      className={`relative rounded-lg border border-base-300 bg-base-100/60 p-3 ${isPlannedKey(key) ? "opacity-60" : ""}`}
-                    >
-                      {localSettings[key] !== serverSettings[key] && (
-                        <span
-                          className="absolute -left-3 top-3 w-2 h-2 rounded-full bg-warning"
-                          title="Modified"
-                        />
-                      )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {keys.map((key) =>
+                key in localSettings ? (
+                  <div
+                    key={key}
+                    className={`relative card bg-base-200 ${isPlannedKey(key) ? "opacity-60" : ""}`}
+                  >
+                    {localSettings[key] !== serverSettings[key] && (
+                      <span
+                        className="absolute right-2 top-2 w-2 h-2 rounded-full bg-warning"
+                        title="Modified"
+                      />
+                    )}
+                    <div className="card-body p-3 gap-0">
                       {renderSettingInput(key)}
                     </div>
-                  ) : null,
-                )}
-              </div>
+                  </div>
+                ) : null,
+              )}
             </div>
           </section>
         );
@@ -606,17 +606,14 @@ export default function OptionsPanel() {
         {isDirty && (
           <span className="text-warning text-sm">Unsaved changes</span>
         )}
-      </div>
-
-      {toast && (
-        <div className="toast toast-end">
-          <div
-            className={`alert ${toast.type === "success" ? "alert-success" : "alert-error"}`}
+        {toast && (
+          <span
+            className={`text-sm ${toast.type === "success" ? "text-success" : "text-error"}`}
           >
-            <span>{toast.message}</span>
-          </div>
-        </div>
-      )}
+            {toast.message}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
