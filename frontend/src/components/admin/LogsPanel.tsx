@@ -48,6 +48,14 @@ const METHOD_COLORS: Record<string, string> = {
 
 // ─── Log parsing ────────────────────────────────────────────
 
+type ChipTone = "default" | "error" | "muted";
+
+interface LogChip {
+  key: string;
+  value: string;
+  tone?: ChipTone;
+}
+
 interface ParsedLog {
   isRequest: boolean;
   method?: string;
@@ -55,6 +63,180 @@ interface ParsedLog {
   status?: number;
   latencyMs?: number;
   summary: string;
+  chips?: LogChip[];
+}
+
+const SHORT_KEYS: Record<string, string> = {
+  call_id: "call",
+  system_id: "sys",
+  talkgroup_id: "tg",
+  user_id: "user",
+  downstream_id: "ds",
+  duration_ms: "dur",
+  segments: "seg",
+  language: "lang",
+  attempt: "try",
+  workers: "workers",
+  username: "user",
+};
+
+function shortKey(k: string): string {
+  return SHORT_KEYS[k] ?? k;
+}
+
+function truncate(s: string, n: number): string {
+  return s.length > n ? s.slice(0, n - 1) + "…" : s;
+}
+
+function chipFrom(
+  attrs: Record<string, string>,
+  attrKey: string,
+  opts: { label?: string; tone?: ChipTone; max?: number } = {},
+): LogChip | null {
+  const raw = attrs[attrKey];
+  if (raw === undefined || raw === "") return null;
+  const value = opts.max ? truncate(raw, opts.max) : raw;
+  return { key: opts.label ?? shortKey(attrKey), value, tone: opts.tone };
+}
+
+function compact(chips: Array<LogChip | null>): LogChip[] {
+  return chips.filter((c): c is LogChip => c !== null);
+}
+
+function buildKnownChips(
+  message: string,
+  attrs: Record<string, string>,
+): LogChip[] | null {
+  switch (message) {
+    case "dirmonitor: call ingested":
+      // dirmonitor uses `id` for the call id (not `call_id`).
+      return compact([
+        chipFrom(attrs, "id", { label: "call" }),
+        chipFrom(attrs, "system_id"),
+        chipFrom(attrs, "talkgroup_id"),
+        chipFrom(attrs, "duration_ms"),
+      ]);
+    case "call ingested":
+      return compact([
+        chipFrom(attrs, "call_id"),
+        chipFrom(attrs, "system_id"),
+        chipFrom(attrs, "talkgroup_id"),
+        chipFrom(attrs, "duration_ms"),
+      ]);
+    case "call-upload: complete":
+      return compact([
+        chipFrom(attrs, "call_id"),
+        chipFrom(attrs, "system_id"),
+        chipFrom(attrs, "talkgroup_id"),
+        chipFrom(attrs, "duration_ms"),
+      ]);
+    case "transcription stored":
+      return compact([
+        chipFrom(attrs, "call_id"),
+        chipFrom(attrs, "language"),
+        chipFrom(attrs, "segments"),
+      ]);
+    case "transcription failed":
+      return compact([
+        chipFrom(attrs, "call_id"),
+        chipFrom(attrs, "error", { tone: "error", max: 60 }),
+      ]);
+    case "user logged in":
+      return compact([
+        chipFrom(attrs, "user_id"),
+        chipFrom(attrs, "username"),
+        chipFrom(attrs, "ip"),
+      ]);
+    case "downstream: call pushed successfully":
+      return compact([
+        chipFrom(attrs, "downstream_id"),
+        chipFrom(attrs, "call_id"),
+        chipFrom(attrs, "status"),
+      ]);
+    case "downstream: push failed":
+      return compact([
+        chipFrom(attrs, "downstream_id"),
+        chipFrom(attrs, "call_id"),
+        chipFrom(attrs, "attempt"),
+        chipFrom(attrs, "error", { tone: "error", max: 60 }),
+      ]);
+    case "downstream: giving up after max retries":
+      return compact([
+        chipFrom(attrs, "downstream_id"),
+        chipFrom(attrs, "call_id"),
+        chipFrom(attrs, "attempt"),
+      ]);
+    case "dirmonitor: auto-populated system":
+    case "auto-populated system":
+      return compact([
+        chipFrom(attrs, "system_id"),
+        chipFrom(attrs, "label"),
+      ]);
+    case "dirmonitor: auto-populated talkgroup":
+    case "auto-populated talkgroup":
+      return compact([
+        chipFrom(attrs, "system_id"),
+        chipFrom(attrs, "talkgroup_id"),
+        chipFrom(attrs, "label"),
+      ]);
+    case "dirmonitor: duplicate call rejected":
+    case "duplicate call rejected":
+      return compact([
+        chipFrom(attrs, "call_id"),
+        chipFrom(attrs, "system_id"),
+        chipFrom(attrs, "talkgroup_id"),
+      ]);
+    case "transcriber pool started":
+      return compact([
+        chipFrom(attrs, "workers"),
+        chipFrom(attrs, "model"),
+        chipFrom(attrs, "base_url", { label: "url", max: 40 }),
+      ]);
+    case "transcription enabled":
+      return compact([
+        chipFrom(attrs, "model"),
+        chipFrom(attrs, "url", { max: 40 }),
+      ]);
+    case "transcription disabled":
+      return [];
+    default:
+      return null;
+  }
+}
+
+const FALLBACK_PRIORITY = [
+  "call_id",
+  "user_id",
+  "system_id",
+  "talkgroup_id",
+  "downstream_id",
+  "username",
+  "error",
+];
+
+function fallbackChips(attrs: Record<string, string>): LogChip[] {
+  const picked = new Set<string>();
+  const chips: LogChip[] = [];
+  for (const k of FALLBACK_PRIORITY) {
+    if (chips.length >= 3) break;
+    const c = chipFrom(attrs, k, {
+      tone: k === "error" ? "error" : "default",
+      max: k === "error" ? 60 : undefined,
+    });
+    if (c) {
+      chips.push(c);
+      picked.add(k);
+    }
+  }
+  if (chips.length === 0) {
+    for (const [k, v] of Object.entries(attrs)) {
+      if (chips.length >= 2) break;
+      if (v === "" || v === undefined) continue;
+      if (picked.has(k)) continue;
+      chips.push({ key: shortKey(k), value: truncate(v, 40) });
+    }
+  }
+  return chips;
 }
 
 function parseLog(log: AdminLog): ParsedLog {
@@ -71,7 +253,13 @@ function parseLog(log: AdminLog): ParsedLog {
     };
   }
 
-  return { isRequest: false, summary: log.message };
+  const known = buildKnownChips(log.message, attrs);
+  const chipsRaw =
+    known ??
+    (Object.keys(attrs).length > 0 ? fallbackChips(attrs) : undefined);
+  const chips = chipsRaw && chipsRaw.length > 0 ? chipsRaw : undefined;
+
+  return { isRequest: false, summary: log.message, chips };
 }
 
 function statusClass(status?: number): string {
@@ -529,6 +717,28 @@ export default function LogsPanel() {
                       <span className="text-sm truncate">
                         {parsed.isRequest ? parsed.path : parsed.summary}
                       </span>
+                      {!parsed.isRequest &&
+                        parsed.chips &&
+                        parsed.chips.length > 0 && (
+                          <div className="flex items-center gap-1 shrink min-w-0 overflow-hidden">
+                            {parsed.chips.map((chip) => (
+                              <span
+                                key={chip.key}
+                                className={`font-mono text-[10px] leading-4 px-1.5 py-0.5 rounded bg-base-200/60 border border-base-300/60 whitespace-nowrap ${
+                                  chip.tone === "error"
+                                    ? "text-error"
+                                    : "text-base-content/60"
+                                }`}
+                                title={`${chip.key}=${chip.value}`}
+                              >
+                                <span className="opacity-60">{chip.key}=</span>
+                                <span className="text-base-content/80">
+                                  {chip.value}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       {parsed.isRequest && parsed.status != null && (
                         <span
                           className={`text-xs font-mono shrink-0 ${statusClass(parsed.status)}`}
