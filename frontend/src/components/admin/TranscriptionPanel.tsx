@@ -1,12 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  Wifi,
-  Trash2,
-  Download,
-  Check,
-  Loader2,
-  Mic,
-} from "lucide-react";
+import { Wifi, Trash2, Download, Check, Loader2, Mic } from "lucide-react";
 import {
   useTranscriptionStatusQuery,
   useTranscriptionModelsQuery,
@@ -418,9 +411,7 @@ export default function TranscriptionPanel() {
                               {m.id}
                             </td>
                             <td className="text-sm">
-                              {new Date(
-                                m.created * 1000,
-                              ).toLocaleDateString()}
+                              {new Date(m.created * 1000).toLocaleDateString()}
                             </td>
                             <td>
                               {isActive ? (
@@ -467,52 +458,54 @@ export default function TranscriptionPanel() {
             </div>
           </div>
         </section>
+      </div>
 
-        {/* ─── Statistics ─── */}
-        {stats && stats.total > 0 && (
-          <section className="break-inside-avoid">
-            <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
-              <Loader2 className="w-4 h-4" /> Statistics
-            </h2>
-            <div className="card bg-base-200">
-              <div className="card-body gap-3">
-                {/* Summary row */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="stat bg-base-300 rounded-lg p-3">
-                    <div className="stat-title text-xs">Total</div>
-                    <div className="stat-value text-lg">
-                      {stats.total.toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="stat bg-base-300 rounded-lg p-3">
-                    <div className="stat-title text-xs">Last 24h</div>
-                    <div className="stat-value text-lg">
-                      {stats.recent24h.toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="stat bg-base-300 rounded-lg p-3">
-                    <div className="stat-title text-xs">Avg Duration</div>
-                    <div className="stat-value text-lg">
-                      {stats.avgDurationMs > 0
-                        ? `${(stats.avgDurationMs / 1000).toFixed(1)}s`
-                        : "—"}
-                    </div>
-                    {stats.minDurationMs > 0 && (
-                      <div className="stat-desc text-[10px]">
-                        {(stats.minDurationMs / 1000).toFixed(1)}s –{" "}
-                        {(stats.maxDurationMs / 1000).toFixed(1)}s
-                      </div>
-                    )}
-                  </div>
-                  <div className="stat bg-base-300 rounded-lg p-3">
-                    <div className="stat-title text-xs">Queue</div>
-                    <div className="stat-value text-lg">
-                      {stats.poolEnabled ? stats.queueDepth : "Off"}
-                    </div>
+      {/* ─── Statistics (full width) ─── */}
+      {stats && stats.total > 0 && (
+        <section>
+          <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
+            <Loader2 className="w-4 h-4" /> Statistics
+          </h2>
+          <div className="card bg-base-200">
+            <div className="card-body gap-3">
+              {/* Summary row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="stat bg-base-300 rounded-lg p-3">
+                  <div className="stat-title text-xs">Total</div>
+                  <div className="stat-value text-lg">
+                    {stats.total.toLocaleString()}
                   </div>
                 </div>
+                <div className="stat bg-base-300 rounded-lg p-3">
+                  <div className="stat-title text-xs">Last 24h</div>
+                  <div className="stat-value text-lg">
+                    {stats.recent24h.toLocaleString()}
+                  </div>
+                </div>
+                <div className="stat bg-base-300 rounded-lg p-3">
+                  <div className="stat-title text-xs">Avg Duration</div>
+                  <div className="stat-value text-lg">
+                    {stats.avgDurationMs > 0
+                      ? `${(stats.avgDurationMs / 1000).toFixed(1)}s`
+                      : "—"}
+                  </div>
+                  {stats.minDurationMs > 0 && (
+                    <div className="stat-desc text-[10px]">
+                      {(stats.minDurationMs / 1000).toFixed(1)}s –{" "}
+                      {(stats.maxDurationMs / 1000).toFixed(1)}s
+                    </div>
+                  )}
+                </div>
+                <div className="stat bg-base-300 rounded-lg p-3">
+                  <div className="stat-title text-xs">Queue</div>
+                  <div className="stat-value text-lg">
+                    {stats.poolEnabled ? stats.queueDepth : "Off"}
+                  </div>
+                </div>
+              </div>
 
-                {/* Breakdowns */}
+              {/* Breakdowns */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {stats.byLanguage.length > 0 && (
                   <div className="bg-base-300 rounded-lg p-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-base-content/50 mb-3">
@@ -575,9 +568,9 @@ export default function TranscriptionPanel() {
                 )}
               </div>
             </div>
-          </section>
-        )}
-      </div>
+          </div>
+        </section>
+      )}
 
       {/* Toast */}
       {toast && (
