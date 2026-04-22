@@ -223,39 +223,6 @@ func (q *Queries) ListBookmarkCallsByUser(ctx context.Context, userID sql.NullIn
 	return items, nil
 }
 
-const listBookmarksBySession = `-- name: ListBookmarksBySession :many
-SELECT id, call_id, user_id, session_id, created_at FROM bookmarks WHERE session_id = ? ORDER BY created_at DESC
-`
-
-func (q *Queries) ListBookmarksBySession(ctx context.Context, sessionID sql.NullString) ([]Bookmark, error) {
-	rows, err := q.db.QueryContext(ctx, listBookmarksBySession, sessionID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Bookmark{}
-	for rows.Next() {
-		var i Bookmark
-		if err := rows.Scan(
-			&i.ID,
-			&i.CallID,
-			&i.UserID,
-			&i.SessionID,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listBookmarksByUser = `-- name: ListBookmarksByUser :many
 SELECT id, call_id, user_id, session_id, created_at FROM bookmarks WHERE user_id = ? ORDER BY created_at DESC
 `

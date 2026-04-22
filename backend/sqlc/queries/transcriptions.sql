@@ -23,16 +23,6 @@ INSERT INTO transcriptions (
     :created_at
 ) RETURNING id;
 
--- name: SearchTranscriptions :many
-SELECT t.id, t.call_id, t.text, t.segments, t.language, t.model,
-       t.duration_ms, t.created_at,
-       c.date_time, c.system_id, c.talkgroup_id
-FROM transcriptions t
-JOIN calls c ON c.id = t.call_id
-WHERE t.text LIKE '%' || @query || '%'
-ORDER BY c.date_time DESC
-LIMIT @lim OFFSET @off;
-
 -- name: CountTranscriptions :one
 SELECT COUNT(*) FROM transcriptions;
 

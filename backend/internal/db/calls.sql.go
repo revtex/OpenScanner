@@ -503,12 +503,3 @@ func (q *Queries) ListCallsAsc(ctx context.Context, arg ListCallsAscParams) ([]C
 	}
 	return items, nil
 }
-
-const pruneCalls = `-- name: PruneCalls :exec
-DELETE FROM calls WHERE date_time < ?
-`
-
-func (q *Queries) PruneCalls(ctx context.Context, dateTime int64) error {
-	_, err := q.db.ExecContext(ctx, pruneCalls, dateTime)
-	return err
-}

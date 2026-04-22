@@ -1,4 +1,5 @@
 import { api } from "@/app/api";
+import type { SharedLinkAdmin } from "@/types";
 
 export interface SharedCall {
   token: string;
@@ -16,19 +17,6 @@ export interface SharedCall {
 export interface ShareCreateResponse {
   token: string;
   url: string;
-}
-
-export interface SharedLinkAdmin {
-  id: number;
-  callId: number;
-  token: string;
-  createdAt: number;
-  sharedBy: string;
-  dateTime: number;
-  duration: number;
-  systemLabel: string;
-  talkgroupLabel: string;
-  talkgroupName: string;
 }
 
 const shareApi = api.injectEndpoints({

@@ -1,9 +1,6 @@
 -- name: GetPushSubscription :one
 SELECT * FROM push_subscriptions WHERE id = ? LIMIT 1;
 
--- name: ListPushSubscriptionsByUser :many
-SELECT * FROM push_subscriptions WHERE user_id = ? ORDER BY created_at DESC;
-
 -- name: ListAllActivePushSubscriptions :many
 SELECT * FROM push_subscriptions ORDER BY created_at DESC;
 

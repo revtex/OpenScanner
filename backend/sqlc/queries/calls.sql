@@ -111,9 +111,6 @@ INSERT INTO calls (
 -- name: DeleteCall :exec
 DELETE FROM calls WHERE id = ?;
 
--- name: PruneCalls :exec
-DELETE FROM calls WHERE date_time < ?;
-
 -- name: CountCalls :one
 SELECT COUNT(*) FROM calls;
 

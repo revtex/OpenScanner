@@ -103,7 +103,6 @@ type Querier interface {
 	ListAllUnits(ctx context.Context) ([]Unit, error)
 	ListBookmarkCallIDsByUser(ctx context.Context, userID sql.NullInt64) ([]int64, error)
 	ListBookmarkCallsByUser(ctx context.Context, userID sql.NullInt64) ([]ListBookmarkCallsByUserRow, error)
-	ListBookmarksBySession(ctx context.Context, sessionID sql.NullString) ([]Bookmark, error)
 	ListBookmarksByUser(ctx context.Context, userID sql.NullInt64) ([]Bookmark, error)
 	ListCalls(ctx context.Context, arg ListCallsParams) ([]Call, error)
 	ListCallsAsc(ctx context.Context, arg ListCallsAscParams) ([]Call, error)
@@ -111,9 +110,6 @@ type Querier interface {
 	ListDownstreams(ctx context.Context) ([]Downstream, error)
 	ListGroups(ctx context.Context) ([]Group, error)
 	ListLogs(ctx context.Context) ([]Log, error)
-	ListLogsByDateRange(ctx context.Context, arg ListLogsByDateRangeParams) ([]Log, error)
-	ListLogsByDateRangeAndLevel(ctx context.Context, arg ListLogsByDateRangeAndLevelParams) ([]Log, error)
-	ListPushSubscriptionsByUser(ctx context.Context, userID sql.NullInt64) ([]PushSubscription, error)
 	ListSettings(ctx context.Context) ([]Setting, error)
 	ListSharedLinks(ctx context.Context) ([]ListSharedLinksRow, error)
 	ListSystems(ctx context.Context) ([]System, error)
@@ -122,12 +118,9 @@ type Querier interface {
 	ListUnitsBySystem(ctx context.Context, systemID int64) ([]Unit, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListWebhooks(ctx context.Context) ([]Webhook, error)
-	PruneCalls(ctx context.Context, dateTime int64) error
-	PruneLogs(ctx context.Context, dateTime int64) error
 	RevokeAllRefreshTokensForUser(ctx context.Context, userID int64) error
 	RevokeRefreshToken(ctx context.Context, id int64) error
 	RevokeRefreshTokenFamily(ctx context.Context, familyID string) error
-	SearchTranscriptions(ctx context.Context, arg SearchTranscriptionsParams) ([]SearchTranscriptionsRow, error)
 	SetSetupComplete(ctx context.Context, setupComplete int64) error
 	TranscriptionStats(ctx context.Context, since int64) (TranscriptionStatsRow, error)
 	TranscriptionsByLanguage(ctx context.Context) ([]TranscriptionsByLanguageRow, error)

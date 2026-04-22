@@ -4,9 +4,6 @@ SELECT * FROM bookmarks WHERE id = ? LIMIT 1;
 -- name: ListBookmarksByUser :many
 SELECT * FROM bookmarks WHERE user_id = ? ORDER BY created_at DESC;
 
--- name: ListBookmarksBySession :many
-SELECT * FROM bookmarks WHERE session_id = ? ORDER BY created_at DESC;
-
 -- name: CreateBookmark :one
 INSERT INTO bookmarks (call_id, user_id, session_id, created_at)
 VALUES (:call_id, :user_id, :session_id, :created_at)

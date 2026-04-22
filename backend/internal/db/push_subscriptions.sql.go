@@ -122,38 +122,3 @@ func (q *Queries) ListAllActivePushSubscriptions(ctx context.Context) ([]PushSub
 	}
 	return items, nil
 }
-
-const listPushSubscriptionsByUser = `-- name: ListPushSubscriptionsByUser :many
-SELECT id, user_id, session_id, endpoint, keys_json, systems_json, created_at FROM push_subscriptions WHERE user_id = ? ORDER BY created_at DESC
-`
-
-func (q *Queries) ListPushSubscriptionsByUser(ctx context.Context, userID sql.NullInt64) ([]PushSubscription, error) {
-	rows, err := q.db.QueryContext(ctx, listPushSubscriptionsByUser, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []PushSubscription{}
-	for rows.Next() {
-		var i PushSubscription
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.SessionID,
-			&i.Endpoint,
-			&i.KeysJson,
-			&i.SystemsJson,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
