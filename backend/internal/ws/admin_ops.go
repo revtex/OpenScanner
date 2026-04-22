@@ -2198,36 +2198,43 @@ func (c *Client) opExportConfig(ctx context.Context, _ json.RawMessage) (any, er
 		return nil, fmt.Errorf("failed to export webhooks: %w", err)
 	}
 
-	// Sanitize sensitive fields.
-	safeAPIKeys := make([]map[string]any, len(apiKeys))
+	// Export all fields — use snake_case keys to match db struct JSON tags.
+	// API keys include the hashed key so import can restore authentication.
+	// Downstream API keys and webhook secrets are included for full backup.
+	// The exported JSON file should be treated as sensitive.
+	exportAPIKeys := make([]map[string]any, len(apiKeys))
 	for i, k := range apiKeys {
-		safeAPIKeys[i] = map[string]any{
-			"id":          k.ID,
-			"ident":       wsNullStr(k.Ident),
-			"disabled":    k.Disabled,
-			"systemsJson": wsNullStr(k.SystemsJson),
-			"order":       k.Order,
+		exportAPIKeys[i] = map[string]any{
+			"id":              k.ID,
+			"key":             k.Key,
+			"ident":           wsNullStr(k.Ident),
+			"disabled":        k.Disabled,
+			"systems_json":    wsNullStr(k.SystemsJson),
+			"call_rate_limit": wsNullInt(k.CallRateLimit),
+			"order":           k.Order,
 		}
 	}
-	safeDownstreams := make([]map[string]any, len(downstreams))
+	exportDownstreams := make([]map[string]any, len(downstreams))
 	for i, d := range downstreams {
-		safeDownstreams[i] = map[string]any{
-			"id":          d.ID,
-			"url":         d.Url,
-			"systemsJson": wsNullStr(d.SystemsJson),
-			"disabled":    d.Disabled,
-			"order":       d.Order,
+		exportDownstreams[i] = map[string]any{
+			"id":           d.ID,
+			"url":          d.Url,
+			"api_key":      d.ApiKey,
+			"systems_json": wsNullStr(d.SystemsJson),
+			"disabled":     d.Disabled,
+			"order":        d.Order,
 		}
 	}
-	safeWebhooks := make([]map[string]any, len(webhooks))
+	exportWebhooks := make([]map[string]any, len(webhooks))
 	for i, w := range webhooks {
-		safeWebhooks[i] = map[string]any{
-			"id":          w.ID,
-			"url":         w.Url,
-			"type":        w.Type,
-			"systemsJson": wsNullStr(w.SystemsJson),
-			"disabled":    w.Disabled,
-			"order":       w.Order,
+		exportWebhooks[i] = map[string]any{
+			"id":           w.ID,
+			"url":          w.Url,
+			"type":         w.Type,
+			"secret":       wsNullStr(w.Secret),
+			"systems_json": wsNullStr(w.SystemsJson),
+			"disabled":     w.Disabled,
+			"order":        w.Order,
 		}
 	}
 
@@ -2239,10 +2246,10 @@ func (c *Client) opExportConfig(ctx context.Context, _ json.RawMessage) (any, er
 		"units":       units,
 		"groups":      groups,
 		"tags":        tags,
-		"apiKeys":     safeAPIKeys,
+		"apiKeys":     exportAPIKeys,
 		"dirmonitors": dirmonitors,
-		"downstreams": safeDownstreams,
-		"webhooks":    safeWebhooks,
+		"downstreams": exportDownstreams,
+		"webhooks":    exportWebhooks,
 	}, nil
 }
 

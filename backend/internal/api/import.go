@@ -75,7 +75,7 @@ func detectTgColumns(header []string) *tgColumnMap {
 			m.led = i
 		case "order", "priority":
 			m.order = i
-		// skip unknown columns (e.g. "hex")
+			// skip unknown columns (e.g. "hex")
 		}
 	}
 	return m
