@@ -560,14 +560,14 @@ export default function OptionsPanel() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="columns-1 lg:columns-2 gap-6 space-y-6">
         {SECTIONS.map((section) => {
           const keys = section.keys;
           const hasSettings = keys.some((k) => k in localSettings);
           if (!hasSettings) return null;
 
           return (
-            <section key={section.title}>
+            <section key={section.title} className="break-inside-avoid">
               <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
                 {section.icon} {section.title}
               </h2>
