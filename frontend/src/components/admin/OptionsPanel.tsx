@@ -571,25 +571,25 @@ export default function OptionsPanel() {
               <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
                 {section.icon} {section.title}
               </h2>
-              <div className="space-y-3">
-                {keys.map((key) =>
-                  key in localSettings ? (
-                    <div
-                      key={key}
-                      className={`relative card bg-base-200 ${isPlannedKey(key) ? "opacity-60" : ""}`}
-                    >
-                      {localSettings[key] !== serverSettings[key] && (
-                        <span
-                          className="absolute right-2 top-2 w-2 h-2 rounded-full bg-warning"
-                          title="Modified"
-                        />
-                      )}
-                      <div className="card-body p-3 gap-0">
+              <div className="card bg-base-200">
+                <div className="card-body gap-3">
+                  {keys.map((key) =>
+                    key in localSettings ? (
+                      <div
+                        key={key}
+                        className={`relative rounded-lg border border-base-300 bg-base-100/60 p-3 ${isPlannedKey(key) ? "opacity-60" : ""}`}
+                      >
+                        {localSettings[key] !== serverSettings[key] && (
+                          <span
+                            className="absolute right-2 top-2 w-2 h-2 rounded-full bg-warning"
+                            title="Modified"
+                          />
+                        )}
                         {renderSettingInput(key)}
                       </div>
-                    </div>
-                  ) : null,
-                )}
+                    ) : null,
+                  )}
+                </div>
               </div>
             </section>
           );
