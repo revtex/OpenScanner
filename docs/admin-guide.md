@@ -341,8 +341,8 @@ Both report how many records were inserted, updated, and skipped.
 
 ### JSON Config
 
-- **Export Config** — download the full server configuration as `openscanner-config.json`. Useful for backups or migrating to a new server.
-- **Import Config** — restore configuration from a previously exported JSON file.
+- **Export Config** — download the full server configuration as `openscanner-config.json`. Useful for backups or migrating to a new server. If secrets encryption is enabled, exported values retain their `enc::` encrypted form.
+- **Import Config** — restore configuration from a previously exported JSON file. If the backup contains encrypted values (`enc::` prefix), the target server must have the same `--encryption-key` configured. The import is rejected if no key is set or the key cannot decrypt the values.
 
 ### RadioReference
 

@@ -400,6 +400,7 @@ Encrypted values are stored with an `enc::` prefix followed by base64-encoded ci
 - The admin UI never displays secret values — API keys are shown as masked dots
 - If the key is removed while encrypted values exist: the server refuses to start with a clear error message
 - If the wrong key is provided: the server refuses to start with a decrypt error
+- Config imports are also validated: importing a backup that contains `enc::` values is rejected if no key is configured or the configured key cannot decrypt them
 
 ### Docker Compose Example
 

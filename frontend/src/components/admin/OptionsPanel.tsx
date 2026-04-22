@@ -1,5 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
+  Globe,
+  Radio,
+  AudioLines,
+  Monitor,
+  Share2,
+  Webhook,
+} from "lucide-react";
+import {
   useGetConfigQuery,
   useUpdateConfigMutation,
 } from "@/hooks/useAdminWsOps";
@@ -46,6 +54,7 @@ const KEYPAD_BEEPS = ["disabled", "uniden", "whistler"] as const;
 
 interface SettingSection {
   title: string;
+  icon: React.ReactNode;
   keys: string[];
 }
 
@@ -63,10 +72,12 @@ const PLANNED_ONLY_KEYS = [
 const SECTIONS: SettingSection[] = [
   {
     title: "General",
+    icon: <Globe className="w-4 h-4" />,
     keys: ["branding", "email", "publicAccess"],
   },
   {
     title: "Scanner Behavior",
+    icon: <Radio className="w-4 h-4" />,
     keys: [
       "sortTalkgroups",
       "tagsToggle",
@@ -79,6 +90,7 @@ const SECTIONS: SettingSection[] = [
   },
   {
     title: "Call Processing",
+    icon: <AudioLines className="w-4 h-4" />,
     keys: [
       "audioConversion",
       "audioEncodingPreset",
@@ -90,13 +102,19 @@ const SECTIONS: SettingSection[] = [
   },
   {
     title: "Display",
+    icon: <Monitor className="w-4 h-4" />,
     keys: ["keypadBeeps"],
   },
   {
     title: "Sharing & Notifications",
+    icon: <Share2 className="w-4 h-4" />,
     keys: ["shareableLinks", "sharedLinkExpiry", "pushNotifications"],
   },
-  { title: "Webhooks", keys: ["webhooksEnabled"] },
+  {
+    title: "Webhooks",
+    icon: <Webhook className="w-4 h-4" />,
+    keys: ["webhooksEnabled"],
+  },
 ];
 
 // Only keys that appear in SECTIONS should be sent to the backend.
@@ -523,77 +541,71 @@ export default function OptionsPanel() {
   }
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold mb-4">Options</h1>
-      <p className="text-sm text-base-content/70 mb-4">
-        Global settings for the scanner. Configure audio processing, public
-        access, branding, duplicate detection, auto-pruning, transcription, and
-        UI behavior. Changes take effect immediately for all connected clients.
-      </p>
-      <div className="mb-4 rounded-lg border border-base-300 bg-base-200/60 p-3">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="font-medium">Status:</span>
-          <span className="badge badge-sm border-success/30 bg-success/10 text-success">
-            Active
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold mb-1">Options</h1>
+        <p className="text-sm text-base-content/70">
+          Global settings for the scanner. Changes take effect immediately for
+          all connected clients.
+          <span className="inline-flex items-center gap-1 ml-2">
+            <span className="badge badge-sm border-success/30 bg-success/10 text-success">
+              Active
+            </span>
+            = in use,{" "}
+            <span className="badge badge-sm border-warning/30 bg-warning/10 text-warning">
+              Planned
+            </span>
+            = saved but not wired yet.
           </span>
-          <span className="text-base-content/60">Fully wired and in use.</span>
-          <span className="badge badge-sm border-warning/30 bg-warning/10 text-warning">
-            Planned
-          </span>
-          <span className="text-base-content/60">
-            Saved to config but not active yet (grayed out).
-          </span>
-        </div>
+        </p>
       </div>
-      <div className="card bg-base-200">
-        <div className="card-body space-y-6">
-          {SECTIONS.map((section) => {
-            const keys = section.keys;
 
-            // Only show section if we have settings for it
-            const hasSettings = keys.some((k) => k in localSettings);
-            if (!hasSettings) return null;
+      {SECTIONS.map((section) => {
+        const keys = section.keys;
+        const hasSettings = keys.some((k) => k in localSettings);
+        if (!hasSettings) return null;
 
-            return (
-              <div key={section.title}>
-                <h2 className="text-lg font-medium mb-3 border-b border-base-300 pb-2">
-                  {section.title}
-                </h2>
-                <div className="space-y-3">
-                  {keys.map((key) =>
-                    key in localSettings ? (
-                      <div
-                        key={key}
-                        className={`relative rounded-lg border border-base-300 bg-base-100/60 p-3 ${isPlannedKey(key) ? "opacity-60" : ""}`}
-                      >
-                        {localSettings[key] !== serverSettings[key] && (
-                          <span
-                            className="absolute -left-3 top-3 w-2 h-2 rounded-full bg-warning"
-                            title="Modified"
-                          />
-                        )}
-                        {renderSettingInput(key)}
-                      </div>
-                    ) : null,
-                  )}
-                </div>
+        return (
+          <section key={section.title}>
+            <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
+              {section.icon} {section.title}
+            </h2>
+            <div className="card bg-base-200">
+              <div className="card-body gap-3">
+                {keys.map((key) =>
+                  key in localSettings ? (
+                    <div
+                      key={key}
+                      className={`relative rounded-lg border border-base-300 bg-base-100/60 p-3 ${isPlannedKey(key) ? "opacity-60" : ""}`}
+                    >
+                      {localSettings[key] !== serverSettings[key] && (
+                        <span
+                          className="absolute -left-3 top-3 w-2 h-2 rounded-full bg-warning"
+                          title="Modified"
+                        />
+                      )}
+                      {renderSettingInput(key)}
+                    </div>
+                  ) : null,
+                )}
               </div>
-            );
-          })}
+            </div>
+          </section>
+        );
+      })}
 
-          <div className="pt-4 flex items-center gap-3">
-            <button
-              className="btn btn-primary"
-              onClick={handleSave}
-              disabled={!isDirty}
-            >
-              Save Changes
-            </button>
-            {isDirty && (
-              <span className="text-warning text-sm">Unsaved changes</span>
-            )}
-          </div>
-        </div>
+      {/* ── Save Bar ──────────────────────────────────── */}
+      <div className="sticky bottom-0 z-10 flex items-center gap-3 rounded-lg border border-base-300 bg-base-200 p-3">
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={handleSave}
+          disabled={!isDirty}
+        >
+          Save Changes
+        </button>
+        {isDirty && (
+          <span className="text-warning text-sm">Unsaved changes</span>
+        )}
       </div>
 
       {toast && (
