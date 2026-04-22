@@ -3,10 +3,12 @@ package api
 import (
 	"database/sql"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
 )
 
@@ -60,6 +62,39 @@ func (h *BookmarkHandler) PostToggleBookmark(c *gin.Context) {
 
 	uid, _ := c.Get("userID")
 	userID := uid.(int64)
+
+	// Enforce per-user grant scope for listeners. Admins bypass the check.
+	// If the user cannot see the call, return 404 (not 403) to avoid leaking
+	// call existence.
+	roleVal, _ := c.Get("role")
+	role, _ := roleVal.(string)
+	if role != auth.RoleAdmin {
+		call, err := h.queries.GetCall(c.Request.Context(), req.CallID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "call not found"})
+				return
+			}
+			slog.ErrorContext(c.Request.Context(), "bookmarks: failed to load call for grant check", "user_id", userID, "call_id", req.CallID, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check bookmark"})
+			return
+		}
+		user, err := h.queries.GetUser(c.Request.Context(), userID)
+		if err != nil {
+			slog.ErrorContext(c.Request.Context(), "bookmarks: failed to load user for grant check", "user_id", userID, "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check bookmark"})
+			return
+		}
+		grants := auth.ParseSystemGrants(user.SystemsJson)
+		tgID := int64(0)
+		if call.TalkgroupID.Valid {
+			tgID = call.TalkgroupID.Int64
+		}
+		if !auth.HasSystemAccess(grants, call.SystemID, tgID) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "call not found"})
+			return
+		}
+	}
 
 	nullUserID := sql.NullInt64{Int64: userID, Valid: true}
 

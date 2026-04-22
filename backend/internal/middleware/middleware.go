@@ -65,8 +65,9 @@ func CORS() gin.HandlerFunc {
 		}
 
 		// Dev/local exception: allow localhost frontend origins on different ports
-		// when backend is also running on localhost.
-		if !allowed {
+		// when backend is also running on localhost. Only active when Gin is in
+		// debug mode; release builds enforce strict same-origin.
+		if !allowed && gin.Mode() == gin.DebugMode {
 			if u, err := url.Parse(origin); err == nil {
 				if reqHost, reqErr := url.Parse(scheme + "://" + host); reqErr == nil {
 					if isLocalhost(u.Hostname()) && isLocalhost(reqHost.Hostname()) {
@@ -219,17 +220,23 @@ func RequireAdmin() gin.HandlerFunc {
 	}
 }
 
-// APIKeyAuth reads the X-API-Key header, looks up the key in the database,
-// and sets "apiKeyID" in the Gin context. Aborts with 401 if the key is
-// missing, not found, or disabled.
+// APIKeyAuth reads the API key from the X-API-Key header, ?key= query param,
+// or (for Trunk Recorder compatibility) a multipart "key" form field — in that
+// order. It looks up the key in the database and sets "apiKeyID" in the Gin
+// context. Aborts with 401 if the key is missing, not found, or disabled.
 func APIKeyAuth(queries *db.Queries) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestID, _ := c.Get("requestID")
 
+		// Prefer header, then query string. Only fall back to PostForm
+		// (which parses the entire multipart body) when both are empty.
 		key := c.GetHeader("X-API-Key")
-		// Trunk Recorder's rdioscanner_uploader plugin sends the API key
-		// as a multipart form field named "key" rather than a header.
 		if key == "" {
+			key = c.Query("key")
+		}
+		if key == "" {
+			// Trunk Recorder's rdioscanner_uploader plugin sends the API key
+			// as a multipart form field named "key" rather than a header.
 			key = c.PostForm("key")
 		}
 		if key == "" {
@@ -239,6 +246,19 @@ func APIKeyAuth(queries *db.Queries) gin.HandlerFunc {
 				"path", c.Request.URL.Path,
 			)
 			c.AbortWithStatusJSON(401, gin.H{"error": "API key required"})
+			return
+		}
+
+		// Reject implausibly long keys before hashing (defense-in-depth; real
+		// keys are 64 hex chars). Prevents CPU waste on attacker-controlled input.
+		if len(key) > 128 {
+			slog.Warn("api key auth: oversized key rejected",
+				"request_id", requestID,
+				"ip", c.ClientIP(),
+				"path", c.Request.URL.Path,
+				"length", len(key),
+			)
+			c.AbortWithStatusJSON(401, gin.H{"error": "invalid API key"})
 			return
 		}
 

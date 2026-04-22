@@ -38,6 +38,9 @@ type Config struct {
 	Service           string // Service command: install, uninstall, start, stop, restart
 }
 
+// jsonFileConfig is the on-disk startup config. It MUST NOT contain any
+// secret material. The encryption key is supplied via --encryption-key,
+// --encryption-key-file, or the OPENSCANNER_ENCRYPTION_KEY env var only.
 type jsonFileConfig struct {
 	Listen        string `json:"listen"`
 	DBFile        string `json:"db_file"`
@@ -46,15 +49,17 @@ type jsonFileConfig struct {
 	SSLCert       string `json:"ssl_cert_file"`
 	SSLKey        string `json:"ssl_key_file"`
 	SSLAutoCert   string `json:"ssl_auto_cert"`
-	EncryptionKey string `json:"encryption_key"`
 	Timezone      string `json:"timezone"`
+
+	// LegacyEncryptionKey captures the deprecated "encryption_key" field to
+	// detect and refuse startup on legacy config files that leaked the key to disk.
+	LegacyEncryptionKey string `json:"encryption_key,omitempty"`
 }
 
 // Load parses configuration from CLI flags, environment variables, and an optional JSON file.
 // Precedence: CLI flags > environment variables > JSON file > built-in defaults.
 func Load() (*Config, error) {
 	cfg := &Config{}
-
 	// Determine default RecordingsDir (directory of the running executable).
 	exePath, err := os.Executable()
 	if err != nil {
@@ -116,6 +121,15 @@ func loadJSON(cfg *Config) {
 		return
 	}
 
+	// Refuse to start if the legacy (insecure) encryption_key field is present
+	// in the JSON config. The encryption key must come from env var or CLI flag.
+	if fileCfg.LegacyEncryptionKey != "" {
+		slog.Error("insecure config: 'encryption_key' field found in JSON config file — remove it and supply the key via --encryption-key, --encryption-key-file, or OPENSCANNER_ENCRYPTION_KEY",
+			"file", cfg.ConfigFile)
+		fmt.Fprintf(os.Stderr, "openscanner: refusing to start — remove 'encryption_key' from %s; pass the key via --encryption-key, --encryption-key-file, or OPENSCANNER_ENCRYPTION_KEY\n", cfg.ConfigFile)
+		os.Exit(1)
+	}
+
 	if v := fileCfg.Listen; v != "" {
 		cfg.Listen = v
 	}
@@ -136,9 +150,6 @@ func loadJSON(cfg *Config) {
 	}
 	if v := fileCfg.SSLAutoCert; v != "" {
 		cfg.SSLAutoCert = v
-	}
-	if v := fileCfg.EncryptionKey; v != "" {
-		cfg.EncryptionKey = v
 	}
 	if v := fileCfg.Timezone; v != "" {
 		cfg.Timezone = v
@@ -223,6 +234,7 @@ func restoreExplicitFlags(cfg *Config, explicit map[string]string) {
 }
 
 // SaveJSON writes the current configuration to the JSON config file.
+// The encryption key is NEVER written to disk; it must be supplied via env var or CLI flag.
 func (c *Config) SaveJSON() error {
 	fileCfg := jsonFileConfig{
 		Listen:        c.Listen,
@@ -232,7 +244,6 @@ func (c *Config) SaveJSON() error {
 		SSLCert:       c.SSLCert,
 		SSLKey:        c.SSLKey,
 		SSLAutoCert:   c.SSLAutoCert,
-		EncryptionKey: c.EncryptionKey,
 		Timezone:      c.Timezone,
 	}
 
@@ -243,7 +254,7 @@ func (c *Config) SaveJSON() error {
 	data = append(data, '\n')
 
 	slog.Info("saving configuration", "file", c.ConfigFile)
-	return os.WriteFile(c.ConfigFile, data, 0o644)
+	return os.WriteFile(c.ConfigFile, data, 0o600)
 }
 
 // ResolveEncryptionKey reads the encryption key from a file if EncryptionKeyFile is set.
@@ -278,6 +289,10 @@ func ValidateJSONFile(path string) error {
 	var fileCfg jsonFileConfig
 	if err := json.Unmarshal(data, &fileCfg); err != nil {
 		return fmt.Errorf("parse JSON config: %w", err)
+	}
+
+	if fileCfg.LegacyEncryptionKey != "" {
+		return fmt.Errorf("invalid config: the 'encryption_key' field is not allowed in the JSON config — supply the key via --encryption-key, --encryption-key-file, or OPENSCANNER_ENCRYPTION_KEY")
 	}
 
 	if fileCfg.Listen == "" {

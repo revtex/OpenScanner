@@ -77,6 +77,7 @@ var wsValidRoles = map[string]bool{
 // SensitiveSettingKeys are settings whose values are encrypted at rest.
 var SensitiveSettingKeys = map[string]bool{
 	"vapidPrivateKey": true,
+	"jwtSecret":       true,
 }
 
 // wsAllowedSettingKeys mirrors the allowed setting keys from config.go.

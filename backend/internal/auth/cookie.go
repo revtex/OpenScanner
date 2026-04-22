@@ -19,17 +19,19 @@ func isSecure(c *gin.Context) bool {
 	return c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
 }
 
-// SetRefreshCookie sets an HTTP-only, SameSite=Strict cookie with the raw refresh token.
-// maxAge is in seconds; pass 0 for a session-only cookie (no Max-Age / Expires).
+// SetRefreshCookie sets an HTTP-only, SameSite=Lax cookie with the raw refresh token.
+// Lax (not Strict) is required so the cookie accompanies top-level navigations
+// back to the app after an OAuth-style redirect. maxAge is in seconds; pass 0
+// for a session-only cookie (no Max-Age / Expires).
 func SetRefreshCookie(c *gin.Context, token string, maxAge int) {
 	secure := isSecure(c)
-	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(RefreshCookieName, token, maxAge, RefreshCookiePath, "", secure, true)
 }
 
 // ClearRefreshCookie deletes the refresh token cookie.
 func ClearRefreshCookie(c *gin.Context) {
 	secure := isSecure(c)
-	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(RefreshCookieName, "", -1, RefreshCookiePath, "", secure, true)
 }

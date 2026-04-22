@@ -680,6 +680,24 @@ func (p *program) run() {
 		os.Exit(1)
 	}
 
+	// Initialise persistent JWT signing secret. Must run AFTER migrateSecrets so
+	// any pre-existing plaintext value gets encrypted, and AFTER the encryption
+	// key has been resolved.
+	if err := auth.InitJWTSecret(context.Background(), &jwtSecretStore{q: queries}, cfg.EncryptionKey); err != nil {
+		slog.Error("failed to initialise JWT secret", "error", err)
+		os.Exit(1)
+	}
+
+	// Warn at startup if webhook/push-notification features exist in the DB
+	// but have no dispatcher wired. CRUD remains available through the admin
+	// WebSocket (admin-only); no HTTP attack surface exists for these.
+	if setting, err := queries.GetSetting(context.Background(), "webhooksEnabled"); err == nil && setting.Value == "true" {
+		slog.Warn("webhooksEnabled=true but no webhook dispatcher is wired — webhooks will NOT fire")
+	}
+	if setting, err := queries.GetSetting(context.Background(), "pushNotifications"); err == nil && setting.Value == "true" {
+		slog.Warn("pushNotifications=true but no push dispatcher is wired — push notifications will NOT fire")
+	}
+
 	persistedLogLevel := ""
 	if setting, err := queries.GetSetting(context.Background(), "logLevel"); err == nil {
 		persistedLogLevel = setting.Value
@@ -785,7 +803,7 @@ func (p *program) run() {
 				return
 			case <-ticker.C:
 				now := time.Now().Unix()
-				if err := queries.DeleteExpiredRefreshTokens(context.Background(), db.DeleteExpiredRefreshTokensParams{
+				if err := queries.DeleteExpiredRefreshTokens(ctx, db.DeleteExpiredRefreshTokensParams{
 					ExpiresAt: now,
 					CreatedAt: now,
 				}); err != nil {
@@ -1026,6 +1044,21 @@ func consumeTranscriptionResults(ctx context.Context, queries *db.Queries, hub *
 			hub.BroadcastTRN(res.CallID, res.Result.Text, res.Result.Segments)
 		}
 	}
+}
+
+// jwtSecretStore adapts *db.Queries to the auth.InitJWTSecret loader interface.
+type jwtSecretStore struct{ q *db.Queries }
+
+func (s *jwtSecretStore) Get(ctx context.Context, key string) (string, error) {
+	row, err := s.q.GetSetting(ctx, key)
+	if err != nil {
+		return "", err
+	}
+	return row.Value, nil
+}
+
+func (s *jwtSecretStore) Upsert(ctx context.Context, key, value string) error {
+	return s.q.UpsertSetting(ctx, db.UpsertSettingParams{Key: key, Value: value})
 }
 
 // migrateSecrets handles the transition between encrypted and unencrypted states at startup.

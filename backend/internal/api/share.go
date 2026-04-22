@@ -337,7 +337,7 @@ func (h *CallHandler) GetSharedCallAudio(c *gin.Context) {
 		filename = filepath.Base(sl.AudioPath)
 	}
 
-	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=%q", filename))
+	c.Header("Content-Disposition", contentDisposition("inline", filename))
 	c.Header("Content-Type", contentType)
 	c.File(fullPath)
 }

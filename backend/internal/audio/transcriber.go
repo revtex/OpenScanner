@@ -16,6 +16,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/openscanner/openscanner/internal/safehttp"
 )
 
 // TranscriptionSegment represents one timestamped segment from go-whisper.
@@ -86,14 +88,9 @@ func NewTranscriberPool(ctx context.Context, numWorkers int, baseURL, model, lan
 	}
 
 	p := &TranscriberPool{
-		jobs:    make(chan TranscriptionJob, numWorkers*4),
-		results: make(chan TranscriptionJobResult, numWorkers*4),
-		client: &http.Client{
-			Timeout: 120 * time.Second,
-			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-		},
+		jobs:     make(chan TranscriptionJob, numWorkers*4),
+		results:  make(chan TranscriptionJobResult, numWorkers*4),
+		client:   safehttp.Client(120 * time.Second),
 		baseURL:  strings.TrimRight(baseURL, "/"),
 		model:    model,
 		language: language,

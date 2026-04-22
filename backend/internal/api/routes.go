@@ -124,8 +124,10 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	}
 
 	// Call upload — API key auth.
+	// Pre-auth body-size cap (50 MiB) prevents unauthenticated clients from
+	// consuming memory/bandwidth before the API key is validated.
 	upload := r.Group("/")
-	upload.Use(middleware.APIKeyAuth(deps.Queries))
+	upload.Use(middleware.MaxBodySize(50<<20), middleware.APIKeyAuth(deps.Queries))
 	{
 		upload.POST("/api/call-upload", callHandler.PostCallUpload)
 		upload.POST("/api/trunk-recorder-call-upload", callHandler.PostCallUpload)

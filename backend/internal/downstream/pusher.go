@@ -22,6 +22,7 @@ import (
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
+	"github.com/openscanner/openscanner/internal/safehttp"
 )
 
 // CallEvent holds the data for a call that should be pushed downstream.
@@ -82,12 +83,7 @@ func NewService(queries *db.Queries, processor *audio.Processor, encryptionKey s
 		queries:       queries,
 		encryptionKey: encryptionKey,
 		processor:     processor,
-		client: &http.Client{
-			Timeout: 30 * time.Second,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-		},
+		client:        safehttp.Client(30 * time.Second),
 	}
 }
 
@@ -394,10 +390,24 @@ func (s *Service) pushCall(ctx context.Context, ds db.Downstream, event CallEven
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	apiKey := ds.ApiKey
-	if s.encryptionKey != "" {
-		if plain, err := auth.DecryptString(apiKey, s.encryptionKey); err == nil {
-			apiKey = plain
+	if auth.IsEncrypted(apiKey) {
+		if s.encryptionKey == "" {
+			slog.Error("downstream: api key is encrypted but no encryption key configured — aborting push",
+				"downstream_id", ds.ID,
+				"url", ds.Url,
+			)
+			return fmt.Errorf("downstream %d: api key encrypted but no encryption key configured", ds.ID)
 		}
+		plain, err := auth.DecryptString(apiKey, s.encryptionKey)
+		if err != nil {
+			slog.Error("downstream: failed to decrypt api key — aborting push",
+				"downstream_id", ds.ID,
+				"url", ds.Url,
+				"error", err,
+			)
+			return fmt.Errorf("downstream %d: decrypt api key: %w", ds.ID, err)
+		}
+		apiKey = plain
 	}
 	req.Header.Set("X-API-Key", apiKey)
 

@@ -105,7 +105,7 @@ func (h *Hub) Run(ctx context.Context) {
 			h.mu.Lock()
 			if _, ok := h.clients[c]; ok {
 				delete(h.clients, c)
-				close(c.send)
+				c.closeSend()
 			}
 			h.mu.Unlock()
 			if !c.isAdmin {
@@ -118,11 +118,7 @@ func (h *Hub) Run(ctx context.Context) {
 				if msg.filter != nil && !msg.filter(c) {
 					continue
 				}
-				select {
-				case c.send <- msg.data:
-				default:
-					// Slow client — drop the message.
-				}
+				c.trySend(msg.data)
 			}
 			h.mu.RUnlock()
 		}
@@ -209,7 +205,7 @@ func (h *Hub) Register(c *Client) {
 	select {
 	case h.register <- c:
 	case <-h.done:
-		close(c.send)
+		c.closeSend()
 	}
 }
 
@@ -249,10 +245,7 @@ func (h *Hub) DisconnectByUser(userID int64) {
 	for _, c := range targets {
 		slog.Info("ws: disconnecting user session", "user_id", userID, "is_admin", c.isAdmin)
 		msg, _ := NewXPRMessage()
-		select {
-		case c.send <- msg:
-		default:
-		}
+		c.trySend(msg)
 		h.Unregister(c)
 	}
 }
@@ -272,10 +265,7 @@ func (h *Hub) DisconnectByJTI(jti string) {
 	if target != nil {
 		slog.Info("ws: disconnecting session by JTI", "jti", jti, "user_id", target.userID)
 		msg, _ := NewXPRMessage()
-		select {
-		case target.send <- msg:
-		default:
-		}
+		target.trySend(msg)
 		h.Unregister(target)
 	}
 }
@@ -312,7 +302,7 @@ func (h *Hub) closeAll() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for c := range h.clients {
-		close(c.send)
+		c.closeSend()
 		delete(h.clients, c)
 	}
 	h.lscMu.Lock()

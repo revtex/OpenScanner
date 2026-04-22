@@ -953,7 +953,7 @@ func (h *CallHandler) GetCallAudio(c *gin.Context) {
 		filename = "call"
 	}
 
-	c.Header("Content-Disposition", "inline; filename="+strconv.Quote(filename))
+	c.Header("Content-Disposition", contentDisposition("inline", filename))
 	c.Header("Content-Type", contentType)
 	c.File(fullPath)
 }

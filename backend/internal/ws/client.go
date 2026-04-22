@@ -6,11 +6,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coder/websocket"
@@ -44,6 +47,46 @@ type Client struct {
 	userID  int64
 	jti     string      // JWT token ID, for single-session disconnect
 	queries *db.Queries // for periodic account revalidation
+
+	// Drop counter for slow-client telemetry. Incremented whenever a
+	// broadcast / send-site drops a message because the send buffer is full.
+	dropCount atomic.Int64
+
+	// closeOnce ensures c.send is closed exactly once even if multiple
+	// shutdown paths race (hub unregister + closeAll, stale Register after
+	// shutdown, etc.). See trySend for the panic-safe write counterpart.
+	closeOnce sync.Once
+}
+
+// closeSend closes c.send at most once. Safe to call from any goroutine.
+func (c *Client) closeSend() {
+	c.closeOnce.Do(func() { close(c.send) })
+}
+
+// trySend enqueues data on c.send without blocking. If the buffer is full
+// the message is dropped and the drop counter is incremented (with a periodic
+// warning log). Writes to a closed channel are recovered so a racing
+// shutdown path cannot crash the process.
+func (c *Client) trySend(data []byte) {
+	defer func() {
+		if r := recover(); r != nil {
+			// send on closed channel — connection is already shutting down,
+			// the message is discarded silently.
+		}
+	}()
+	select {
+	case c.send <- data:
+	default:
+		n := c.dropCount.Add(1)
+		if n%100 == 0 {
+			slog.Warn("ws: slow client dropping messages",
+				"client_ptr", fmt.Sprintf("%p", c),
+				"user_id", c.userID,
+				"is_admin", c.isAdmin,
+				"drop_count", n,
+			)
+		}
+	}
 }
 
 // adminRequest is the envelope for admin WS request messages.
@@ -387,10 +430,7 @@ func (c *Client) readPump(ctx context.Context) {
 				if err := json.Unmarshal(payload, &fm); err == nil {
 					msg, err := NewLFMMessage(fm)
 					if err == nil {
-						select {
-						case c.send <- msg:
-						default:
-						}
+						c.trySend(msg)
 					}
 				}
 			}
@@ -427,10 +467,7 @@ func (c *Client) handleAdminRequest(ctx context.Context, req adminRequest) {
 	handler, ok := handlers[req.Op]
 	if !ok {
 		msg, _ := NewADMRESErrorMessage(req.ReqID, "unknown op: "+req.Op)
-		select {
-		case c.send <- msg:
-		default:
-		}
+		c.trySend(msg)
 		return
 	}
 
@@ -446,10 +483,7 @@ func (c *Client) handleAdminRequest(ctx context.Context, req adminRequest) {
 	} else {
 		msg, _ = NewADMRESMessage(req.ReqID, data)
 	}
-	select {
-	case c.send <- msg:
-	default:
-	}
+	c.trySend(msg)
 }
 
 func (c *Client) opActivityStats(ctx context.Context, _ json.RawMessage) (any, error) {

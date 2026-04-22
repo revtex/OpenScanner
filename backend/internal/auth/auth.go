@@ -2,13 +2,17 @@
 package auth
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,12 +40,142 @@ const (
 	RefreshTokenExpiry = 30 * 24 * time.Hour
 
 	// MaxRefreshFamilies is the maximum number of active refresh token families per user.
-	MaxRefreshFamilies = 10
+	// Matches the "max 5 concurrent JWT tokens per user" rule in the security policy.
+	MaxRefreshFamilies = 5
 )
 
-// JWTSecret is the HS256 signing key. Set by cmd/server on startup; auto-generated
-// by init() if left nil/empty so dev/test environments never panic.
-var JWTSecret []byte
+// JWTSecret is the HS256 signing key. It is initialised lazily:
+//   - Tests may call SetJWTSecretForTest to inject a deterministic value.
+//   - Production code MUST call InitJWTSecret(ctx, queries, encryptionKey) from
+//     server startup, AFTER the DB and encryption key are ready, to load (or
+//     generate and persist) a stable secret.
+//
+// If neither has happened by the time a token is signed/parsed, an emergency
+// random secret is used so tests that do not exercise auth never panic — but
+// a warning is logged and any issued tokens will be invalidated on restart.
+var (
+	jwtSecretMu  sync.RWMutex
+	jwtSecretVal []byte
+)
+
+// JWTSecret returns the current signing key. Exposed for callers that embed
+// the auth package in test harnesses.
+func JWTSecret() []byte { //nolint:revive
+	jwtSecretMu.RLock()
+	if len(jwtSecretVal) > 0 {
+		s := jwtSecretVal
+		jwtSecretMu.RUnlock()
+		return s
+	}
+	jwtSecretMu.RUnlock()
+
+	// Lazy-generate a process-local random secret so unit tests that don't
+	// initialise auth don't panic. Production startup should always call
+	// InitJWTSecret before any request is served.
+	jwtSecretMu.Lock()
+	defer jwtSecretMu.Unlock()
+	if len(jwtSecretVal) == 0 {
+		b := make([]byte, 32)
+		if _, err := rand.Read(b); err != nil {
+			panic("auth: failed to generate random JWT secret: " + err.Error())
+		}
+		jwtSecretVal = b
+		slog.Warn("auth: JWT secret not initialised — generated ephemeral secret (tokens will not survive restart)")
+	}
+	return jwtSecretVal
+}
+
+// SetJWTSecretForTest sets the JWT signing key. Intended for tests only.
+func SetJWTSecretForTest(secret []byte) {
+	jwtSecretMu.Lock()
+	defer jwtSecretMu.Unlock()
+	jwtSecretVal = append([]byte(nil), secret...)
+}
+
+// JWTSecretKeyName is the settings row that stores the persistent JWT signing secret.
+const JWTSecretKeyName = "jwtSecret"
+
+// jwtSecretLoader abstracts the settings read/write so InitJWTSecret can accept
+// *db.Queries without the auth package importing internal/db (which would
+// introduce a cycle).
+type jwtSecretLoader interface {
+	Get(ctx context.Context, key string) (value string, err error)
+	Upsert(ctx context.Context, key, value string) error
+}
+
+// InitJWTSecret loads (or creates) the persistent JWT signing secret.
+//
+// Resolution order:
+//  1. OPENSCANNER_JWT_SECRET env var (treated as the raw secret string)
+//  2. Encrypted "jwtSecret" row in the settings table (decrypted with encryptionKey)
+//  3. Generate 32 random bytes, encrypt with encryptionKey, persist, and use
+//
+// When no encryption key is configured, the generated secret is stored in
+// plaintext (a warning is logged). Call from cmd/server after the DB is open
+// and the encryption key has been resolved.
+func InitJWTSecret(ctx context.Context, loader jwtSecretLoader, encryptionKey string) error {
+	// 1. Env var — highest precedence, never touches the DB.
+	if v := strings.TrimSpace(os.Getenv("OPENSCANNER_JWT_SECRET")); v != "" {
+		SetJWTSecretForTest([]byte(v))
+		slog.Info("auth: JWT secret loaded from OPENSCANNER_JWT_SECRET")
+		return nil
+	}
+
+	// 2. Settings row.
+	value, err := loader.Get(ctx, JWTSecretKeyName)
+	if err == nil && value != "" {
+		secret, derr := decodeJWTSecretValue(value, encryptionKey)
+		if derr != nil {
+			return fmt.Errorf("auth: failed to decode stored JWT secret: %w", derr)
+		}
+		SetJWTSecretForTest(secret)
+		slog.Info("auth: JWT secret loaded from settings")
+		return nil
+	}
+
+	// 3. Generate and persist.
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return fmt.Errorf("auth: generate JWT secret: %w", err)
+	}
+	stored := base64.StdEncoding.EncodeToString(raw)
+	if encryptionKey != "" {
+		enc, eerr := EncryptString(stored, encryptionKey)
+		if eerr != nil {
+			return fmt.Errorf("auth: encrypt JWT secret: %w", eerr)
+		}
+		stored = enc
+	} else {
+		slog.Warn("auth: no encryption key configured — JWT secret will be stored in plaintext")
+	}
+	if err := loader.Upsert(ctx, JWTSecretKeyName, stored); err != nil {
+		return fmt.Errorf("auth: persist JWT secret: %w", err)
+	}
+	SetJWTSecretForTest(raw)
+	slog.Info("auth: JWT secret generated and persisted")
+	return nil
+}
+
+// decodeJWTSecretValue decrypts (if needed) and base64-decodes a stored JWT secret value.
+func decodeJWTSecretValue(stored, encryptionKey string) ([]byte, error) {
+	val := stored
+	if IsEncrypted(val) {
+		if encryptionKey == "" {
+			return nil, errors.New("jwt secret is encrypted but no encryption key is configured")
+		}
+		plain, err := DecryptString(val, encryptionKey)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt: %w", err)
+		}
+		val = plain
+	}
+	raw, err := base64.StdEncoding.DecodeString(val)
+	if err != nil {
+		// Legacy / env-supplied values may be raw strings, not base64.
+		return []byte(val), nil
+	}
+	return raw, nil
+}
 
 // DummyHash is a pre-computed bcrypt cost-12 hash used to normalise response
 // timing in the login handler, preventing username enumeration via timing
@@ -52,13 +186,6 @@ var DummyHash string
 var Tokens *TokenTracker
 
 func init() {
-	if len(JWTSecret) == 0 {
-		secret := make([]byte, 32)
-		if _, err := rand.Read(secret); err != nil {
-			panic("auth: failed to generate random JWT secret: " + err.Error())
-		}
-		JWTSecret = secret
-	}
 	h, err := bcrypt.GenerateFromPassword([]byte(""), 12)
 	if err != nil {
 		panic("auth: failed to generate dummy bcrypt hash: " + err.Error())
@@ -108,7 +235,7 @@ func GenerateToken(userID int64, username, role string, accountExp int64) (strin
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, err := token.SignedString(JWTSecret)
+	signed, err := token.SignedString(JWTSecret())
 	slog.Debug("auth: token generated", "user_id", userID, "username", username, "role", role, "jti", jti)
 	return signed, jti, err
 }
@@ -243,7 +370,7 @@ func ParseToken(tokenStr string) (*Claims, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, jwt.ErrSignatureInvalid
 		}
-		return JWTSecret, nil
+		return JWTSecret(), nil
 	})
 	if err != nil {
 		slog.Debug("auth: token parse failed", "error", err)
@@ -272,7 +399,7 @@ func SetSwaggerCookie(c interface {
 	const maxAge = 3600 // 1 hour
 	expiry := time.Now().Add(time.Duration(maxAge) * time.Second).Unix()
 	payload := fmt.Sprintf("swagger:%d", expiry)
-	mac := hmac.New(sha256.New, JWTSecret)
+	mac := hmac.New(sha256.New, JWTSecret())
 	mac.Write([]byte(payload))
 	sig := hex.EncodeToString(mac.Sum(nil))
 	value := fmt.Sprintf("%d.%s", expiry, sig)
@@ -296,7 +423,7 @@ func ValidateSwaggerCookie(value string) bool {
 		return false
 	}
 	payload := fmt.Sprintf("swagger:%d", expiry)
-	mac := hmac.New(sha256.New, JWTSecret)
+	mac := hmac.New(sha256.New, JWTSecret())
 	mac.Write([]byte(payload))
 	expected := hex.EncodeToString(mac.Sum(nil))
 	return hmac.Equal([]byte(parts[1]), []byte(expected))

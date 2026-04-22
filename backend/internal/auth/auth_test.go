@@ -102,7 +102,7 @@ func TestGenerateAndParseToken(t *testing.T) {
 			},
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		tokenStr, err := token.SignedString(auth.JWTSecret)
+		tokenStr, err := token.SignedString(auth.JWTSecret())
 		if err != nil {
 			t.Fatalf("sign expired token: %v", err)
 		}

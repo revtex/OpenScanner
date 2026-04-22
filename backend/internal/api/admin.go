@@ -103,7 +103,8 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 	if user.Expiration.Valid && user.Expiration.Int64 > 0 {
 		if time.Now().Unix() > user.Expiration.Int64 {
 			h.rateLimiter.RecordFailure(ip)
-			h.logAuthEvent(c.Request.Context(), "warn", "login failed: expired account for "+user.Username, ip)
+			slog.WarnContext(c.Request.Context(), "login failed: expired account", "user_id", user.ID, "ip", ip)
+			h.logAuthEvent(c.Request.Context(), "warn", "login failed: expired account", ip)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 			return
 		}
@@ -111,7 +112,8 @@ func (h *AuthHandler) PostLogin(c *gin.Context) {
 
 	if !auth.CheckPassword(req.Password, user.PasswordHash) {
 		h.rateLimiter.RecordFailure(ip)
-		h.logAuthEvent(c.Request.Context(), "warn", "login failed: wrong password for "+user.Username, ip)
+		slog.WarnContext(c.Request.Context(), "login failed: wrong password", "user_id", user.ID, "ip", ip)
+		h.logAuthEvent(c.Request.Context(), "warn", "login failed: wrong password", ip)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
