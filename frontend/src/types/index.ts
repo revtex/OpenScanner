@@ -361,31 +361,6 @@ export interface SharedLinkAdmin {
   expiresAt: number | null;
 }
 
-// --- Maintenance types ---
-
-export interface MissingAudioCall {
-  id: number;
-  dateTime: number;
-  audioPath: string;
-  audioName: string;
-  reason: string;
-}
-
-export interface MissingAudioResponse {
-  recordingsDir: string;
-  limit: number;
-  offset: number;
-  totalCalls: number;
-  checked: number;
-  missing: MissingAudioCall[];
-}
-
-export interface MissingAudioCleanupResponse {
-  requested: number;
-  deleted: number;
-  skipped: MissingAudioCall[];
-}
-
 // --- Server filesystem types ---
 
 export interface ServerDirectoryEntry {

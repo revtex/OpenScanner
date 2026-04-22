@@ -9,11 +9,8 @@ import {
   useLazyExportTalkgroupsQuery,
   useLazyExportUnitsQuery,
   useImportConfigMutation,
-  useLazyGetMissingAudioCallsQuery,
-  useCleanupMissingAudioCallsMutation,
   useListSystemsQuery,
 } from "@/hooks/useAdminWsOps";
-import type { MissingAudioResponse } from "@/types";
 import { selectToken } from "@/app/slices/authSlice";
 import { useAppSelector } from "@/app/store";
 import RadioReferenceCard from "@/components/admin/RadioReferenceCard";
@@ -28,10 +25,6 @@ export default function ToolsPanel() {
   const [triggerExportTalkgroups] = useLazyExportTalkgroupsQuery();
   const [triggerExportUnits] = useLazyExportUnitsQuery();
   const [importConfig] = useImportConfigMutation();
-  const [getMissingAudioCalls, { isFetching: scanningMissingAudio }] =
-    useLazyGetMissingAudioCallsQuery();
-  const [cleanupMissingAudioCalls, { isLoading: cleaningMissingAudio }] =
-    useCleanupMissingAudioCallsMutation();
   const { data: systems } = useListSystemsQuery();
 
   const [toast, setToast] = useState<string | null>(null);
@@ -49,14 +42,6 @@ export default function ToolsPanel() {
   );
   const [exportTgSystemId, setExportTgSystemId] = useState<string>("");
   const [exportUnitSystemId, setExportUnitSystemId] = useState<string>("");
-
-  const [missingAudioResult, setMissingAudioResult] =
-    useState<MissingAudioResponse | null>(null);
-  const [confirmMissingCleanup, setConfirmMissingCleanup] = useState(false);
-  const [scanProgress, setScanProgress] = useState<{
-    checked: number;
-    total: number;
-  } | null>(null);
 
   const showToast = useCallback(
     (msg: string, type: "error" | "success" = "error") => {
@@ -176,76 +161,6 @@ export default function ToolsPanel() {
       if (configFileRef.current) configFileRef.current.value = "";
     } catch {
       showToast("Failed to import config");
-    }
-  };
-
-  const handleScanMissingAudio = async () => {
-    const PAGE_SIZE = 500;
-    let offset = 0;
-    const allMissing: MissingAudioResponse["missing"] = [];
-    let totalChecked = 0;
-    let lastResult!: MissingAudioResponse;
-    setScanProgress({ checked: 0, total: 0 });
-
-    try {
-      for (;;) {
-        const result = await getMissingAudioCalls({
-          limit: PAGE_SIZE,
-          offset,
-        }).unwrap();
-        lastResult = result;
-        totalChecked += result.checked;
-        allMissing.push(...result.missing);
-        setScanProgress({ checked: totalChecked, total: result.totalCalls });
-
-        if (result.checked < PAGE_SIZE || totalChecked >= result.totalCalls)
-          break;
-        offset += PAGE_SIZE;
-      }
-
-      const combined: MissingAudioResponse = {
-        recordingsDir: lastResult.recordingsDir,
-        limit: totalChecked,
-        offset: 0,
-        totalCalls: lastResult.totalCalls,
-        checked: totalChecked,
-        missing: allMissing,
-      };
-      setMissingAudioResult(combined);
-      showToast(
-        `Scan complete: ${allMissing.length} missing in ${totalChecked} checked calls`,
-        "success",
-      );
-    } catch {
-      showToast("Failed to scan for missing audio files");
-    } finally {
-      setScanProgress(null);
-    }
-  };
-
-  const handleCleanupMissingAudio = async () => {
-    if (!missingAudioResult || missingAudioResult.missing.length === 0) {
-      showToast("No missing rows to delete");
-      return;
-    }
-    if (!confirmMissingCleanup) {
-      showToast("Please confirm deletion first");
-      return;
-    }
-    try {
-      const callIds = missingAudioResult.missing.map((row) => row.id);
-      const result = await cleanupMissingAudioCalls({
-        confirm: true,
-        callIds,
-      }).unwrap();
-      showToast(
-        `Cleanup complete: deleted ${result.deleted} of ${result.requested}`,
-        "success",
-      );
-      setMissingAudioResult(null);
-      setConfirmMissingCleanup(false);
-    } catch {
-      showToast("Failed to delete missing audio rows");
     }
   };
 
@@ -499,86 +414,6 @@ export default function ToolsPanel() {
               Upload
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Missing audio scan */}
-      <div className="card bg-base-200 mb-4">
-        <div className="card-body">
-          <h2 className="card-title text-base">Find Missing Call Audio</h2>
-          <p className="text-sm text-base-content/70">
-            Scan recent archived calls and report DB records whose stored audio
-            file is missing from the configured base directory.
-          </p>
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              className="btn btn-primary"
-              onClick={handleScanMissingAudio}
-              disabled={scanningMissingAudio}
-            >
-              {scanningMissingAudio
-                ? scanProgress
-                  ? `Scanning... ${scanProgress.checked} / ${scanProgress.total}`
-                  : "Scanning..."
-                : "Scan Missing Audio"}
-            </button>
-            <label className="flex items-center cursor-pointer gap-2">
-              <input
-                type="checkbox"
-                className="checkbox checkbox-sm"
-                checked={confirmMissingCleanup}
-                onChange={(e) => setConfirmMissingCleanup(e.target.checked)}
-              />
-              <span className="text-sm">Confirm delete missing rows</span>
-            </label>
-            <button
-              className="btn btn-error"
-              onClick={handleCleanupMissingAudio}
-              disabled={
-                cleaningMissingAudio ||
-                !missingAudioResult ||
-                missingAudioResult.missing.length === 0
-              }
-            >
-              {cleaningMissingAudio ? "Deleting..." : "Delete Missing Rows"}
-            </button>
-            {missingAudioResult && (
-              <span className="text-sm text-base-content/70">
-                Recordings dir: {missingAudioResult.recordingsDir} | Checked:{" "}
-                {missingAudioResult.checked} / {missingAudioResult.totalCalls} |
-                Missing: {missingAudioResult.missing.length}
-              </span>
-            )}
-          </div>
-          {missingAudioResult && missingAudioResult.missing.length > 0 && (
-            <div className="overflow-x-auto mt-3">
-              <table className="table table-zebra table-xs">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Audio Name</th>
-                    <th>Audio Path</th>
-                    <th>Reason</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {missingAudioResult.missing.slice(0, 50).map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.id}</td>
-                      <td>{row.audioName || "-"}</td>
-                      <td className="font-mono text-xs">{row.audioPath}</td>
-                      <td>{row.reason}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {missingAudioResult.missing.length > 50 && (
-                <p className="text-xs text-base-content/70 mt-2">
-                  Showing first 50 missing rows.
-                </p>
-              )}
-            </div>
-          )}
         </div>
       </div>
 

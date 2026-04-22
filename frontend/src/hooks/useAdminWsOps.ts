@@ -17,8 +17,6 @@ import type {
   UpdateUserPayload,
   SharedLinkAdmin,
   ServerDirectoryListResponse,
-  MissingAudioResponse,
-  MissingAudioCleanupResponse,
   RRApplyRequest,
   RRApplyResponse,
   TranscriptionStatus,
@@ -369,24 +367,6 @@ export function useImportConfigMutation() {
   return useWsMutation<void, unknown>("import.config", {
     transformArg: (data) => ({ data }),
   });
-}
-
-// ─── Maintenance ────────────────────────────────────────────────────────────
-
-export function useLazyGetMissingAudioCallsQuery() {
-  return useLazyWsQuery<
-    MissingAudioResponse,
-    { limit?: number; offset?: number }
-  >("tools.audio-missing", {
-    transformArg: (arg) => arg as Record<string, unknown>,
-  });
-}
-
-export function useCleanupMissingAudioCallsMutation() {
-  return useWsMutation<
-    MissingAudioCleanupResponse,
-    { confirm: boolean; callIds: number[] }
-  >("tools.audio-missing-cleanup");
 }
 
 // ─── RadioReference ─────────────────────────────────────────────────────────
