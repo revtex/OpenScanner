@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS transcriptions (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     call_id     INTEGER NOT NULL UNIQUE REFERENCES calls(id) ON DELETE CASCADE,
     text        TEXT    NOT NULL,
+    segments    TEXT,
     language    TEXT,
     model       TEXT,
     duration_ms INTEGER,

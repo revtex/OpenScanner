@@ -12,7 +12,13 @@ CREATE TABLE IF NOT EXISTS calls (
     frequencies_json TEXT,
     patches_json     TEXT,
     system_id        INTEGER NOT NULL REFERENCES systems(id) ON DELETE CASCADE,
-    talkgroup_id     INTEGER REFERENCES talkgroups(id) ON DELETE SET NULL
+    talkgroup_id     INTEGER REFERENCES talkgroups(id) ON DELETE SET NULL,
+    site             TEXT,
+    channel          TEXT,
+    decoder          TEXT,
+    error_count      INTEGER,
+    spike_count      INTEGER,
+    talker_alias     TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_calls_datetime_system_tg

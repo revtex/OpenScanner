@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS shared_links (
     call_id    INTEGER NOT NULL UNIQUE REFERENCES calls(id) ON DELETE CASCADE,
     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token      TEXT    UNIQUE NOT NULL,
-    created_at INTEGER NOT NULL
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_shared_links_token ON shared_links(token);
