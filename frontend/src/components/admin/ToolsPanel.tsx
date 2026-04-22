@@ -1,5 +1,11 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, Download, ExternalLink } from "lucide-react";
+import {
+  Upload,
+  Download,
+  ExternalLink,
+  Database,
+  FileText,
+} from "lucide-react";
 import {
   useImportTalkgroupsMutation,
   useImportUnitsMutation,
@@ -165,300 +171,259 @@ export default function ToolsPanel() {
   };
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold mb-4">Tools</h1>
-      <p className="text-sm text-base-content/70 mb-4">
-        Import and export data. Upload CSV files to bulk-import talkgroups or
-        units into a system, and export or import the full server configuration
-        as JSON for backup or migration.
-      </p>
-
-      {/* CSV Import: Talkgroups */}
-      <div className="card bg-base-200 mb-4">
-        <div className="card-body">
-          <h2 className="card-title text-base">
-            <Upload className="w-4 h-4" /> Import Talkgroups (CSV)
-          </h2>
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className="label">
-                  <span className="label-text text-sm">System</span>
-                </label>
-                <select
-                  value={selectedTgSystemId}
-                  onChange={(e) => setSelectedTgSystemId(e.target.value)}
-                  className="select select-bordered select-sm w-full"
-                >
-                  <option value="">--- Select a system ---</option>
-                  {systems?.map((sys) => (
-                    <option key={sys.id} value={sys.id}>
-                      {sys.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="label">
-                  <span className="label-text text-sm">Duplicate Mode</span>
-                </label>
-                <select
-                  value={tgImportMode}
-                  onChange={(e) =>
-                    setTgImportMode(e.target.value as "overwrite" | "skip")
-                  }
-                  className="select select-bordered select-sm w-full"
-                >
-                  <option value="overwrite">Overwrite (update existing)</option>
-                  <option value="skip">Skip (keep existing)</option>
-                </select>
-              </div>
-              <div className="flex items-end">
-                <input
-                  ref={tgFileRef}
-                  type="file"
-                  accept=".csv"
-                  className="file-input file-input-bordered file-input-sm w-full"
-                />
-              </div>
-            </div>
-            <div className="text-xs text-base-content/70">
-              CSV format: talkgroup_id, label (optional), name, tag_id,
-              group_id, frequency, led, order. Mode: "Overwrite" updates
-              existing talkgroup properties, "Skip" ignores duplicates.
-            </div>
-            <button
-              className="btn btn-primary btn-sm w-full"
-              onClick={handleImportTalkgroups}
-            >
-              Upload Talkgroups
-            </button>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold mb-1">Tools</h1>
+        <p className="text-sm text-base-content/70">
+          Import, export, and enrich your scanner data.
+        </p>
       </div>
 
-      {/* CSV Import: Units */}
-      <div className="card bg-base-200 mb-4">
-        <div className="card-body">
-          <h2 className="card-title text-base">
-            <Upload className="w-4 h-4" /> Import Units (CSV)
-          </h2>
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className="label">
-                  <span className="label-text text-sm">System</span>
-                </label>
-                <select
-                  value={selectedUnitSystemId}
-                  onChange={(e) => setSelectedUnitSystemId(e.target.value)}
-                  className="select select-bordered select-sm w-full"
-                >
-                  <option value="">--- Select a system ---</option>
-                  {systems?.map((sys) => (
-                    <option key={sys.id} value={sys.id}>
-                      {sys.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="label">
-                  <span className="label-text text-sm">Duplicate Mode</span>
-                </label>
-                <select
-                  value={unitImportMode}
-                  onChange={(e) =>
-                    setUnitImportMode(e.target.value as "overwrite" | "skip")
-                  }
-                  className="select select-bordered select-sm w-full"
-                >
-                  <option value="overwrite">Overwrite (update existing)</option>
-                  <option value="skip">Skip (keep existing)</option>
-                </select>
-              </div>
-              <div className="flex items-end">
-                <input
-                  ref={unitFileRef}
-                  type="file"
-                  accept=".csv"
-                  className="file-input file-input-bordered file-input-sm w-full"
-                />
-              </div>
-            </div>
-            <div className="text-xs text-base-content/70">
-              CSV format: unit_id, label (optional), order (optional). Mode:
-              "Overwrite" updates existing unit labels, "Skip" ignores
-              duplicates.
-            </div>
-            <button
-              className="btn btn-primary btn-sm w-full"
-              onClick={handleImportUnits}
-            >
-              Upload Units
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* RadioReference Enrichment */}
-      <RadioReferenceCard />
-
-      {/* CSV Export: Talkgroups */}
-      <div className="card bg-base-200 mb-4">
-        <div className="card-body">
-          <h2 className="card-title text-base">
-            <Download className="w-4 h-4" /> Export Talkgroups (CSV)
-          </h2>
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="label">
-                  <span className="label-text text-sm">System</span>
-                </label>
-                <select
-                  value={exportTgSystemId}
-                  onChange={(e) => setExportTgSystemId(e.target.value)}
-                  className="select select-bordered select-sm w-full"
-                >
-                  <option value="">All systems</option>
-                  {systems?.map((sys) => (
-                    <option key={sys.id} value={sys.id}>
-                      {sys.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-end">
-                <button
-                  className="btn btn-primary btn-sm w-full"
-                  onClick={handleExportTalkgroups}
-                >
-                  Download CSV
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* CSV Export: Units */}
-      <div className="card bg-base-200 mb-4">
-        <div className="card-body">
-          <h2 className="card-title text-base">
-            <Download className="w-4 h-4" /> Export Units (CSV)
-          </h2>
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="label">
-                  <span className="label-text text-sm">System</span>
-                </label>
-                <select
-                  value={exportUnitSystemId}
-                  onChange={(e) => setExportUnitSystemId(e.target.value)}
-                  className="select select-bordered select-sm w-full"
-                >
-                  <option value="">All systems</option>
-                  {systems?.map((sys) => (
-                    <option key={sys.id} value={sys.id}>
-                      {sys.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-end">
-                <button
-                  className="btn btn-primary btn-sm w-full"
-                  onClick={handleExportUnits}
-                >
-                  Download CSV
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* JSON Config Export */}
-      <div className="card bg-base-200 mb-4">
-        <div className="card-body">
-          <h2 className="card-title text-base">
-            <Download className="w-4 h-4" /> Export Config (JSON)
-          </h2>
-          <div>
-            <button className="btn btn-primary" onClick={handleExportConfig}>
-              Export Config
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* JSON Config Import */}
-      <div className="card bg-base-200 mb-4">
-        <div className="card-body">
-          <h2 className="card-title text-base">
-            <Upload className="w-4 h-4" /> Import Config (JSON)
-          </h2>
-          <div className="flex items-center gap-3">
-            <input
-              ref={configFileRef}
-              type="file"
-              accept=".json"
-              className="file-input file-input-sm"
-            />
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={handleImportConfig}
-            >
-              Upload
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* API Documentation */}
-      <div className="card bg-base-200 mb-4">
-        <div className="card-body">
-          <h2 className="card-title text-base">
-            <ExternalLink className="w-4 h-4" /> API Documentation
-          </h2>
-          <p className="text-sm text-base-content/70">
-            Browse the interactive Swagger UI to explore and test all API
-            endpoints. Use the token below to authorize requests via the padlock
-            icon in Swagger UI. Your docs session expires after 1 hour — click
-            "Open Swagger UI" again to refresh it.
-          </p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={async () => {
-                const res = await fetch("/api/admin/docs/session", {
-                  method: "POST",
-                  headers: { Authorization: `Bearer ${token}` },
-                });
-                if (res.ok) {
-                  window.open(SWAGGER_URL, "_blank", "noopener");
+      {/* ── Import ─────────────────────────────────────── */}
+      <section>
+        <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
+          <Upload className="w-4 h-4" /> Import
+        </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Import Talkgroups */}
+          <div className="card bg-base-200">
+            <div className="card-body gap-3">
+              <h3 className="card-title text-sm">Talkgroups (CSV)</h3>
+              <select
+                value={selectedTgSystemId}
+                onChange={(e) => setSelectedTgSystemId(e.target.value)}
+                className="select select-bordered select-sm w-full"
+              >
+                <option value="">Select a system…</option>
+                {systems?.map((sys) => (
+                  <option key={sys.id} value={sys.id}>
+                    {sys.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={tgImportMode}
+                onChange={(e) =>
+                  setTgImportMode(e.target.value as "overwrite" | "skip")
                 }
-              }}
-            >
-              Open Swagger UI
-              <ExternalLink className="w-4 h-4" />
-            </button>
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={() => {
-                if (token) {
-                  navigator.clipboard.writeText(`Bearer ${token}`);
-                  showToast("Bearer token copied to clipboard", "success");
+                className="select select-bordered select-sm w-full"
+              >
+                <option value="overwrite">Overwrite existing</option>
+                <option value="skip">Skip existing</option>
+              </select>
+              <input
+                ref={tgFileRef}
+                type="file"
+                accept=".csv"
+                className="file-input file-input-bordered file-input-sm w-full"
+              />
+              <p className="text-xs text-base-content/50">
+                Columns: talkgroup_id, label, name, tag_id, group_id, frequency,
+                led, order
+              </p>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleImportTalkgroups}
+              >
+                Upload
+              </button>
+            </div>
+          </div>
+
+          {/* Import Units */}
+          <div className="card bg-base-200">
+            <div className="card-body gap-3">
+              <h3 className="card-title text-sm">Units (CSV)</h3>
+              <select
+                value={selectedUnitSystemId}
+                onChange={(e) => setSelectedUnitSystemId(e.target.value)}
+                className="select select-bordered select-sm w-full"
+              >
+                <option value="">Select a system…</option>
+                {systems?.map((sys) => (
+                  <option key={sys.id} value={sys.id}>
+                    {sys.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={unitImportMode}
+                onChange={(e) =>
+                  setUnitImportMode(e.target.value as "overwrite" | "skip")
                 }
-              }}
-            >
-              Copy Bearer Token
-            </button>
+                className="select select-bordered select-sm w-full"
+              >
+                <option value="overwrite">Overwrite existing</option>
+                <option value="skip">Skip existing</option>
+              </select>
+              <input
+                ref={unitFileRef}
+                type="file"
+                accept=".csv"
+                className="file-input file-input-bordered file-input-sm w-full"
+              />
+              <p className="text-xs text-base-content/50">
+                Columns: unit_id, label, order
+              </p>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleImportUnits}
+              >
+                Upload
+              </button>
+            </div>
+          </div>
+
+          {/* Import Config */}
+          <div className="card bg-base-200">
+            <div className="card-body gap-3">
+              <h3 className="card-title text-sm">Server Config (JSON)</h3>
+              <input
+                ref={configFileRef}
+                type="file"
+                accept=".json"
+                className="file-input file-input-bordered file-input-sm w-full"
+              />
+              <p className="text-xs text-base-content/50">
+                Restore a full server configuration from a previously exported
+                JSON backup.
+              </p>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleImportConfig}
+              >
+                Upload
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* ── Export ─────────────────────────────────────── */}
+      <section>
+        <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
+          <Download className="w-4 h-4" /> Export
+        </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Export Talkgroups */}
+          <div className="card bg-base-200">
+            <div className="card-body gap-3">
+              <h3 className="card-title text-sm">Talkgroups (CSV)</h3>
+              <select
+                value={exportTgSystemId}
+                onChange={(e) => setExportTgSystemId(e.target.value)}
+                className="select select-bordered select-sm w-full"
+              >
+                <option value="">All systems</option>
+                {systems?.map((sys) => (
+                  <option key={sys.id} value={sys.id}>
+                    {sys.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleExportTalkgroups}
+              >
+                Download CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Export Units */}
+          <div className="card bg-base-200">
+            <div className="card-body gap-3">
+              <h3 className="card-title text-sm">Units (CSV)</h3>
+              <select
+                value={exportUnitSystemId}
+                onChange={(e) => setExportUnitSystemId(e.target.value)}
+                className="select select-bordered select-sm w-full"
+              >
+                <option value="">All systems</option>
+                {systems?.map((sys) => (
+                  <option key={sys.id} value={sys.id}>
+                    {sys.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleExportUnits}
+              >
+                Download CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Export Config */}
+          <div className="card bg-base-200">
+            <div className="card-body gap-3">
+              <h3 className="card-title text-sm">Server Config (JSON)</h3>
+              <p className="text-xs text-base-content/50">
+                Download a full snapshot of systems, talkgroups, units, groups,
+                tags, and settings.
+              </p>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleExportConfig}
+              >
+                Download JSON
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Enrich ─────────────────────────────────────── */}
+      <section>
+        <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
+          <Database className="w-4 h-4" /> Enrich
+        </h2>
+        <RadioReferenceCard />
+      </section>
+
+      {/* ── API Docs ───────────────────────────────────── */}
+      <section>
+        <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
+          <FileText className="w-4 h-4" /> API Documentation
+        </h2>
+        <div className="card bg-base-200">
+          <div className="card-body gap-3">
+            <p className="text-sm text-base-content/70">
+              Interactive Swagger UI for exploring and testing API endpoints.
+              Sessions expire after 1 hour.
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={async () => {
+                  const res = await fetch("/api/admin/docs/session", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  if (res.ok) {
+                    window.open(SWAGGER_URL, "_blank", "noopener");
+                  }
+                }}
+              >
+                Open Swagger UI
+                <ExternalLink className="w-4 h-4" />
+              </button>
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={() => {
+                  if (token) {
+                    navigator.clipboard.writeText(`Bearer ${token}`);
+                    showToast("Bearer token copied to clipboard", "success");
+                  }
+                }}
+              >
+                Copy Bearer Token
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {toast && (
         <div className="toast toast-end">
