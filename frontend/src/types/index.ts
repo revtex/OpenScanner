@@ -193,22 +193,6 @@ export interface AdminApiKeyCreateResponse extends AdminApiKey {
   createdKey: string;
 }
 
-export interface AdminDirwatch {
-  id: number;
-  directory: string;
-  type: string;
-  mask: string | null;
-  extension: string | null;
-  frequency: number | null;
-  delay: number | null;
-  deleteAfter: number;
-  usePolling: number;
-  disabled: number;
-  systemId: number | null;
-  talkgroupId: number | null;
-  order: number;
-}
-
 export interface AdminDownstream {
   id: number;
   url: string;

@@ -42,6 +42,3 @@ ON CONFLICT (system_id, unit_id) DO UPDATE SET
 
 -- name: ListAllUnits :many
 SELECT * FROM units ORDER BY system_id ASC, "order" ASC, unit_id ASC;
-
--- name: DeleteUnitsBySystem :exec
-DELETE FROM units WHERE system_id = ?;

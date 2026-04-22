@@ -24,35 +24,3 @@ func (q *Queries) CreateLog(ctx context.Context, arg CreateLogParams) error {
 	_, err := q.db.ExecContext(ctx, createLog, arg.DateTime, arg.Level, arg.Message)
 	return err
 }
-
-const listLogs = `-- name: ListLogs :many
-SELECT id, date_time, level, message FROM logs ORDER BY date_time DESC
-`
-
-func (q *Queries) ListLogs(ctx context.Context) ([]Log, error) {
-	rows, err := q.db.QueryContext(ctx, listLogs)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Log{}
-	for rows.Next() {
-		var i Log
-		if err := rows.Scan(
-			&i.ID,
-			&i.DateTime,
-			&i.Level,
-			&i.Message,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}

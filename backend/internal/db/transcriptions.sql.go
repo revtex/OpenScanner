@@ -66,44 +66,6 @@ func (q *Queries) CreateTranscription(ctx context.Context, arg CreateTranscripti
 	return id, err
 }
 
-const deleteTranscription = `-- name: DeleteTranscription :exec
-DELETE FROM transcriptions WHERE id = ?
-`
-
-func (q *Queries) DeleteTranscription(ctx context.Context, id int64) error {
-	_, err := q.db.ExecContext(ctx, deleteTranscription, id)
-	return err
-}
-
-const deleteTranscriptionByCallID = `-- name: DeleteTranscriptionByCallID :exec
-DELETE FROM transcriptions WHERE call_id = ?
-`
-
-func (q *Queries) DeleteTranscriptionByCallID(ctx context.Context, callID int64) error {
-	_, err := q.db.ExecContext(ctx, deleteTranscriptionByCallID, callID)
-	return err
-}
-
-const getTranscription = `-- name: GetTranscription :one
-SELECT id, call_id, text, segments, language, model, duration_ms, created_at FROM transcriptions WHERE id = ? LIMIT 1
-`
-
-func (q *Queries) GetTranscription(ctx context.Context, id int64) (Transcription, error) {
-	row := q.db.QueryRowContext(ctx, getTranscription, id)
-	var i Transcription
-	err := row.Scan(
-		&i.ID,
-		&i.CallID,
-		&i.Text,
-		&i.Segments,
-		&i.Language,
-		&i.Model,
-		&i.DurationMs,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const getTranscriptionByCallID = `-- name: GetTranscriptionByCallID :one
 SELECT id, call_id, text, segments, language, model, duration_ms, created_at FROM transcriptions WHERE call_id = ? LIMIT 1
 `

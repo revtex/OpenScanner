@@ -21,7 +21,6 @@ type Querier interface {
 	CreateDownstream(ctx context.Context, arg CreateDownstreamParams) (int64, error)
 	CreateGroup(ctx context.Context, label string) (int64, error)
 	CreateLog(ctx context.Context, arg CreateLogParams) error
-	CreatePushSubscription(ctx context.Context, arg CreatePushSubscriptionParams) (int64, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) error
 	CreateSharedLink(ctx context.Context, arg CreateSharedLinkParams) (SharedLink, error)
 	CreateSystem(ctx context.Context, arg CreateSystemParams) (int64, error)
@@ -34,25 +33,17 @@ type Querier interface {
 	DeleteAPIKey(ctx context.Context, id int64) error
 	DeleteBookmark(ctx context.Context, id int64) error
 	DeleteBookmarkByCallAndUser(ctx context.Context, arg DeleteBookmarkByCallAndUserParams) error
-	DeleteCall(ctx context.Context, id int64) error
 	DeleteCallBatch(ctx context.Context, id int64) error
 	DeleteDirMonitor(ctx context.Context, id int64) error
 	DeleteDownstream(ctx context.Context, id int64) error
 	DeleteExpiredRefreshTokens(ctx context.Context, arg DeleteExpiredRefreshTokensParams) error
 	DeleteGroup(ctx context.Context, id int64) error
-	DeletePushSubscription(ctx context.Context, id int64) error
-	DeletePushSubscriptionByEndpoint(ctx context.Context, endpoint string) error
-	DeleteSetting(ctx context.Context, key string) error
 	DeleteSharedLink(ctx context.Context, id int64) error
 	DeleteSharedLinkByCallID(ctx context.Context, callID int64) error
 	DeleteSystem(ctx context.Context, id int64) error
 	DeleteTag(ctx context.Context, id int64) error
 	DeleteTalkgroup(ctx context.Context, id int64) error
-	DeleteTalkgroupsBySystem(ctx context.Context, systemID int64) error
-	DeleteTranscription(ctx context.Context, id int64) error
-	DeleteTranscriptionByCallID(ctx context.Context, callID int64) error
 	DeleteUnit(ctx context.Context, id int64) error
-	DeleteUnitsBySystem(ctx context.Context, systemID int64) error
 	DeleteUser(ctx context.Context, id int64) error
 	DeleteWebhook(ctx context.Context, id int64) error
 	GetAPIKey(ctx context.Context, id int64) (ApiKey, error)
@@ -71,7 +62,6 @@ type Querier interface {
 	GetGroup(ctx context.Context, id int64) (Group, error)
 	GetGroupByLabel(ctx context.Context, label string) (Group, error)
 	GetOldestActiveRefreshTokenFamily(ctx context.Context, arg GetOldestActiveRefreshTokenFamilyParams) (string, error)
-	GetPushSubscription(ctx context.Context, id int64) (PushSubscription, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetSetting(ctx context.Context, key string) (Setting, error)
 	GetSharedLinkByCallID(ctx context.Context, callID int64) (SharedLink, error)
@@ -85,7 +75,6 @@ type Querier interface {
 	GetTalkgroupBySystemAndTGID(ctx context.Context, arg GetTalkgroupBySystemAndTGIDParams) (Talkgroup, error)
 	// Returns top N busiest talkgroups (by call count) in a time range.
 	GetTopTalkgroups(ctx context.Context, arg GetTopTalkgroupsParams) ([]GetTopTalkgroupsRow, error)
-	GetTranscription(ctx context.Context, id int64) (Transcription, error)
 	GetTranscriptionByCallID(ctx context.Context, callID int64) (Transcription, error)
 	GetUnit(ctx context.Context, id int64) (Unit, error)
 	GetUnitBySystemAndUnitID(ctx context.Context, arg GetUnitBySystemAndUnitIDParams) (Unit, error)
@@ -98,7 +87,6 @@ type Querier interface {
 	ListActiveDirMonitors(ctx context.Context) ([]Dirmonitor, error)
 	ListActiveDownstreams(ctx context.Context) ([]Downstream, error)
 	ListActiveWebhooks(ctx context.Context) ([]Webhook, error)
-	ListAllActivePushSubscriptions(ctx context.Context) ([]PushSubscription, error)
 	ListAllTalkgroups(ctx context.Context) ([]Talkgroup, error)
 	ListAllUnits(ctx context.Context) ([]Unit, error)
 	ListBookmarkCallIDsByUser(ctx context.Context, userID sql.NullInt64) ([]int64, error)
@@ -109,7 +97,6 @@ type Querier interface {
 	ListDirMonitors(ctx context.Context) ([]Dirmonitor, error)
 	ListDownstreams(ctx context.Context) ([]Downstream, error)
 	ListGroups(ctx context.Context) ([]Group, error)
-	ListLogs(ctx context.Context) ([]Log, error)
 	ListSettings(ctx context.Context) ([]Setting, error)
 	ListSharedLinks(ctx context.Context) ([]ListSharedLinksRow, error)
 	ListSystems(ctx context.Context) ([]System, error)

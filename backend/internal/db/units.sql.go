@@ -52,15 +52,6 @@ func (q *Queries) DeleteUnit(ctx context.Context, id int64) error {
 	return err
 }
 
-const deleteUnitsBySystem = `-- name: DeleteUnitsBySystem :exec
-DELETE FROM units WHERE system_id = ?
-`
-
-func (q *Queries) DeleteUnitsBySystem(ctx context.Context, systemID int64) error {
-	_, err := q.db.ExecContext(ctx, deleteUnitsBySystem, systemID)
-	return err
-}
-
 const getUnit = `-- name: GetUnit :one
 SELECT id, system_id, unit_id, label, "order" FROM units WHERE id = ? LIMIT 1
 `

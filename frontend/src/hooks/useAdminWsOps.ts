@@ -92,13 +92,6 @@ export function useUpdateSystemMutation() {
   );
 }
 
-export function useReorderSystemsMutation() {
-  return useWsMutation<void, Array<{ id: number; order: number }>>(
-    "systems.reorder",
-    { transformArg: (systems) => ({ systems }) },
-  );
-}
-
 export function useDeleteSystemMutation() {
   return useWsMutation<void, number>("systems.delete", {
     transformArg: (id) => ({ id }),
@@ -212,13 +205,6 @@ export function useCreateApiKeyMutation() {
 export function useUpdateApiKeyMutation() {
   return useWsMutation<AdminApiKey, { id: number } & UpdateApiKeyPayload>(
     "apikeys.update",
-  );
-}
-
-export function useReorderApiKeysMutation() {
-  return useWsMutation<void, Array<{ id: number; order: number }>>(
-    "apikeys.reorder",
-    { transformArg: (apiKeys) => ({ apiKeys }) },
   );
 }
 

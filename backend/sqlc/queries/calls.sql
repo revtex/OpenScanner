@@ -108,9 +108,6 @@ INSERT INTO calls (
     :talker_alias
 ) RETURNING id;
 
--- name: DeleteCall :exec
-DELETE FROM calls WHERE id = ?;
-
 -- name: CountCalls :one
 SELECT COUNT(*) FROM calls;
 

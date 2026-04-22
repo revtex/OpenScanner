@@ -155,15 +155,6 @@ func (q *Queries) CreateCall(ctx context.Context, arg CreateCallParams) (int64, 
 	return id, err
 }
 
-const deleteCall = `-- name: DeleteCall :exec
-DELETE FROM calls WHERE id = ?
-`
-
-func (q *Queries) DeleteCall(ctx context.Context, id int64) error {
-	_, err := q.db.ExecContext(ctx, deleteCall, id)
-	return err
-}
-
 const deleteCallBatch = `-- name: DeleteCallBatch :exec
 DELETE FROM calls WHERE id = ?
 `

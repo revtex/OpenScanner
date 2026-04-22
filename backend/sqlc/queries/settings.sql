@@ -6,6 +6,3 @@ SELECT * FROM settings ORDER BY key ASC;
 
 -- name: UpsertSetting :exec
 INSERT OR REPLACE INTO settings (key, value) VALUES (:key, :value);
-
--- name: DeleteSetting :exec
-DELETE FROM settings WHERE key = ?;

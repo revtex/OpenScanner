@@ -338,11 +338,10 @@ func (c *Client) adminOpHandlers() map[string]adminOpHandler {
 		"users.delete": c.opUsersDelete,
 
 		// Systems
-		"systems.list":    c.opSystemsList,
-		"systems.create":  c.opSystemsCreate,
-		"systems.update":  c.opSystemsUpdate,
-		"systems.delete":  c.opSystemsDelete,
-		"systems.reorder": c.opSystemsReorder,
+		"systems.list":   c.opSystemsList,
+		"systems.create": c.opSystemsCreate,
+		"systems.update": c.opSystemsUpdate,
+		"systems.delete": c.opSystemsDelete,
 
 		// Talkgroups
 		"talkgroups.list":   c.opTalkgroupsList,
@@ -369,11 +368,10 @@ func (c *Client) adminOpHandlers() map[string]adminOpHandler {
 		"tags.delete": c.opTagsDelete,
 
 		// API Keys
-		"apikeys.list":    c.opAPIKeysList,
-		"apikeys.create":  c.opAPIKeysCreate,
-		"apikeys.update":  c.opAPIKeysUpdate,
-		"apikeys.delete":  c.opAPIKeysDelete,
-		"apikeys.reorder": c.opAPIKeysReorder,
+		"apikeys.list":   c.opAPIKeysList,
+		"apikeys.create": c.opAPIKeysCreate,
+		"apikeys.update": c.opAPIKeysUpdate,
+		"apikeys.delete": c.opAPIKeysDelete,
 
 		// DirMonitors
 		"dirmonitors.list":   c.opDirMonitorsList,
@@ -737,62 +735,6 @@ func (c *Client) opSystemsDelete(ctx context.Context, params json.RawMessage) (a
 		return nil, fmt.Errorf("failed to delete system: %w", err)
 	}
 	slog.Info("admin: system deleted", "id", req.ID, "by", c.userID)
-	c.hub.BroadcastAdminEvent("systems.updated", nil)
-	c.hub.BroadcastCFG(ctx)
-	return map[string]bool{"ok": true}, nil
-}
-
-func (c *Client) opSystemsReorder(ctx context.Context, params json.RawMessage) (any, error) {
-	var req struct {
-		Systems []struct {
-			ID    int64 `json:"id"`
-			Order int64 `json:"order"`
-		} `json:"systems"`
-	}
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, userError("invalid request body")
-	}
-	if len(req.Systems) == 0 {
-		return nil, userError("systems is required")
-	}
-
-	sqlDB := c.hub.deps.SQLDB
-	if sqlDB == nil {
-		return nil, fmt.Errorf("transaction support not available")
-	}
-
-	tx, err := sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback() //nolint:errcheck
-
-	qtx := c.hub.queries.WithTx(tx)
-	for _, item := range req.Systems {
-		sys, err := qtx.GetSystem(ctx, item.ID)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, userError("system not found")
-			}
-			return nil, fmt.Errorf("failed to load system for reorder: %w", err)
-		}
-		if err := qtx.UpdateSystem(ctx, db.UpdateSystemParams{
-			ID:                     sys.ID,
-			SystemID:               sys.SystemID,
-			Label:                  sys.Label,
-			AutoPopulateTalkgroups: sys.AutoPopulateTalkgroups,
-			BlacklistsJson:         sys.BlacklistsJson,
-			Led:                    sys.Led,
-			Order:                  item.Order,
-		}); err != nil {
-			return nil, fmt.Errorf("failed to reorder systems: %w", err)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit reorder: %w", err)
-	}
-	slog.Info("admin: systems reordered", "count", len(req.Systems), "by", c.userID)
 	c.hub.BroadcastAdminEvent("systems.updated", nil)
 	c.hub.BroadcastCFG(ctx)
 	return map[string]bool{"ok": true}, nil
@@ -1397,61 +1339,6 @@ func (c *Client) opAPIKeysDelete(ctx context.Context, params json.RawMessage) (a
 		return nil, fmt.Errorf("failed to delete API key: %w", err)
 	}
 	slog.Info("admin: api key deleted", "id", req.ID, "by", c.userID)
-	c.hub.BroadcastAdminEvent("apikeys.updated", nil)
-	return map[string]bool{"ok": true}, nil
-}
-
-func (c *Client) opAPIKeysReorder(ctx context.Context, params json.RawMessage) (any, error) {
-	var req struct {
-		APIKeys []struct {
-			ID    int64 `json:"id"`
-			Order int64 `json:"order"`
-		} `json:"apiKeys"`
-	}
-	if err := json.Unmarshal(params, &req); err != nil {
-		return nil, userError("invalid request body")
-	}
-	if len(req.APIKeys) == 0 {
-		return nil, userError("apiKeys is required")
-	}
-
-	sqlDB := c.hub.deps.SQLDB
-	if sqlDB == nil {
-		return nil, fmt.Errorf("transaction support not available")
-	}
-
-	tx, err := sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback() //nolint:errcheck
-
-	qtx := c.hub.queries.WithTx(tx)
-	for _, item := range req.APIKeys {
-		ak, err := qtx.GetAPIKey(ctx, item.ID)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, userError("API key not found")
-			}
-			return nil, fmt.Errorf("failed to load API key for reorder: %w", err)
-		}
-		if err := qtx.UpdateAPIKey(ctx, db.UpdateAPIKeyParams{
-			ID:            ak.ID,
-			Key:           ak.Key,
-			Ident:         ak.Ident,
-			Disabled:      ak.Disabled,
-			SystemsJson:   ak.SystemsJson,
-			CallRateLimit: ak.CallRateLimit,
-			Order:         item.Order,
-		}); err != nil {
-			return nil, fmt.Errorf("failed to reorder API keys: %w", err)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit reorder: %w", err)
-	}
-	slog.Info("admin: api keys reordered", "count", len(req.APIKeys), "by", c.userID)
 	c.hub.BroadcastAdminEvent("apikeys.updated", nil)
 	return map[string]bool{"ok": true}, nil
 }

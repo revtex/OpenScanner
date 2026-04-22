@@ -63,6 +63,3 @@ ON CONFLICT (system_id, talkgroup_id) DO UPDATE SET
     group_id  = excluded.group_id,
     tag_id    = excluded.tag_id,
     "order"   = excluded."order";
-
--- name: DeleteTalkgroupsBySystem :exec
-DELETE FROM talkgroups WHERE system_id = ?;

@@ -23,11 +23,6 @@ const (
 	CmdADMEVT = "ADM_EVT" // Server → admin client: event notification
 	CmdADMREQ = "ADM_REQ" // Admin client → server: request
 	CmdADMRES = "ADM_RES" // Server → admin client: response
-
-	// Reserved for future use.
-	CmdIOS = "IOS" // Client → server: iOS-specific client identification
-	CmdPID = "PID" // Client → server: push notification ID registration
-	CmdSRV = "SRV" // Server → client: server info
 )
 
 // NewCALMessage builds a CAL JSON text frame for a call event.

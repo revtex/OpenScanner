@@ -72,15 +72,6 @@ func (q *Queries) DeleteTalkgroup(ctx context.Context, id int64) error {
 	return err
 }
 
-const deleteTalkgroupsBySystem = `-- name: DeleteTalkgroupsBySystem :exec
-DELETE FROM talkgroups WHERE system_id = ?
-`
-
-func (q *Queries) DeleteTalkgroupsBySystem(ctx context.Context, systemID int64) error {
-	_, err := q.db.ExecContext(ctx, deleteTalkgroupsBySystem, systemID)
-	return err
-}
-
 const getTalkgroup = `-- name: GetTalkgroup :one
 SELECT id, system_id, talkgroup_id, label, name, frequency, led, group_id, tag_id, "order" FROM talkgroups WHERE id = ? LIMIT 1
 `

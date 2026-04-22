@@ -1,6 +1,3 @@
--- name: GetTranscription :one
-SELECT * FROM transcriptions WHERE id = ? LIMIT 1;
-
 -- name: GetTranscriptionByCallID :one
 SELECT * FROM transcriptions WHERE call_id = ? LIMIT 1;
 
@@ -25,12 +22,6 @@ INSERT INTO transcriptions (
 
 -- name: CountTranscriptions :one
 SELECT COUNT(*) FROM transcriptions;
-
--- name: DeleteTranscription :exec
-DELETE FROM transcriptions WHERE id = ?;
-
--- name: DeleteTranscriptionByCallID :exec
-DELETE FROM transcriptions WHERE call_id = ?;
 
 -- name: TranscriptionStats :one
 SELECT
