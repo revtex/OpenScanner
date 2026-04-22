@@ -1,37 +1,119 @@
 # OpenScanner
 
-OpenScanner is a web-based radio call manager for monitoring, searching, and administering scanner traffic in real time.
+**OpenScanner** is a web-based radio call manager for monitoring, searching, and sharing scanner traffic in real time. It ingests calls from popular radio recorders, processes and stores audio, streams live feeds to browser clients, and provides a full admin dashboard for configuration and operations.
 
-It is a modern reimplementation of rdio-scanner, built as a single Go application with an embedded React frontend.
+OpenScanner is a modern reimplementation of [rdio-scanner](https://github.com/chuot/rdio-scanner), built from the ground up as a single Go binary with an embedded React frontend. It maintains backward compatibility with rdio-scanner's upload API, so existing recorder configurations (Trunk-Recorder's `rdioscanner_uploader`, SDRTrunk's Rdio Scanner streaming target) work without changes.
 
-## Why OpenScanner
+---
 
-- Real-time live scanner feed over WebSocket
-- Historical call archive with fast filtering
-- Built-in admin dashboard for users, radio data, ingest, and operations
-- Flexible ingest options: HTTP upload and directory monitoring
-- Simple operations model: SQLite + filesystem (no external database)
-- Straightforward deployment: one binary or Docker image
+## Features
 
-## What It Does
+### Scanner Interface
 
-OpenScanner sits between your recorder(s) and your listeners:
+- **Live feed** — real-time call streaming over WebSocket with playback controls (play/pause, skip, replay)
+- **Hold & avoid** — lock to a system or talkgroup; temporarily avoid talkgroups for 5/15/30 min or indefinitely
+- **Talkgroup selection** — search and multi-select talkgroups by system, group, or tag; selection persisted per user
+- **Call archive** — search historical calls by system, talkgroup, group, tag, date range, transcript text, or bookmark state
+- **Bookmarks** — bookmark calls for later, filter archive to bookmarked only
+- **Call sharing** — generate public share links for individual calls with configurable expiry
+- **Live transcripts** — view call transcriptions in the live player with speaker diarization segments (requires whisper sidecar)
+- **LED indicators** — live/recording status, listener count, now-playing info
+- **Dark/light theme** — toggle between themes; preference saved in browser
+- **PWA** — installable web app with offline caching and web push notification support
+- **Responsive** — mobile-first layout with drawer navigation, touch-friendly controls, and virtual scrolling
 
-1. Ingests calls from recorder uploads or watched directories
-2. Processes audio with configurable FFmpeg modes
-3. Stores metadata in SQLite and audio on disk
-4. Streams live calls to browser clients
-5. Provides an admin UI for configuration and operations
+### Call Ingest
 
-## Key Features
+- **HTTP upload** — `POST /api/call-upload` with API key auth; backward-compatible alias at `/api/trunk-recorder-call-upload`
+- **Directory monitoring** — watch local directories for new recordings with configurable polling, masks, and auto-delete
+- **Supported recorders** — Trunk-Recorder, SDRTrunk, DSDPlus, RTLSDR-Airband, ProScan, and generic mask-based sources
+- **Auto-populate** — automatically create systems, talkgroups, groups, tags, and units from incoming call metadata
+- **Metadata extraction** — Trunk-Recorder JSON sidecars, MP3 ID3 tags, filename masks with tokens (`#SYS`, `#TG`, `#DATE`, `#UNIT`, etc.)
+- **Duplicate detection** — configurable time-window dedup to reject redundant uploads
+- **Audio processing** — FFmpeg conversion with four modes (disabled, enabled, normalize, loudnorm) and multiple encoding presets (MP3, AAC-LC, HE-AAC)
+- **Auto-pruning** — automatically delete calls older than a configurable number of days
 
-- Live scanner interface with playback controls, hold/avoid, talkgroup select, bookmarks, and archive search
-- Call archive filtering by system, talkgroup, groups, tags, date range, transcript text, and bookmark state
-- Role-based auth with admin/listener users
-- Admin CRUD for users, systems, talkgroups, units, groups, tags, API keys, dir monitors, downstreams, and webhooks
-- Tools for CSV import/export, JSON config import/export, missing-audio cleanup, and RadioReference enrichment
-- Shareable call links and admin shared-link management
-- Configurable public access mode for listener behavior
+### Administration
+
+- **Dashboard** — calls today/week/total, active listeners, uptime, 24-hour activity chart, top talkgroups
+- **User management** — create/edit/disable users with admin or listener roles, account expiration, session limits, per-user talkgroup selection, and password-change enforcement
+- **Radio data** — CRUD for systems, talkgroups, units, groups, and tags with CSV import/export and RadioReference enrichment
+- **API keys** — create/rotate upload keys with per-key system grants and per-key rate limits
+- **Directory monitors** — configure ingest paths with type-specific settings, polling vs. filesystem watch, and a server-side directory browser
+- **Downstreams** — forward calls to remote OpenScanner instances with per-downstream system grants (experimental, untested)
+- **Shared links** — view and manage all active share links with expiry tracking
+- **Transcription** — manage whisper models (download, select, delete), configure language and diarization, monitor connection status and stats
+- **Options** — grouped settings for general config, scanner behavior, call processing, display, and sharing
+- **Tools** — CSV import/export for talkgroups and units, JSON config export/import, RadioReference preview
+- **Logs** — query server logs by level, date range, and text search with auto-refresh and runtime log level control
+- **Config import/export** — full JSON backup and restore of all configuration data
+
+### Transcription
+
+OpenScanner integrates with [go-whisper](https://github.com/mutablelogic/go-whisper) (a whisper.cpp HTTP sidecar) for automatic call transcription. Features include:
+
+- **Model management** — download, select, and delete Whisper models directly from the admin panel (11 models available from tiny to large-v3-turbo)
+- **Live transcript display** — show transcription text in the live scanner player as calls come in
+- **Searchable transcripts** — find calls by transcript text from the search page
+- **Speaker diarization** — identify who is talking using tinydiarize models (`ggml-small.en-tdrz`)
+- **Language support** — 15 languages plus auto-detect
+- **GPU acceleration** — CPU, NVIDIA CUDA, Intel iGPU, or AMD ROCm (GPU highly recommended; 6 GB+ VRAM suggested)
+
+### Deployment
+
+- **Single binary** — no external database; SQLite embedded with WAL mode
+- **Guided setup** — `openscanner setup --interactive` creates directories, writes config, installs a system service
+- **Cross-platform** — Linux (systemd/SysV/OpenRC), macOS (launchd), Windows (SCM) with auto-detected service management
+- **Docker** — pre-built Alpine image with FFmpeg included
+- **JSON config** — persist settings with `--config-save`; load from file, env vars, or CLI flags
+- **Service management** — `setup`, `upgrade`, `config validate`, `service doctor` commands
+- **TLS** — certificate files with HTTP auto-redirect to HTTPS; experimental Let's Encrypt auto-cert
+- **Reverse proxy** — tested with Nginx and Caddy; WebSocket-aware proxy configs in the docs
+
+### Security
+
+- JWT authentication with refresh token rotation and configurable expiry
+- bcrypt password hashing (cost ≥ 12)
+- Role-based access control (admin / listener)
+- API key auth for uploads (`X-API-Key` header or `?key=` query param)
+- Per-IP rate limiting on login and shared link access
+- Per-user rate limiting on share creation
+- Per-API-key sliding-window rate limiting on uploads
+- WebSocket session re-validation with forced disconnect on user disable/delete
+- Shared link expiry (configurable in days, enforced on access)
+- Public access mode for unauthenticated listening (admin routes always protected)
+- Audio path sanitization, no shell injection, no secrets in logs
+- Optional TLS with certificate/key files; experimental Let's Encrypt auto-cert (untested)
+
+---
+
+## What's New vs. rdio-scanner
+
+OpenScanner is a complete rewrite, not a fork. Everything below is new or significantly improved:
+
+| Feature                      | rdio-scanner  | OpenScanner                                                                                           |
+| ---------------------------- | ------------- | ----------------------------------------------------------------------------------------------------- |
+| **Automatic transcription**  | Not available | Built-in via go-whisper with GPU support, model management, live display, and search                  |
+| **Auto-populate**            | Systems only  | Systems, talkgroups, groups, tags, and units — all created from incoming metadata                     |
+| **Call sharing**             | Not available | Generate public share links with configurable expiry                                                  |
+| **Bookmarks**                | Not available | Bookmark calls and filter the archive to bookmarked only                                              |
+| **Talkgroup selection**      | Basic         | Per-user multi-select by system, group, or tag; persisted server-side                                 |
+| **Audio encoding presets**   | Single format | 8 presets across MP3, AAC-LC, and HE-AAC at multiple bitrates                                         |
+| **User management & RBAC**   | Access codes  | Named user accounts with admin/listener roles, per-user system grants, expiration, and session limits |
+| **Per-key rate limits**      | Not available | Global and per-API-key call rate limiting with sliding window                                         |
+| **Downstream forwarding**    | Basic         | Forward calls to other OpenScanner instances with system grants (experimental, untested)              |
+| **Service management**       | Manual        | Guided `setup`, `upgrade`, `config validate`, `service doctor` commands                               |
+| **Auto-pruning**             | Basic         | Configurable retention with automatic deletion of calls older than N days                             |
+| **Let's Encrypt**            | Not available | Automatic certificate provisioning with `--ssl-auto-cert` (experimental, untested)                    |
+| **Admin WebSocket**          | REST polling  | Real-time admin operations over WebSocket — instant updates                                           |
+| **CSV import/export**        | Limited       | Full CSV import/export for talkgroups and units with duplicate handling                               |
+| **JSON config backup**       | Not available | Export and import full server configuration                                                           |
+| **Log viewer**               | Basic         | Query logs by level, date, text with auto-refresh and runtime level control                           |
+| **PWA + push notifications** | Not available | Installable web app with service worker and push notification support                                 |
+| **Dark/light theme**         | Dark only     | Toggle between themes                                                                                 |
+| **RadioReference import**    | Not available | Preview and apply talkgroup metadata from RadioReference directly in admin                            |
+
+---
 
 ## Quick Start
 
@@ -41,52 +123,109 @@ OpenScanner sits between your recorder(s) and your listeners:
 docker compose up -d
 ```
 
-Then open http://localhost:3000.
+Open `http://localhost:3022` and complete the first-run setup to create your admin account.
 
-### Build and Run Locally
+### Build from Source
 
 ```bash
 make build
-./build/openscanner --listen 0.0.0.0:3000 --db-file ./data/openscanner.db --recordings-dir ./data/recordings
+./build/openscanner --listen 0.0.0.0:3022 --db-file ./data/openscanner.db --recordings-dir ./data/recordings
 ```
 
-Then open http://localhost:3000.
+### Configuration
 
-On first run, complete setup at /setup to create your first admin account.
+OpenScanner is configured via CLI flags, environment variables, or a JSON config file:
 
-## API and Docs
+| Flag               | Env Var                       | Description                                       |
+| ------------------ | ----------------------------- | ------------------------------------------------- |
+| `--listen`         | `OPENSCANNER_LISTEN`          | Listen address (default `:3022`)                  |
+| `--db-file`        | `OPENSCANNER_DB_FILE`         | SQLite database path                              |
+| `--recordings-dir` | `OPENSCANNER_RECORDINGS_DIR`  | Audio file storage directory                      |
+| `--ssl-listen`     | `OPENSCANNER_SSL_LISTEN`      | HTTPS listen address                              |
+| `--ssl-cert`       | `OPENSCANNER_SSL_CERT`        | TLS certificate file (PEM)                        |
+| `--ssl-key`        | `OPENSCANNER_SSL_KEY`         | TLS private key file (PEM)                        |
+| `--ssl-auto-cert`  | `OPENSCANNER_SSL_AUTO_CERT`   | Domain for Let's Encrypt auto-cert (experimental) |
+| `--timezone`       | `OPENSCANNER_TIMEZONE` / `TZ` | IANA timezone for recorder timestamps             |
 
-- API base path: /api
-- Listener WebSocket: /ws
-- Admin WebSocket: /api/admin/ws
+All application settings (audio processing, scanner behavior, sharing, etc.) are managed through the admin dashboard and stored in the database. See the [Deployment Guide](docs/deployment-guide.md) for the full configuration reference.
 
-Swagger UI is available at /api/admin/docs after creating a docs session with POST /api/admin/docs/session as an authenticated admin.
+---
+
+## Recorder Compatibility
+
+OpenScanner works with any radio recorder that produces per-call audio files. It accepts calls via HTTP upload (API) or by watching a local directory (DirMonitor).
+
+| Recorder                                                       | API | DirMonitor |
+| -------------------------------------------------------------- | :-: | :--------: |
+| [Trunk-Recorder](https://github.com/robotastic/trunk-recorder) |  ✔  |     ✔      |
+| [SDRTrunk](https://github.com/DSheirer/sdrtrunk)               |  ✔  |     ✔      |
+| [RTLSDR-Airband](https://github.com/szpajder/RTLSDR-Airband)   |     |     ✔      |
+| [DSDPlus Fast Lane](https://www.dsdplus.com/)                  |     |     ✔      |
+| [ProScan](https://www.proscan.org/)                            |     |     ✔      |
+| [voxcall](https://github.com/aaknitt/voxcall)                  |  ✔  |            |
+
+- **API upload** — `POST /api/call-upload` (or `/api/trunk-recorder-call-upload`) with an API key. Compatible with rdio-scanner's upload protocol — existing recorder configs work with just a URL change.
+- **DirMonitor** — watch a local directory for new recordings. Supports per-type parsers (Trunk-Recorder JSON sidecars, SDRTrunk ID3 tags, DSDPlus date folders, filename masks with tokens like `#SYS`, `#TG`, `#DATE`, etc.).
+
+See [docs/recorder-guide.md](docs/recorder-guide.md) for detailed setup steps.
+
+---
+
+## rdio-scanner Compatibility
+
+OpenScanner is designed as a drop-in replacement for [rdio-scanner](https://github.com/chuot/rdio-scanner). Key compatibility points:
+
+- The upload endpoint `/api/trunk-recorder-call-upload` accepts the same multipart form fields
+- API key authentication works via `X-API-Key` header or `?key=` query parameter
+- SDRTrunk's partial-data key verification probe returns the same plain-text responses
+- Error messages match rdio-scanner's format for recorder-side log compatibility
+- Existing recorder configurations can be pointed at OpenScanner with only a URL change
+
+---
+
+## API & WebSocket
+
+- **REST API** — `/api/*` with JSON request/response; Swagger UI available at `/api/admin/docs` for authenticated admins
+- **Listener WebSocket** — `/ws` for real-time call streaming, configuration updates, and listener count
+- **Admin WebSocket** — `/api/admin/ws` for live admin dashboard operations (CRUD, events, settings)
+- **Health check** — `GET /api/health` returns server status and version
+
+See [docs/api.md](docs/api.md) for detailed API documentation.
+
+---
 
 ## Documentation
 
-- docs/architecture.md: Architecture and runtime data flow
-- docs/api.md: API behavior and integration workflows
-- docs/admin-guide.md: Admin dashboard usage guide
-- docs/deployment.md: Build, run, and deployment operations
-- docs/recorder-setup.md: Recorder-specific setup steps
-- docs/recorder-integration.md: DirMonitor internals and ingest behavior
-- docs/plan.md: Project roadmap
+| Document                                                     | Description                              |
+| ------------------------------------------------------------ | ---------------------------------------- |
+| [docs/architecture.md](docs/architecture.md)                 | Architecture and runtime data flow       |
+| [docs/api.md](docs/api.md)                                   | API behavior and integration workflows   |
+| [docs/admin-guide.md](docs/admin-guide.md)                   | Admin dashboard usage guide              |
+| [docs/deployment-guide.md](docs/deployment-guide.md)         | Build, run, and deployment operations    |
+| [docs/recorder-guide.md](docs/recorder-guide.md)             | Recorder setup guide                     |
+| [docs/recorder-integration.md](docs/recorder-integration.md) | DirMonitor internals and ingest behavior |
+
+---
 
 ## Development
 
 ```bash
-make dev
-make build
-make test
-make lint
+make dev     # Go hot-reload (air) + Vite dev server
+make build   # Production build (single binary)
+make test    # Run all tests
+make lint    # Lint Go + TypeScript
 ```
 
 ## Tech Stack
 
-- Backend: Go, Gin, coder/websocket, sqlite (modernc), sqlc
-- Frontend: React, TypeScript, Vite, Tailwind CSS 4, DaisyUI 5, Redux Toolkit
-- Storage: SQLite metadata + filesystem audio
+- **Backend:** Go, Gin, coder/websocket, SQLite (modernc, WAL mode), sqlc, golang-jwt, bcrypt
+- **Frontend:** React 18, TypeScript (strict), Vite, Tailwind CSS 4, DaisyUI 5, Redux Toolkit, RTK Query
+- **Audio:** FFmpeg (optional), bounded worker pool
+- **Transcription:** go-whisper (whisper.cpp HTTP sidecar)
+- **Storage:** SQLite for metadata + filesystem for audio files
 
-## Project Status
+---
 
-Core ingest, search, sharing, streaming, and admin operations are implemented and actively maintained.
+## License
+
+See [LICENSE](LICENSE) for details.
