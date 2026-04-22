@@ -189,6 +189,8 @@ Each downstream has:
 | Disabled | Temporarily stop forwarding                     |
 | Order    | Display position                                |
 
+API keys are encrypted at rest in the database when an [encryption key](deployment-guide.md#secrets-encryption) is configured. The admin UI never displays API keys — they are shown as masked dots. To change a key, enter a new one in the edit form; leave it blank to keep the existing key.
+
 ---
 
 ## Shared Links

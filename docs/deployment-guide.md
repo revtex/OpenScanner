@@ -9,6 +9,7 @@ This guide covers everything you need to get OpenScanner running — from Docker
 - [Configuration](#configuration)
 - [Service Management](#service-management)
 - [TLS / HTTPS](#tls--https)
+- [Secrets Encryption](#secrets-encryption)
 - [Reverse Proxy](#reverse-proxy)
 - [Transcription (Optional)](#transcription-optional)
 - [FFmpeg (Optional)](#ffmpeg-optional)
@@ -171,36 +172,40 @@ OpenScanner reads configuration from three sources, in this priority order:
 
 ### CLI Flags
 
-| Flag               | Description                                               | Default                |
-| ------------------ | --------------------------------------------------------- | ---------------------- |
-| `--listen`         | HTTP listen address                                       | `:3022`                |
-| `--db-file`        | SQLite database file path                                 | `openscanner.db`       |
-| `--recordings-dir` | Directory for audio recordings                            | (executable directory) |
-| `--ssl-listen`     | HTTPS listen address                                      | (disabled)             |
-| `--ssl-cert`       | TLS certificate file (PEM)                                |                        |
-| `--ssl-key`        | TLS private key file (PEM)                                |                        |
-| `--ssl-auto-cert`  | Domain for Let's Encrypt auto-cert                        |                        |
-| `--timezone`       | IANA timezone for recorder timestamps                     | `UTC`                  |
-| `--admin-password` | Reset first admin user's password on startup              |                        |
-| `--config`         | Path to JSON config file                                  | `openscanner.json`     |
-| `--config-save`    | Write current flags to JSON config and exit               |                        |
-| `--version`        | Print version and exit                                    |                        |
-| `--service`        | Service command: install, uninstall, start, stop, restart |                        |
+| Flag                    | Description                                               | Default                |
+| ----------------------- | --------------------------------------------------------- | ---------------------- |
+| `--listen`              | HTTP listen address                                       | `:3022`                |
+| `--db-file`             | SQLite database file path                                 | `openscanner.db`       |
+| `--recordings-dir`      | Directory for audio recordings                            | (executable directory) |
+| `--ssl-listen`          | HTTPS listen address                                      | (disabled)             |
+| `--ssl-cert`            | TLS certificate file (PEM)                                |                        |
+| `--ssl-key`             | TLS private key file (PEM)                                |                        |
+| `--ssl-auto-cert`       | Domain for Let's Encrypt auto-cert                        |                        |
+| `--encryption-key`      | AES-256 key for encrypting secrets at rest                |                        |
+| `--encryption-key-file` | Path to file containing encryption key                    |                        |
+| `--timezone`            | IANA timezone for recorder timestamps                     | `UTC`                  |
+| `--admin-password`      | Reset first admin user's password on startup              |                        |
+| `--config`              | Path to JSON config file                                  | `openscanner.json`     |
+| `--config-save`         | Write current flags to JSON config and exit               |                        |
+| `--version`             | Print version and exit                                    |                        |
+| `--service`             | Service command: install, uninstall, start, stop, restart |                        |
 
 ### Environment Variables
 
-| Variable                     | Maps to                 |
-| ---------------------------- | ----------------------- |
-| `OPENSCANNER_LISTEN`         | `--listen`              |
-| `OPENSCANNER_DB_FILE`        | `--db-file`             |
-| `OPENSCANNER_RECORDINGS_DIR` | `--recordings-dir`      |
-| `OPENSCANNER_SSL_LISTEN`     | `--ssl-listen`          |
-| `OPENSCANNER_SSL_CERT`       | `--ssl-cert`            |
-| `OPENSCANNER_SSL_KEY`        | `--ssl-key`             |
-| `OPENSCANNER_SSL_AUTO_CERT`  | `--ssl-auto-cert`       |
-| `OPENSCANNER_ADMIN_PASSWORD` | `--admin-password`      |
-| `OPENSCANNER_TIMEZONE`       | `--timezone`            |
-| `TZ`                         | `--timezone` (fallback) |
+| Variable                          | Maps to                 |
+| --------------------------------- | ----------------------- |
+| `OPENSCANNER_LISTEN`              | `--listen`              |
+| `OPENSCANNER_DB_FILE`             | `--db-file`             |
+| `OPENSCANNER_RECORDINGS_DIR`      | `--recordings-dir`      |
+| `OPENSCANNER_SSL_LISTEN`          | `--ssl-listen`          |
+| `OPENSCANNER_SSL_CERT`            | `--ssl-cert`            |
+| `OPENSCANNER_SSL_KEY`             | `--ssl-key`             |
+| `OPENSCANNER_SSL_AUTO_CERT`       | `--ssl-auto-cert`       |
+| `OPENSCANNER_ENCRYPTION_KEY`      | `--encryption-key`      |
+| `OPENSCANNER_ENCRYPTION_KEY_FILE` | `--encryption-key-file` |
+| `OPENSCANNER_ADMIN_PASSWORD`      | `--admin-password`      |
+| `OPENSCANNER_TIMEZONE`            | `--timezone`            |
+| `TZ`                              | `--timezone` (fallback) |
 
 ### JSON Config File
 
@@ -221,11 +226,12 @@ This writes a file like:
   "ssl_cert_file": "",
   "ssl_key_file": "",
   "ssl_auto_cert": "",
+  "encryption_key": "",
   "timezone": ""
 }
 ```
 
-Temporary flags (`--admin-password`, `--config-save`, `--version`, `--service`) are never written to the config file.
+Temporary flags (`--admin-password`, `--config-save`, `--version`, `--service`) are never written to the config file. The `--encryption-key-file` flag is also not persisted — only `encryption_key` appears in the JSON.
 
 ---
 
@@ -338,6 +344,92 @@ openscanner --service restart
 ```
 
 The installed service only passes `--config <path>` to OpenScanner, so all settings — including TLS — are read from the config file on every start. No reinstall is needed.
+
+---
+
+## Secrets Encryption
+
+OpenScanner can encrypt sensitive values stored in the database (VAPID private key, downstream API keys) using AES-256-GCM. This protects secrets if the database file is compromised.
+
+### Enabling Encryption
+
+First, generate a strong random key:
+
+```bash
+# Option 1: 32-byte hex string (64 characters)
+openssl rand -hex 32
+
+# Option 2: 32-byte base64 string
+openssl rand -base64 32
+
+# Option 3: if openssl is not available
+head -c 32 /dev/urandom | xxd -p -c 64
+```
+
+Save the output — you will need it every time the server starts. If you lose the key, encrypted secrets cannot be recovered and must be re-entered.
+
+Provide the key via any config source:
+
+```bash
+# CLI flag
+openscanner --encryption-key "your-secret-key-here"
+
+# Environment variable
+export OPENSCANNER_ENCRYPTION_KEY="your-secret-key-here"
+
+# JSON config file
+{"encryption_key": "your-secret-key-here"}
+
+# Read key from a file (Docker secrets / Kubernetes)
+openscanner --encryption-key-file /run/secrets/encryption_key
+```
+
+### What Gets Encrypted
+
+| Value               | Location            | Purpose                         |
+| ------------------- | ------------------- | ------------------------------- |
+| VAPID private key   | `settings` table    | Signs web push notifications    |
+| Downstream API keys | `downstreams` table | Authenticates to remote servers |
+
+Encrypted values are stored with an `enc::` prefix followed by base64-encoded ciphertext.
+
+### How It Works
+
+- On first startup with a key: existing plaintext secrets are automatically encrypted in place
+- On every read: encrypted values are decrypted transparently where needed (e.g. downstream forwarding uses the decrypted key to authenticate)
+- The admin UI never displays secret values — API keys are shown as masked dots
+- If the key is removed while encrypted values exist: the server refuses to start with a clear error message
+- If the wrong key is provided: the server refuses to start with a decrypt error
+
+### Docker Compose Example
+
+```yaml
+services:
+  openscanner:
+    image: ghcr.io/revtex/openscanner:dev
+    environment:
+      - OPENSCANNER_ENCRYPTION_KEY=change-me-to-a-strong-random-value
+```
+
+Or with Docker secrets:
+
+```yaml
+services:
+  openscanner:
+    image: ghcr.io/revtex/openscanner:dev
+    environment:
+      - OPENSCANNER_ENCRYPTION_KEY_FILE=/run/secrets/encryption_key
+    secrets:
+      - encryption_key
+
+secrets:
+  encryption_key:
+    file: ./encryption_key.txt
+```
+
+### Without Encryption
+
+If no key is configured, secrets are stored in plaintext and a warning is logged at startup. Everything works normally — encryption is optional.
 
 ---
 

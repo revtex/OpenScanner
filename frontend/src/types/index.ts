@@ -212,6 +212,23 @@ export interface AdminDirwatch {
 export interface AdminDownstream {
   id: number;
   url: string;
+  hasApiKey: boolean;
+  systemsJson: string | null;
+  disabled: number;
+  order: number;
+}
+
+export interface AdminDownstreamCreate {
+  url: string;
+  apiKey: string;
+  systemsJson: string | null;
+  disabled: number;
+  order: number;
+}
+
+export interface AdminDownstreamUpdate {
+  id: number;
+  url: string;
   apiKey: string;
   systemsJson: string | null;
   disabled: number;

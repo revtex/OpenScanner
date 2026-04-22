@@ -83,6 +83,7 @@ OpenScanner integrates with [go-whisper](https://github.com/mutablelogic/go-whis
 - Shared link expiry (configurable in days, enforced on access)
 - Public access mode for unauthenticated listening (admin routes always protected)
 - Audio path sanitization, no shell injection, no secrets in logs
+- Optional secrets-at-rest encryption (AES-256-GCM) for VAPID keys and downstream API keys
 - Optional TLS with certificate/key files; experimental Let's Encrypt auto-cert (untested)
 
 ---
@@ -112,6 +113,7 @@ OpenScanner is a complete rewrite, not a fork. Everything below is new or signif
 | **PWA + push notifications** | Not available | Installable web app with service worker and push notification support                                 |
 | **Dark/light theme**         | Dark only     | Toggle between themes                                                                                 |
 | **RadioReference import**    | Not available | Preview and apply talkgroup metadata from RadioReference directly in admin                            |
+| **Secrets encryption**       | Not available | Optional AES-256-GCM encryption for VAPID keys and downstream API keys stored in the database         |
 
 ---
 
@@ -145,6 +147,7 @@ OpenScanner is configured via CLI flags, environment variables, or a JSON config
 | `--ssl-cert`       | `OPENSCANNER_SSL_CERT`        | TLS certificate file (PEM)                        |
 | `--ssl-key`        | `OPENSCANNER_SSL_KEY`         | TLS private key file (PEM)                        |
 | `--ssl-auto-cert`  | `OPENSCANNER_SSL_AUTO_CERT`   | Domain for Let's Encrypt auto-cert (experimental) |
+| `--encryption-key` | `OPENSCANNER_ENCRYPTION_KEY`  | AES-256 key for encrypting secrets at rest        |
 | `--timezone`       | `OPENSCANNER_TIMEZONE` / `TZ` | IANA timezone for recorder timestamps             |
 
 All application settings (audio processing, scanner behavior, sharing, etc.) are managed through the admin dashboard and stored in the database. See the [Deployment Guide](docs/deployment-guide.md) for the full configuration reference.

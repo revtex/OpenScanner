@@ -187,7 +187,7 @@ func TestNewService_ReturnsNonNil(t *testing.T) {
 	_, queries := newTestDB(t)
 	processor, _ := newTestProcessor(t)
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	if svc == nil {
 		t.Fatal("NewService returned nil")
 	}
@@ -200,7 +200,7 @@ func TestService_Start_NoDownstreams_NoPanic(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	svc.Start(ctx)
 	svc.Stop()
 }
@@ -209,7 +209,7 @@ func TestService_Reload_BeforeStart_NoPanic(t *testing.T) {
 	_, queries := newTestDB(t)
 	processor, _ := newTestProcessor(t)
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	// Reload before Start should be a no-op.
 	svc.Reload()
 }
@@ -221,7 +221,7 @@ func TestService_Reload_AfterStart_NoPanic(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	svc.Start(ctx)
 	svc.Reload()
 	svc.Stop()
@@ -231,7 +231,7 @@ func TestService_Stop_BeforeStart_NoPanic(t *testing.T) {
 	_, queries := newTestDB(t)
 	processor, _ := newTestProcessor(t)
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	svc.Stop()
 }
 
@@ -241,7 +241,7 @@ func TestNotify_NoPushers_NoPanic(t *testing.T) {
 	_, queries := newTestDB(t)
 	processor, _ := newTestProcessor(t)
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	svc.Notify(sampleEvent())
 }
 
@@ -249,7 +249,7 @@ func TestNotify_SendsToAllChannels(t *testing.T) {
 	_, queries := newTestDB(t)
 	processor, _ := newTestProcessor(t)
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 
 	ch1 := make(chan CallEvent, 10)
 	ch2 := make(chan CallEvent, 10)
@@ -278,7 +278,7 @@ func TestNotify_DropsWhenChannelFull(t *testing.T) {
 	_, queries := newTestDB(t)
 	processor, _ := newTestProcessor(t)
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 
 	// Channel with capacity 1, pre-filled.
 	ch := make(chan CallEvent, 1)
@@ -317,7 +317,7 @@ func TestPushCall_Success(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	ds := db.Downstream{ID: 1, Url: ts.URL, ApiKey: "test-key"}
 
 	err := svc.pushCall(context.Background(), ds, event)
@@ -338,7 +338,7 @@ func TestPushCall_Server500_ReturnsError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	ds := db.Downstream{ID: 1, Url: ts.URL, ApiKey: "test-key"}
 
 	err := svc.pushCall(context.Background(), ds, event)
@@ -362,7 +362,7 @@ func TestPushCall_Server400_ReturnsError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	ds := db.Downstream{ID: 1, Url: ts.URL, ApiKey: "test-key"}
 
 	err := svc.pushCall(context.Background(), ds, event)
@@ -388,7 +388,7 @@ func TestPushCall_APIKeyInHeader(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	ds := db.Downstream{ID: 1, Url: ts.URL, ApiKey: "super-secret-key"}
 
 	err := svc.pushCall(context.Background(), ds, event)
@@ -443,7 +443,7 @@ func TestPushCall_MultipartContainsRequiredFields(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	ds := db.Downstream{ID: 1, Url: ts.URL, ApiKey: "k"}
 
 	if err := svc.pushCall(context.Background(), ds, event); err != nil {
@@ -498,7 +498,7 @@ func TestPushCall_OptionalFieldsIncluded(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	ds := db.Downstream{ID: 1, Url: ts.URL, ApiKey: "k"}
 
 	if err := svc.pushCall(context.Background(), ds, event); err != nil {
@@ -550,7 +550,7 @@ func TestPushCall_OptionalFieldsOmitted(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	ds := db.Downstream{ID: 1, Url: ts.URL, ApiKey: "k"}
 
 	if err := svc.pushCall(context.Background(), ds, event); err != nil {
@@ -578,7 +578,7 @@ func TestPushCall_URLPath(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 
 	// Test with trailing slash on URL.
 	ds := db.Downstream{ID: 1, Url: ts.URL + "/", ApiKey: "k"}
@@ -606,7 +606,7 @@ func TestPushWithRetry_SuccessOnFirstTry(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	ds := db.Downstream{ID: 1, Url: ts.URL, ApiKey: "k"}
 
 	svc.pushWithRetry(context.Background(), ds, event)
@@ -635,7 +635,7 @@ func TestPushWithRetry_RetriesThenSucceeds(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	ds := db.Downstream{ID: 1, Url: ts.URL, ApiKey: "k"}
 
 	// Use a context with timeout to limit wait time during backoff.
@@ -664,7 +664,7 @@ func TestPushWithRetry_AllRetriesFail(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	ds := db.Downstream{ID: 1, Url: ts.URL, ApiKey: "k"}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -690,7 +690,7 @@ func TestPushWithRetry_ContextCancelled_StopsEarly(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 	ds := db.Downstream{ID: 1, Url: ts.URL, ApiKey: "k"}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -727,7 +727,7 @@ func TestRunPusher_MatchingGrant_Pushed(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -781,7 +781,7 @@ func TestRunPusher_NonMatchingGrant_Skipped(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -837,7 +837,7 @@ func TestRunPusher_ContextCancellation_ExitsCleanly(t *testing.T) {
 	_, queries := newTestDB(t)
 	processor, _ := newTestProcessor(t)
 
-	svc := NewService(queries, processor)
+	svc := NewService(queries, processor, "")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := make(chan CallEvent, 10)

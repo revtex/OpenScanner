@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Version is set at build time via ldflags.
@@ -20,19 +21,21 @@ var Version = "1.0.0"
 
 // Config holds all server startup configuration.
 type Config struct {
-	Listen        string // HTTP listen address (default ":3022")
-	DBFile        string // SQLite database file path (default "openscanner.db")
-	RecordingsDir string // Directory for call audio recordings (default: executable dir)
-	SSLListen     string // HTTPS listen address
-	SSLCert       string // TLS certificate file (PEM)
-	SSLKey        string // TLS private key file (PEM)
-	SSLAutoCert   string // Domain for Let's Encrypt auto-cert
-	AdminPassword string // Reset first admin user's password on startup
-	Timezone      string // IANA timezone for recorder timestamps (default: TZ env or "UTC")
-	ConfigFile    string // Path to JSON config file (default "openscanner.json")
-	ConfigSave    bool   // Write current flags to JSON config file and exit
-	ShowVersion   bool   // Print version and exit
-	Service       string // Service command: install, uninstall, start, stop, restart
+	Listen            string // HTTP listen address (default ":3022")
+	DBFile            string // SQLite database file path (default "openscanner.db")
+	RecordingsDir     string // Directory for call audio recordings (default: executable dir)
+	SSLListen         string // HTTPS listen address
+	SSLCert           string // TLS certificate file (PEM)
+	SSLKey            string // TLS private key file (PEM)
+	SSLAutoCert       string // Domain for Let's Encrypt auto-cert
+	EncryptionKey     string // AES-256 key for encrypting secrets at rest
+	EncryptionKeyFile string // Path to file containing encryption key
+	AdminPassword     string // Reset first admin user's password on startup
+	Timezone          string // IANA timezone for recorder timestamps (default: TZ env or "UTC")
+	ConfigFile        string // Path to JSON config file (default "openscanner.json")
+	ConfigSave        bool   // Write current flags to JSON config file and exit
+	ShowVersion       bool   // Print version and exit
+	Service           string // Service command: install, uninstall, start, stop, restart
 }
 
 type jsonFileConfig struct {
@@ -43,6 +46,7 @@ type jsonFileConfig struct {
 	SSLCert       string `json:"ssl_cert_file"`
 	SSLKey        string `json:"ssl_key_file"`
 	SSLAutoCert   string `json:"ssl_auto_cert"`
+	EncryptionKey string `json:"encryption_key"`
 	Timezone      string `json:"timezone"`
 }
 
@@ -66,6 +70,8 @@ func Load() (*Config, error) {
 	flag.StringVar(&cfg.SSLCert, "ssl-cert", "", "TLS certificate file (PEM)")
 	flag.StringVar(&cfg.SSLKey, "ssl-key", "", "TLS private key file (PEM)")
 	flag.StringVar(&cfg.SSLAutoCert, "ssl-auto-cert", "", "Domain for Let's Encrypt auto-cert")
+	flag.StringVar(&cfg.EncryptionKey, "encryption-key", "", "AES-256 key for encrypting secrets at rest")
+	flag.StringVar(&cfg.EncryptionKeyFile, "encryption-key-file", "", "Path to file containing encryption key")
 	flag.StringVar(&cfg.AdminPassword, "admin-password", "", "Reset first admin user's password on startup")
 	flag.StringVar(&cfg.Timezone, "timezone", "", "IANA timezone for recorder timestamps (e.g. America/New_York)")
 	flag.StringVar(&cfg.ConfigFile, "config", "openscanner.json", "Path to JSON config file")
@@ -131,6 +137,9 @@ func loadJSON(cfg *Config) {
 	if v := fileCfg.SSLAutoCert; v != "" {
 		cfg.SSLAutoCert = v
 	}
+	if v := fileCfg.EncryptionKey; v != "" {
+		cfg.EncryptionKey = v
+	}
 	if v := fileCfg.Timezone; v != "" {
 		cfg.Timezone = v
 	}
@@ -158,6 +167,12 @@ func applyEnv(cfg *Config) {
 	}
 	if v := os.Getenv("OPENSCANNER_SSL_AUTO_CERT"); v != "" {
 		cfg.SSLAutoCert = v
+	}
+	if v := os.Getenv("OPENSCANNER_ENCRYPTION_KEY"); v != "" {
+		cfg.EncryptionKey = v
+	}
+	if v := os.Getenv("OPENSCANNER_ENCRYPTION_KEY_FILE"); v != "" {
+		cfg.EncryptionKeyFile = v
 	}
 	if v := os.Getenv("OPENSCANNER_ADMIN_PASSWORD"); v != "" {
 		cfg.AdminPassword = v
@@ -193,6 +208,12 @@ func restoreExplicitFlags(cfg *Config, explicit map[string]string) {
 	if v, ok := explicit["ssl-auto-cert"]; ok {
 		cfg.SSLAutoCert = v
 	}
+	if v, ok := explicit["encryption-key"]; ok {
+		cfg.EncryptionKey = v
+	}
+	if v, ok := explicit["encryption-key-file"]; ok {
+		cfg.EncryptionKeyFile = v
+	}
 	if v, ok := explicit["admin-password"]; ok {
 		cfg.AdminPassword = v
 	}
@@ -211,6 +232,7 @@ func (c *Config) SaveJSON() error {
 		SSLCert:       c.SSLCert,
 		SSLKey:        c.SSLKey,
 		SSLAutoCert:   c.SSLAutoCert,
+		EncryptionKey: c.EncryptionKey,
 		Timezone:      c.Timezone,
 	}
 
@@ -222,6 +244,19 @@ func (c *Config) SaveJSON() error {
 
 	slog.Info("saving configuration", "file", c.ConfigFile)
 	return os.WriteFile(c.ConfigFile, data, 0o644)
+}
+
+// ResolveEncryptionKey reads the encryption key from a file if EncryptionKeyFile is set.
+// Must be called after Load() and before any DB operations.
+func (c *Config) ResolveEncryptionKey() error {
+	if c.EncryptionKeyFile != "" {
+		data, err := os.ReadFile(c.EncryptionKeyFile)
+		if err != nil {
+			return fmt.Errorf("read encryption key file: %w", err)
+		}
+		c.EncryptionKey = strings.TrimSpace(string(data))
+	}
+	return nil
 }
 
 // String returns a safe string representation (no secrets).
@@ -326,6 +361,10 @@ SSL/TLS Flags:
   --ssl-key <path>        TLS private key file (PEM)
   --ssl-auto-cert <host>  Enable Let's Encrypt for this domain
 
+Encryption Flags:
+  --encryption-key <key>       AES-256 key for encrypting secrets at rest
+  --encryption-key-file <path> Read encryption key from a file
+
 Service Flags:
   --service <action>      Service control: install, uninstall, start, stop, restart
   --admin-password <pw>   Reset first admin user's password on startup
@@ -342,6 +381,8 @@ Environment Variables:
   OPENSCANNER_SSL_CERT        Equivalent to --ssl-cert
   OPENSCANNER_SSL_KEY         Equivalent to --ssl-key
   OPENSCANNER_SSL_AUTO_CERT   Equivalent to --ssl-auto-cert
+  OPENSCANNER_ENCRYPTION_KEY       Equivalent to --encryption-key
+  OPENSCANNER_ENCRYPTION_KEY_FILE  Equivalent to --encryption-key-file
   OPENSCANNER_ADMIN_PASSWORD  Equivalent to --admin-password
   OPENSCANNER_TIMEZONE        Equivalent to --timezone
   OPENSCANNER_SERVER          Server URL for CLI commands

@@ -539,8 +539,10 @@ func promptWithDefault(reader *bufio.Reader, out io.Writer, label, def string) (
 func serviceArguments(args []string) []string {
 	// Flags that take a value and must not be persisted.
 	stripValue := map[string]bool{
-		"--service":        true,
-		"--admin-password": true,
+		"--service":             true,
+		"--admin-password":      true,
+		"--encryption-key":      true,
+		"--encryption-key-file": true,
 	}
 	// Boolean flags that must not be persisted.
 	stripBool := map[string]bool{
@@ -666,6 +668,18 @@ func (p *program) run() {
 
 	queries := db.New(sqlDB)
 
+	// Resolve encryption key (from file if configured).
+	if err := cfg.ResolveEncryptionKey(); err != nil {
+		slog.Error("failed to resolve encryption key", "error", err)
+		os.Exit(1)
+	}
+
+	// Run secrets-at-rest encryption migration.
+	if err := migrateSecrets(context.Background(), queries, sqlDB, cfg.EncryptionKey); err != nil {
+		slog.Error("secrets encryption migration failed", "error", err)
+		os.Exit(1)
+	}
+
 	persistedLogLevel := ""
 	if setting, err := queries.GetSetting(context.Background(), "logLevel"); err == nil {
 		persistedLogLevel = setting.Value
@@ -783,7 +797,7 @@ func (p *program) run() {
 
 	// Create and start WebSocket hub.
 	// Services are created first so their Reloader interfaces can be injected into the hub.
-	dsService := downstream.NewService(queries, processor)
+	dsService := downstream.NewService(queries, processor, cfg.EncryptionKey)
 	dsService.Start(ctx)
 
 	hub := ws.NewHub(queries, config.Version, ws.HubDeps{
@@ -795,6 +809,7 @@ func (p *program) run() {
 		FDKAACAvailable:   hasFDKAAC,
 		WhisperAvailable:  hasWhisper,
 		RecordingsDir:     cfg.RecordingsDir,
+		EncryptionKey:     cfg.EncryptionKey,
 	})
 	go hub.Run(ctx)
 
@@ -1011,4 +1026,109 @@ func consumeTranscriptionResults(ctx context.Context, queries *db.Queries, hub *
 			hub.BroadcastTRN(res.CallID, res.Result.Text, res.Result.Segments)
 		}
 	}
+}
+
+// migrateSecrets handles the transition between encrypted and unencrypted states at startup.
+//   - Key set + plaintext values → auto-encrypt
+//   - Key removed + encrypted values → fail fast
+//   - Key set + already encrypted → no-op (or re-encrypt if decrypt fails with old key)
+func migrateSecrets(ctx context.Context, queries *db.Queries, sqlDB *sql.DB, encryptionKey string) error {
+	settings, err := queries.ListSettings(ctx)
+	if err != nil {
+		return fmt.Errorf("list settings: %w", err)
+	}
+
+	downstreams, err := queries.ListDownstreams(ctx)
+	if err != nil {
+		return fmt.Errorf("list downstreams: %w", err)
+	}
+
+	// Check for encrypted values with no key configured.
+	if encryptionKey == "" {
+		for _, s := range settings {
+			if ws.SensitiveSettingKeys[s.Key] && auth.IsEncrypted(s.Value) {
+				return fmt.Errorf("setting %q is encrypted but no encryption key is configured — set --encryption-key or OPENSCANNER_ENCRYPTION_KEY", s.Key)
+			}
+		}
+		for _, ds := range downstreams {
+			if auth.IsEncrypted(ds.ApiKey) {
+				return fmt.Errorf("downstream %d API key is encrypted but no encryption key is configured — set --encryption-key or OPENSCANNER_ENCRYPTION_KEY", ds.ID)
+			}
+		}
+		slog.Warn("no encryption key configured — secrets stored unencrypted in database")
+		return nil
+	}
+
+	// Encryption key is configured — encrypt any plaintext sensitive values.
+	tx, err := sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	qtx := queries.WithTx(tx)
+	migrated := 0
+
+	for _, s := range settings {
+		if !ws.SensitiveSettingKeys[s.Key] {
+			continue
+		}
+		if s.Value == "" {
+			continue
+		}
+		if auth.IsEncrypted(s.Value) {
+			// Verify we can decrypt with the current key.
+			if _, err := auth.DecryptString(s.Value, encryptionKey); err != nil {
+				return fmt.Errorf("setting %q: cannot decrypt with current key (wrong key?): %w", s.Key, err)
+			}
+			continue
+		}
+		// Plaintext → encrypt it.
+		encrypted, err := auth.EncryptString(s.Value, encryptionKey)
+		if err != nil {
+			return fmt.Errorf("encrypt setting %q: %w", s.Key, err)
+		}
+		if err := qtx.UpsertSetting(ctx, db.UpsertSettingParams{Key: s.Key, Value: encrypted}); err != nil {
+			return fmt.Errorf("update setting %q: %w", s.Key, err)
+		}
+		migrated++
+		slog.Info("secrets: encrypted setting", "key", s.Key)
+	}
+
+	for _, ds := range downstreams {
+		if ds.ApiKey == "" {
+			continue
+		}
+		if auth.IsEncrypted(ds.ApiKey) {
+			if _, err := auth.DecryptString(ds.ApiKey, encryptionKey); err != nil {
+				return fmt.Errorf("downstream %d: cannot decrypt API key with current key (wrong key?): %w", ds.ID, err)
+			}
+			continue
+		}
+		encrypted, err := auth.EncryptString(ds.ApiKey, encryptionKey)
+		if err != nil {
+			return fmt.Errorf("encrypt downstream %d API key: %w", ds.ID, err)
+		}
+		if err := qtx.UpdateDownstream(ctx, db.UpdateDownstreamParams{
+			ID:          ds.ID,
+			Url:         ds.Url,
+			ApiKey:      encrypted,
+			SystemsJson: ds.SystemsJson,
+			Disabled:    ds.Disabled,
+			Order:       ds.Order,
+		}); err != nil {
+			return fmt.Errorf("update downstream %d: %w", ds.ID, err)
+		}
+		migrated++
+		slog.Info("secrets: encrypted downstream API key", "id", ds.ID)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	if migrated > 0 {
+		slog.Info("secrets: encryption migration complete", "migrated", migrated)
+	}
+	return nil
 }

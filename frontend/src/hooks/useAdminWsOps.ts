@@ -10,6 +10,8 @@ import type {
   AdminApiKeyCreateResponse,
   AdminDirMonitor,
   AdminDownstream,
+  AdminDownstreamCreate,
+  AdminDownstreamUpdate,
   AdminWebhook,
   ConfigResponse,
   AdminSetting,
@@ -272,13 +274,13 @@ export function useListDownstreamsQuery() {
 }
 
 export function useCreateDownstreamMutation() {
-  return useWsMutation<AdminDownstream, CreatePayload<AdminDownstream>>(
+  return useWsMutation<AdminDownstream, AdminDownstreamCreate>(
     "downstreams.create",
   );
 }
 
 export function useUpdateDownstreamMutation() {
-  return useWsMutation<AdminDownstream, UpdatePayload<AdminDownstream>>(
+  return useWsMutation<AdminDownstream, AdminDownstreamUpdate>(
     "downstreams.update",
   );
 }

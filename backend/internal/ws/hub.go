@@ -34,6 +34,7 @@ type HubDeps struct {
 	FDKAACAvailable   bool
 	WhisperAvailable  bool
 	RecordingsDir     string
+	EncryptionKey     string
 }
 
 // StartTime is the process start time, used for uptime calculations.

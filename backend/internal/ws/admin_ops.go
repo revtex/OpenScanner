@@ -74,6 +74,11 @@ var wsValidRoles = map[string]bool{
 	auth.RoleListener: true,
 }
 
+// SensitiveSettingKeys are settings whose values are encrypted at rest.
+var SensitiveSettingKeys = map[string]bool{
+	"vapidPrivateKey": true,
+}
+
 // wsAllowedSettingKeys mirrors the allowed setting keys from config.go.
 var wsAllowedSettingKeys = map[string]bool{
 	"activityDashboard":           true,
@@ -258,7 +263,7 @@ func mapDownstream(d db.Downstream) map[string]any {
 	return map[string]any{
 		"id":          d.ID,
 		"url":         d.Url,
-		"apiKey":      d.ApiKey,
+		"hasApiKey":   d.ApiKey != "",
 		"systemsJson": wsNullStr(d.SystemsJson),
 		"disabled":    d.Disabled,
 		"order":       d.Order,
@@ -1641,9 +1646,18 @@ func (c *Client) opDownstreamsCreate(ctx context.Context, params json.RawMessage
 		return nil, userError("url must use http or https scheme")
 	}
 
+	apiKey := req.ApiKey
+	if c.hub.deps.EncryptionKey != "" && apiKey != "" {
+		enc, err := auth.EncryptString(apiKey, c.hub.deps.EncryptionKey)
+		if err != nil {
+			return nil, fmt.Errorf("encrypt downstream API key: %w", err)
+		}
+		apiKey = enc
+	}
+
 	id, err := c.hub.queries.CreateDownstream(ctx, db.CreateDownstreamParams{
 		Url:         req.Url,
-		ApiKey:      req.ApiKey,
+		ApiKey:      apiKey,
 		SystemsJson: wsPtrToNullStr(req.SystemsJson),
 		Disabled:    req.Disabled,
 		Order:       req.Order,
@@ -1683,14 +1697,29 @@ func (c *Client) opDownstreamsUpdate(ctx context.Context, params json.RawMessage
 		return nil, userError("url must use http or https scheme")
 	}
 
-	if _, err := c.hub.queries.GetDownstream(ctx, req.ID); err != nil {
+	existing, err := c.hub.queries.GetDownstream(ctx, req.ID)
+	if err != nil {
 		return nil, userError("downstream not found")
+	}
+
+	// Preserve existing API key if none provided (key is never sent to clients).
+	apiKey := existing.ApiKey
+	if req.ApiKey != "" {
+		if c.hub.deps.EncryptionKey != "" {
+			enc, err := auth.EncryptString(req.ApiKey, c.hub.deps.EncryptionKey)
+			if err != nil {
+				return nil, fmt.Errorf("encrypt downstream API key: %w", err)
+			}
+			apiKey = enc
+		} else {
+			apiKey = req.ApiKey
+		}
 	}
 
 	if err := c.hub.queries.UpdateDownstream(ctx, db.UpdateDownstreamParams{
 		ID:          req.ID,
 		Url:         req.Url,
-		ApiKey:      req.ApiKey,
+		ApiKey:      apiKey,
 		SystemsJson: wsPtrToNullStr(req.SystemsJson),
 		Disabled:    req.Disabled,
 		Order:       req.Order,
@@ -1902,7 +1931,13 @@ func (c *Client) opConfigGet(ctx context.Context, _ json.RawMessage) (any, error
 
 	settingsList := make([]map[string]string, len(settings))
 	for i, s := range settings {
-		settingsList[i] = map[string]string{"key": s.Key, "value": s.Value}
+		val := s.Value
+		if SensitiveSettingKeys[s.Key] && c.hub.deps.EncryptionKey != "" {
+			if plain, err := auth.DecryptString(val, c.hub.deps.EncryptionKey); err == nil {
+				val = plain
+			}
+		}
+		settingsList[i] = map[string]string{"key": s.Key, "value": val}
 	}
 
 	return map[string]any{
@@ -1965,7 +2000,15 @@ func (c *Client) opConfigUpdate(ctx context.Context, params json.RawMessage) (an
 
 	qtx := c.hub.queries.WithTx(tx)
 	for _, s := range settings {
-		if err := qtx.UpsertSetting(ctx, db.UpsertSettingParams{Key: s.Key, Value: s.Value}); err != nil {
+		val := s.Value
+		if SensitiveSettingKeys[s.Key] && c.hub.deps.EncryptionKey != "" && val != "" {
+			enc, err := auth.EncryptString(val, c.hub.deps.EncryptionKey)
+			if err != nil {
+				return nil, fmt.Errorf("encrypt setting %q: %w", s.Key, err)
+			}
+			val = enc
+		}
+		if err := qtx.UpsertSetting(ctx, db.UpsertSettingParams{Key: s.Key, Value: val}); err != nil {
 			return nil, fmt.Errorf("failed to save config: %w", err)
 		}
 	}

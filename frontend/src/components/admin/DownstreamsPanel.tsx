@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { Pencil, Trash2, Plus, ClipboardCopy, Check } from "lucide-react";
+import { Pencil, Trash2, Plus } from "lucide-react";
 import {
   useListDownstreamsQuery,
   useCreateDownstreamMutation,
@@ -22,30 +22,6 @@ const emptyForm: DownstreamFormState = {
   systemsJson: "",
   disabled: 0,
 };
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <button
-      className="btn btn-ghost btn-xs"
-      onClick={handleCopy}
-      aria-label="Copy API key"
-    >
-      {copied ? (
-        <Check className="w-3 h-3 text-success" />
-      ) : (
-        <ClipboardCopy className="w-3 h-3" />
-      )}
-    </button>
-  );
-}
 
 export default function DownstreamsPanel() {
   const { data: downstreams, isLoading } = useListDownstreamsQuery();
@@ -80,7 +56,7 @@ export default function DownstreamsPanel() {
     setEditingId(d.id);
     setForm({
       url: d.url,
-      apiKey: d.apiKey,
+      apiKey: "",
       systemsJson: d.systemsJson ?? "",
       disabled: d.disabled,
     });
@@ -97,7 +73,12 @@ export default function DownstreamsPanel() {
     };
     try {
       if (editingId != null) {
-        await updateDownstream({ id: editingId, ...payload }).unwrap();
+        const existing = sorted.find((d) => d.id === editingId);
+        await updateDownstream({
+          id: editingId,
+          order: existing?.order ?? 0,
+          ...payload,
+        }).unwrap();
       } else {
         await createDownstream({ ...payload, order: sorted.length }).unwrap();
       }
@@ -125,7 +106,7 @@ export default function DownstreamsPanel() {
       await updateDownstream({
         id: d.id,
         url: d.url,
-        apiKey: d.apiKey,
+        apiKey: "",
         systemsJson: d.systemsJson,
         disabled: d.disabled ? 0 : 1,
         order: d.order,
@@ -202,10 +183,9 @@ export default function DownstreamsPanel() {
                   <tr key={d.id}>
                     <td className="font-mono text-sm">{d.url}</td>
                     <td>
-                      <span className="font-mono text-sm">
-                        {d.apiKey.slice(0, 8)}&hellip;
+                      <span className="text-base-content/50">
+                        {d.hasApiKey ? "••••••••••••" : "Not set"}
                       </span>
-                      <CopyButton text={d.apiKey} />
                     </td>
                     <td>{systemsList(d.systemsJson)}</td>
                     <td>
@@ -271,14 +251,20 @@ export default function DownstreamsPanel() {
             <div className="flex flex-col gap-1">
               <span className="text-sm font-medium">API Key</span>
               <input
-                type="text"
+                type="password"
                 className="input w-full font-mono"
                 value={form.apiKey}
                 onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
-                required
+                placeholder={
+                  editingId != null ? "Leave blank to keep current key" : ""
+                }
+                required={editingId == null}
+                autoComplete="off"
               />
               <span className="text-xs text-base-content/60">
-                The API key configured on the remote server for authentication.
+                {editingId != null
+                  ? "Enter a new key to replace the existing one, or leave blank to keep it."
+                  : "The API key configured on the remote server for authentication."}
               </span>
             </div>
 

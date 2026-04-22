@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/openscanner/openscanner/internal/audio"
+	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
 )
 
@@ -63,22 +64,24 @@ type pusherEntry struct {
 
 // Service manages goroutines that push calls to remote instances.
 type Service struct {
-	queries   *db.Queries
-	processor *audio.Processor
-	client    *http.Client
-	mu        sync.Mutex
-	reloadMu  sync.Mutex
-	appCtx    context.Context
-	cancel    context.CancelFunc
-	wg        sync.WaitGroup
-	pushers   []pusherEntry
+	queries       *db.Queries
+	processor     *audio.Processor
+	client        *http.Client
+	encryptionKey string
+	mu            sync.Mutex
+	reloadMu      sync.Mutex
+	appCtx        context.Context
+	cancel        context.CancelFunc
+	wg            sync.WaitGroup
+	pushers       []pusherEntry
 }
 
 // NewService creates a downstream pusher service.
-func NewService(queries *db.Queries, processor *audio.Processor) *Service {
+func NewService(queries *db.Queries, processor *audio.Processor, encryptionKey string) *Service {
 	return &Service{
-		queries:   queries,
-		processor: processor,
+		queries:       queries,
+		encryptionKey: encryptionKey,
+		processor:     processor,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -389,7 +392,14 @@ func (s *Service) pushCall(ctx context.Context, ds db.Downstream, event CallEven
 		return fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	req.Header.Set("X-API-Key", ds.ApiKey)
+
+	apiKey := ds.ApiKey
+	if s.encryptionKey != "" {
+		if plain, err := auth.DecryptString(apiKey, s.encryptionKey); err == nil {
+			apiKey = plain
+		}
+	}
+	req.Header.Set("X-API-Key", apiKey)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
