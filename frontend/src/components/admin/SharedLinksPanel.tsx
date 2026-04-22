@@ -55,94 +55,126 @@ export default function SharedLinksPanel() {
           No calls have been shared yet.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-base-300 bg-base-200/40">
-          <table className="table table-zebra table-fixed w-full">
-            <thead>
-              <tr>
-                <th className="w-[30%]">System</th>
-                <th className="w-[24%]">Talkgroup</th>
-                <th className="w-44">Call Date</th>
-                <th className="w-24">Duration</th>
-                <th className="w-32">Shared By</th>
-                <th className="w-44">Shared At</th>
-                <th className="w-36">Expires</th>
-                <th className="w-20">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {links.map((link) => (
-                <tr key={link.id}>
-                  <td className="align-top">
-                    <div
-                      className="leading-snug whitespace-normal wrap-break-word"
-                      title={link.systemLabel || "-"}
-                    >
-                      {link.systemLabel || "-"}
-                    </div>
-                  </td>
-                  <td className="align-top">
-                    <div
-                      className="leading-snug whitespace-normal wrap-break-word"
-                      title={
-                        link.talkgroupName
-                          ? `${link.talkgroupLabel || "-"} (${link.talkgroupName})`
-                          : link.talkgroupLabel || "-"
-                      }
-                    >
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto rounded-xl border border-base-300 bg-base-200/40">
+            <table className="table table-zebra w-full">
+              <thead>
+                <tr>
+                  <th>System</th>
+                  <th>Talkgroup</th>
+                  <th>Call Date</th>
+                  <th>Duration</th>
+                  <th>Shared By</th>
+                  <th>Shared At</th>
+                  <th>Expires</th>
+                  <th className="w-20">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {links.map((link) => (
+                  <tr key={link.id}>
+                    <td>{link.systemLabel || "-"}</td>
+                    <td>
                       <div>{link.talkgroupLabel || "-"}</div>
                       {link.talkgroupName && (
-                        <span className="mt-0.5 block text-xs text-base-content/60">
+                        <span className="text-xs text-base-content/60">
                           {link.talkgroupName}
                         </span>
                       )}
+                    </td>
+                    <td className="whitespace-nowrap text-sm">
+                      {formatDate(link.dateTime)}
+                    </td>
+                    <td className="whitespace-nowrap font-medium">
+                      {formatDuration(link.duration)}
+                    </td>
+                    <td className="truncate">{link.sharedBy || "-"}</td>
+                    <td className="whitespace-nowrap text-sm">
+                      {formatDate(link.createdAt)}
+                    </td>
+                    <td className="whitespace-nowrap text-sm">
+                      {link.expiresAt ? (
+                        formatDate(link.expiresAt)
+                      ) : (
+                        <span className="text-base-content/40">Never</span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="flex gap-1">
+                        <a
+                          href={`/call/${link.token}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-ghost btn-xs btn-square"
+                          title="Open shared link"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                        <button
+                          className="btn btn-ghost btn-xs btn-square text-error"
+                          onClick={() => handleDelete(link.id)}
+                          title="Revoke shared link"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile card list */}
+          <div className="md:hidden space-y-3">
+            {links.map((link) => (
+              <div
+                key={link.id}
+                className="card bg-base-200 card-body p-3 gap-2"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium text-sm truncate">
+                      {link.systemLabel || "-"}
                     </div>
-                  </td>
-                  <td className="whitespace-nowrap text-sm">
-                    {formatDate(link.dateTime)}
-                  </td>
-                  <td className="whitespace-nowrap font-medium">
+                    <div className="text-xs text-base-content/60 truncate">
+                      {link.talkgroupLabel || "-"}
+                      {link.talkgroupName && ` — ${link.talkgroupName}`}
+                    </div>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <a
+                      href={`/call/${link.token}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-ghost btn-xs btn-square"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                    <button
+                      className="btn btn-ghost btn-xs btn-square text-error"
+                      onClick={() => handleDelete(link.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-base-content/60">
+                  <span>{formatDate(link.dateTime)}</span>
+                  <span className="font-medium text-base-content">
                     {formatDuration(link.duration)}
-                  </td>
-                  <td>
-                    <div className="truncate" title={link.sharedBy || "-"}>
-                      {link.sharedBy || "-"}
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap text-sm">
-                    {formatDate(link.createdAt)}
-                  </td>
-                  <td className="whitespace-nowrap text-sm">
-                    {link.expiresAt ? (
-                      formatDate(link.expiresAt)
-                    ) : (
-                      <span className="text-base-content/40">Never</span>
-                    )}
-                  </td>
-                  <td className="align-top">
-                    <div className="flex gap-1 whitespace-nowrap">
-                      <a
-                        href={`/call/${link.token}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-ghost btn-xs btn-square"
-                        title="Open shared link"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                      <button
-                        className="btn btn-ghost btn-xs btn-square text-error"
-                        onClick={() => handleDelete(link.id)}
-                        title="Delete shared link"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </span>
+                  <span>by {link.sharedBy || "-"}</span>
+                  <span>
+                    Expires:{" "}
+                    {link.expiresAt ? formatDate(link.expiresAt) : "Never"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

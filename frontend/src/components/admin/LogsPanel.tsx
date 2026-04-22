@@ -205,14 +205,14 @@ export default function LogsPanel() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         <div>
           <h1 className="text-xl font-semibold">Logs</h1>
           <p className="text-sm text-base-content/60 mt-0.5">
             Live server logs &mdash; {rows.length} entries in buffer
           </p>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <div className="flex items-center gap-1 text-xs text-base-content/60 mr-2">
             <span>Level:</span>
             <span
@@ -374,7 +374,7 @@ export default function LogsPanel() {
               </select>
             </label>
 
-            <label className="flex flex-col text-sm flex-1 min-w-48">
+            <label className="flex flex-col text-sm flex-1 min-w-0">
               <span className="mb-0.5 text-xs font-medium text-base-content/70">
                 Search
               </span>

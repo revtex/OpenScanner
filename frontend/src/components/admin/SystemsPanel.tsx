@@ -66,9 +66,9 @@ function SystemCard({
     <div className="card bg-base-200">
       <div className="card-body p-4">
         {/* Header row — always visible */}
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-2">
           <button
-            className="flex items-center gap-3 flex-1 min-w-0 text-left cursor-pointer"
+            className="flex items-center gap-3 min-w-0 text-left cursor-pointer"
             onClick={onToggle}
           >
             <ChevronDown
@@ -82,7 +82,7 @@ function SystemCard({
             </div>
           </button>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 flex-wrap pl-8">
             <div
               className="tooltip tooltip-bottom flex items-center gap-2 text-xs text-base-content/60"
               data-tip="Talkgroups"
@@ -108,6 +108,7 @@ function SystemCard({
                 onChange={onToggleAutoPopulate}
               />
             </label>
+            <div className="flex-1" />
             <button
               className="btn btn-ghost btn-sm btn-square"
               onClick={onEdit}
