@@ -2367,6 +2367,29 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 		return nil, userError("invalid JSON body")
 	}
 
+	// Validate encrypted values: reject if no key configured, or if the wrong key is configured.
+	encKey := c.hub.deps.EncryptionKey
+	for _, s := range data.Settings {
+		if SensitiveSettingKeys[s.Key] && auth.IsEncrypted(s.Value) {
+			if encKey == "" {
+				return nil, userError("backup contains encrypted settings but no encryption key is configured — set --encryption-key before importing")
+			}
+			if _, err := auth.DecryptString(s.Value, encKey); err != nil {
+				return nil, userError("backup contains encrypted settings that cannot be decrypted with the current encryption key — check that --encryption-key matches the key used when the backup was created")
+			}
+		}
+	}
+	for _, d := range data.Downstreams {
+		if auth.IsEncrypted(d.ApiKey) {
+			if encKey == "" {
+				return nil, userError("backup contains encrypted downstream API keys but no encryption key is configured — set --encryption-key before importing")
+			}
+			if _, err := auth.DecryptString(d.ApiKey, encKey); err != nil {
+				return nil, userError("backup contains encrypted downstream API keys that cannot be decrypted with the current encryption key — check that --encryption-key matches the key used when the backup was created")
+			}
+		}
+	}
+
 	sqlDB := c.hub.deps.SQLDB
 	if sqlDB == nil {
 		return nil, fmt.Errorf("transaction support not available")
