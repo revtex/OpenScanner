@@ -50,9 +50,15 @@ const createApiKeyUnwrap = vi.fn();
 const updateApiKeyUnwrap = vi.fn();
 const deleteApiKeyUnwrap = vi.fn();
 
-const createApiKeyMutate = vi.fn((_arg: unknown) => ({ unwrap: createApiKeyUnwrap }));
-const updateApiKeyMutate = vi.fn((_arg: unknown) => ({ unwrap: updateApiKeyUnwrap }));
-const deleteApiKeyMutate = vi.fn((_arg: unknown) => ({ unwrap: deleteApiKeyUnwrap }));
+const createApiKeyMutate = vi.fn((_arg: unknown) => ({
+  unwrap: createApiKeyUnwrap,
+}));
+const updateApiKeyMutate = vi.fn((_arg: unknown) => ({
+  unwrap: updateApiKeyUnwrap,
+}));
+const deleteApiKeyMutate = vi.fn((_arg: unknown) => ({
+  unwrap: deleteApiKeyUnwrap,
+}));
 
 vi.mock("@/hooks/useAdminWsOps", () => ({
   useListApiKeysQuery: () => ({ data: mockKeys, isLoading: false }),

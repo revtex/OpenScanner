@@ -54,9 +54,15 @@ const createUserUnwrap = vi.fn();
 const updateUserUnwrap = vi.fn();
 const deleteUserUnwrap = vi.fn();
 
-const createUserMutate = vi.fn((_arg: unknown) => ({ unwrap: createUserUnwrap }));
-const updateUserMutate = vi.fn((_arg: unknown) => ({ unwrap: updateUserUnwrap }));
-const deleteUserMutate = vi.fn((_arg: unknown) => ({ unwrap: deleteUserUnwrap }));
+const createUserMutate = vi.fn((_arg: unknown) => ({
+  unwrap: createUserUnwrap,
+}));
+const updateUserMutate = vi.fn((_arg: unknown) => ({
+  unwrap: updateUserUnwrap,
+}));
+const deleteUserMutate = vi.fn((_arg: unknown) => ({
+  unwrap: deleteUserUnwrap,
+}));
 
 vi.mock("@/hooks/useAdminWsOps", () => ({
   useListUsersQuery: () => ({ data: mockUsers, isLoading: false }),

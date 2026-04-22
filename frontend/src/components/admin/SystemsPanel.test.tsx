@@ -38,11 +38,19 @@ const createSystemUnwrap = vi.fn();
 const updateSystemUnwrap = vi.fn();
 const deleteSystemUnwrap = vi.fn();
 
-const createSystemMutate = vi.fn((_arg: unknown) => ({ unwrap: createSystemUnwrap }));
-const updateSystemMutate = vi.fn((_arg: unknown) => ({ unwrap: updateSystemUnwrap }));
-const deleteSystemMutate = vi.fn((_arg: unknown) => ({ unwrap: deleteSystemUnwrap }));
+const createSystemMutate = vi.fn((_arg: unknown) => ({
+  unwrap: createSystemUnwrap,
+}));
+const updateSystemMutate = vi.fn((_arg: unknown) => ({
+  unwrap: updateSystemUnwrap,
+}));
+const deleteSystemMutate = vi.fn((_arg: unknown) => ({
+  unwrap: deleteSystemUnwrap,
+}));
 
-const noopMutate = vi.fn(() => ({ unwrap: vi.fn().mockResolvedValue(undefined) }));
+const noopMutate = vi.fn(() => ({
+  unwrap: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("@/hooks/useAdminWsOps", () => ({
   useListSystemsQuery: () => ({ data: mockSystems, isLoading: false }),
