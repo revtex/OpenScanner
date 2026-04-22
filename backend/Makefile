@@ -7,7 +7,7 @@ CMD=./cmd/server
 OUTPUT?=$(BINARY)
 
 build:
-	swag init -g cmd/server/main.go --parseDependency --parseInternal -o docs
+	swag init -d cmd/server,internal/api -g main.go --parseDependency --parseInternal -o docs
 	go build -o $(OUTPUT) $(CMD)
 
 dev:
