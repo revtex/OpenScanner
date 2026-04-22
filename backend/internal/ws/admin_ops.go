@@ -2271,7 +2271,7 @@ func (c *Client) opExportTalkgroups(ctx context.Context, params json.RawMessage)
 
 	var buf strings.Builder
 	w := csv.NewWriter(&buf)
-	_ = w.Write([]string{"talkgroup_id", "label", "name", "frequency", "led", "group_id", "tag_id", "order"})
+	_ = w.Write([]string{"talkgroup_id", "label", "name", "tag_id", "group_id", "frequency", "led", "order"})
 	for _, tg := range talkgroups {
 		freq := ""
 		if tg.Frequency.Valid {
@@ -2289,10 +2289,10 @@ func (c *Client) opExportTalkgroups(ctx context.Context, params json.RawMessage)
 			strconv.FormatInt(tg.TalkgroupID, 10),
 			tg.Label.String,
 			tg.Name.String,
+			tagID,
+			groupID,
 			freq,
 			tg.Led.String,
-			groupID,
-			tagID,
 			strconv.FormatInt(tg.Order, 10),
 		})
 	}
