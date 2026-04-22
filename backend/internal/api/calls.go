@@ -778,15 +778,17 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 		}
 	}
 
-	slog.Info("call-upload: complete",
+	logAttrs := []any{
 		"call_id", callID,
 		"system_id", systemIDRaw,
 		"talkgroup_id", talkgroupIDRaw,
-		"duration_ms", duration.Int64,
-		"duration_valid", duration.Valid,
 		"audio_path", relPath,
 		"api_key_id", apiKeyID,
-	)
+	}
+	if duration.Valid {
+		logAttrs = append(logAttrs, "duration_ms", duration.Int64)
+	}
+	slog.Info("call-upload: complete", logAttrs...)
 
 	c.JSON(http.StatusOK, gin.H{"id": callID, "message": "Call imported successfully."})
 

@@ -36,7 +36,7 @@ func main() {
 		slog.Info("migrations applied successfully")
 	case "down":
 		fmt.Fprintln(os.Stderr, "down migrations not yet supported")
-		os.Exit(0)
+		os.Exit(1)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown migration direction %q (expected 'up' or 'down')\n", direction)
 		os.Exit(1)
