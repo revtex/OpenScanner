@@ -92,27 +92,27 @@ OpenScanner integrates with [go-whisper](https://github.com/mutablelogic/go-whis
 
 OpenScanner is a complete rewrite, not a fork. Everything below is new or significantly improved:
 
-| Feature                      | rdio-scanner  | OpenScanner                                                                                           |
-| ---------------------------- | ------------- | ----------------------------------------------------------------------------------------------------- |
-| **Automatic transcription**  | Not available | Built-in via go-whisper with GPU support, model management, live display, and search                  |
-| **Auto-populate**            | Systems only  | Systems, talkgroups, groups, tags, and units — all created from incoming metadata                     |
-| **Call sharing**             | Not available | Generate public share links with configurable expiry                                                  |
-| **Bookmarks**                | Not available | Bookmark calls and filter the archive to bookmarked only                                              |
-| **Talkgroup selection**      | Basic         | Per-user multi-select by system, group, or tag; persisted server-side                                 |
-| **Audio encoding presets**   | Single format | 8 presets across MP3, AAC-LC, and HE-AAC at multiple bitrates                                         |
-| **User management & RBAC**   | Access codes  | Named user accounts with admin/listener roles, per-user system grants, expiration, and session limits |
-| **Per-key rate limits**      | Not available | Global and per-API-key call rate limiting with sliding window                                         |
-| **Downstream forwarding**    | Basic         | Forward calls to other OpenScanner instances with system grants (experimental, untested)              |
-| **Service management**       | Manual        | Guided `setup`, `upgrade`, `config validate`, `service doctor` commands                               |
-| **Auto-pruning**             | Basic         | Configurable retention with automatic deletion of calls older than N days                             |
-| **Let's Encrypt**            | Not available | Automatic certificate provisioning with `--ssl-auto-cert` (experimental, untested)                    |
-| **Admin WebSocket**          | REST polling  | Real-time admin operations over WebSocket — instant updates                                           |
-| **CSV import/export**        | Limited       | Full CSV import/export for talkgroups and units with duplicate handling                               |
-| **JSON config backup**       | Not available | Export and import full server configuration                                                           |
-| **Log viewer**               | Basic         | Query logs by level, date, text with auto-refresh and runtime level control                           |
-| **Dark/light theme**         | Dark only     | Toggle between themes                                                                                 |
-| **RadioReference import**    | Not available | Preview and apply talkgroup metadata from RadioReference directly in admin                            |
-| **Secrets encryption**       | Not available | Optional AES-256-GCM encryption for the JWT signing secret and downstream API keys |
+| Feature                     | rdio-scanner  | OpenScanner                                                                                           |
+| --------------------------- | ------------- | ----------------------------------------------------------------------------------------------------- |
+| **Automatic transcription** | Not available | Built-in via go-whisper with GPU support, model management, live display, and search                  |
+| **Auto-populate**           | Systems only  | Systems, talkgroups, groups, tags, and units — all created from incoming metadata                     |
+| **Call sharing**            | Not available | Generate public share links with configurable expiry                                                  |
+| **Bookmarks**               | Not available | Bookmark calls and filter the archive to bookmarked only                                              |
+| **Talkgroup selection**     | Basic         | Per-user multi-select by system, group, or tag; persisted server-side                                 |
+| **Audio encoding presets**  | Single format | 8 presets across MP3, AAC-LC, and HE-AAC at multiple bitrates                                         |
+| **User management & RBAC**  | Access codes  | Named user accounts with admin/listener roles, per-user system grants, expiration, and session limits |
+| **Per-key rate limits**     | Not available | Global and per-API-key call rate limiting with sliding window                                         |
+| **Downstream forwarding**   | Basic         | Forward calls to other OpenScanner instances with system grants (experimental, untested)              |
+| **Service management**      | Manual        | Guided `setup`, `upgrade`, `config validate`, `service doctor` commands                               |
+| **Auto-pruning**            | Basic         | Configurable retention with automatic deletion of calls older than N days                             |
+| **Let's Encrypt**           | Not available | Automatic certificate provisioning with `--ssl-auto-cert` (experimental, untested)                    |
+| **Admin WebSocket**         | REST polling  | Real-time admin operations over WebSocket — instant updates                                           |
+| **CSV import/export**       | Limited       | Full CSV import/export for talkgroups and units with duplicate handling                               |
+| **JSON config backup**      | Not available | Export and import full server configuration                                                           |
+| **Log viewer**              | Basic         | Query logs by level, date, text with auto-refresh and runtime level control                           |
+| **Dark/light theme**        | Dark only     | Toggle between themes                                                                                 |
+| **RadioReference import**   | Not available | Preview and apply talkgroup metadata from RadioReference directly in admin                            |
+| **Secrets encryption**      | Not available | Optional AES-256-GCM encryption for the JWT signing secret and downstream API keys                    |
 
 ---
 

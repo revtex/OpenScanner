@@ -211,9 +211,9 @@ OpenScanner reads configuration from three sources, in this priority order:
 
 A few hardening toggles are only available as environment variables — there is no CLI flag or JSON config field for them.
 
-| Variable                           | Description                                                                                                                                                                                                                                                                 | Default |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `OPENSCANNER_BLOCK_INTERNAL_HTTP`  | When set to `1`, `true`, or `yes`, OpenScanner refuses outbound HTTP (transcription, downstream push) to RFC1918, loopback, link-local, and multicast addresses. Leave unset for typical self-hosted homelab deployments where whisper and downstream scanners sit on your LAN. | unset   |
+| Variable                          | Description                                                                                                                                                                                                                                                                     | Default |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `OPENSCANNER_BLOCK_INTERNAL_HTTP` | When set to `1`, `true`, or `yes`, OpenScanner refuses outbound HTTP (transcription, downstream push) to RFC1918, loopback, link-local, and multicast addresses. Leave unset for typical self-hosted homelab deployments where whisper and downstream scanners sit on your LAN. | unset   |
 
 ### JSON Config File
 
@@ -394,10 +394,10 @@ openscanner --encryption-key-file /run/secrets/encryption_key
 
 ### What Gets Encrypted
 
-| Value               | Location            | Purpose                                                                   |
-| ------------------- | ------------------- | ------------------------------------------------------------------------- |
-| JWT signing secret  | `settings` table    | Signs session and API access tokens; auto-generated on first start         |
-| Downstream API keys | `downstreams` table | Authenticates to remote servers                                            |
+| Value               | Location            | Purpose                                                            |
+| ------------------- | ------------------- | ------------------------------------------------------------------ |
+| JWT signing secret  | `settings` table    | Signs session and API access tokens; auto-generated on first start |
+| Downstream API keys | `downstreams` table | Authenticates to remote servers                                    |
 
 Encrypted values are stored with an `enc::` prefix followed by base64-encoded ciphertext.
 
