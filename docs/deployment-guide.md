@@ -388,8 +388,10 @@ export OPENSCANNER_ENCRYPTION_KEY="your-secret-key-here"
 # JSON config file
 {"encryption_key": "your-secret-key-here"}
 
-# Read key from a file (Docker secrets / Kubernetes)
+# Read key from a file (Docker secrets / Kubernetes / any mounted secret)
 openscanner --encryption-key-file /run/secrets/encryption_key
+# or
+export OPENSCANNER_ENCRYPTION_KEY_FILE=/run/secrets/encryption_key
 ```
 
 ### What Gets Encrypted
@@ -410,7 +412,9 @@ Encrypted values are stored with an `enc::` prefix followed by base64-encoded ci
 - If the wrong key is provided: the server refuses to start with a decrypt error
 - Config imports are also validated: importing a backup that contains `enc::` values is rejected if no key is configured or the configured key cannot decrypt them
 
-### Docker Compose Example
+### Docker Compose — Inline Env Var
+
+Simplest option — the key is baked into `docker-compose.yml`:
 
 ```yaml
 services:
@@ -420,7 +424,24 @@ services:
       - OPENSCANNER_ENCRYPTION_KEY=change-me-to-a-strong-random-value
 ```
 
-Or with Docker secrets:
+### Docker Compose — Secrets File
+
+Preferred when you don't want the key in `docker-compose.yml`. Create the key file next to your compose file:
+
+```bash
+openssl rand -hex 32 > encryption_key.txt
+chmod 600 encryption_key.txt
+```
+
+`encryption_key.txt` should contain only the raw key on a single line — no quotes, no `KEY=` prefix, no JSON wrapper:
+
+```text
+3f9a8b2c7d4e1f0a5b6c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a
+```
+
+A trailing newline is fine — OpenScanner trims whitespace when reading the key file. Add `encryption_key.txt` to your `.gitignore` so it is never committed.
+
+Then wire it into the container as a secret:
 
 ```yaml
 services:
@@ -436,13 +457,7 @@ secrets:
     file: ./encryption_key.txt
 ```
 
-> **File permissions:** Set the key file to `0600` (owner read/write) or `0400` (owner read-only) on the host:
->
-> ```bash
-> chmod 600 ./encryption_key.txt
-> ```
->
-> Docker Swarm mounts secrets as `0444` inside the container. With Compose `file:` secrets, the container inherits the host file's permissions. OpenScanner only needs read access.
+> **Note on Docker Swarm:** Swarm mounts secrets as `0444` inside the container. With Compose `file:` secrets, the container inherits the host file's permissions. OpenScanner only needs read access.
 
 ### Without Encryption
 
