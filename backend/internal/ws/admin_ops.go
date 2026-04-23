@@ -2212,28 +2212,43 @@ func (c *Client) opExportTalkgroups(ctx context.Context, params json.RawMessage)
 		talkgroups = rows
 	}
 
+	// Build ID→label maps so we can emit portable text names instead of
+	// PK integers (PKs are not stable across instances).
+	groupMap := make(map[int64]string)
+	if gs, err := c.hub.queries.ListGroups(ctx); err == nil {
+		for _, g := range gs {
+			groupMap[g.ID] = g.Label
+		}
+	}
+	tagMap := make(map[int64]string)
+	if ts, err := c.hub.queries.ListTags(ctx); err == nil {
+		for _, t := range ts {
+			tagMap[t.ID] = t.Label
+		}
+	}
+
 	var buf strings.Builder
 	w := csv.NewWriter(&buf)
-	_ = w.Write([]string{"talkgroup_id", "label", "name", "tag_id", "group_id", "frequency", "led", "order"})
+	_ = w.Write([]string{"talkgroup_id", "label", "name", "tag", "group", "frequency", "led", "order"})
 	for _, tg := range talkgroups {
 		freq := ""
 		if tg.Frequency.Valid {
 			freq = strconv.FormatInt(tg.Frequency.Int64, 10)
 		}
-		groupID := ""
+		groupLabel := ""
 		if tg.GroupID.Valid {
-			groupID = strconv.FormatInt(tg.GroupID.Int64, 10)
+			groupLabel = groupMap[tg.GroupID.Int64]
 		}
-		tagID := ""
+		tagLabel := ""
 		if tg.TagID.Valid {
-			tagID = strconv.FormatInt(tg.TagID.Int64, 10)
+			tagLabel = tagMap[tg.TagID.Int64]
 		}
 		_ = w.Write([]string{
 			strconv.FormatInt(tg.TalkgroupID, 10),
 			tg.Label.String,
 			tg.Name.String,
-			tagID,
-			groupID,
+			tagLabel,
+			groupLabel,
 			freq,
 			tg.Led.String,
 			strconv.FormatInt(tg.Order, 10),

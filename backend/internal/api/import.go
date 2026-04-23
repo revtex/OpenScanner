@@ -226,19 +226,27 @@ func (h *AdminHandler) ImportTalkgroups(c *gin.Context) {
 			params.Name = sql.NullString{String: v, Valid: true}
 		}
 
-		// Tag: prefer integer FK, fall back to name resolution.
+		// Tag: prefer integer FK (but verify it exists), fall back to name.
 		if v := col(record, columns.tagID); v != "" {
 			if id, err := strconv.ParseInt(v, 10, 64); err == nil {
-				params.TagID = sql.NullInt64{Int64: id, Valid: true}
+				if _, gerr := h.queries.GetTag(ctx, id); gerr == nil {
+					params.TagID = sql.NullInt64{Int64: id, Valid: true}
+				} else if name := col(record, columns.tagName); name != "" {
+					params.TagID = resolveTagID(ctx, h.queries, name)
+				}
 			}
 		} else if v := col(record, columns.tagName); v != "" {
 			params.TagID = resolveTagID(ctx, h.queries, v)
 		}
 
-		// Group: prefer integer FK, fall back to name resolution.
+		// Group: prefer integer FK (but verify it exists), fall back to name.
 		if v := col(record, columns.groupID); v != "" {
 			if id, err := strconv.ParseInt(v, 10, 64); err == nil {
-				params.GroupID = sql.NullInt64{Int64: id, Valid: true}
+				if _, gerr := h.queries.GetGroup(ctx, id); gerr == nil {
+					params.GroupID = sql.NullInt64{Int64: id, Valid: true}
+				} else if name := col(record, columns.groupName); name != "" {
+					params.GroupID = resolveGroupID(ctx, h.queries, name)
+				}
 			}
 		} else if v := col(record, columns.groupName); v != "" {
 			params.GroupID = resolveGroupID(ctx, h.queries, v)
