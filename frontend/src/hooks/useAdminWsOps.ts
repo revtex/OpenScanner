@@ -353,7 +353,11 @@ export function useLazyExportUnitsQuery() {
 
 export function useImportConfigMutation() {
   return useWsMutation<void, unknown>("import.config", {
-    transformArg: (data) => ({ data }),
+    // The backup file IS the params object — the backend unmarshals
+    // params directly into a struct with top-level settings/groups/
+    // systems/etc. fields. Wrapping it as { data } here would put
+    // everything one level too deep and silently parse zero entities.
+    transformArg: (data) => data as Record<string, unknown>,
   });
 }
 
