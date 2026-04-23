@@ -2238,21 +2238,52 @@ func (c *Client) opExportUnits(ctx context.Context, params json.RawMessage) (any
 // IMPORT
 // ══════════════════════════════════════════════════════════════════════════════
 
+// importAPIKey, importDownstream, and importWebhook mirror the flat shape
+// emitted by opExportConfig (plain string/null instead of {String,Valid}
+// blobs). Unmarshalling directly into the db.* structs would fail for any
+// non-null nullable field because sql.NullString has no JSON unmarshaler.
+type importAPIKey struct {
+	Key           string  `json:"key"`
+	Ident         *string `json:"ident"`
+	Disabled      int64   `json:"disabled"`
+	SystemsJson   *string `json:"systems_json"`
+	CallRateLimit *int64  `json:"call_rate_limit"`
+	Order         int64   `json:"order"`
+}
+
+type importDownstream struct {
+	Url         string  `json:"url"`
+	ApiKey      string  `json:"api_key"`
+	SystemsJson *string `json:"systems_json"`
+	Disabled    int64   `json:"disabled"`
+	Order       int64   `json:"order"`
+}
+
+type importWebhook struct {
+	Url         string  `json:"url"`
+	Type        string  `json:"type"`
+	Secret      *string `json:"secret"`
+	SystemsJson *string `json:"systems_json"`
+	Disabled    int64   `json:"disabled"`
+	Order       int64   `json:"order"`
+}
+
 func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (any, error) {
 	var data struct {
-		Settings    []db.Setting    `json:"settings"`
-		Groups      []db.Group      `json:"groups"`
-		Tags        []db.Tag        `json:"tags"`
-		Systems     []db.System     `json:"systems"`
-		Talkgroups  []db.Talkgroup  `json:"talkgroups"`
-		Units       []db.Unit       `json:"units"`
-		APIKeys     []db.ApiKey     `json:"apiKeys"`
-		DirMonitors []db.Dirmonitor `json:"dirmonitors"`
-		Downstreams []db.Downstream `json:"downstreams"`
-		Webhooks    []db.Webhook    `json:"webhooks"`
+		Settings    []db.Setting       `json:"settings"`
+		Groups      []db.Group         `json:"groups"`
+		Tags        []db.Tag           `json:"tags"`
+		Systems     []db.System        `json:"systems"`
+		Talkgroups  []db.Talkgroup     `json:"talkgroups"`
+		Units       []db.Unit          `json:"units"`
+		APIKeys     []importAPIKey     `json:"apiKeys"`
+		DirMonitors []db.Dirmonitor    `json:"dirmonitors"`
+		Downstreams []importDownstream `json:"downstreams"`
+		Webhooks    []importWebhook    `json:"webhooks"`
 	}
 	if err := json.Unmarshal(params, &data); err != nil {
-		return nil, userError("invalid JSON body")
+		slog.Warn("import config: failed to parse payload", "error", err)
+		return nil, userError("invalid backup file: " + err.Error())
 	}
 
 	// Validate encrypted values: reject if no key configured, or if the wrong key is configured.
@@ -2362,11 +2393,12 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 	// API Keys
 	for _, k := range data.APIKeys {
 		if _, err := qtx.CreateAPIKey(ctx, db.CreateAPIKeyParams{
-			Key:         k.Key,
-			Ident:       k.Ident,
-			Disabled:    k.Disabled,
-			SystemsJson: k.SystemsJson,
-			Order:       k.Order,
+			Key:           k.Key,
+			Ident:         wsPtrToNullStr(k.Ident),
+			Disabled:      k.Disabled,
+			SystemsJson:   wsPtrToNullStr(k.SystemsJson),
+			CallRateLimit: wsPtrToNullInt(k.CallRateLimit),
+			Order:         k.Order,
 		}); err != nil && !wsIsUniqueViolation(err) {
 			return nil, fmt.Errorf("failed to import api keys: %w", err)
 		}
@@ -2401,7 +2433,7 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 		if _, err := qtx.CreateDownstream(ctx, db.CreateDownstreamParams{
 			Url:         d.Url,
 			ApiKey:      d.ApiKey,
-			SystemsJson: d.SystemsJson,
+			SystemsJson: wsPtrToNullStr(d.SystemsJson),
 			Disabled:    d.Disabled,
 			Order:       d.Order,
 		}); err != nil && !wsIsUniqueViolation(err) {
@@ -2418,8 +2450,8 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 		if _, err := qtx.CreateWebhook(ctx, db.CreateWebhookParams{
 			Url:         w.Url,
 			Type:        w.Type,
-			Secret:      w.Secret,
-			SystemsJson: w.SystemsJson,
+			Secret:      wsPtrToNullStr(w.Secret),
+			SystemsJson: wsPtrToNullStr(w.SystemsJson),
 			Disabled:    w.Disabled,
 			Order:       w.Order,
 		}); err != nil && !wsIsUniqueViolation(err) {
@@ -2431,7 +2463,37 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 		return nil, fmt.Errorf("failed to commit import: %w", err)
 	}
 
-	slog.Info("config imported successfully via WS", "by", c.userID)
+	// Notify all admin/listener clients to refetch — without these the
+	// admin UI shows stale (empty) lists and the user thinks the import
+	// silently failed. Order doesn't matter; events are fire-and-forget.
+	for _, topic := range []string{
+		"groups.updated",
+		"tags.updated",
+		"systems.updated",
+		"talkgroups.updated",
+		"units.updated",
+		"apikeys.updated",
+		"dirmonitors.updated",
+		"downstreams.updated",
+		"webhooks.updated",
+	} {
+		c.hub.BroadcastAdminEvent(topic, nil)
+	}
+	c.hub.BroadcastCFG(ctx)
+
+	slog.Info("config imported successfully via WS",
+		"by", c.userID,
+		"settings", len(data.Settings),
+		"groups", len(data.Groups),
+		"tags", len(data.Tags),
+		"systems", len(data.Systems),
+		"talkgroups", len(data.Talkgroups),
+		"units", len(data.Units),
+		"apiKeys", len(data.APIKeys),
+		"dirmonitors", len(data.DirMonitors),
+		"downstreams", len(data.Downstreams),
+		"webhooks", len(data.Webhooks),
+	)
 	return map[string]bool{"ok": true}, nil
 }
 
