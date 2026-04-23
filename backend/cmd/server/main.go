@@ -657,6 +657,59 @@ func (p *program) run() {
 		os.Exit(1)
 	}
 
+	// Gather everything the startup banner needs BEFORE the noisy migration/
+	// init phase, so the banner is the first thing users see in the log.
+	hasFFmpeg := audio.CheckFFmpeg()
+	hasFDKAAC := false
+	if hasFFmpeg {
+		hasFDKAAC = audio.CheckLibFDKAAC()
+	}
+
+	persistedLogLevel := ""
+	if setting, err := queries.GetSetting(context.Background(), "logLevel"); err == nil {
+		persistedLogLevel = setting.Value
+		if err := logging.SetLevel(setting.Value); err != nil {
+			slog.Warn("invalid persisted log level, keeping default", "value", setting.Value, "error", err)
+		}
+	}
+	publicAccess := ""
+	if setting, err := queries.GetSetting(context.Background(), "publicAccess"); err == nil {
+		publicAccess = setting.Value
+	}
+	autoPopulateSystems := ""
+	if setting, err := queries.GetSetting(context.Background(), "autoPopulateSystems"); err == nil {
+		autoPopulateSystems = setting.Value
+	}
+	whisperConfigured := false
+	if setting, err := queries.GetSetting(context.Background(), "transcriptionEnabled"); err == nil && setting.Value == "true" {
+		whisperConfigured = true
+	}
+
+	// Human-readable startup banner — printed FIRST so it is visible above
+	// any subsequent JSON log output.
+	printStartupBanner(startupBannerData{
+		Version:             config.Version,
+		URL:                 scheme + "://" + listenURL,
+		Database:            cfg.DBFile,
+		Recordings:          cfg.RecordingsDir,
+		Timezone:            cfg.Timezone,
+		LogLevel:            logging.GetLevel(),
+		SSL:                 cfg.SSLAutoCert != "" || (cfg.SSLCert != "" && cfg.SSLKey != ""),
+		EncryptionAtRest:    cfg.EncryptionKey != "",
+		JWTSecretExternal:   os.Getenv("OPENSCANNER_JWT_SECRET") != "",
+		FFmpeg:              hasFFmpeg,
+		FDKAAC:              hasFDKAAC,
+		Whisper:             whisperConfigured,
+		PublicAccess:        publicAccess == "true",
+		AutoPopulateSystems: autoPopulateSystems == "true",
+	})
+
+	slog.Debug("server: loaded settings from db",
+		"log_level", persistedLogLevel,
+		"public_access", publicAccess,
+		"auto_populate_systems", autoPopulateSystems,
+	)
+
 	// Run secrets-at-rest encryption migration.
 	if err := migrateSecrets(context.Background(), queries, sqlDB, cfg.EncryptionKey); err != nil {
 		slog.Error("secrets encryption migration failed", "error", err)
@@ -681,30 +734,6 @@ func (p *program) run() {
 		slog.Warn("pushNotifications=true but no push dispatcher is wired — push notifications will NOT fire")
 	}
 
-	persistedLogLevel := ""
-	if setting, err := queries.GetSetting(context.Background(), "logLevel"); err == nil {
-		persistedLogLevel = setting.Value
-		if err := logging.SetLevel(setting.Value); err != nil {
-			slog.Warn("invalid persisted log level, keeping default", "value", setting.Value, "error", err)
-		}
-	}
-
-	publicAccess := ""
-	if setting, err := queries.GetSetting(context.Background(), "publicAccess"); err == nil {
-		publicAccess = setting.Value
-	}
-
-	autoPopulateSystems := ""
-	if setting, err := queries.GetSetting(context.Background(), "autoPopulateSystems"); err == nil {
-		autoPopulateSystems = setting.Value
-	}
-
-	slog.Debug("server: loaded settings from db",
-		"log_level", persistedLogLevel,
-		"public_access", publicAccess,
-		"auto_populate_systems", autoPopulateSystems,
-	)
-
 	// Set up Gin router with registered routes.
 	router := gin.New()
 	router.MaxMultipartMemory = 50 << 20 // 50 MiB limit for multipart uploads
@@ -719,11 +748,6 @@ func (p *program) run() {
 	rateLimiter := auth.NewRateLimiter(ctx)
 
 	// Set up bounded FFmpeg worker pool and audio processor.
-	hasFFmpeg := audio.CheckFFmpeg()
-	hasFDKAAC := false
-	if hasFFmpeg {
-		hasFDKAAC = audio.CheckLibFDKAAC()
-	}
 	pool := audio.NewWorkerPool(ctx)
 	processor := audio.NewProcessor(cfg.RecordingsDir, pool)
 
@@ -891,23 +915,6 @@ func (p *program) run() {
 		"auto_populate_systems", autoPopulateSystems == "true",
 	)
 
-	// Human-readable startup banner printed once the runtime state is known.
-	printStartupBanner(startupBannerData{
-		Version:             config.Version,
-		URL:                 scheme + "://" + listenURL,
-		Database:            cfg.DBFile,
-		Recordings:          cfg.RecordingsDir,
-		Timezone:            cfg.Timezone,
-		LogLevel:            logging.GetLevel(),
-		SSL:                 sslEnabled,
-		EncryptionAtRest:    cfg.EncryptionKey != "",
-		FFmpeg:              hasFFmpeg,
-		FDKAAC:              hasFDKAAC,
-		Whisper:             hasWhisper,
-		PublicAccess:        publicAccess == "true",
-		AutoPopulateSystems: autoPopulateSystems == "true",
-	})
-
 	// Block until signal or server error.
 	select {
 	case <-ctx.Done():
@@ -1015,6 +1022,7 @@ type startupBannerData struct {
 	LogLevel            string
 	SSL                 bool
 	EncryptionAtRest    bool
+	JWTSecretExternal   bool
 	FFmpeg              bool
 	FDKAAC              bool
 	Whisper             bool
@@ -1032,6 +1040,10 @@ func printStartupBanner(d startupBannerData) {
 		}
 		return "no"
 	}
+	jwtSource := "in database"
+	if d.JWTSecretExternal {
+		jwtSource = "external (env)"
+	}
 	fmt.Fprintf(os.Stdout, "\n"+
 		"  ┌───────────────────────────────────────────────────────┐\n"+
 		"  │             O P E N S C A N N E R   %-18s │\n"+
@@ -1043,6 +1055,7 @@ func printStartupBanner(d startupBannerData) {
 		"  Log level ......... %s\n"+
 		"  TLS enabled ....... %s\n"+
 		"  Encryption at rest  %s\n"+
+		"  JWT secret ........ %s\n"+
 		"  Public access ..... %s\n"+
 		"  Auto-populate sys   %s\n"+
 		"  FFmpeg ............ %s\n"+
@@ -1056,6 +1069,7 @@ func printStartupBanner(d startupBannerData) {
 		d.LogLevel,
 		yn(d.SSL),
 		yn(d.EncryptionAtRest),
+		jwtSource,
 		yn(d.PublicAccess),
 		yn(d.AutoPopulateSystems),
 		yn(d.FFmpeg),
