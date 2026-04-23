@@ -158,7 +158,7 @@ func (h *AdminHandler) ImportTalkgroups(c *gin.Context) {
 	var firstDataRow []string
 	for {
 		record, err := reader.Read()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			c.JSON(http.StatusOK, gin.H{"inserted": 0, "updated": 0, "skipped": 0})
 			return
 		}
@@ -184,7 +184,7 @@ func (h *AdminHandler) ImportTalkgroups(c *gin.Context) {
 		tgIDStr := col(record, columns.talkgroupID)
 		tgID, err := strconv.ParseInt(tgIDStr, 10, 64)
 		if err != nil {
-			return nil // skip rows with invalid talkgroup_id
+			return nil //nolint:nilerr // invalid talkgroup_id: skip row, not a fatal error
 		}
 
 		// Check if talkgroup already exists.
@@ -270,7 +270,7 @@ func (h *AdminHandler) ImportTalkgroups(c *gin.Context) {
 		}
 
 		record, err := reader.Read()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -355,7 +355,7 @@ func (h *AdminHandler) ImportUnits(c *gin.Context) {
 	headerSkipped := false
 	for {
 		record, err := reader.Read()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

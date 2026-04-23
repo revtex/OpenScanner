@@ -16,6 +16,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+    "useUnknownInCatchVariables": true,
     "paths": {
       "@/*": ["./src/*"]
     }

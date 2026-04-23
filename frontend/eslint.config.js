@@ -5,12 +5,14 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import globals from "globals";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  { ignores: ["dist", "coverage", "tmp", "sw.ts"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
       globals: globals.browser,
+      ecmaVersion: 2022,
+      sourceType: "module",
     },
     plugins: {
       "react-hooks": reactHooks,
@@ -22,20 +24,64 @@ export default tseslint.config(
         "warn",
         { allowConstantExport: true },
       ],
+
+      // Unused variables — allow _-prefixed for intentional discards.
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
           caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
         },
       ],
+
+      // Type-only imports keep runtime bundles lean and prevent circular import cycles.
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        {
+          prefer: "type-imports",
+          fixStyle: "inline-type-imports",
+          disallowTypeAnnotations: false,
+        },
+      ],
+      "@typescript-eslint/no-import-type-side-effects": "error",
+
+      // Catch sloppy type-system usage beyond the default `recommended` tier.
+      "@typescript-eslint/no-non-nullable-type-assertion-style": "off",
+      "@typescript-eslint/prefer-as-const": "error",
+      "@typescript-eslint/no-duplicate-enum-values": "error",
+      "@typescript-eslint/no-inferrable-types": "error",
+      "@typescript-eslint/no-for-in-array": "error",
+
+      // Core JS hygiene.
+      eqeqeq: ["error", "always", { null: "ignore" }],
+      "no-var": "error",
+      "prefer-const": "error",
+      "no-debugger": "error",
+      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "no-implicit-globals": "error",
+      "no-throw-literal": "error",
+      "no-unreachable-loop": "error",
+      "no-self-compare": "error",
+      "no-template-curly-in-string": "error",
+      "no-promise-executor-return": "error",
+      "require-atomic-updates": "off", // too many false positives with async effects
     },
   },
   {
     files: ["src/main.tsx"],
     rules: {
       "react-refresh/only-export-components": "off",
+    },
+  },
+  {
+    // Tests use vitest globals and relax type strictness.
+    files: ["**/*.test.{ts,tsx}", "src/test-setup.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-non-null-assertion": "off",
+      "no-console": "off",
     },
   },
 );

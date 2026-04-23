@@ -57,9 +57,7 @@ var (
 )
 
 func main() {
-	if handleLocalSetupCommands() {
-		return
-	}
+	handleLocalSetupCommands()
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -118,9 +116,9 @@ func main() {
 	}
 }
 
-func handleLocalSetupCommands() bool {
+func handleLocalSetupCommands() {
 	if len(os.Args) < 2 {
-		return false
+		return
 	}
 
 	switch os.Args[1] {
@@ -143,8 +141,6 @@ func handleLocalSetupCommands() bool {
 			os.Exit(runServiceDoctor())
 		}
 	}
-
-	return false
 }
 
 func runSetup(args []string) int {

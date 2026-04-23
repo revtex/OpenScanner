@@ -262,7 +262,7 @@ func (s *Service) pushWithRetry(ctx context.Context, ds db.Downstream, event Cal
 		}
 
 		// Exponential backoff with jitter, capped at 30s.
-		jitter := time.Duration(rand.Int64N(int64(backoff) / 2))
+		jitter := time.Duration(rand.Int64N(int64(backoff) / 2)) //nolint:gosec // jitter only, not security-sensitive
 		wait := backoff + jitter
 		if wait > 30*time.Second {
 			wait = 30 * time.Second

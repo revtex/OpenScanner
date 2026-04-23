@@ -553,15 +553,15 @@ func parseRTLSDRAirband(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, er
 		month, _ := strconv.Atoi(m[2])
 		day, _ := strconv.Atoi(m[3])
 		hour, _ := strconv.Atoi(m[4])
-		var min, sec int
+		var minute, sec int
 		if m[5] != "" {
-			min, _ = strconv.Atoi(m[5])
+			minute, _ = strconv.Atoi(m[5])
 		}
 		if m[6] != "" {
 			sec, _ = strconv.Atoi(m[6])
 		}
 		if year > 0 && month >= 1 && month <= 12 && day >= 1 && day <= 31 {
-			dt = time.Date(year, time.Month(month), day, hour, min, sec, 0, time.UTC)
+			dt = time.Date(year, time.Month(month), day, hour, minute, sec, 0, time.UTC)
 		}
 		// Frequency from filename (include_freq mode) overrides config only when config is unset.
 		if m[7] != "" && freq == 0 {
@@ -793,19 +793,19 @@ func parseGeneric(dw db.Dirmonitor, triggeredPath string) (*ParsedCall, error) {
 func extractBracketContents(s string) []string {
 	var parts []string
 	for {
-		open := strings.IndexByte(s, '[')
-		if open < 0 {
+		openIdx := strings.IndexByte(s, '[')
+		if openIdx < 0 {
 			break
 		}
-		close := strings.IndexByte(s[open+1:], ']')
-		if close < 0 {
+		closeIdx := strings.IndexByte(s[openIdx+1:], ']')
+		if closeIdx < 0 {
 			break
 		}
-		inner := s[open+1 : open+1+close]
+		inner := s[openIdx+1 : openIdx+1+closeIdx]
 		if len(inner) > 0 {
 			parts = append(parts, inner)
 		}
-		s = s[open+1+close+1:]
+		s = s[openIdx+1+closeIdx+1:]
 	}
 	return parts
 }

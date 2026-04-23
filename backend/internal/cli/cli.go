@@ -3,6 +3,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -65,7 +66,7 @@ func Run() bool {
 // nonFlagArgs returns os.Args elements that are not flags (don't start with '-').
 // It skips os.Args[0] (the binary name) and stops at the first non-flag argument.
 func nonFlagArgs() []string {
-	var result []string
+	result := make([]string, 0, len(os.Args))
 	skipNext := false
 	for _, arg := range os.Args[1:] {
 		if skipNext {
@@ -162,7 +163,9 @@ func doRequest(method, url string, body interface{}, token string) (map[string]i
 		reqBody = bytes.NewReader(data)
 	}
 
-	req, err := http.NewRequest(method, url, reqBody)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -502,7 +505,9 @@ func runUserRemove(serverURL, username string) int {
 
 // findUserIDByName fetches the user list and returns the ID for the given username.
 func findUserIDByName(serverURL, token, username string) (int64, error) {
-	req, err := http.NewRequest("GET", serverURL+"/api/admin/users", nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, serverURL+"/api/admin/users", nil)
 	if err != nil {
 		return 0, err
 	}

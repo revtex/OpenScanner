@@ -172,7 +172,7 @@ func decodeJWTSecretValue(stored, encryptionKey string) ([]byte, error) {
 	raw, err := base64.StdEncoding.DecodeString(val)
 	if err != nil {
 		// Legacy / env-supplied values may be raw strings, not base64.
-		return []byte(val), nil
+		return []byte(val), nil //nolint:nilerr // fall back to raw bytes for legacy secrets
 	}
 	return raw, nil
 }

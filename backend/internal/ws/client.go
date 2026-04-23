@@ -183,8 +183,8 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 
 		// Check maxClients setting.
 		if maxStr, err := queries.GetSetting(ctx, "maxClients"); err == nil {
-			if max, err := strconv.Atoi(maxStr.Value); err == nil && max > 0 {
-				if hub.ClientCount() >= max {
+			if maxClients, err := strconv.Atoi(maxStr.Value); err == nil && maxClients > 0 {
+				if hub.ClientCount() >= maxClients {
 					msg, _ := NewMAXMessage()
 					_ = conn.Write(ctx, websocket.MessageText, msg)
 					conn.Close(websocket.StatusNormalClosure, "max clients reached")
@@ -470,7 +470,8 @@ func (c *Client) handleAdminRequest(ctx context.Context, req adminRequest) {
 	data, err := handler(ctx, req.Params)
 	var msg []byte
 	if err != nil {
-		if _, ok := err.(userError); ok {
+		var uerr userError
+		if errors.As(err, &uerr) {
 			msg, _ = NewADMRESErrorMessage(req.ReqID, err.Error())
 		} else {
 			slog.Error("ws: admin op failed", "op", req.Op, "reqId", req.ReqID, "error", err)

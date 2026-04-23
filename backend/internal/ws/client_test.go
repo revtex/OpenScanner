@@ -98,7 +98,7 @@ func startWSTestServer(t *testing.T, queries *db.Queries, handler http.HandlerFu
 }
 
 // readTextMessage reads a text message from the WS connection with a timeout.
-func readTextMessage(t *testing.T, ctx context.Context, conn *websocket.Conn, timeout time.Duration) []byte {
+func readTextMessage(ctx context.Context, t *testing.T, conn *websocket.Conn, timeout time.Duration) []byte {
 	t.Helper()
 	readCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -168,7 +168,7 @@ func TestHandleListenerWS_PublicAccess(t *testing.T) {
 	defer func() { _ = conn.CloseNow() }()
 
 	// Should receive VER message (welcome).
-	msg := readTextMessage(t, ctx, conn, 5*time.Second)
+	msg := readTextMessage(ctx, t, conn, 5*time.Second)
 	cmd := extractCommand(t, msg)
 	if cmd != "VER" {
 		t.Errorf("first message command = %q, want VER", cmd)
@@ -221,7 +221,7 @@ func TestHandleListenerWS_ValidJWT(t *testing.T) {
 	}
 
 	// Should receive VER.
-	msg := readTextMessage(t, ctx, conn, 5*time.Second)
+	msg := readTextMessage(ctx, t, conn, 5*time.Second)
 	cmd := extractCommand(t, msg)
 	if cmd != "VER" {
 		t.Errorf("expected VER after valid JWT, got %q", cmd)
@@ -273,7 +273,7 @@ func TestHandleListenerWS_AdminJWTAccepted(t *testing.T) {
 	}
 
 	// Should receive VER (accepted).
-	msg := readTextMessage(t, ctx, conn, 5*time.Second)
+	msg := readTextMessage(ctx, t, conn, 5*time.Second)
 	cmd := extractCommand(t, msg)
 	if cmd != "VER" {
 		t.Errorf("expected VER for admin JWT on listener endpoint, got %q", cmd)
@@ -383,7 +383,7 @@ func TestHandleAdminWS_ListenerJWTRejected(t *testing.T) {
 	}
 
 	// Should receive XPR (expired/rejected).
-	msg := readTextMessage(t, ctx, conn, 5*time.Second)
+	msg := readTextMessage(ctx, t, conn, 5*time.Second)
 	cmd := extractCommand(t, msg)
 	if cmd != "XPR" {
 		t.Errorf("expected XPR for listener JWT on admin endpoint, got %q", cmd)

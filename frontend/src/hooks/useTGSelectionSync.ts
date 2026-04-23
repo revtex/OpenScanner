@@ -102,7 +102,7 @@ export function useTGSelectionSync() {
 
   // Persist tgSelection: API (authenticated) or localStorage (anonymous)
   useEffect(() => {
-    if (!configRef.current || !restoredRef.current) return;
+    if (!configRef.current || !restoredRef.current) return undefined;
 
     if (isAuthenticated) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -132,6 +132,7 @@ export function useTGSelectionSync() {
       };
     } else {
       localStorage.setItem(storageKey(instanceId), JSON.stringify(tgSelection));
+      return undefined;
     }
   }, [tgSelection, avoidList, instanceId, isAuthenticated, saveTGSelection]);
 }

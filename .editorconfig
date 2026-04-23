@@ -1,0 +1,39 @@
+# EditorConfig is awesome: https://EditorConfig.org
+# Enforces consistent formatting across editors for all contributors.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Go uses tabs for indentation (gofmt).
+[*.go]
+indent_style = tab
+
+# Makefiles must use real tabs for recipe lines.
+[{Makefile,**/Makefile,*.mk}]
+indent_style = tab
+
+# SQL / migrations: 2-space indentation.
+[*.sql]
+indent_style = space
+indent_size = 2
+
+# Shell scripts: 2-space is fine, but keep LF line endings.
+[*.{sh,bash}]
+indent_style = space
+indent_size = 2
+
+# Markdown: preserve trailing whitespace for line breaks.
+[*.md]
+trim_trailing_whitespace = false
+
+# YAML: 2-space (standard, e.g. GitHub Actions).
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2

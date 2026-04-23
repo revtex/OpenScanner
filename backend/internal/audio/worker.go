@@ -180,7 +180,8 @@ func runJob(ctx context.Context, job ConversionJob) {
 		return
 	}
 	slog.Debug("audio: starting ffmpeg", "input", job.InputPath, "output", job.OutputPath, "mode", job.Mode, "preset", job.Preset)
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	// ffmpeg binary path and args are built from server config + sanitised paths.
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec // G204: args assembled from trusted server config in ffmpegArgs
 	if err := cmd.Run(); err != nil {
 		slog.Error("ffmpeg conversion failed", "input", job.InputPath, "output", job.OutputPath, "preset", job.Preset, "error", err)
 		job.Done <- err
