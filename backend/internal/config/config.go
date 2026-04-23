@@ -16,8 +16,9 @@ import (
 	"strings"
 )
 
-// Version is set at build time via ldflags.
-var Version = "1.0.0"
+// Version is set at build time via ldflags (-X ...config.Version=...).
+// Defaults to "dev" so unversioned local builds are clearly identifiable.
+var Version = "dev"
 
 // Config holds all server startup configuration.
 type Config struct {

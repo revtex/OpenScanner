@@ -5,10 +5,12 @@
 BINARY=openscanner
 CMD=./cmd/server
 OUTPUT?=$(BINARY)
+VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS=-s -w -X github.com/openscanner/openscanner/internal/config.Version=$(VERSION)
 
 build:
 	swag init -d cmd/server,internal/api -g main.go --parseDependency --parseInternal -o docs
-	go build -o $(OUTPUT) $(CMD)
+	go build -ldflags="$(LDFLAGS)" -o $(OUTPUT) $(CMD)
 
 dev:
 	air

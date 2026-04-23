@@ -10,6 +10,7 @@ RUN pnpm build
 
 # Stage 2: Build Go binary with embedded frontend
 FROM golang:1.25-alpine AS go-builder
+ARG VERSION=dev
 WORKDIR /src/backend
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
@@ -19,7 +20,7 @@ COPY backend/ .
 COPY --from=node-builder /src/frontend/dist ./internal/static/dist/
 # Generate Swagger docs (gitignored, must be built in CI)
 RUN swag init -g cmd/server/main.go --parseDependency --parseInternal
-RUN go build -ldflags="-s -w" -o /openscanner ./cmd/server
+RUN go build -ldflags="-s -w -X github.com/openscanner/openscanner/internal/config.Version=${VERSION}" -o /openscanner ./cmd/server
 
 # Stage 3: Minimal runtime image
 FROM alpine:3.21
