@@ -85,19 +85,23 @@ jobs:
           VERSION: ${{ github.ref_name }}
         run: |
           stem="openscanner-${VERSION#v}-${GOOS}-${GOARCH}"
-          cp ../README.md ../CHANGELOG.md ../LICENSE* . 2>/dev/null || true
+          cp ../README.md ../CHANGELOG.md .
+          cp ../LICENSE* . 2>/dev/null || true
+          mkdir -p docs
+          # Top-level user guides only; docs/plans/ is internal design notes.
+          cp ../docs/admin-guide.md ../docs/deployment-guide.md ../docs/recorder-guide.md docs/ 2>/dev/null || true
           if [ "$GOOS" = "windows" ]; then
             mv "${stem}.exe" "openscanner.exe"
-            zip -9 "${stem}.zip" "openscanner.exe" README.md CHANGELOG.md LICENSE* 2>/dev/null || \
-              zip -9 "${stem}.zip" "openscanner.exe" README.md CHANGELOG.md
+            zip -9 -r "${stem}.zip" "openscanner.exe" README.md CHANGELOG.md docs LICENSE* 2>/dev/null || \
+              zip -9 -r "${stem}.zip" "openscanner.exe" README.md CHANGELOG.md docs
             rm "openscanner.exe"
           else
             mv "${stem}" "openscanner"
-            tar czf "${stem}.tar.gz" "openscanner" README.md CHANGELOG.md LICENSE* 2>/dev/null || \
-              tar czf "${stem}.tar.gz" "openscanner" README.md CHANGELOG.md
+            tar czf "${stem}.tar.gz" "openscanner" README.md CHANGELOG.md docs LICENSE* 2>/dev/null || \
+              tar czf "${stem}.tar.gz" "openscanner" README.md CHANGELOG.md docs
             rm "openscanner"
           fi
-          rm -f README.md CHANGELOG.md LICENSE*
+          rm -rf README.md CHANGELOG.md docs LICENSE*
 
       - name: Checksums
         working-directory: dist
