@@ -626,7 +626,8 @@ func (p *program) run() {
 	}
 	defer logging.CloseLogFile()
 
-	// Print a human-readable startup banner.
+	// Compute display values for the startup banner (printed after all
+	// feature-flag checks complete, down below).
 	listenURL := cfg.Listen
 	if listenURL[0] == ':' {
 		listenURL = "0.0.0.0" + listenURL
@@ -635,19 +636,6 @@ func (p *program) run() {
 	if cfg.SSLCert != "" || cfg.SSLAutoCert != "" {
 		scheme = "https"
 	}
-	fmt.Fprintf(os.Stdout, "\n"+
-		"  ┌───────────────────────────────────┐\n"+
-		"  │       O P E N S C A N N E R       │\n"+
-		"  └───────────────────────────────────┘\n"+
-		"  Version:     %s\n"+
-		"  URL:         %s\n"+
-		"  Database:    %s\n"+
-		"  Recordings:  %s\n\n",
-		config.Version,
-		scheme+"://"+listenURL,
-		cfg.DBFile,
-		cfg.RecordingsDir,
-	)
 
 	// Startup checks: verify external tool availability.
 	checkExternalTools()
@@ -908,6 +896,23 @@ func (p *program) run() {
 		"auto_populate_systems", autoPopulateSystems == "true",
 	)
 
+	// Human-readable startup banner printed once the runtime state is known.
+	printStartupBanner(startupBannerData{
+		Version:             config.Version,
+		URL:                 scheme + "://" + listenURL,
+		Database:            cfg.DBFile,
+		Recordings:          cfg.RecordingsDir,
+		Timezone:            cfg.Timezone,
+		LogLevel:            logging.GetLevel(),
+		SSL:                 sslEnabled,
+		EncryptionAtRest:    cfg.EncryptionKey != "",
+		FFmpeg:              hasFFmpeg,
+		FDKAAC:              hasFDKAAC,
+		Whisper:             hasWhisper,
+		PublicAccess:        publicAccess == "true",
+		AutoPopulateSystems: autoPopulateSystems == "true",
+	})
+
 	// Block until signal or server error.
 	select {
 	case <-ctx.Done():
@@ -1003,6 +1008,65 @@ func (p *program) startAutoCertServer(cfg *config.Config, handler http.Handler, 
 func checkExternalTools() {
 	// Startup-only advisory messages; actual enforcement is in audio.CheckFFmpeg
 	// which returns a boolean used to gate features.
+}
+
+// startupBannerData carries everything the human-readable startup banner shows.
+type startupBannerData struct {
+	Version             string
+	URL                 string
+	Database            string
+	Recordings          string
+	Timezone            string
+	LogLevel            string
+	SSL                 bool
+	EncryptionAtRest    bool
+	FFmpeg              bool
+	FDKAAC              bool
+	Whisper             bool
+	PublicAccess        bool
+	AutoPopulateSystems bool
+}
+
+// printStartupBanner writes a compact, human-readable startup summary to
+// stdout. The same information is emitted as structured JSON via
+// slog.Info("server: startup complete", ...) for log aggregation.
+func printStartupBanner(d startupBannerData) {
+	yn := func(b bool) string {
+		if b {
+			return "yes"
+		}
+		return "no"
+	}
+	fmt.Fprintf(os.Stdout, "\n"+
+		"  ┌───────────────────────────────────────────────────────┐\n"+
+		"  │             O P E N S C A N N E R   %-18s │\n"+
+		"  └───────────────────────────────────────────────────────┘\n"+
+		"  URL ............... %s\n"+
+		"  Database .......... %s\n"+
+		"  Recordings ........ %s\n"+
+		"  Timezone .......... %s\n"+
+		"  Log level ......... %s\n"+
+		"  TLS enabled ....... %s\n"+
+		"  Encryption at rest  %s\n"+
+		"  Public access ..... %s\n"+
+		"  Auto-populate sys   %s\n"+
+		"  FFmpeg ............ %s\n"+
+		"  libfdk_aac ........ %s\n"+
+		"  Transcription ..... %s\n\n",
+		"v"+d.Version,
+		d.URL,
+		d.Database,
+		d.Recordings,
+		d.Timezone,
+		d.LogLevel,
+		yn(d.SSL),
+		yn(d.EncryptionAtRest),
+		yn(d.PublicAccess),
+		yn(d.AutoPopulateSystems),
+		yn(d.FFmpeg),
+		yn(d.FDKAAC),
+		yn(d.Whisper),
+	)
 }
 
 // consumeTranscriptionResults reads completed transcription jobs, stores them

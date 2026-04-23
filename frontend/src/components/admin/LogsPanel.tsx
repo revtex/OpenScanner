@@ -168,10 +168,7 @@ function buildKnownChips(
       ]);
     case "dirmonitor: auto-populated system":
     case "auto-populated system":
-      return compact([
-        chipFrom(attrs, "system_id"),
-        chipFrom(attrs, "label"),
-      ]);
+      return compact([chipFrom(attrs, "system_id"), chipFrom(attrs, "label")]);
     case "dirmonitor: auto-populated talkgroup":
     case "auto-populated talkgroup":
       return compact([
@@ -255,8 +252,7 @@ function parseLog(log: AdminLog): ParsedLog {
 
   const known = buildKnownChips(log.message, attrs);
   const chipsRaw =
-    known ??
-    (Object.keys(attrs).length > 0 ? fallbackChips(attrs) : undefined);
+    known ?? (Object.keys(attrs).length > 0 ? fallbackChips(attrs) : undefined);
   const chips = chipsRaw && chipsRaw.length > 0 ? chipsRaw : undefined;
 
   return { isRequest: false, summary: log.message, chips };
