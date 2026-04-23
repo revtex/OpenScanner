@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Commit GitHub ruleset definitions under `.github/rulesets/` so branch
+  and tag protection policy is versioned with the code.
+
 ## [1.0.0] — 2026-04-23
 
 Initial public release. OpenScanner is a ground-up reimplementation of
