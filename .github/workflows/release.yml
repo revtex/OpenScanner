@@ -1,0 +1,203 @@
+name: Release binaries
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.25"
+
+      - name: Install swag
+        run: go install github.com/swaggo/swag/cmd/swag@latest
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Embed frontend
+        run: |
+          rm -rf backend/internal/static/dist/*
+          cp -r frontend/dist/. backend/internal/static/dist/
+
+      - name: Generate Swagger docs
+        working-directory: backend
+        run: swag init -d cmd/server,internal/api -g main.go --parseDependency --parseInternal -o docs
+
+      - name: Build binary
+        working-directory: backend
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+          VERSION: ${{ github.ref_name }}
+        run: |
+          ext=""
+          if [ "$GOOS" = "windows" ]; then ext=".exe"; fi
+          mkdir -p ../dist
+          out="../dist/openscanner-${VERSION#v}-${GOOS}-${GOARCH}${ext}"
+          go build \
+            -trimpath \
+            -ldflags="-s -w -X github.com/openscanner/openscanner/internal/config.Version=${VERSION#v}" \
+            -o "$out" \
+            ./cmd/server
+          echo "binary=$out" >> "$GITHUB_ENV"
+
+      - name: Install pandoc + weasyprint
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pandoc weasyprint fonts-dejavu
+
+      - name: Render docs to PDF
+        run: |
+          mkdir -p dist-docs
+          cat > /tmp/docs.css <<'CSS'
+          @page { size: Letter; margin: 0.8in; }
+          body { font-family: "DejaVu Sans", sans-serif; font-size: 10.5pt; line-height: 1.5; color: #1e293b; }
+          h1, h2, h3, h4 { color: #0f172a; font-weight: 600; line-height: 1.25; page-break-after: avoid; }
+          h1 { font-size: 22pt; border-bottom: 2px solid #0ea5e9; padding-bottom: 6pt; margin-top: 0; }
+          h2 { font-size: 15pt; margin-top: 20pt; }
+          h3 { font-size: 12.5pt; margin-top: 14pt; }
+          p { margin: 6pt 0; }
+          ul, ol { padding-left: 22pt; margin: 6pt 0; }
+          li { margin: 3pt 0; }
+          li > pre, li > p > pre { margin-left: 0; }
+          code { font-family: "DejaVu Sans Mono", monospace; font-size: 9.5pt; background: #e2e8f0; color: #0f172a; padding: 1pt 4pt; border-radius: 3pt; }
+          pre { font-family: "DejaVu Sans Mono", monospace; font-size: 10pt; line-height: 1.45; background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-left: 3pt solid #0ea5e9; padding: 9pt 12pt; border-radius: 4pt; margin: 8pt 0; white-space: pre-wrap; overflow-wrap: anywhere; page-break-inside: avoid; }
+          pre code { font-size: inherit; background: transparent; color: inherit; padding: 0; border-radius: 0; }
+          /* Neutralise pandoc's skylighting hanging-indent: padding-left:5em without working text-indent pushes every line right in weasyprint. */
+          pre > code.sourceCode { white-space: pre-wrap; overflow-wrap: anywhere; }
+          pre > code.sourceCode > span { text-indent: 0 !important; padding-left: 0 !important; }
+          pre > code.sourceCode > span > a[aria-hidden="true"] { display: none; }
+          a { color: #0369a1; text-decoration: none; }
+          table { border-collapse: collapse; width: 100%; margin: 10pt 0; font-size: 10pt; }
+          th, td { border: 1px solid #cbd5e1; padding: 5pt 8pt; text-align: left; vertical-align: top; }
+          th { background: #f1f5f9; }
+          blockquote { border-left: 3pt solid #94a3b8; margin: 8pt 0; padding: 2pt 10pt; color: #475569; background: #f8fafc; }
+          hr { border: none; border-top: 1px solid #cbd5e1; margin: 16pt 0; }
+          img { max-width: 100%; }
+          CSS
+          for src in README.md docs/admin-guide.md docs/deployment-guide.md docs/recorder-guide.md; do
+            [ -f "$src" ] || continue
+            base="$(basename "$src" .md)"
+            # --metadata pagetitle silences pandoc's "nonempty <title>" warning
+            # without inserting a duplicate H1 in the body.
+            pandoc "$src" \
+              --from=gfm \
+              --to=html5 \
+              --standalone \
+              --metadata pagetitle="$base" \
+              --css=/tmp/docs.css \
+              --embed-resources \
+              -o "/tmp/${base}.html"
+            weasyprint "/tmp/${base}.html" "dist-docs/${base}.pdf"
+          done
+          ls -la dist-docs/
+
+      - name: Package
+        working-directory: dist
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          stem="openscanner-${VERSION#v}-${GOOS}-${GOARCH}"
+          cp ../CHANGELOG.md .
+          cp ../LICENSE* . 2>/dev/null || true
+          mkdir -p docs
+          cp ../dist-docs/*.pdf docs/ 2>/dev/null || true
+          if [ "$GOOS" = "windows" ]; then
+            mv "${stem}.exe" "openscanner.exe"
+            zip -9 -r "${stem}.zip" "openscanner.exe" CHANGELOG.md docs LICENSE* 2>/dev/null || \
+              zip -9 -r "${stem}.zip" "openscanner.exe" CHANGELOG.md docs
+            rm "openscanner.exe"
+          else
+            mv "${stem}" "openscanner"
+            tar czf "${stem}.tar.gz" "openscanner" CHANGELOG.md docs LICENSE* 2>/dev/null || \
+              tar czf "${stem}.tar.gz" "openscanner" CHANGELOG.md docs
+            rm "openscanner"
+          fi
+          rm -rf CHANGELOG.md docs LICENSE*
+
+      - name: Checksums
+        working-directory: dist
+        run: |
+          for f in *.tar.gz *.zip; do
+            [ -e "$f" ] || continue
+            sha256sum "$f" > "$f.sha256"
+          done
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: openscanner-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload standalone PDFs
+        if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: openscanner-docs-pdf
+          path: dist-docs/*.pdf
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Attach to release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Aggregate checksums
+        working-directory: dist
+        run: |
+          cat *.sha256 > SHA256SUMS.txt
+          rm *.sha256
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${GITHUB_REF_NAME}" dist/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --clobber

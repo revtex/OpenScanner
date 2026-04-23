@@ -116,3 +116,11 @@ Detailed conventions live in the individual agent files. The non-negotiables for
 - Validation after a change: run `go vet ./... && go build ./...` for backend, `npx tsc --noEmit` for frontend
 - Do not commit or push unless the user explicitly asks
 - Do not delete files as a shortcut; if a file looks unfamiliar, read it first
+
+## Changelog
+
+- User-visible changes (new features, fixes, config/schema changes, security patches) **must** add a bullet under the `[Unreleased]` section of `CHANGELOG.md` in the same PR
+- Group bullets under `### Added`, `### Changed`, `### Fixed`, `### Security`, `### Removed`, or `### Deprecated` (Keep a Changelog format)
+- Pure internal refactors, CI-only tweaks, and typo fixes can skip the CHANGELOG — the PR should be labeled `skip-changelog`
+- The `changelog` CI job blocks merges into `main` when `CHANGELOG.md` wasn't touched and the label isn't applied
+- Full release process: [docs/plans/release-guide.md](../docs/plans/release-guide.md)

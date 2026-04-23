@@ -2,11 +2,31 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
+  changelog:
+    name: CHANGELOG updated
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main' && !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Verify CHANGELOG.md was modified
+        run: |
+          set -euo pipefail
+          base="origin/${{ github.base_ref }}"
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          if git diff --name-only "${base}"...HEAD | grep -qx 'CHANGELOG.md'; then
+            echo "CHANGELOG.md was updated."
+          else
+            echo "::error::CHANGELOG.md was not updated. Add an entry under [Unreleased], or apply the 'skip-changelog' label if this change has no user impact."
+            exit 1
+          fi
+
   backend:
     name: Go tests
     runs-on: ubuntu-latest
@@ -15,6 +35,11 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "1.25"
+      - name: Install swag
+        run: go install github.com/swaggo/swag/cmd/swag@latest
+      - name: Generate Swagger docs
+        working-directory: backend
+        run: swag init -d cmd/server,internal/api -g main.go --parseDependency --parseInternal -o docs
       - name: Test
         run: cd backend && go test ./...
 
