@@ -30,4 +30,3 @@ jobs:
           # Negative lookahead: a tag is "kept" if it does NOT start with sha-.
           ignore-versions: "^(?!sha-).*"
           min-versions-to-keep: 0
-          num-old-versions-to-delete: 100
