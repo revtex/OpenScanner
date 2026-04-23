@@ -83,8 +83,9 @@ OpenScanner integrates with [go-whisper](https://github.com/mutablelogic/go-whis
 - Shared link expiry (configurable in days, enforced on access)
 - Public access mode for unauthenticated listening (admin routes always protected)
 - Audio path sanitization, no shell injection, no secrets in logs
-- Optional secrets-at-rest encryption (AES-256-GCM) for VAPID keys and downstream API keys
+- Optional secrets-at-rest encryption (AES-256-GCM) for the JWT signing secret, VAPID push key, and downstream API keys
 - Optional TLS with certificate/key files; experimental Let's Encrypt auto-cert (untested)
+- Outbound HTTP (transcription, downstreams, webhooks, push) goes through a hardened client with redirects disabled, timeouts enforced, and response bodies capped. LAN/loopback destinations are permitted by default (homelab-friendly); set `OPENSCANNER_BLOCK_INTERNAL_HTTP=1` to reject private-network targets
 
 ---
 
@@ -113,7 +114,7 @@ OpenScanner is a complete rewrite, not a fork. Everything below is new or signif
 | **PWA + push notifications** | Not available | Installable web app with service worker and push notification support                                 |
 | **Dark/light theme**         | Dark only     | Toggle between themes                                                                                 |
 | **RadioReference import**    | Not available | Preview and apply talkgroup metadata from RadioReference directly in admin                            |
-| **Secrets encryption**       | Not available | Optional AES-256-GCM encryption for VAPID keys and downstream API keys stored in the database         |
+| **Secrets encryption**       | Not available | Optional AES-256-GCM encryption for the JWT signing secret, VAPID push key, and downstream API keys |
 
 ---
 

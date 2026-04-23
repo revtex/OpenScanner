@@ -207,6 +207,14 @@ OpenScanner reads configuration from three sources, in this priority order:
 | `OPENSCANNER_TIMEZONE`            | `--timezone`            |
 | `TZ`                              | `--timezone` (fallback) |
 
+### Env-Only Settings
+
+A few hardening toggles are only available as environment variables — there is no CLI flag or JSON config field for them.
+
+| Variable                           | Description                                                                                                                                                                                                                                                                 | Default |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `OPENSCANNER_BLOCK_INTERNAL_HTTP`  | When set to `1`, `true`, or `yes`, OpenScanner refuses outbound HTTP (transcription, downstream push, webhook delivery, push notifications) to RFC1918, loopback, link-local, and multicast addresses. Leave unset for typical self-hosted homelab deployments where whisper, downstream scanners, and home-automation targets sit on your LAN. | unset   |
+
 ### JSON Config File
 
 You can save your settings to a JSON file so you don't need to pass flags every time:
@@ -386,10 +394,11 @@ openscanner --encryption-key-file /run/secrets/encryption_key
 
 ### What Gets Encrypted
 
-| Value               | Location            | Purpose                         |
-| ------------------- | ------------------- | ------------------------------- |
-| VAPID private key   | `settings` table    | Signs web push notifications    |
-| Downstream API keys | `downstreams` table | Authenticates to remote servers |
+| Value               | Location            | Purpose                                                                   |
+| ------------------- | ------------------- | ------------------------------------------------------------------------- |
+| JWT signing secret  | `settings` table    | Signs session and API access tokens; auto-generated on first start         |
+| VAPID private key   | `settings` table    | Signs web push notifications                                               |
+| Downstream API keys | `downstreams` table | Authenticates to remote servers                                            |
 
 Encrypted values are stored with an `enc::` prefix followed by base64-encoded ciphertext.
 

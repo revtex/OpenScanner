@@ -19,6 +19,7 @@ The admin dashboard is at `/admin` and requires signing in with an admin account
 - [Options](#options)
 - [Logs](#logs)
 - [Tools](#tools)
+- [Webhooks (Preview)](#webhooks-preview)
 
 ---
 
@@ -321,6 +322,8 @@ View and search server logs in real time.
 
 HTTP request logs are color-coded by status: green for 2xx, gray for 3xx, yellow for 4xx, red for 5xx.
 
+Each log row also shows short contextual chips next to the message for common events — for example `call=1234 sys=7 tg=5200 dur=3400` for an ingested call, or `downstream=2 call=1234 try=3` for a failed downstream push. Click a row to open a details panel with the full attribute list.
+
 ---
 
 ## Tools
@@ -351,3 +354,24 @@ Preview and apply talkgroup metadata from RadioReference. This lets you pull tal
 ### API Docs
 
 Link to the Swagger API documentation at `/api/admin/docs`.
+
+---
+
+## Webhooks (Preview)
+
+Webhook delivery is wired up but the sidebar entry is not yet exposed. Admins can reach the panel directly at `/admin/webhooks` to manage webhook endpoints.
+
+Each webhook has:
+
+| Field        | Description                                                                                                                            |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| URL          | HTTPS endpoint that receives a JSON POST for each new call                                                                             |
+| Type         | `generic` (full call JSON) or `discord` (Discord-compatible embed payload)                                                             |
+| Secret       | Optional HMAC-SHA256 secret. When set, OpenScanner signs each payload with `X-OpenScanner-Signature: sha256=<hex>`. Stored masked      |
+| Systems JSON | Optional JSON array of system IDs (e.g. `[1, 2]`) that restricts delivery to calls from those systems; leave blank to receive all      |
+| Disabled     | Temporarily stop sending events                                                                                                        |
+| Order        | Display position                                                                                                                       |
+
+The master toggle is **Options → Webhooks → Webhooks Enabled**. It is currently marked "Planned" in the UI because runtime dispatch is still being finalized; rows created here are persisted and will begin delivering once the toggle goes active.
+
+Outbound webhook requests use OpenScanner's hardened HTTP client — redirects disabled, timeouts enforced, response body capped. See the [Deployment Guide](deployment-guide.md#reverse-proxy) for how to tighten outbound destinations on multi-tenant hosts.
