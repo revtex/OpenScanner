@@ -2605,6 +2605,35 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 		return nil, fmt.Errorf("failed to commit import: %w", err)
 	}
 
+	// Hot-reload subsystems whose live state derives from the rows or
+	// settings we just rewrote. Without these, the in-process worker
+	// pools, downstream forwarders, and dirmonitor watchers keep using
+	// their pre-import config — symptom: transcription stops, downstream
+	// forwarding goes silent, dirmonitors don't pick up new directories
+	// until the operator restarts the server.
+	if c.hub.deps.TranscriberReload != nil && len(data.Settings) > 0 {
+		tEnabled, _ := c.hub.queries.GetSetting(ctx, "transcriptionEnabled")
+		tURL, _ := c.hub.queries.GetSetting(ctx, "transcriptionUrl")
+		tModel, _ := c.hub.queries.GetSetting(ctx, "transcriptionModel")
+		tLang, _ := c.hub.queries.GetSetting(ctx, "transcriptionLanguage")
+		tDiarize, _ := c.hub.queries.GetSetting(ctx, "transcriptionDiarize")
+
+		ok := c.hub.deps.TranscriberReload.Reload(
+			tEnabled.Value == "true",
+			tURL.Value,
+			tModel.Value,
+			tLang.Value,
+			tDiarize.Value == "true",
+		)
+		c.hub.deps.WhisperAvailable = ok && tEnabled.Value == "true"
+	}
+	if c.hub.deps.DirMonitorReload != nil && len(data.DirMonitors) > 0 {
+		c.hub.deps.DirMonitorReload.Reload()
+	}
+	if c.hub.deps.DownstreamReload != nil && len(data.Downstreams) > 0 {
+		c.hub.deps.DownstreamReload.Reload()
+	}
+
 	// Notify all admin/listener clients to refetch — without these the
 	// admin UI shows stale (empty) lists and the user thinks the import
 	// silently failed. Order doesn't matter; events are fire-and-forget.
