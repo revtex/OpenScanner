@@ -603,7 +603,6 @@ func (p *program) run() {
 			os.Exit(1)
 		}
 		time.Local = loc
-		slog.Info("timezone configured", "timezone", cfg.Timezone)
 	}
 
 	// Determine log file path (next to the database file).
