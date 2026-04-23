@@ -1044,10 +1044,22 @@ func printStartupBanner(d startupBannerData) {
 	if d.JWTSecretExternal {
 		jwtSource = "external (env)"
 	}
+	const innerWidth = 55
+	border := strings.Repeat("─", innerWidth)
+	title := "O P E N S C A N N E R   v" + d.Version
+	pad := (innerWidth - len(title)) / 2
+	if pad < 0 {
+		pad = 0
+	}
+	rightPad := innerWidth - pad - len(title)
+	if rightPad < 0 {
+		rightPad = 0
+	}
+	headerLine := strings.Repeat(" ", pad) + title + strings.Repeat(" ", rightPad)
 	fmt.Fprintf(os.Stdout, "\n"+
-		"  ┌───────────────────────────────────────────────────────┐\n"+
-		"  │             O P E N S C A N N E R   %-18s │\n"+
-		"  └───────────────────────────────────────────────────────┘\n"+
+		"  ┌"+border+"┐\n"+
+		"  │"+headerLine+"│\n"+
+		"  └"+border+"┘\n"+
 		"  URL ............... %s\n"+
 		"  Database .......... %s\n"+
 		"  Recordings ........ %s\n"+
@@ -1057,11 +1069,9 @@ func printStartupBanner(d startupBannerData) {
 		"  Encryption at rest  %s\n"+
 		"  JWT secret ........ %s\n"+
 		"  Public access ..... %s\n"+
-		"  Auto-populate sys   %s\n"+
 		"  FFmpeg ............ %s\n"+
 		"  libfdk_aac ........ %s\n"+
 		"  Transcription ..... %s\n\n",
-		"v"+d.Version,
 		d.URL,
 		d.Database,
 		d.Recordings,
@@ -1071,7 +1081,6 @@ func printStartupBanner(d startupBannerData) {
 		yn(d.EncryptionAtRest),
 		jwtSource,
 		yn(d.PublicAccess),
-		yn(d.AutoPopulateSystems),
 		yn(d.FFmpeg),
 		yn(d.FDKAAC),
 		yn(d.Whisper),

@@ -239,11 +239,5 @@ func CheckLibFDKAAC() bool {
 		slog.Warn("failed to inspect ffmpeg encoders for libfdk_aac", "error", err)
 		return false
 	}
-	has := strings.Contains(strings.ToLower(string(out)), "libfdk_aac")
-	if has {
-		slog.Info("libfdk_aac detected — HE-AAC presets enabled")
-		return true
-	}
-	slog.Warn("libfdk_aac not detected — HE-AAC presets hidden")
-	return false
+	return strings.Contains(strings.ToLower(string(out)), "libfdk_aac")
 }
