@@ -23,12 +23,21 @@ import (
 )
 
 const (
-	writeWait        = 10 * time.Second
-	pingPeriod       = 30 * time.Second
-	sendBufSize      = 256
-	authTimeout      = 10 * time.Second
-	maxMessageSize   = 4096
-	revalidatePeriod = 5 * time.Minute
+	writeWait   = 10 * time.Second
+	pingPeriod  = 30 * time.Second
+	sendBufSize = 256
+	authTimeout = 10 * time.Second
+	// maxListenerMessageSize caps inbound frames from listener clients.
+	// Listeners only ever send tiny control frames (auth token, LFM updates),
+	// so the limit stays small to bound memory per untrusted connection.
+	maxListenerMessageSize = 4096
+	// maxAdminMessageSize caps inbound frames from authenticated admin
+	// clients. Admin operations (notably import.config) carry full backup
+	// payloads — settings, systems, talkgroups, downstreams, API keys —
+	// which routinely exceed the listener cap. Admins are authenticated
+	// and trusted, so a much larger limit is acceptable here.
+	maxAdminMessageSize = 16 << 20 // 16 MiB
+	revalidatePeriod    = 5 * time.Minute
 )
 
 // systemGrant represents a system-level grant with optional talkgroup filtering.
@@ -397,15 +406,23 @@ func (c *Client) readPump(ctx context.Context) {
 		c.conn.Close(websocket.StatusNormalClosure, "")
 	}()
 
-	c.conn.SetReadLimit(maxMessageSize)
+	if c.isAdmin {
+		c.conn.SetReadLimit(maxAdminMessageSize)
+	} else {
+		c.conn.SetReadLimit(maxListenerMessageSize)
+	}
 
 	for {
 		typ, data, err := c.conn.Read(ctx)
 		if err != nil {
-			if !errors.Is(err, context.Canceled) &&
-				websocket.CloseStatus(err) == -1 {
-				slog.Info("ws: read error", "error", err)
+			if errors.Is(err, context.Canceled) || websocket.CloseStatus(err) != -1 {
+				// Clean disconnect or normal close — nothing to log.
+				return
 			}
+			// Anything else is an unexpected read failure (network drop,
+			// oversized frame, malformed framing). Log at warn so it
+			// surfaces in operator dashboards.
+			slog.Warn("ws: read error", "error", err, "admin", c.isAdmin)
 			return
 		}
 		if typ != websocket.MessageText {
