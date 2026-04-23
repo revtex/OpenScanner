@@ -106,12 +106,13 @@ jobs:
           for src in README.md docs/admin-guide.md docs/deployment-guide.md docs/recorder-guide.md; do
             [ -f "$src" ] || continue
             base="$(basename "$src" .md)"
-            title="$(head -n1 "$src" | sed 's/^#\+ *//')"
+            # --metadata pagetitle silences pandoc's "nonempty <title>" warning
+            # without inserting a duplicate H1 in the body.
             pandoc "$src" \
               --from=gfm \
               --to=html5 \
               --standalone \
-              --metadata title="$title" \
+              --metadata pagetitle="$base" \
               --css=/tmp/docs.css \
               --embed-resources \
               -o "/tmp/${base}.html"
