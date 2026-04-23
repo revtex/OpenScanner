@@ -30,6 +30,7 @@ export default function RadioReferenceCard() {
 
   // CSV state
   const fileRef = useRef<HTMLInputElement>(null);
+  const [hasFile, setHasFile] = useState(false);
 
   const showError = useCallback((msg: string) => {
     setError(msg);
@@ -127,6 +128,7 @@ export default function RadioReferenceCard() {
     setApplyResult(null);
     setError(null);
     if (fileRef.current) fileRef.current.value = "";
+    setHasFile(false);
   };
 
   const updatableCount = preview?.rows.filter((r) => r.wouldUpdate).length ?? 0;
@@ -171,6 +173,7 @@ export default function RadioReferenceCard() {
                   ref={fileRef}
                   type="file"
                   accept=".csv"
+                  onChange={(e) => setHasFile(!!e.target.files?.length)}
                   className="file-input file-input-bordered file-input-sm w-full"
                 />
               </div>
@@ -184,7 +187,7 @@ export default function RadioReferenceCard() {
             <button
               className="btn btn-primary btn-sm w-full"
               onClick={handleCSVPreview}
-              disabled={loading}
+              disabled={loading || !systemId || !hasFile}
             >
               {loading ? "Parsing..." : "Preview Enrichment"}
             </button>
