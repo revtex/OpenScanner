@@ -135,21 +135,27 @@ export default function ToolsPanel() {
   };
 
   const handleExportTalkgroups = async () => {
+    if (!exportTgSystemId) {
+      showToast("Please select a system");
+      return;
+    }
     try {
-      const csv = await triggerExportTalkgroups(
-        exportTgSystemId ? { systemId: Number(exportTgSystemId) } : {},
-      ).unwrap();
+      const csv = await triggerExportTalkgroups({
+        systemId: Number(exportTgSystemId),
+      }).unwrap();
       if (typeof csv !== "string") {
         showToast("Export returned unexpected payload");
         return;
       }
-      const systemLabel =
-        systems?.find((s) => String(s.id) === exportTgSystemId)?.label ?? "all";
+      const sys = systems?.find((s) => String(s.id) === exportTgSystemId);
+      const slug =
+        sys?.label.replace(/[^a-zA-Z0-9._-]+/g, "_").replace(/^_+|_+$/g, "") ||
+        `system-${exportTgSystemId}`;
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `talkgroups-${systemLabel}.csv`;
+      a.download = `talkgroups-${slug}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -158,22 +164,27 @@ export default function ToolsPanel() {
   };
 
   const handleExportUnits = async () => {
+    if (!exportUnitSystemId) {
+      showToast("Please select a system");
+      return;
+    }
     try {
-      const csv = await triggerExportUnits(
-        exportUnitSystemId ? { systemId: Number(exportUnitSystemId) } : {},
-      ).unwrap();
+      const csv = await triggerExportUnits({
+        systemId: Number(exportUnitSystemId),
+      }).unwrap();
       if (typeof csv !== "string") {
         showToast("Export returned unexpected payload");
         return;
       }
-      const systemLabel =
-        systems?.find((s) => String(s.id) === exportUnitSystemId)?.label ??
-        "all";
+      const sys = systems?.find((s) => String(s.id) === exportUnitSystemId);
+      const slug =
+        sys?.label.replace(/[^a-zA-Z0-9._-]+/g, "_").replace(/^_+|_+$/g, "") ||
+        `system-${exportUnitSystemId}`;
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `units-${systemLabel}.csv`;
+      a.download = `units-${slug}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -339,7 +350,7 @@ export default function ToolsPanel() {
                 onChange={(e) => setExportTgSystemId(e.target.value)}
                 className="select select-bordered select-sm w-full"
               >
-                <option value="">All systems</option>
+                <option value="">Select a system…</option>
                 {systems?.map((sys) => (
                   <option key={sys.id} value={sys.id}>
                     {sys.label}
@@ -349,6 +360,7 @@ export default function ToolsPanel() {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleExportTalkgroups}
+                disabled={!exportTgSystemId}
               >
                 Download CSV
               </button>
@@ -364,7 +376,7 @@ export default function ToolsPanel() {
                 onChange={(e) => setExportUnitSystemId(e.target.value)}
                 className="select select-bordered select-sm w-full"
               >
-                <option value="">All systems</option>
+                <option value="">Select a system…</option>
                 {systems?.map((sys) => (
                   <option key={sys.id} value={sys.id}>
                     {sys.label}
@@ -374,6 +386,7 @@ export default function ToolsPanel() {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleExportUnits}
+                disabled={!exportUnitSystemId}
               >
                 Download CSV
               </button>

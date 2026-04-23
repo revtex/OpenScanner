@@ -375,9 +375,114 @@ func (h *AdminHandler) ImportUnits(c *gin.Context) {
 	reader.FieldsPerRecord = -1
 	reader.TrimLeadingSpace = true
 
-	var inserted, updated, skipped, failed int
-	headerSkipped := false
+	// Column layout: positional default is [unit_id, label, order]. If the
+	// first non-blank row is a header, parse its column positions.
+	unitIDCol, labelCol, orderCol := 0, 1, 2
+	var firstDataRow []string
+
 	for {
+		record, err := reader.Read()
+		if errors.Is(err, io.EOF) {
+			slog.Warn("unit import: file is empty", "system_id", systemID)
+			c.JSON(http.StatusOK, gin.H{
+				"inserted": 0, "updated": 0, "skipped": 0, "failed": 0,
+				"message": "file is empty",
+			})
+			return
+		}
+		if err != nil {
+			slog.Error("csv read error", "error", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid CSV format"})
+			return
+		}
+		if len(record) == 0 || (len(record) == 1 && strings.TrimSpace(record[0]) == "") {
+			continue
+		}
+
+		col0 := strings.TrimSpace(record[0])
+		if len(col0) > 0 && !unicode.IsDigit(rune(col0[0])) {
+			// Header row — parse column positions.
+			unitIDCol, labelCol, orderCol = -1, -1, -1
+			for i, raw := range record {
+				switch strings.ToLower(strings.TrimSpace(raw)) {
+				case "unit_id", "radio_id", "dec":
+					unitIDCol = i
+				case "label", "alpha_tag", "name":
+					labelCol = i
+				case "order", "priority":
+					orderCol = i
+				}
+			}
+			if unitIDCol < 0 {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "CSV header has no unit_id column",
+				})
+				return
+			}
+		} else {
+			firstDataRow = record
+		}
+		break
+	}
+
+	var inserted, updated, skipped, failed int
+
+	processUnitRow := func(record []string) error {
+		unitIDStr := col(record, unitIDCol)
+		unitID, perr := strconv.ParseInt(unitIDStr, 10, 64)
+		if perr != nil {
+			failed++
+			return nil //nolint:nilerr
+		}
+
+		_, existsErr := h.queries.GetUnitBySystemAndUnitID(ctx, db.GetUnitBySystemAndUnitIDParams{
+			SystemID: systemID,
+			UnitID:   unitID,
+		})
+		exists := !errors.Is(existsErr, sql.ErrNoRows)
+
+		if exists && mode == "skip" {
+			skipped++
+			return nil
+		}
+
+		params := db.UpsertUnitParams{
+			SystemID: systemID,
+			UnitID:   unitID,
+		}
+		if v := col(record, labelCol); v != "" {
+			params.Label = sql.NullString{String: v, Valid: true}
+		}
+		if v := col(record, orderCol); v != "" {
+			if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+				params.Order = n
+			}
+		}
+
+		if err := h.queries.UpsertUnit(ctx, params); err != nil {
+			return err
+		}
+		if exists {
+			updated++
+		} else {
+			inserted++
+		}
+		return nil
+	}
+
+	if firstDataRow != nil {
+		if err := processUnitRow(firstDataRow); err != nil {
+			slog.Error("failed to upsert unit", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			return
+		}
+	}
+
+	for {
+		if inserted+updated+skipped >= maxImportRows {
+			slog.Warn("CSV import row limit reached", "limit", maxImportRows)
+			break
+		}
 		record, err := reader.Read()
 		if errors.Is(err, io.EOF) {
 			break
@@ -387,68 +492,13 @@ func (h *AdminHandler) ImportUnits(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid CSV format"})
 			return
 		}
-
-		// Skip blank lines.
 		if len(record) == 0 || (len(record) == 1 && strings.TrimSpace(record[0]) == "") {
 			continue
 		}
-
-		// Skip header row.
-		col0 := strings.TrimSpace(record[0])
-		if !headerSkipped && len(col0) > 0 && !unicode.IsDigit(rune(col0[0])) {
-			headerSkipped = true
-			continue
-		}
-		headerSkipped = true
-
-		unitID, err := strconv.ParseInt(col0, 10, 64)
-		if err != nil {
-			failed++
-			continue
-		}
-
-		// Check if unit already exists.
-		_, existsErr := h.queries.GetUnitBySystemAndUnitID(ctx, db.GetUnitBySystemAndUnitIDParams{
-			SystemID: systemID,
-			UnitID:   unitID,
-		})
-		exists := !errors.Is(existsErr, sql.ErrNoRows)
-
-		if exists && mode == "skip" {
-			skipped++
-			if inserted+updated+skipped >= maxImportRows {
-				break
-			}
-			continue
-		}
-
-		params := db.UpsertUnitParams{
-			SystemID: systemID,
-			UnitID:   unitID,
-		}
-
-		if len(record) > 1 && strings.TrimSpace(record[1]) != "" {
-			params.Label = sql.NullString{String: strings.TrimSpace(record[1]), Valid: true}
-		}
-		if len(record) > 2 && strings.TrimSpace(record[2]) != "" {
-			if v, err := strconv.ParseInt(strings.TrimSpace(record[2]), 10, 64); err == nil {
-				params.Order = v
-			}
-		}
-
-		if err := h.queries.UpsertUnit(ctx, params); err != nil {
-			slog.Error("failed to upsert unit", "unit_id", unitID, "error", err)
+		if err := processUnitRow(record); err != nil {
+			slog.Error("failed to upsert unit", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 			return
-		}
-		if exists {
-			updated++
-		} else {
-			inserted++
-		}
-		if inserted+updated+skipped >= maxImportRows {
-			slog.Warn("CSV import row limit reached", "limit", maxImportRows)
-			break
 		}
 	}
 

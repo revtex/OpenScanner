@@ -2196,20 +2196,13 @@ func (c *Client) opExportTalkgroups(ctx context.Context, params json.RawMessage)
 	if params != nil {
 		_ = json.Unmarshal(params, &req)
 	}
+	if req.SystemID == nil {
+		return nil, fmt.Errorf("systemId is required")
+	}
 
-	var talkgroups []db.Talkgroup
-	if req.SystemID != nil {
-		rows, err := c.hub.queries.ListTalkgroupsBySystem(ctx, *req.SystemID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list talkgroups: %w", err)
-		}
-		talkgroups = rows
-	} else {
-		rows, err := c.hub.queries.ListAllTalkgroups(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list talkgroups: %w", err)
-		}
-		talkgroups = rows
+	talkgroups, err := c.hub.queries.ListTalkgroupsBySystem(ctx, *req.SystemID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list talkgroups: %w", err)
 	}
 
 	// Build ID→label maps so we can emit portable text names instead of
@@ -2266,20 +2259,13 @@ func (c *Client) opExportUnits(ctx context.Context, params json.RawMessage) (any
 	if params != nil {
 		_ = json.Unmarshal(params, &req)
 	}
+	if req.SystemID == nil {
+		return nil, fmt.Errorf("systemId is required")
+	}
 
-	var units []db.Unit
-	if req.SystemID != nil {
-		rows, err := c.hub.queries.ListUnitsBySystem(ctx, *req.SystemID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list units: %w", err)
-		}
-		units = rows
-	} else {
-		rows, err := c.hub.queries.ListAllUnits(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list units: %w", err)
-		}
-		units = rows
+	units, err := c.hub.queries.ListUnitsBySystem(ctx, *req.SystemID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list units: %w", err)
 	}
 
 	var buf strings.Builder
