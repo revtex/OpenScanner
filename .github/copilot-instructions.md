@@ -37,16 +37,17 @@ Do not handle domain work inline when a matching agent exists. Inline handling i
 
 ## Agent Assignment
 
-| Task                                                               | Agent               |
-| ------------------------------------------------------------------ | ------------------- |
-| Go backend code (handlers, WS, audio, auth, middleware, tests)     | **Go Expert**       |
-| React/TypeScript code (components, hooks, slices, services, tests) | **React Expert**    |
-| SQLite schema, migrations, sqlc queries, indexes                   | **Database Expert** |
-| User guides or design docs under `docs/`                           | **Docs Expert**     |
-| Security / quality review (OWASP, concurrency, performance)        | **Reviewer**        |
-| Writing new tests (Go httptest or Vitest + RTL)                    | **Testing Expert**  |
-| Dead code removal, unused imports, stale files                     | **Cleanup Expert**  |
-| Read-only investigation across the codebase                        | **Explore**         |
+| Task                                                               | Agent                |
+| ------------------------------------------------------------------ | -------------------- |
+| Go backend code (handlers, WS, audio, auth, middleware, tests)     | **Go Expert**        |
+| React/TypeScript code (components, hooks, slices, services, tests) | **React Expert**     |
+| SQLite schema, migrations, sqlc queries, indexes                   | **Database Expert**  |
+| User guides or design docs under `docs/`                           | **Docs Expert**      |
+| Security / quality review (OWASP, concurrency, performance)        | **Reviewer**         |
+| Writing new tests (Go httptest or Vitest + RTL)                    | **Testing Expert**   |
+| Dead code removal, unused imports, stale files                     | **Cleanup Expert**   |
+| Trunk-recorder log analysis, SDR tuning, config recommendations    | **TR Tuning Expert** |
+| Read-only investigation across the codebase                        | **Explore**          |
 
 ### Cross-cutting changes
 
