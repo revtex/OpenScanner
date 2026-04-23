@@ -19,7 +19,6 @@ OpenScanner is a modern reimplementation of [rdio-scanner](https://github.com/ch
 - **Live transcripts** — view call transcriptions in the live player with speaker diarization segments (requires whisper sidecar)
 - **LED indicators** — live/recording status, listener count, now-playing info
 - **Dark/light theme** — toggle between themes; preference saved in browser
-- **PWA** — installable web app with offline caching and web push notification support
 - **Responsive** — mobile-first layout with drawer navigation, touch-friendly controls, and virtual scrolling
 
 ### Call Ingest
@@ -83,9 +82,9 @@ OpenScanner integrates with [go-whisper](https://github.com/mutablelogic/go-whis
 - Shared link expiry (configurable in days, enforced on access)
 - Public access mode for unauthenticated listening (admin routes always protected)
 - Audio path sanitization, no shell injection, no secrets in logs
-- Optional secrets-at-rest encryption (AES-256-GCM) for the JWT signing secret, VAPID push key, and downstream API keys
+- Optional secrets-at-rest encryption (AES-256-GCM) for the JWT signing secret and downstream API keys
 - Optional TLS with certificate/key files; experimental Let's Encrypt auto-cert (untested)
-- Outbound HTTP (transcription, downstreams, webhooks, push) goes through a hardened client with redirects disabled, timeouts enforced, and response bodies capped. LAN/loopback destinations are permitted by default (homelab-friendly); set `OPENSCANNER_BLOCK_INTERNAL_HTTP=1` to reject private-network targets
+- Outbound HTTP (transcription, downstreams) goes through a hardened client with redirects disabled, timeouts enforced, and response bodies capped. LAN/loopback destinations are permitted by default (homelab-friendly); set `OPENSCANNER_BLOCK_INTERNAL_HTTP=1` to reject private-network targets
 
 ---
 
@@ -111,10 +110,9 @@ OpenScanner is a complete rewrite, not a fork. Everything below is new or signif
 | **CSV import/export**        | Limited       | Full CSV import/export for talkgroups and units with duplicate handling                               |
 | **JSON config backup**       | Not available | Export and import full server configuration                                                           |
 | **Log viewer**               | Basic         | Query logs by level, date, text with auto-refresh and runtime level control                           |
-| **PWA + push notifications** | Not available | Installable web app with service worker and push notification support                                 |
 | **Dark/light theme**         | Dark only     | Toggle between themes                                                                                 |
 | **RadioReference import**    | Not available | Preview and apply talkgroup metadata from RadioReference directly in admin                            |
-| **Secrets encryption**       | Not available | Optional AES-256-GCM encryption for the JWT signing secret, VAPID push key, and downstream API keys |
+| **Secrets encryption**       | Not available | Optional AES-256-GCM encryption for the JWT signing secret and downstream API keys |
 
 ---
 

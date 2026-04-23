@@ -213,7 +213,7 @@ A few hardening toggles are only available as environment variables — there is
 
 | Variable                           | Description                                                                                                                                                                                                                                                                 | Default |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `OPENSCANNER_BLOCK_INTERNAL_HTTP`  | When set to `1`, `true`, or `yes`, OpenScanner refuses outbound HTTP (transcription, downstream push, webhook delivery, push notifications) to RFC1918, loopback, link-local, and multicast addresses. Leave unset for typical self-hosted homelab deployments where whisper, downstream scanners, and home-automation targets sit on your LAN. | unset   |
+| `OPENSCANNER_BLOCK_INTERNAL_HTTP`  | When set to `1`, `true`, or `yes`, OpenScanner refuses outbound HTTP (transcription, downstream push) to RFC1918, loopback, link-local, and multicast addresses. Leave unset for typical self-hosted homelab deployments where whisper and downstream scanners sit on your LAN. | unset   |
 
 ### JSON Config File
 
@@ -357,7 +357,7 @@ The installed service only passes `--config <path>` to OpenScanner, so all setti
 
 ## Secrets Encryption
 
-OpenScanner can encrypt sensitive values stored in the database (VAPID private key, downstream API keys) using AES-256-GCM. This protects secrets if the database file is compromised.
+OpenScanner can encrypt sensitive values stored in the database (JWT signing secret, downstream API keys) using AES-256-GCM. This protects secrets if the database file is compromised.
 
 ### Enabling Encryption
 
@@ -397,7 +397,6 @@ openscanner --encryption-key-file /run/secrets/encryption_key
 | Value               | Location            | Purpose                                                                   |
 | ------------------- | ------------------- | ------------------------------------------------------------------------- |
 | JWT signing secret  | `settings` table    | Signs session and API access tokens; auto-generated on first start         |
-| VAPID private key   | `settings` table    | Signs web push notifications                                               |
 | Downstream API keys | `downstreams` table | Authenticates to remote servers                                            |
 
 Encrypted values are stored with an `enc::` prefix followed by base64-encoded ciphertext.
