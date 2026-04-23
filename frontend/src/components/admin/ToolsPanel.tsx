@@ -48,6 +48,11 @@ export default function ToolsPanel() {
   const configFileRef = useRef<HTMLInputElement>(null);
   const groupsFileRef = useRef<HTMLInputElement>(null);
   const tagsFileRef = useRef<HTMLInputElement>(null);
+  const [hasGroupsFile, setHasGroupsFile] = useState(false);
+  const [hasTagsFile, setHasTagsFile] = useState(false);
+  const [hasConfigFile, setHasConfigFile] = useState(false);
+  const [hasTgFile, setHasTgFile] = useState(false);
+  const [hasUnitFile, setHasUnitFile] = useState(false);
   const [selectedTgSystemId, setSelectedTgSystemId] = useState<string>("");
   const [tgImportMode, setTgImportMode] = useState<"overwrite" | "skip">(
     "overwrite",
@@ -94,6 +99,7 @@ export default function ToolsPanel() {
       const tone = result.inserted + result.updated === 0 ? "error" : "success";
       showToast(msg, tone);
       if (tgFileRef.current) tgFileRef.current.value = "";
+      setHasTgFile(false);
     } catch {
       showToast("Failed to import talkgroups");
     }
@@ -122,6 +128,7 @@ export default function ToolsPanel() {
       const tone = result.inserted + result.updated === 0 ? "error" : "success";
       showToast(`Units imported: ${parts.join(", ")}`, tone);
       if (unitFileRef.current) unitFileRef.current.value = "";
+      setHasUnitFile(false);
     } catch {
       showToast("Failed to import units");
     }
@@ -130,6 +137,7 @@ export default function ToolsPanel() {
   const handleImportLabels = async (
     kind: "groups" | "tags",
     fileRef: RefObject<HTMLInputElement | null>,
+    resetHasFile: (v: boolean) => void,
     mutate: (fd: FormData) => {
       unwrap: () => Promise<{
         inserted: number;
@@ -157,15 +165,16 @@ export default function ToolsPanel() {
       const tone = result.inserted === 0 && failed > 0 ? "error" : "success";
       showToast(msg, tone);
       if (fileRef.current) fileRef.current.value = "";
+      resetHasFile(false);
     } catch {
       showToast(`Failed to import ${kind}`);
     }
   };
 
   const handleImportGroups = () =>
-    handleImportLabels("groups", groupsFileRef, importGroups);
+    handleImportLabels("groups", groupsFileRef, setHasGroupsFile, importGroups);
   const handleImportTags = () =>
-    handleImportLabels("tags", tagsFileRef, importTags);
+    handleImportLabels("tags", tagsFileRef, setHasTagsFile, importTags);
 
   const handleExportLabels = async (
     kind: "groups" | "tags",
@@ -277,6 +286,7 @@ export default function ToolsPanel() {
       await importConfig(json).unwrap();
       showToast("Config imported successfully", "success");
       if (configFileRef.current) configFileRef.current.value = "";
+      setHasConfigFile(false);
     } catch {
       showToast("Failed to import config");
     }
@@ -327,6 +337,7 @@ export default function ToolsPanel() {
                 ref={tgFileRef}
                 type="file"
                 accept=".csv"
+                onChange={(e) => setHasTgFile(!!e.target.files?.length)}
                 className="file-input file-input-bordered file-input-sm w-full"
               />
               <p className="text-xs text-base-content/50">
@@ -336,7 +347,7 @@ export default function ToolsPanel() {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleImportTalkgroups}
-                disabled={!selectedTgSystemId}
+                disabled={!selectedTgSystemId || !hasTgFile}
               >
                 Upload
               </button>
@@ -373,6 +384,7 @@ export default function ToolsPanel() {
                 ref={unitFileRef}
                 type="file"
                 accept=".csv"
+                onChange={(e) => setHasUnitFile(!!e.target.files?.length)}
                 className="file-input file-input-bordered file-input-sm w-full"
               />
               <p className="text-xs text-base-content/50">
@@ -381,7 +393,7 @@ export default function ToolsPanel() {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleImportUnits}
-                disabled={!selectedUnitSystemId}
+                disabled={!selectedUnitSystemId || !hasUnitFile}
               >
                 Upload
               </button>
@@ -396,6 +408,7 @@ export default function ToolsPanel() {
                 ref={groupsFileRef}
                 type="file"
                 accept=".csv"
+                onChange={(e) => setHasGroupsFile(!!e.target.files?.length)}
                 className="file-input file-input-bordered file-input-sm w-full"
               />
               <p className="text-xs text-base-content/50">
@@ -405,6 +418,7 @@ export default function ToolsPanel() {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleImportGroups}
+                disabled={!hasGroupsFile}
               >
                 Upload
               </button>
@@ -419,6 +433,7 @@ export default function ToolsPanel() {
                 ref={tagsFileRef}
                 type="file"
                 accept=".csv"
+                onChange={(e) => setHasTagsFile(!!e.target.files?.length)}
                 className="file-input file-input-bordered file-input-sm w-full"
               />
               <p className="text-xs text-base-content/50">
@@ -428,6 +443,7 @@ export default function ToolsPanel() {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleImportTags}
+                disabled={!hasTagsFile}
               >
                 Upload
               </button>
@@ -442,6 +458,7 @@ export default function ToolsPanel() {
                 ref={configFileRef}
                 type="file"
                 accept=".json"
+                onChange={(e) => setHasConfigFile(!!e.target.files?.length)}
                 className="file-input file-input-bordered file-input-sm w-full"
               />
               <p className="text-xs text-base-content/50">
@@ -451,6 +468,7 @@ export default function ToolsPanel() {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleImportConfig}
+                disabled={!hasConfigFile}
               >
                 Upload
               </button>
