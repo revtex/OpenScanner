@@ -1,0 +1,35 @@
+name: GHCR cleanup
+
+on:
+  schedule:
+    # Prune untagged and sha-only container versions weekly.
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  packages: write
+
+jobs:
+  prune:
+    name: Prune untagged / sha-only versions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete untagged container versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: openscanner
+          package-type: container
+          delete-only-untagged-versions: true
+          min-versions-to-keep: 0
+
+      - name: Delete sha-* tagged container versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: openscanner
+          package-type: container
+          # Keep any version that has at least one non-sha tag.
+          # Negative lookahead: a tag is "kept" if it does NOT start with sha-.
+          ignore-versions: '^(?!sha-).*'
+          min-versions-to-keep: 0
+
+

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Docker image tagging no longer produces `sha-<short-sha>` tags on every
+  push. Published images now carry only semver (`1.1.0`, `1.1`, `latest`)
+  and branch (`main`, `dev`) tags, so `ghcr.io/revtex/openscanner:dev` is
+  the canonical pre-release channel.
+- New weekly `GHCR cleanup` workflow prunes leftover untagged and
+  `sha-*`-only container versions from GHCR.
+
 ## [1.1.0] — 2026-04-23
 
 ### Added
