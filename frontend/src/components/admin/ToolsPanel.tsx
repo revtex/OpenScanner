@@ -260,6 +260,7 @@ export default function ToolsPanel() {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleImportTalkgroups}
+                disabled={!selectedTgSystemId}
               >
                 Upload
               </button>
@@ -304,6 +305,7 @@ export default function ToolsPanel() {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleImportUnits}
+                disabled={!selectedUnitSystemId}
               >
                 Upload
               </button>
