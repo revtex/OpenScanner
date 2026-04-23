@@ -60,6 +60,54 @@ func wsIsUniqueViolation(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "UNIQUE")
 }
 
+// remapSystemsJSON rewrites the system PKs embedded in a systems_json column
+// (used by api_keys, downstreams, webhooks, and users) so that grants
+// referring to a system by its old PK end up referring to the freshly
+// inserted row's PK after import. Accepts and returns a *string mirroring
+// the export shape (nil = "all systems"). Any system PK that doesn't appear
+// in the remap is dropped from the grant rather than silently broken.
+//
+// Shape: `[{"id": <int64>, "talkgroups": [<int64>...]}]` per
+// auth.SystemGrant.
+func remapSystemsJSON(in *string, systemRemap map[int64]int64) *string {
+	if in == nil || strings.TrimSpace(*in) == "" {
+		return in
+	}
+	var grants []auth.SystemGrant
+	if err := json.Unmarshal([]byte(*in), &grants); err != nil {
+		// Fall through with nil grants — try the legacy flat-id form.
+		var ids []int64
+		if jerr := json.Unmarshal([]byte(*in), &ids); jerr != nil {
+			slog.Warn("import config: systems_json not recognised; preserving as-is",
+				"error", err)
+			return in
+		}
+		mapped := make([]int64, 0, len(ids))
+		for _, id := range ids {
+			if newID, ok := systemRemap[id]; ok {
+				mapped = append(mapped, newID)
+			} else {
+				slog.Warn("import config: dropping unknown system grant", "system_pk", id)
+			}
+		}
+		out, _ := json.Marshal(mapped)
+		s := string(out)
+		return &s
+	}
+	mapped := make([]auth.SystemGrant, 0, len(grants))
+	for _, g := range grants {
+		newID, ok := systemRemap[g.ID]
+		if !ok {
+			slog.Warn("import config: dropping unknown system grant", "system_pk", g.ID)
+			continue
+		}
+		mapped = append(mapped, auth.SystemGrant{ID: newID, Talkgroups: g.Talkgroups})
+	}
+	out, _ := json.Marshal(mapped)
+	s := string(out)
+	return &s
+}
+
 func wsValidHTTPURL(raw string) bool {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -2333,55 +2381,129 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 		}
 	}
 
-	// Groups
+	// Groups — capture old→new id remap so talkgroups can rewrite their
+	// group_id FKs (the export carries the source DB's PKs, but on a fresh
+	// install those PKs don't exist yet).
+	groupRemap := make(map[int64]int64, len(data.Groups))
 	for _, g := range data.Groups {
-		if _, err := qtx.CreateGroup(ctx, g.Label); err != nil && !wsIsUniqueViolation(err) {
-			return nil, fmt.Errorf("failed to import groups: %w", err)
+		newID, err := qtx.CreateGroup(ctx, g.Label)
+		if err != nil {
+			if !wsIsUniqueViolation(err) {
+				return nil, fmt.Errorf("failed to import groups: %w", err)
+			}
+			existing, gerr := qtx.GetGroupByLabel(ctx, g.Label)
+			if gerr != nil {
+				return nil, fmt.Errorf("failed to look up existing group %q: %w", g.Label, gerr)
+			}
+			newID = existing.ID
 		}
+		groupRemap[g.ID] = newID
 	}
 
-	// Tags
+	// Tags — same remap pattern as groups.
+	tagRemap := make(map[int64]int64, len(data.Tags))
 	for _, t := range data.Tags {
-		if _, err := qtx.CreateTag(ctx, t.Label); err != nil && !wsIsUniqueViolation(err) {
-			return nil, fmt.Errorf("failed to import tags: %w", err)
+		newID, err := qtx.CreateTag(ctx, t.Label)
+		if err != nil {
+			if !wsIsUniqueViolation(err) {
+				return nil, fmt.Errorf("failed to import tags: %w", err)
+			}
+			existing, gerr := qtx.GetTagByLabel(ctx, t.Label)
+			if gerr != nil {
+				return nil, fmt.Errorf("failed to look up existing tag %q: %w", t.Label, gerr)
+			}
+			newID = existing.ID
 		}
+		tagRemap[t.ID] = newID
 	}
 
-	// Systems
+	// Systems — remap by old PK → new PK. The natural key is SystemID
+	// (the radio-system ID, e.g. 1, 100), which sqlc enforces UNIQUE.
+	systemRemap := make(map[int64]int64, len(data.Systems))
 	for _, s := range data.Systems {
-		if _, err := qtx.CreateSystem(ctx, db.CreateSystemParams{
+		newID, err := qtx.CreateSystem(ctx, db.CreateSystemParams{
 			SystemID:               s.SystemID,
 			Label:                  s.Label,
 			AutoPopulateTalkgroups: s.AutoPopulateTalkgroups,
 			BlacklistsJson:         s.BlacklistsJson,
 			Led:                    s.Led,
 			Order:                  s.Order,
-		}); err != nil && !wsIsUniqueViolation(err) {
-			return nil, fmt.Errorf("failed to import systems: %w", err)
+		})
+		if err != nil {
+			if !wsIsUniqueViolation(err) {
+				return nil, fmt.Errorf("failed to import systems: %w", err)
+			}
+			existing, gerr := qtx.GetSystemBySystemID(ctx, s.SystemID)
+			if gerr != nil {
+				return nil, fmt.Errorf("failed to look up existing system %d: %w", s.SystemID, gerr)
+			}
+			newID = existing.ID
 		}
+		systemRemap[s.ID] = newID
 	}
 
-	// Talkgroups
+	// Talkgroups — translate FKs (system_id, group_id, tag_id) through the
+	// remaps built above, then upsert. Capture the new PK so dirmonitors
+	// can rewrite their talkgroup_id FKs.
+	tgRemap := make(map[int64]int64, len(data.Talkgroups))
 	for _, tg := range data.Talkgroups {
+		newSystemID, ok := systemRemap[tg.SystemID]
+		if !ok {
+			slog.Warn("import config: skipping talkgroup with unknown system_id",
+				"talkgroup_id", tg.TalkgroupID, "system_id", tg.SystemID)
+			continue
+		}
+		groupID := tg.GroupID
+		if groupID.Valid {
+			if mapped, ok := groupRemap[groupID.Int64]; ok {
+				groupID.Int64 = mapped
+			} else {
+				// Group wasn't in the export — drop the FK rather than fail.
+				groupID = sql.NullInt64{}
+			}
+		}
+		tagID := tg.TagID
+		if tagID.Valid {
+			if mapped, ok := tagRemap[tagID.Int64]; ok {
+				tagID.Int64 = mapped
+			} else {
+				tagID = sql.NullInt64{}
+			}
+		}
 		if err := qtx.UpsertTalkgroup(ctx, db.UpsertTalkgroupParams{
-			SystemID:    tg.SystemID,
+			SystemID:    newSystemID,
 			TalkgroupID: tg.TalkgroupID,
 			Label:       tg.Label,
 			Name:        tg.Name,
 			Frequency:   tg.Frequency,
 			Led:         tg.Led,
-			GroupID:     tg.GroupID,
-			TagID:       tg.TagID,
+			GroupID:     groupID,
+			TagID:       tagID,
 			Order:       tg.Order,
 		}); err != nil {
 			return nil, fmt.Errorf("failed to import talkgroups: %w", err)
 		}
+		row, err := qtx.GetTalkgroupBySystemAndTGID(ctx, db.GetTalkgroupBySystemAndTGIDParams{
+			SystemID:    newSystemID,
+			TalkgroupID: tg.TalkgroupID,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to look up imported talkgroup (system=%d tg=%d): %w",
+				newSystemID, tg.TalkgroupID, err)
+		}
+		tgRemap[tg.ID] = row.ID
 	}
 
-	// Units
+	// Units — translate system_id.
 	for _, u := range data.Units {
+		newSystemID, ok := systemRemap[u.SystemID]
+		if !ok {
+			slog.Warn("import config: skipping unit with unknown system_id",
+				"unit_id", u.UnitID, "system_id", u.SystemID)
+			continue
+		}
 		if err := qtx.UpsertUnit(ctx, db.UpsertUnitParams{
-			SystemID: u.SystemID,
+			SystemID: newSystemID,
 			UnitID:   u.UnitID,
 			Label:    u.Label,
 			Order:    u.Order,
@@ -2390,13 +2512,13 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 		}
 	}
 
-	// API Keys
+	// API Keys — remap any system PKs embedded in systems_json.
 	for _, k := range data.APIKeys {
 		if _, err := qtx.CreateAPIKey(ctx, db.CreateAPIKeyParams{
 			Key:           k.Key,
 			Ident:         wsPtrToNullStr(k.Ident),
 			Disabled:      k.Disabled,
-			SystemsJson:   wsPtrToNullStr(k.SystemsJson),
+			SystemsJson:   wsPtrToNullStr(remapSystemsJSON(k.SystemsJson, systemRemap)),
 			CallRateLimit: wsPtrToNullInt(k.CallRateLimit),
 			Order:         k.Order,
 		}); err != nil && !wsIsUniqueViolation(err) {
@@ -2404,8 +2526,28 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 		}
 	}
 
-	// DirMonitors
+	// DirMonitors — translate system_id and talkgroup_id FKs.
 	for _, d := range data.DirMonitors {
+		sysID := d.SystemID
+		if sysID.Valid {
+			if mapped, ok := systemRemap[sysID.Int64]; ok {
+				sysID.Int64 = mapped
+			} else {
+				slog.Warn("import config: dirmonitor system_id not found in import; dropping FK",
+					"directory", d.Directory, "system_id", sysID.Int64)
+				sysID = sql.NullInt64{}
+			}
+		}
+		tgID := d.TalkgroupID
+		if tgID.Valid {
+			if mapped, ok := tgRemap[tgID.Int64]; ok {
+				tgID.Int64 = mapped
+			} else {
+				slog.Warn("import config: dirmonitor talkgroup_id not found in import; dropping FK",
+					"directory", d.Directory, "talkgroup_id", tgID.Int64)
+				tgID = sql.NullInt64{}
+			}
+		}
 		if _, err := qtx.CreateDirMonitor(ctx, db.CreateDirMonitorParams{
 			Directory:   d.Directory,
 			Type:        d.Type,
@@ -2416,15 +2558,15 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 			DeleteAfter: d.DeleteAfter,
 			UsePolling:  d.UsePolling,
 			Disabled:    d.Disabled,
-			SystemID:    d.SystemID,
-			TalkgroupID: d.TalkgroupID,
+			SystemID:    sysID,
+			TalkgroupID: tgID,
 			Order:       d.Order,
 		}); err != nil && !wsIsUniqueViolation(err) {
 			return nil, fmt.Errorf("failed to import dirmonitors: %w", err)
 		}
 	}
 
-	// Downstreams
+	// Downstreams — remap embedded system PKs.
 	for _, d := range data.Downstreams {
 		if !wsValidHTTPURL(d.Url) {
 			slog.Warn("import config: skipping downstream with invalid URL", "url", d.Url)
@@ -2433,7 +2575,7 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 		if _, err := qtx.CreateDownstream(ctx, db.CreateDownstreamParams{
 			Url:         d.Url,
 			ApiKey:      d.ApiKey,
-			SystemsJson: wsPtrToNullStr(d.SystemsJson),
+			SystemsJson: wsPtrToNullStr(remapSystemsJSON(d.SystemsJson, systemRemap)),
 			Disabled:    d.Disabled,
 			Order:       d.Order,
 		}); err != nil && !wsIsUniqueViolation(err) {
@@ -2441,7 +2583,7 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 		}
 	}
 
-	// Webhooks
+	// Webhooks — remap embedded system PKs.
 	for _, w := range data.Webhooks {
 		if !wsValidHTTPURL(w.Url) {
 			slog.Warn("import config: skipping webhook with invalid URL", "url", w.Url)
@@ -2451,7 +2593,7 @@ func (c *Client) opImportConfig(ctx context.Context, params json.RawMessage) (an
 			Url:         w.Url,
 			Type:        w.Type,
 			Secret:      wsPtrToNullStr(w.Secret),
-			SystemsJson: wsPtrToNullStr(w.SystemsJson),
+			SystemsJson: wsPtrToNullStr(remapSystemsJSON(w.SystemsJson, systemRemap)),
 			Disabled:    w.Disabled,
 			Order:       w.Order,
 		}); err != nil && !wsIsUniqueViolation(err) {
