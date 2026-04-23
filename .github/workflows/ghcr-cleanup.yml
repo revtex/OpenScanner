@@ -21,6 +21,7 @@ jobs:
           package-type: container
           delete-only-untagged-versions: true
           min-versions-to-keep: 0
+          num-old-versions-to-delete: 100
 
       - name: Delete sha-* tagged container versions
         uses: actions/delete-package-versions@v5
@@ -31,5 +32,6 @@ jobs:
           # Negative lookahead: a tag is "kept" if it does NOT start with sha-.
           ignore-versions: '^(?!sha-).*'
           min-versions-to-keep: 0
+          num-old-versions-to-delete: 100
 
 
