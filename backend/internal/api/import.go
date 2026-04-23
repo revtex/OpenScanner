@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/csv"
 	"errors"
@@ -510,4 +511,179 @@ func (h *AdminHandler) ImportUnits(c *gin.Context) {
 		"skipped":  skipped,
 		"failed":   failed,
 	})
+}
+
+// importLabelOnly is the shared core for groups and tags. Both are
+// global label-only entities, so the import is just "insert if a
+// row with this label doesn't already exist". `mode` is honoured but
+// only `inserted` vs `skipped` apply (there are no other fields to
+// overwrite).
+func (h *AdminHandler) importLabelOnly(c *gin.Context, kind string,
+	getByLabel func(ctx context.Context, label string) (int64, bool, error),
+	create func(ctx context.Context, label string) error,
+) {
+	ctx := c.Request.Context()
+
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
+		return
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.FieldsPerRecord = -1
+	reader.TrimLeadingSpace = true
+
+	// Optional header. If first non-blank cell looks like the word
+	// "label" / "name", treat as header; otherwise treat as data.
+	labelCol := 0
+	headerSeen := false
+
+	var inserted, skipped, failed int
+
+	processRow := func(record []string) {
+		if labelCol >= len(record) {
+			failed++
+			return
+		}
+		label := strings.TrimSpace(record[labelCol])
+		if label == "" {
+			failed++
+			return
+		}
+		if _, ok, gerr := getByLabel(ctx, label); gerr != nil {
+			slog.Warn(kind+" import: lookup failed", "label", label, "error", gerr)
+			failed++
+			return
+		} else if ok {
+			skipped++
+			return
+		}
+		if cerr := create(ctx, label); cerr != nil {
+			slog.Warn(kind+" import: create failed", "label", label, "error", cerr)
+			failed++
+			return
+		}
+		inserted++
+	}
+
+	for {
+		if inserted+skipped >= maxImportRows {
+			slog.Warn("CSV import row limit reached", "limit", maxImportRows)
+			break
+		}
+		record, err := reader.Read()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid CSV format"})
+			return
+		}
+		if len(record) == 0 || (len(record) == 1 && strings.TrimSpace(record[0]) == "") {
+			continue
+		}
+
+		if !headerSeen {
+			headerSeen = true
+			first := strings.ToLower(strings.TrimSpace(record[0]))
+			if first == "label" || first == "name" || first == "tag" || first == "group" {
+				// Header row — find the label column and skip the row.
+				for i, raw := range record {
+					col := strings.ToLower(strings.TrimSpace(raw))
+					if col == "label" || col == "name" || col == "tag" || col == "group" {
+						labelCol = i
+						break
+					}
+				}
+				continue
+			}
+		}
+
+		processRow(record)
+	}
+
+	if inserted == 0 && skipped == 0 && failed == 0 {
+		slog.Warn(kind + " import: file is empty")
+		c.JSON(http.StatusOK, gin.H{
+			"inserted": 0, "skipped": 0, "failed": 0,
+			"message": "file is empty",
+		})
+		return
+	}
+
+	slog.Info(kind+" imported", "inserted", inserted, "skipped", skipped, "failed", failed)
+	if h.hub != nil {
+		h.hub.BroadcastAdminEvent(kind+".updated", nil)
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"inserted": inserted,
+		"skipped":  skipped,
+		"failed":   failed,
+	})
+}
+
+// ImportGroups handles POST /api/admin/import/groups.
+//
+//	@Summary		Import groups from CSV
+//	@Description	Accepts a multipart CSV file with a single 'label' column (header optional). Existing labels are skipped; new labels are inserted.
+//	@Tags			Admin
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Param			file	formData	file	true	"CSV file"
+//	@Success		200		{object}	object	"inserted, skipped, failed counts"
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/import/groups [post]
+func (h *AdminHandler) ImportGroups(c *gin.Context) {
+	h.importLabelOnly(c, "groups",
+		func(ctx context.Context, label string) (int64, bool, error) {
+			g, err := h.queries.GetGroupByLabel(ctx, label)
+			if errors.Is(err, sql.ErrNoRows) {
+				return 0, false, nil
+			}
+			if err != nil {
+				return 0, false, err
+			}
+			return g.ID, true, nil
+		},
+		func(ctx context.Context, label string) error {
+			_, err := h.queries.CreateGroup(ctx, label)
+			return err
+		},
+	)
+}
+
+// ImportTags handles POST /api/admin/import/tags.
+//
+//	@Summary		Import tags from CSV
+//	@Description	Accepts a multipart CSV file with a single 'label' column (header optional). Existing labels are skipped; new labels are inserted.
+//	@Tags			Admin
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Param			file	formData	file	true	"CSV file"
+//	@Success		200		{object}	object	"inserted, skipped, failed counts"
+//	@Failure		400		{object}	ErrorResponse
+//	@Failure		500		{object}	ErrorResponse
+//	@Security		BearerAuth
+//	@Router			/admin/import/tags [post]
+func (h *AdminHandler) ImportTags(c *gin.Context) {
+	h.importLabelOnly(c, "tags",
+		func(ctx context.Context, label string) (int64, bool, error) {
+			t, err := h.queries.GetTagByLabel(ctx, label)
+			if errors.Is(err, sql.ErrNoRows) {
+				return 0, false, nil
+			}
+			if err != nil {
+				return 0, false, err
+			}
+			return t.ID, true, nil
+		},
+		func(ctx context.Context, label string) error {
+			_, err := h.queries.CreateTag(ctx, label)
+			return err
+		},
+	)
 }

@@ -142,6 +142,8 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		// Import (file uploads — must stay REST)
 		admin.POST("/import/talkgroups", adminHandler.ImportTalkgroups)
 		admin.POST("/import/units", adminHandler.ImportUnits)
+		admin.POST("/import/groups", adminHandler.ImportGroups)
+		admin.POST("/import/tags", adminHandler.ImportTags)
 
 		// RadioReference CSV preview (file upload — must stay REST)
 		admin.POST("/radioreference/preview/csv", adminHandler.RadioReferencePreviewCSV)

@@ -39,6 +39,38 @@ const adminApi = api.injectEndpoints({
       }),
       invalidatesTags: ["Units"],
     }),
+    importGroups: builder.mutation<
+      {
+        inserted: number;
+        skipped: number;
+        failed?: number;
+        message?: string;
+      },
+      FormData
+    >({
+      query: (body) => ({
+        url: "/admin/import/groups",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Groups"],
+    }),
+    importTags: builder.mutation<
+      {
+        inserted: number;
+        skipped: number;
+        failed?: number;
+        message?: string;
+      },
+      FormData
+    >({
+      query: (body) => ({
+        url: "/admin/import/tags",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Tags"],
+    }),
 
     // ── RadioReference CSV preview (multipart file upload) ──
     rrPreviewCSV: builder.mutation<RRPreviewResponse, FormData>({
@@ -54,5 +86,7 @@ const adminApi = api.injectEndpoints({
 export const {
   useImportTalkgroupsMutation,
   useImportUnitsMutation,
+  useImportGroupsMutation,
+  useImportTagsMutation,
   useRrPreviewCSVMutation,
 } = adminApi;

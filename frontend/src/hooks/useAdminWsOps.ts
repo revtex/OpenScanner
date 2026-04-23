@@ -351,6 +351,14 @@ export function useLazyExportUnitsQuery() {
   });
 }
 
+export function useLazyExportGroupsQuery() {
+  return useLazyWsQuery<string, void>("export.groups");
+}
+
+export function useLazyExportTagsQuery() {
+  return useLazyWsQuery<string, void>("export.tags");
+}
+
 export function useImportConfigMutation() {
   return useWsMutation<void, unknown>("import.config", {
     // The backup file IS the params object — the backend unmarshals

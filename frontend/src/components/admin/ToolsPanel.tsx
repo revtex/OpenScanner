@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, type RefObject } from "react";
 import {
   Upload,
   Download,
@@ -9,11 +9,15 @@ import {
 import {
   useImportTalkgroupsMutation,
   useImportUnitsMutation,
+  useImportGroupsMutation,
+  useImportTagsMutation,
 } from "@/app/slices/adminSlice";
 import {
   useLazyExportConfigQuery,
   useLazyExportTalkgroupsQuery,
   useLazyExportUnitsQuery,
+  useLazyExportGroupsQuery,
+  useLazyExportTagsQuery,
   useImportConfigMutation,
   useListSystemsQuery,
 } from "@/hooks/useAdminWsOps";
@@ -27,9 +31,13 @@ export default function ToolsPanel() {
   const token = useAppSelector(selectToken);
   const [importTalkgroups] = useImportTalkgroupsMutation();
   const [importUnits] = useImportUnitsMutation();
+  const [importGroups] = useImportGroupsMutation();
+  const [importTags] = useImportTagsMutation();
   const [triggerExport] = useLazyExportConfigQuery();
   const [triggerExportTalkgroups] = useLazyExportTalkgroupsQuery();
   const [triggerExportUnits] = useLazyExportUnitsQuery();
+  const [triggerExportGroups] = useLazyExportGroupsQuery();
+  const [triggerExportTags] = useLazyExportTagsQuery();
   const [importConfig] = useImportConfigMutation();
   const { data: systems } = useListSystemsQuery();
 
@@ -38,6 +46,8 @@ export default function ToolsPanel() {
   const tgFileRef = useRef<HTMLInputElement>(null);
   const unitFileRef = useRef<HTMLInputElement>(null);
   const configFileRef = useRef<HTMLInputElement>(null);
+  const groupsFileRef = useRef<HTMLInputElement>(null);
+  const tagsFileRef = useRef<HTMLInputElement>(null);
   const [selectedTgSystemId, setSelectedTgSystemId] = useState<string>("");
   const [tgImportMode, setTgImportMode] = useState<"overwrite" | "skip">(
     "overwrite",
@@ -116,6 +126,72 @@ export default function ToolsPanel() {
       showToast("Failed to import units");
     }
   };
+
+  const handleImportLabels = async (
+    kind: "groups" | "tags",
+    fileRef: RefObject<HTMLInputElement | null>,
+    mutate: (fd: FormData) => {
+      unwrap: () => Promise<{
+        inserted: number;
+        skipped: number;
+        failed?: number;
+        message?: string;
+      }>;
+    },
+  ) => {
+    const file = fileRef.current?.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const result = await mutate(formData).unwrap();
+      const failed = result.failed ?? 0;
+      const parts = [
+        `${result.inserted} inserted`,
+        `${result.skipped} skipped`,
+      ];
+      if (failed > 0) parts.push(`${failed} failed`);
+      const msg = result.message
+        ? `${kind}: ${result.message}`
+        : `${kind} imported: ${parts.join(", ")}`;
+      const tone = result.inserted === 0 && failed > 0 ? "error" : "success";
+      showToast(msg, tone);
+      if (fileRef.current) fileRef.current.value = "";
+    } catch {
+      showToast(`Failed to import ${kind}`);
+    }
+  };
+
+  const handleImportGroups = () =>
+    handleImportLabels("groups", groupsFileRef, importGroups);
+  const handleImportTags = () =>
+    handleImportLabels("tags", tagsFileRef, importTags);
+
+  const handleExportLabels = async (
+    kind: "groups" | "tags",
+    trigger: () => { unwrap: () => Promise<unknown> },
+  ) => {
+    try {
+      const csv = await trigger().unwrap();
+      if (typeof csv !== "string") {
+        showToast("Export returned unexpected payload");
+        return;
+      }
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${kind}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast(`Failed to export ${kind}`);
+    }
+  };
+
+  const handleExportGroups = () =>
+    handleExportLabels("groups", triggerExportGroups);
+  const handleExportTags = () => handleExportLabels("tags", triggerExportTags);
 
   const handleExportConfig = async () => {
     try {
@@ -220,7 +296,7 @@ export default function ToolsPanel() {
         <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
           <Upload className="w-4 h-4" /> Import
         </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {/* Import Talkgroups */}
           <div className="card bg-base-200">
             <div className="card-body gap-3">
@@ -312,6 +388,52 @@ export default function ToolsPanel() {
             </div>
           </div>
 
+          {/* Import Groups */}
+          <div className="card bg-base-200">
+            <div className="card-body gap-3">
+              <h3 className="card-title text-sm">Groups (CSV)</h3>
+              <input
+                ref={groupsFileRef}
+                type="file"
+                accept=".csv"
+                className="file-input file-input-bordered file-input-sm w-full"
+              />
+              <p className="text-xs text-base-content/50">
+                One label per line, optional 'label' header. Existing labels are
+                skipped.
+              </p>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleImportGroups}
+              >
+                Upload
+              </button>
+            </div>
+          </div>
+
+          {/* Import Tags */}
+          <div className="card bg-base-200">
+            <div className="card-body gap-3">
+              <h3 className="card-title text-sm">Tags (CSV)</h3>
+              <input
+                ref={tagsFileRef}
+                type="file"
+                accept=".csv"
+                className="file-input file-input-bordered file-input-sm w-full"
+              />
+              <p className="text-xs text-base-content/50">
+                One label per line, optional 'label' header. Existing labels are
+                skipped.
+              </p>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleImportTags}
+              >
+                Upload
+              </button>
+            </div>
+          </div>
+
           {/* Import Config */}
           <div className="card bg-base-200">
             <div className="card-body gap-3">
@@ -342,7 +464,7 @@ export default function ToolsPanel() {
         <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
           <Download className="w-4 h-4" /> Export
         </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {/* Export Talkgroups */}
           <div className="card bg-base-200">
             <div className="card-body gap-3">
@@ -389,6 +511,38 @@ export default function ToolsPanel() {
                 className="btn btn-primary btn-sm"
                 onClick={handleExportUnits}
                 disabled={!exportUnitSystemId}
+              >
+                Download CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Export Groups */}
+          <div className="card bg-base-200">
+            <div className="card-body gap-3">
+              <h3 className="card-title text-sm">Groups (CSV)</h3>
+              <p className="text-xs text-base-content/50">
+                All talkgroup groups (one label per row).
+              </p>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleExportGroups}
+              >
+                Download CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Export Tags */}
+          <div className="card bg-base-200">
+            <div className="card-body gap-3">
+              <h3 className="card-title text-sm">Tags (CSV)</h3>
+              <p className="text-xs text-base-content/50">
+                All talkgroup tags (one label per row).
+              </p>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleExportTags}
               >
                 Download CSV
               </button>

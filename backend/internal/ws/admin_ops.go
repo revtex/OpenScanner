@@ -455,6 +455,8 @@ func (c *Client) adminOpHandlers() map[string]adminOpHandler {
 		"export.config":     c.opExportConfig,
 		"export.talkgroups": c.opExportTalkgroups,
 		"export.units":      c.opExportUnits,
+		"export.groups":     c.opExportGroups,
+		"export.tags":       c.opExportTags,
 
 		// Import
 		"import.config": c.opImportConfig,
@@ -2280,6 +2282,36 @@ func (c *Client) opExportUnits(ctx context.Context, params json.RawMessage) (any
 	}
 	w.Flush()
 
+	return buf.String(), nil
+}
+
+func (c *Client) opExportGroups(ctx context.Context, _ json.RawMessage) (any, error) {
+	groups, err := c.hub.queries.ListGroups(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list groups: %w", err)
+	}
+	var buf strings.Builder
+	w := csv.NewWriter(&buf)
+	_ = w.Write([]string{"label"})
+	for _, g := range groups {
+		_ = w.Write([]string{g.Label})
+	}
+	w.Flush()
+	return buf.String(), nil
+}
+
+func (c *Client) opExportTags(ctx context.Context, _ json.RawMessage) (any, error) {
+	tags, err := c.hub.queries.ListTags(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tags: %w", err)
+	}
+	var buf strings.Builder
+	w := csv.NewWriter(&buf)
+	_ = w.Write([]string{"label"})
+	for _, t := range tags {
+		_ = w.Write([]string{t.Label})
+	}
+	w.Flush()
 	return buf.String(), nil
 }
 
