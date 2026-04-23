@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release workflow now builds standalone binaries for Linux, macOS, and
   Windows (amd64 + arm64 where applicable) on every `v*` tag and
   attaches them to the GitHub Release alongside a `SHA256SUMS.txt`.
+- Release archives ship the user guides (README, admin, deployment,
+  recorder) as styled PDFs, and the same PDFs are attached to the
+  GitHub Release as standalone downloads.
 
 ## [1.0.0] — 2026-04-23
 
