@@ -81,8 +81,7 @@ export default function ToolsPanel() {
       const msg = result.message
         ? `Talkgroups: ${result.message}`
         : `Talkgroups imported: ${parts.join(", ")}`;
-      const tone =
-        result.inserted + result.updated === 0 ? "error" : "success";
+      const tone = result.inserted + result.updated === 0 ? "error" : "success";
       showToast(msg, tone);
       if (tgFileRef.current) tgFileRef.current.value = "";
     } catch {
@@ -110,8 +109,7 @@ export default function ToolsPanel() {
         `${result.skipped} skipped`,
       ];
       if (failed > 0) parts.push(`${failed} failed`);
-      const tone =
-        result.inserted + result.updated === 0 ? "error" : "success";
+      const tone = result.inserted + result.updated === 0 ? "error" : "success";
       showToast(`Units imported: ${parts.join(", ")}`, tone);
       if (unitFileRef.current) unitFileRef.current.value = "";
     } catch {
@@ -141,6 +139,10 @@ export default function ToolsPanel() {
       const csv = await triggerExportTalkgroups(
         exportTgSystemId ? { systemId: Number(exportTgSystemId) } : {},
       ).unwrap();
+      if (typeof csv !== "string") {
+        showToast("Export returned unexpected payload");
+        return;
+      }
       const systemLabel =
         systems?.find((s) => String(s.id) === exportTgSystemId)?.label ?? "all";
       const blob = new Blob([csv], { type: "text/csv" });
@@ -160,6 +162,10 @@ export default function ToolsPanel() {
       const csv = await triggerExportUnits(
         exportUnitSystemId ? { systemId: Number(exportUnitSystemId) } : {},
       ).unwrap();
+      if (typeof csv !== "string") {
+        showToast("Export returned unexpected payload");
+        return;
+      }
       const systemLabel =
         systems?.find((s) => String(s.id) === exportUnitSystemId)?.label ??
         "all";

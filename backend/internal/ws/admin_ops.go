@@ -2241,7 +2241,7 @@ func (c *Client) opExportTalkgroups(ctx context.Context, params json.RawMessage)
 	}
 	w.Flush()
 
-	return map[string]string{"csv": buf.String()}, nil
+	return buf.String(), nil
 }
 
 func (c *Client) opExportUnits(ctx context.Context, params json.RawMessage) (any, error) {
@@ -2279,7 +2279,7 @@ func (c *Client) opExportUnits(ctx context.Context, params json.RawMessage) (any
 	}
 	w.Flush()
 
-	return map[string]string{"csv": buf.String()}, nil
+	return buf.String(), nil
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
