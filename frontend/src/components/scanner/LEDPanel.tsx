@@ -80,17 +80,11 @@ export function LEDPanel() {
   } else if (isAudioActive && currentCall?.talkgroupLedColor) {
     ledColor = currentCall.talkgroupLedColor;
     dimmed = false;
-  } else if (isAudioActive && isLive) {
+  } else if (isAudioActive) {
     ledColor = "#00e676"; // green - live receiving
     dimmed = false;
-  } else if (isAudioActive && !isLive) {
-    ledColor = "#ff9100"; // orange - archive playback
-    dimmed = false;
-  } else if (isLive && !isAudioActive) {
-    ledColor = "#00e676"; // green dimmed - live idle
-    dimmed = true;
   } else {
-    ledColor = "#505050"; // off - no link
+    ledColor = "#00e676"; // green dimmed - live idle
     dimmed = true;
   }
 

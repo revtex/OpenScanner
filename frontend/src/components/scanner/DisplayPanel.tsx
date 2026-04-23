@@ -3,6 +3,7 @@ import {
   useEffect,
   useLayoutEffect,
   useCallback,
+  useMemo,
   useRef,
 } from "react";
 import { Share2, Sun, Copy, X, ExternalLink } from "lucide-react";
@@ -138,6 +139,19 @@ export function DisplayPanel({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
 
+  // Tick once per second while any timed avoid is active so `isAvoided`
+  // expires on its own without waiting for an external state change.
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  const hasTimedAvoids = useMemo(
+    () => avoidList.some((a) => a.expiresAt > 0),
+    [avoidList],
+  );
+  useEffect(() => {
+    if (!hasTimedAvoids) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [hasTimedAvoids]);
+
   const copyToClipboard = useCallback(
     async (text: string): Promise<boolean> => {
       if (navigator.clipboard?.writeText) {
@@ -199,13 +213,15 @@ export function DisplayPanel({
     [isAuthenticated, toggleBookmark],
   );
 
-  const isAvoided = currentCall
-    ? avoidList.some(
-        (a) =>
-          a.talkgroupId === currentCall.talkgroup &&
-          (a.expiresAt === 0 || a.expiresAt > Date.now()),
-      )
-    : false;
+  const isAvoided = useMemo(() => {
+    if (!currentCall) return false;
+    const nowMs = nowTick;
+    return avoidList.some(
+      (a) =>
+        a.talkgroupId === currentCall.talkgroup &&
+        (a.expiresAt === 0 || a.expiresAt > nowMs),
+    );
+  }, [currentCall, avoidList, nowTick]);
 
   const isHeld = currentCall
     ? heldTG === currentCall.talkgroup || heldSystem === currentCall.system

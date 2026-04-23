@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGetSetupStatusQuery } from "@/app/api";
 import { useAppDispatch, useAppSelector } from "@/app/store";
@@ -28,7 +28,11 @@ export default function Scanner() {
   useTGSelectionSync();
 
   // Read cached display prefs so we don't flash defaults before WS delivers CFG.
-  const cachedPrefs = useMemo(() => {
+  // Lazy useState initializer runs exactly once per component instance.
+  const [cachedPrefs] = useState<{
+    time12hFormat?: boolean;
+    showListenersCount?: boolean;
+  }>(() => {
     try {
       const raw = sessionStorage.getItem("openscanner-display-prefs");
       if (raw)
@@ -40,7 +44,7 @@ export default function Scanner() {
       /* ignore */
     }
     return {};
-  }, []);
+  });
 
   const [selectTGOpen, setSelectTGOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);

@@ -111,9 +111,11 @@ export function useWsMutation<TResult = void, TArg = Record<string, unknown>>(
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const opRef = useRef(op);
-  opRef.current = op;
   const optionsRef = useRef(options);
-  optionsRef.current = options;
+  useEffect(() => {
+    opRef.current = op;
+    optionsRef.current = options;
+  });
 
   const trigger = useCallback((arg: TArg): MutationResult<TResult> => {
     const params = optionsRef.current?.transformArg
@@ -167,9 +169,11 @@ export function useLazyWsQuery<TResult, TArg = void>(
   const [data, setData] = useState<TResult | undefined>(undefined);
   const [isFetching, setIsFetching] = useState(false);
   const opRef = useRef(op);
-  opRef.current = op;
   const optionsRef = useRef(options);
-  optionsRef.current = options;
+  useEffect(() => {
+    opRef.current = op;
+    optionsRef.current = options;
+  });
 
   const trigger = useCallback((arg: TArg): LazyQueryResult<TResult> => {
     const params = optionsRef.current?.transformArg

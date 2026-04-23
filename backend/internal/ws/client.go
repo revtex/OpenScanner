@@ -69,10 +69,10 @@ func (c *Client) closeSend() {
 // shutdown path cannot crash the process.
 func (c *Client) trySend(data []byte) {
 	defer func() {
-		if r := recover(); r != nil {
-			// send on closed channel — connection is already shutting down,
-			// the message is discarded silently.
-		}
+		// Recover silently from "send on closed channel" — the connection is
+		// already shutting down and the message is discarded. Any other panic
+		// type would bubble up normally since this is a deferred recover.
+		_ = recover()
 	}()
 	select {
 	case c.send <- data:

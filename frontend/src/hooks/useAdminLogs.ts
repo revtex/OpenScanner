@@ -87,7 +87,11 @@ export function useAdminLogLevel() {
   }, []);
 
   useEffect(() => {
-    fetchLevel();
+    // Defer initial fetch to a microtask so the effect body doesn't
+    // trigger a synchronous setState cascade during commit.
+    queueMicrotask(() => {
+      void fetchLevel();
+    });
     // Re-fetch on WS connect and config changes
     const unsubConnect = adminWsClient.on("__connected__", () => {
       fetchLevel();

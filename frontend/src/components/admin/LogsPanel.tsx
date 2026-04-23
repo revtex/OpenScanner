@@ -346,7 +346,7 @@ export default function LogsPanel() {
     setToDate(fmt(now));
   }, []);
 
-  const rows = logs ?? [];
+  const rows = useMemo(() => logs ?? [], [logs]);
 
   const counts = useMemo(() => {
     const m = { debug: 0, info: 0, warn: 0, error: 0 };

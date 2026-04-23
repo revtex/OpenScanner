@@ -179,7 +179,6 @@ function Sparkline({
           rx={2}
           style={{
             animation: "radar-sweep 8s linear infinite",
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ["--sweep-width" as string]: `${W}px`,
           }}
         />
@@ -207,7 +206,7 @@ export default function ActivityPanel() {
   const chartLoading = isLoading;
   const topLoading = isLoading;
 
-  const buckets = chart?.buckets ?? [];
+  const buckets = useMemo(() => chart?.buckets ?? [], [chart]);
   const peakBucket = useMemo(
     () =>
       buckets.reduce(

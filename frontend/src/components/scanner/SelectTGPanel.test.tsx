@@ -126,7 +126,7 @@ function clickGroupToggle(
   });
   const row = headerButton.closest("div");
   const toggleButton = row?.querySelector(
-    `button[aria-label=\"${actionLabel}\"]`,
+    `button[aria-label="${actionLabel}"]`,
   ) as HTMLButtonElement | null;
   expect(toggleButton).toBeTruthy();
   fireEvent.click(toggleButton!);

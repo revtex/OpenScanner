@@ -209,7 +209,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
   >({});
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -242,7 +242,10 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
   }, [heldTG, heldSystem, systems]);
 
   // Has any timed avoids? Drive 1-second timer only when needed + panel open
-  const hasTimedAvoids = avoidList.some((a) => a.expiresAt > 0);
+  const hasTimedAvoids = useMemo(
+    () => avoidList.some((a) => a.expiresAt > 0),
+    [avoidList],
+  );
   useEffect(() => {
     if (!isOpen || !hasTimedAvoids) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -377,7 +380,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
         }
       }
     }
-    setExpandedSections(expanded);
+    queueMicrotask(() => setExpandedSections(expanded));
   }, [searchLower, activeTab, groupMap, tagMap, systems, matchesSection]);
 
   const toggleExpand = useCallback((key: string) => {
@@ -399,7 +402,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
   // Reset search when closing
   useEffect(() => {
     if (!isOpen) {
-      setSearch("");
+      queueMicrotask(() => setSearch(""));
     }
   }, [isOpen]);
 
