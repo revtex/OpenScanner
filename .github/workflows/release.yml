@@ -97,8 +97,12 @@ jobs:
           li { margin: 3pt 0; }
           li > pre, li > p > pre { margin-left: 0; }
           code { font-family: "DejaVu Sans Mono", monospace; font-size: 9.5pt; background: #e2e8f0; color: #0f172a; padding: 1pt 4pt; border-radius: 3pt; }
-          pre { font-family: "DejaVu Sans Mono", monospace; font-size: 10pt; line-height: 1.45; background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-left: 3pt solid #0ea5e9; padding: 9pt 12pt; border-radius: 4pt; margin: 8pt 0; white-space: pre-wrap; word-wrap: break-word; page-break-inside: avoid; }
+          pre { font-family: "DejaVu Sans Mono", monospace; font-size: 10pt; line-height: 1.45; background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; border-left: 3pt solid #0ea5e9; padding: 9pt 12pt; border-radius: 4pt; margin: 8pt 0; white-space: pre-wrap; overflow-wrap: anywhere; page-break-inside: avoid; }
           pre code { font-size: inherit; background: transparent; color: inherit; padding: 0; border-radius: 0; }
+          /* Neutralise pandoc's skylighting hanging-indent: padding-left:5em without working text-indent pushes every line right in weasyprint. */
+          pre > code.sourceCode { white-space: pre-wrap; overflow-wrap: anywhere; }
+          pre > code.sourceCode > span { text-indent: 0 !important; padding-left: 0 !important; }
+          pre > code.sourceCode > span > a[aria-hidden="true"] { display: none; }
           a { color: #0369a1; text-decoration: none; }
           table { border-collapse: collapse; width: 100%; margin: 10pt 0; font-size: 10pt; }
           th, td { border: 1px solid #cbd5e1; padding: 5pt 8pt; text-align: left; vertical-align: top; }

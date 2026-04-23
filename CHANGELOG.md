@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recorder) as styled PDFs, and the same PDFs are attached to the
   GitHub Release as standalone downloads.
 
+### Fixed
+
+- PDF user guides rendered code blocks with ~50pt of phantom left
+  padding and let long lines overflow the right margin. Pandoc's
+  built-in skylighting CSS is now neutralised so code aligns with the
+  block's left edge and wraps cleanly.
+
 ## [1.0.0] — 2026-04-23
 
 Initial public release. OpenScanner is a ground-up reimplementation of
