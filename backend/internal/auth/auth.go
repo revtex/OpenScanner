@@ -146,7 +146,9 @@ func InitJWTSecret(ctx context.Context, loader jwtSecretLoader, encryptionKey st
 		}
 		stored = enc
 	} else {
-		slog.Warn("auth: no encryption key configured — JWT secret will be stored in plaintext")
+		slog.Warn("auth: no encryption key configured — JWT secret will be stored in plaintext",
+			"impact", "anyone with read access to the database file can forge admin tokens",
+			"fix", "set OPENSCANNER_ENCRYPTION_KEY, or provide OPENSCANNER_JWT_SECRET to bypass DB storage entirely")
 	}
 	if err := loader.Upsert(ctx, JWTSecretKeyName, stored); err != nil {
 		return fmt.Errorf("auth: persist JWT secret: %w", err)

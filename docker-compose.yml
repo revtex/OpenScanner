@@ -23,16 +23,16 @@ services:
       # Option B — automatic Let's Encrypt:
       # - OPENSCANNER_SSL_AUTO_CERT=scanner.example.com
 
-      ## Secrets encryption (AES-256-GCM)
-      # Generate a key:  openssl rand -hex 32
-      # - OPENSCANNER_ENCRYPTION_KEY=your-key-here
-      # Or read from a Docker secret (chmod 600 the source file):
-      # - OPENSCANNER_ENCRYPTION_KEY_FILE=/run/secrets/encryption_key
+      ## Secrets encryption (AES-256-GCM) — recommended
+      # Put the key in a .env file next to this docker-compose.yml:
+      #   echo "OPENSCANNER_ENCRYPTION_KEY=$(openssl rand -hex 32)" > .env
+      #   chmod 600 .env
+      # Compose auto-loads .env and substitutes ${OPENSCANNER_ENCRYPTION_KEY}.
+      # Remember to add .env to .gitignore.
+      - OPENSCANNER_ENCRYPTION_KEY=${OPENSCANNER_ENCRYPTION_KEY:-}
 
       ## Admin password reset (remove after first startup)
       # - OPENSCANNER_ADMIN_PASSWORD=new-password
-    # secrets:
-    #   - encryption_key
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3022/api/health"]
       interval: 30s
@@ -112,7 +112,3 @@ services:
 
 volumes:
   whisper-data:
-
-# secrets:
-#   encryption_key:
-#     file: ./encryption_key.txt

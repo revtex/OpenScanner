@@ -1063,6 +1063,15 @@ func printStartupBanner(d startupBannerData) {
 		yn(d.FDKAAC),
 		yn(d.Whisper),
 	)
+
+	if !d.EncryptionAtRest {
+		fmt.Fprintf(os.Stdout,
+			"  ⚠ WARNING: encryption at rest is disabled — the JWT signing secret and\n"+
+				"    downstream API keys are stored in plaintext in the database. Anyone\n"+
+				"    with read access to the DB file can forge admin tokens.\n"+
+				"    Fix: set OPENSCANNER_ENCRYPTION_KEY (or --encryption-key) to a 32-byte\n"+
+				"    random value. See docs/deployment-guide.md#secrets-encryption.\n\n")
+	}
 }
 
 // consumeTranscriptionResults reads completed transcription jobs, stores them
@@ -1156,7 +1165,9 @@ func migrateSecrets(ctx context.Context, queries *db.Queries, sqlDB *sql.DB, enc
 				return fmt.Errorf("downstream %d API key is encrypted but no encryption key is configured — set --encryption-key or OPENSCANNER_ENCRYPTION_KEY", ds.ID)
 			}
 		}
-		slog.Warn("no encryption key configured — secrets stored unencrypted in database")
+		slog.Warn("no encryption key configured — secrets stored unencrypted in database",
+			"impact", "JWT signing secret and downstream API keys are stored in plaintext; anyone with read access to the SQLite file can forge admin tokens",
+			"fix", "set OPENSCANNER_ENCRYPTION_KEY (or --encryption-key) to a 32-byte random value; see docs/deployment-guide.md#secrets-encryption")
 		return nil
 	}
 
