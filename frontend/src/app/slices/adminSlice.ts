@@ -7,7 +7,13 @@ const adminApi = api.injectEndpoints({
   endpoints: (builder) => ({
     // ── Import (multipart file uploads — cannot use WebSocket) ──
     importTalkgroups: builder.mutation<
-      { inserted: number; updated: number; skipped: number },
+      {
+        inserted: number;
+        updated: number;
+        skipped: number;
+        failed?: number;
+        message?: string;
+      },
       FormData
     >({
       query: (body) => ({
@@ -18,7 +24,12 @@ const adminApi = api.injectEndpoints({
       invalidatesTags: ["Talkgroups"],
     }),
     importUnits: builder.mutation<
-      { inserted: number; updated: number; skipped: number },
+      {
+        inserted: number;
+        updated: number;
+        skipped: number;
+        failed?: number;
+      },
       FormData
     >({
       query: (body) => ({

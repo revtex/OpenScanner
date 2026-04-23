@@ -71,8 +71,19 @@ export default function ToolsPanel() {
     formData.append("mode", tgImportMode);
     try {
       const result = await importTalkgroups(formData).unwrap();
-      const msg = `Talkgroups imported: ${result.inserted} inserted, ${result.updated} updated, ${result.skipped} skipped`;
-      showToast(msg, "success");
+      const failed = result.failed ?? 0;
+      const parts = [
+        `${result.inserted} inserted`,
+        `${result.updated} updated`,
+        `${result.skipped} skipped`,
+      ];
+      if (failed > 0) parts.push(`${failed} failed`);
+      const msg = result.message
+        ? `Talkgroups: ${result.message}`
+        : `Talkgroups imported: ${parts.join(", ")}`;
+      const tone =
+        result.inserted + result.updated === 0 ? "error" : "success";
+      showToast(msg, tone);
       if (tgFileRef.current) tgFileRef.current.value = "";
     } catch {
       showToast("Failed to import talkgroups");
@@ -92,8 +103,16 @@ export default function ToolsPanel() {
     formData.append("mode", unitImportMode);
     try {
       const result = await importUnits(formData).unwrap();
-      const msg = `Units imported: ${result.inserted} inserted, ${result.updated} updated, ${result.skipped} skipped`;
-      showToast(msg, "success");
+      const failed = result.failed ?? 0;
+      const parts = [
+        `${result.inserted} inserted`,
+        `${result.updated} updated`,
+        `${result.skipped} skipped`,
+      ];
+      if (failed > 0) parts.push(`${failed} failed`);
+      const tone =
+        result.inserted + result.updated === 0 ? "error" : "success";
+      showToast(`Units imported: ${parts.join(", ")}`, tone);
       if (unitFileRef.current) unitFileRef.current.value = "";
     } catch {
       showToast("Failed to import units");

@@ -159,7 +159,11 @@ func (h *AdminHandler) ImportTalkgroups(c *gin.Context) {
 	for {
 		record, err := reader.Read()
 		if errors.Is(err, io.EOF) {
-			c.JSON(http.StatusOK, gin.H{"inserted": 0, "updated": 0, "skipped": 0})
+			slog.Warn("talkgroup import: file is empty", "system_id", systemID)
+			c.JSON(http.StatusOK, gin.H{
+				"inserted": 0, "updated": 0, "skipped": 0, "failed": 0,
+				"message": "file is empty",
+			})
 			return
 		}
 		if err != nil {
@@ -178,13 +182,24 @@ func (h *AdminHandler) ImportTalkgroups(c *gin.Context) {
 		break
 	}
 
-	var inserted, updated, skipped int
+	if columns.talkgroupID < 0 {
+		slog.Warn("talkgroup import: no talkgroup_id column detected",
+			"system_id", systemID)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "CSV header has no talkgroup_id / dec / decimal column; " +
+				"cannot import without knowing which column holds the talkgroup ID",
+		})
+		return
+	}
+
+	var inserted, updated, skipped, failed int
 
 	processRow := func(record []string) error {
 		tgIDStr := col(record, columns.talkgroupID)
 		tgID, err := strconv.ParseInt(tgIDStr, 10, 64)
 		if err != nil {
-			return nil //nolint:nilerr // invalid talkgroup_id: skip row, not a fatal error
+			failed++
+			return nil //nolint:nilerr // invalid talkgroup_id: count and skip
 		}
 
 		// Check if talkgroup already exists.
@@ -290,11 +305,12 @@ func (h *AdminHandler) ImportTalkgroups(c *gin.Context) {
 	}
 
 	slog.Info("talkgroups imported", "system_id", systemID,
-		"inserted", inserted, "updated", updated, "skipped", skipped)
+		"inserted", inserted, "updated", updated, "skipped", skipped, "failed", failed)
 	c.JSON(http.StatusOK, gin.H{
 		"inserted": inserted,
 		"updated":  updated,
 		"skipped":  skipped,
+		"failed":   failed,
 	})
 }
 
@@ -351,7 +367,7 @@ func (h *AdminHandler) ImportUnits(c *gin.Context) {
 	reader.FieldsPerRecord = -1
 	reader.TrimLeadingSpace = true
 
-	var inserted, updated, skipped int
+	var inserted, updated, skipped, failed int
 	headerSkipped := false
 	for {
 		record, err := reader.Read()
@@ -379,6 +395,7 @@ func (h *AdminHandler) ImportUnits(c *gin.Context) {
 
 		unitID, err := strconv.ParseInt(col0, 10, 64)
 		if err != nil {
+			failed++
 			continue
 		}
 
@@ -428,10 +445,11 @@ func (h *AdminHandler) ImportUnits(c *gin.Context) {
 	}
 
 	slog.Info("units imported", "system_id", systemID,
-		"inserted", inserted, "updated", updated, "skipped", skipped)
+		"inserted", inserted, "updated", updated, "skipped", skipped, "failed", failed)
 	c.JSON(http.StatusOK, gin.H{
 		"inserted": inserted,
 		"updated":  updated,
 		"skipped":  skipped,
+		"failed":   failed,
 	})
 }
