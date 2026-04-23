@@ -306,7 +306,7 @@ export default function ToolsPanel() {
         <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
           <Upload className="w-4 h-4" /> Import
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Import Talkgroups */}
           <div className="card bg-base-200">
             <div className="card-body gap-3">
@@ -400,6 +400,8 @@ export default function ToolsPanel() {
             </div>
           </div>
 
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mt-4">
           {/* Import Groups */}
           <div className="card bg-base-200">
             <div className="card-body gap-3">
