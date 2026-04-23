@@ -50,3 +50,5 @@ Thumbs.db
 /docs/plans/
 
 /systems-config/
+# Local preview (not meant to be committed)
+/tmp-pdf-preview/
