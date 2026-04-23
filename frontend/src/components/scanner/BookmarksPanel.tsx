@@ -3,6 +3,7 @@ import { useGetBookmarkCallsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { useAppSelector } from "@/app/store";
 import { selectToken } from "@/app/slices/authSlice";
 import { audioPlayer } from "@/services/audioPlayer";
+import { ShareCallButton } from "@/components/scanner/ShareCallButton";
 import { X, Play, Download, Star, ChevronDown } from "lucide-react";
 import type { Call } from "@/types";
 
@@ -74,6 +75,9 @@ export default function BookmarksPanel({
   onClose,
 }: BookmarksPanelProps) {
   const token = useAppSelector(selectToken);
+  const shareableLinks = useAppSelector(
+    (s) => s.scanner.config?.shareableLinks ?? false,
+  );
 
   const { data: bookmarkData, isLoading } = useGetBookmarkCallsQuery(
     undefined,
@@ -271,6 +275,7 @@ export default function BookmarksPanel({
                   >
                     <Star className="w-3 h-3 fill-current" />
                   </button>
+                  {shareableLinks && <ShareCallButton callId={call.id} />}
                 </div>
               </div>
             </div>

@@ -22,7 +22,12 @@ vi.mock("@/app/slices/authSlice", () => ({
 }));
 
 vi.mock("@/app/store", () => ({
-  useAppSelector: (selector: (state: unknown) => unknown) => selector({}),
+  useAppSelector: (selector: (state: unknown) => unknown) =>
+    selector({ scanner: { config: null } }),
+}));
+
+vi.mock("@/app/slices/shareSlice", () => ({
+  useShareCallMutation: () => [vi.fn(), {}],
 }));
 
 import BookmarksPanel from "@/components/scanner/BookmarksPanel";

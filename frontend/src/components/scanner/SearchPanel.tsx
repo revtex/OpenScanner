@@ -13,6 +13,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { useAppSelector, useAppDispatch } from "@/app/store";
+import { ShareCallButton } from "@/components/scanner/ShareCallButton";
 import {
   useSearchCallsQuery,
   type CallSearchParams,
@@ -165,6 +166,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
   const config = useAppSelector((s) => s.scanner.config);
   const token = useAppSelector(selectToken);
   const isAuthenticated = !!token;
+  const shareableLinks = config?.shareableLinks ?? false;
 
   const { data: bookmarkData } = useGetBookmarkIDsQuery(undefined, {
     skip: !isAuthenticated,
@@ -1042,6 +1044,9 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                               }`}
                             />
                           </button>
+                        )}
+                        {isAuthenticated && shareableLinks && (
+                          <ShareCallButton callId={call.id} />
                         )}
                       </div>
                     </div>
