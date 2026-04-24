@@ -311,19 +311,31 @@ func (h *CallHandler) GetSharedCallAudio(c *gin.Context) {
 		return
 	}
 
-	fullPath := filepath.Join(recordingsDir, relPath)
-	if rel, relErr := filepath.Rel(recordingsDir, fullPath); relErr != nil || strings.HasPrefix(rel, "..") {
-		slog.Warn("audio path escaped recordings dir", "token", token, "path", sl.AudioPath)
-		c.JSON(http.StatusNotFound, gin.H{"error": "audio not found"})
+	// Open the file scoped to recordingsDir via os.Root so traversal and
+	// symlink escapes are impossible regardless of what's in the DB row.
+	root, err := os.OpenRoot(recordingsDir)
+	if err != nil {
+		slog.Error("failed to open recordings root", "token", token, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
+	defer root.Close()
 
-	if _, err := os.Stat(fullPath); err != nil {
+	f, err := root.Open(relPath)
+	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "audio file not found"})
 			return
 		}
-		slog.Error("failed to stat shared call audio", "token", token, "path", fullPath, "error", err)
+		slog.Error("failed to open shared call audio", "token", token, "path", relPath, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	defer f.Close()
+
+	fi, err := f.Stat()
+	if err != nil {
+		slog.Error("failed to stat shared call audio", "token", token, "path", relPath, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
@@ -339,7 +351,7 @@ func (h *CallHandler) GetSharedCallAudio(c *gin.Context) {
 
 	c.Header("Content-Disposition", contentDisposition("inline", filename))
 	c.Header("Content-Type", contentType)
-	c.File(fullPath)
+	http.ServeContent(c.Writer, c.Request, filename, fi.ModTime(), f)
 }
 
 // GetCallShare handles GET /api/calls/:id/share (legacy compatibility).

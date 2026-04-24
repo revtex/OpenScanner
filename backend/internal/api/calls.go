@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -708,20 +709,31 @@ func (h *CallHandler) PostCallUpload(c *gin.Context) {
 	// Broadcast to WebSocket listeners.
 	if h.hub != nil {
 		// Read audio file for inline embedding in the CAL JSON frame.
+		// Use os.Root so the read is scoped to RecordingsDir and cannot
+		// follow a traversal sequence or symlink out of the directory,
+		// regardless of what relPath contains.
 		const maxBroadcastAudioBytes = 20 << 20 // 20 MiB
 		var audioBytes []byte
-		audioFullPath := filepath.Join(h.processor.RecordingsDir(), relPath)
-		if rel, pathErr := filepath.Rel(h.processor.RecordingsDir(), audioFullPath); pathErr != nil || strings.HasPrefix(rel, "..") {
-			slog.Error("audio path escapes base directory", "path", relPath)
-		} else if fi, statErr := os.Stat(audioFullPath); statErr != nil {
-			slog.Warn("failed to stat audio for WS broadcast", "path", rel, "error", statErr)
-		} else if fi.Size() > maxBroadcastAudioBytes {
-			slog.Warn("audio file too large for inline WS broadcast, sending metadata only",
-				"path", rel, "size_bytes", fi.Size(), "max_bytes", maxBroadcastAudioBytes)
-		} else if readBytes, readErr := os.ReadFile(audioFullPath); readErr != nil {
-			slog.Warn("failed to read audio for WS broadcast", "path", rel, "error", readErr)
+		if root, rootErr := os.OpenRoot(h.processor.RecordingsDir()); rootErr != nil {
+			slog.Warn("failed to open recordings root for WS broadcast", "error", rootErr)
 		} else {
-			audioBytes = readBytes
+			if fi, statErr := root.Stat(relPath); statErr != nil {
+				slog.Warn("failed to stat audio for WS broadcast", "path", relPath, "error", statErr)
+			} else if fi.Size() > maxBroadcastAudioBytes {
+				slog.Warn("audio file too large for inline WS broadcast, sending metadata only",
+					"path", relPath, "size_bytes", fi.Size(), "max_bytes", maxBroadcastAudioBytes)
+			} else if f, openErr := root.Open(relPath); openErr != nil {
+				slog.Warn("failed to open audio for WS broadcast", "path", relPath, "error", openErr)
+			} else {
+				readBytes, readErr := io.ReadAll(io.LimitReader(f, maxBroadcastAudioBytes))
+				f.Close()
+				if readErr != nil {
+					slog.Warn("failed to read audio for WS broadcast", "path", relPath, "error", readErr)
+				} else {
+					audioBytes = readBytes
+				}
+			}
+			root.Close()
 		}
 
 		calPayload := map[string]any{
@@ -927,19 +939,31 @@ func (h *CallHandler) GetCallAudio(c *gin.Context) {
 		return
 	}
 
-	fullPath := filepath.Join(recordingsDir, relPath)
-	if rel, relErr := filepath.Rel(recordingsDir, fullPath); relErr != nil || strings.HasPrefix(rel, "..") {
-		slog.Warn("audio path escaped recordings dir", "id", id, "path", call.AudioPath)
-		c.JSON(http.StatusNotFound, gin.H{"error": "audio not found"})
+	// Open the file scoped to recordingsDir via os.Root so traversal and
+	// symlink escapes are impossible regardless of what's in the DB row.
+	root, err := os.OpenRoot(recordingsDir)
+	if err != nil {
+		slog.Error("failed to open recordings root", "id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
+	defer root.Close()
 
-	if _, err := os.Stat(fullPath); err != nil {
+	f, err := root.Open(relPath)
+	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "audio file not found"})
 			return
 		}
-		slog.Error("failed to stat call audio file", "id", id, "path", fullPath, "error", err)
+		slog.Error("failed to open call audio file", "id", id, "path", relPath, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	defer f.Close()
+
+	fi, err := f.Stat()
+	if err != nil {
+		slog.Error("failed to stat call audio file", "id", id, "path", relPath, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
@@ -955,7 +979,7 @@ func (h *CallHandler) GetCallAudio(c *gin.Context) {
 
 	c.Header("Content-Disposition", contentDisposition("inline", filename))
 	c.Header("Content-Type", contentType)
-	c.File(fullPath)
+	http.ServeContent(c.Writer, c.Request, filename, fi.ModTime(), f)
 }
 
 // CallSearchResponse is the response for GET /api/calls.

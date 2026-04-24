@@ -3,6 +3,7 @@ import { useGetBookmarkCallsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { useAppSelector } from "@/app/store";
 import { selectToken } from "@/app/slices/authSlice";
 import { audioPlayer } from "@/services/audioPlayer";
+import { sanitizeDownloadFilename } from "@/services/downloadFilename";
 import { ShareCallButton } from "@/components/scanner/ShareCallButton";
 import { X, Play, Download, Star, ChevronDown } from "lucide-react";
 import type { Call } from "@/types";
@@ -137,7 +138,7 @@ export default function BookmarksPanel({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = bc.audioName || `call-${bc.id}.mp3`;
+      a.download = sanitizeDownloadFilename(bc.audioName, `call-${bc.id}.mp3`);
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

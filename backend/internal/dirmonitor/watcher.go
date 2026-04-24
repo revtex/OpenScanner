@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -681,20 +682,42 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 		// on disk; the client will fetch them via HTTP.
 		const maxBroadcastAudioBytes = 20 << 20 // 20 MiB
 		var audioBytes []byte
-		audioAbsPath := filepath.Join(s.processor.RecordingsDir(), relPath)
-		if rel, pathErr := filepath.Rel(s.processor.RecordingsDir(), audioAbsPath); pathErr != nil || strings.HasPrefix(rel, "..") {
-			slog.Error("dirmonitor: audio path escapes base directory", "path", relPath)
-		} else if fi, statErr := os.Stat(audioAbsPath); statErr != nil {
-			slog.Warn("dirmonitor: failed to stat audio for WS broadcast",
-				"path", relPath, "error", statErr)
-		} else if fi.Size() > maxBroadcastAudioBytes {
-			slog.Warn("dirmonitor: audio file too large for inline WS broadcast, sending metadata only",
-				"path", relPath, "size_bytes", fi.Size(), "max_bytes", maxBroadcastAudioBytes)
-		} else if readBytes, readErr := os.ReadFile(audioAbsPath); readErr != nil {
-			slog.Warn("dirmonitor: failed to read audio for WS broadcast",
-				"path", relPath, "error", readErr)
+		// Open the recordings directory as an os.Root so the audio read is
+		// structurally confined regardless of what relPath looks like. This
+		// narrows the path for static taint analysis on top of the existing
+		// filepath.Rel escape check.
+		if root, rootErr := os.OpenRoot(s.processor.RecordingsDir()); rootErr != nil {
+			slog.Warn("dirmonitor: failed to open recordings root for WS broadcast",
+				"error", rootErr)
 		} else {
-			audioBytes = readBytes
+			func() {
+				defer root.Close()
+				f, openErr := root.Open(relPath)
+				if openErr != nil {
+					slog.Warn("dirmonitor: failed to open audio for WS broadcast",
+						"path", relPath, "error", openErr)
+					return
+				}
+				defer f.Close()
+				fi, statErr := f.Stat()
+				if statErr != nil {
+					slog.Warn("dirmonitor: failed to stat audio for WS broadcast",
+						"path", relPath, "error", statErr)
+					return
+				}
+				if fi.Size() > maxBroadcastAudioBytes {
+					slog.Warn("dirmonitor: audio file too large for inline WS broadcast, sending metadata only",
+						"path", relPath, "size_bytes", fi.Size(), "max_bytes", maxBroadcastAudioBytes)
+					return
+				}
+				readBytes, readErr := io.ReadAll(io.LimitReader(f, maxBroadcastAudioBytes))
+				if readErr != nil {
+					slog.Warn("dirmonitor: failed to read audio for WS broadcast",
+						"path", relPath, "error", readErr)
+					return
+				}
+				audioBytes = readBytes
+			}()
 		}
 
 		calPayload := map[string]any{
@@ -794,27 +817,37 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 
 	// ── Delete source file if configured ────────────────────────────────────
 	if dw.DeleteAfter == 1 {
-		cleanPath := filepath.Clean(parsed.AudioFilePath)
-		watchedReal, _ := filepath.EvalSymlinks(filepath.Clean(dw.Directory))
-		fileReal, _ := filepath.EvalSymlinks(cleanPath)
-		if rel, err := filepath.Rel(watchedReal, fileReal); err != nil || strings.HasPrefix(rel, "..") {
-			slog.Warn("dirmonitor: refusing to delete file outside watched directory",
-				"file", parsed.AudioFilePath, "dir", dw.Directory)
-		} else if err := os.Remove(fileReal); err != nil && !os.IsNotExist(err) {
-			slog.Warn("dirmonitor: failed to delete source file",
-				"file", rel, "error", err)
+		// Open the watched directory as an os.Root so both deletes are
+		// structurally confined to it. This is defence-in-depth on top of
+		// the existing symlink-resolve + Rel checks and narrows the path
+		// for static taint analysis.
+		root, rootErr := os.OpenRoot(filepath.Clean(dw.Directory))
+		if rootErr != nil {
+			slog.Warn("dirmonitor: failed to open watched directory root",
+				"dir", dw.Directory, "error", rootErr)
+			return nil
 		}
-		// Also clean up sidecar file (e.g. Trunk Recorder .json companion).
-		if parsed.SidecarPath != "" {
-			scClean := filepath.Clean(parsed.SidecarPath)
-			scReal, _ := filepath.EvalSymlinks(scClean)
-			if rel, err := filepath.Rel(watchedReal, scReal); err != nil || strings.HasPrefix(rel, "..") {
-				slog.Warn("dirmonitor: refusing to delete sidecar outside watched directory",
-					"file", parsed.SidecarPath, "dir", dw.Directory)
-			} else if err := os.Remove(scReal); err != nil && !os.IsNotExist(err) {
-				slog.Warn("dirmonitor: failed to delete sidecar file",
+		defer root.Close()
+
+		watchedReal, _ := filepath.EvalSymlinks(filepath.Clean(dw.Directory))
+
+		removeWithinRoot := func(absPath, label string) {
+			real, _ := filepath.EvalSymlinks(filepath.Clean(absPath))
+			rel, err := filepath.Rel(watchedReal, real)
+			if err != nil || strings.HasPrefix(rel, "..") || rel == "." {
+				slog.Warn("dirmonitor: refusing to delete "+label+" outside watched directory",
+					"file", absPath, "dir", dw.Directory)
+				return
+			}
+			if err := root.Remove(rel); err != nil && !os.IsNotExist(err) {
+				slog.Warn("dirmonitor: failed to delete "+label,
 					"file", rel, "error", err)
 			}
+		}
+
+		removeWithinRoot(parsed.AudioFilePath, "source file")
+		if parsed.SidecarPath != "" {
+			removeWithinRoot(parsed.SidecarPath, "sidecar file")
 		}
 	}
 

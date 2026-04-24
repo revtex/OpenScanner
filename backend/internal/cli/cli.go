@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -87,20 +88,52 @@ func nonFlagArgs() []string {
 }
 
 // resolveServerURL returns the server URL from --server flag, env var, or default.
+// The returned URL is validated: it must parse, have an http/https scheme, and
+// have a non-empty host. On failure the process exits with a clear message so
+// no tainted string ever reaches net/http.
 func resolveServerURL() string {
-	// Check for --server flag in os.Args.
+	raw := "http://localhost:3022"
 	for i, arg := range os.Args[1:] {
 		if arg == "--server" && i+2 < len(os.Args) {
-			return strings.TrimRight(os.Args[i+2], "/")
+			raw = os.Args[i+2]
+			break
 		}
 		if strings.HasPrefix(arg, "--server=") {
-			return strings.TrimRight(strings.TrimPrefix(arg, "--server="), "/")
+			raw = strings.TrimPrefix(arg, "--server=")
+			break
 		}
 	}
-	if v := os.Getenv("OPENSCANNER_SERVER"); v != "" {
-		return strings.TrimRight(v, "/")
+	if raw == "http://localhost:3022" {
+		if v := os.Getenv("OPENSCANNER_SERVER"); v != "" {
+			raw = v
+		}
 	}
-	return "http://localhost:3022"
+	raw = strings.TrimRight(raw, "/")
+	return validateServerURL(raw)
+}
+
+// validateServerURL ensures the input is a syntactically valid http(s) URL
+// with a host. It exits the process on failure so downstream code can treat
+// the returned value as sanitised.
+func validateServerURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "openscanner: invalid --server URL %q: %v\n", raw, err)
+		os.Exit(2)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		fmt.Fprintf(os.Stderr, "openscanner: --server URL must use http or https, got %q\n", u.Scheme)
+		os.Exit(2)
+	}
+	if u.Host == "" {
+		fmt.Fprintf(os.Stderr, "openscanner: --server URL %q is missing a host\n", raw)
+		os.Exit(2)
+	}
+	// Rebuild the URL from the parsed components to strip any userinfo,
+	// fragments, or other unexpected parts. Only scheme + host + optional
+	// base path survive, which gives a clean prefix for later concatenation.
+	clean := &url.URL{Scheme: u.Scheme, Host: u.Host, Path: strings.TrimRight(u.Path, "/")}
+	return clean.String()
 }
 
 // tokenPath returns the full path to the token file.

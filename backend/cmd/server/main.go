@@ -454,52 +454,98 @@ func installBinaryTo(sourcePath, targetPath string) error {
 		return nil
 	}
 
-	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+	absSource, err := filepath.Abs(filepath.Clean(sourcePath))
+	if err != nil {
+		return fmt.Errorf("resolve source path: %w", err)
+	}
+	absTarget, err := filepath.Abs(filepath.Clean(targetPath))
+	if err != nil {
+		return fmt.Errorf("resolve target path: %w", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(absTarget), 0o755); err != nil {
 		return err
 	}
 
 	// On Windows the running binary is locked and cannot be renamed/moved.
 	// Use copy everywhere for consistency; the source stays in place.
-	if err := copyBinary(sourcePath, targetPath); err != nil {
+	if err := copyBinary(absSource, absTarget); err != nil {
 		return err
 	}
 
 	// Try to remove the source after a successful copy; ignore errors
 	// (e.g. Windows locks, read-only mounts, same filesystem with hardlinks).
-	_ = os.Remove(sourcePath)
+	// absSource is validated inside copyBinary (must be a regular file).
+	_ = os.Remove(absSource)
 	return nil
 }
 
 func copyBinary(sourcePath, targetPath string) error {
-	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+	// Validate the source path before opening: resolve it to an absolute
+	// cleaned form and ensure it's a regular file (not a symlink,
+	// directory, device, pipe, etc.). The path comes from CLI arguments,
+	// so the operator has full authority here, but the validation
+	// short-circuits obvious mistakes (e.g. pointing at /dev/zero or a
+	// directory) and satisfies static analysis taint tracking.
+	absSource, err := filepath.Abs(filepath.Clean(sourcePath))
+	if err != nil {
+		return fmt.Errorf("resolve source path: %w", err)
+	}
+	fi, err := os.Lstat(absSource)
+	if err != nil {
+		return fmt.Errorf("stat source binary: %w", err)
+	}
+	if !fi.Mode().IsRegular() {
+		return fmt.Errorf("source binary is not a regular file: %s", absSource)
+	}
+
+	// Normalise the destination path too. This constrains the temp file
+	// we create inside Dir(targetPath) and the subsequent Rename/Remove
+	// to a canonical location.
+	absTarget, err := filepath.Abs(filepath.Clean(targetPath))
+	if err != nil {
+		return fmt.Errorf("resolve target path: %w", err)
+	}
+	targetDir := filepath.Dir(absTarget)
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		return err
 	}
 
-	in, err := os.Open(sourcePath)
+	in, err := os.Open(absSource)
 	if err != nil {
 		return err
 	}
 	defer in.Close()
 
-	tmpFile, err := os.CreateTemp(filepath.Dir(targetPath), ".openscanner-bin-*")
+	tmpFile, err := os.CreateTemp(targetDir, ".openscanner-bin-*")
 	if err != nil {
 		return err
 	}
 	tmpName := tmpFile.Name()
+	// Guard every cleanup call behind a check that the temp file still
+	// lives under the validated targetDir. CreateTemp returns a path we
+	// constructed, so this is defence-in-depth against any future change
+	// and a narrowing signal for static taint analysis.
+	removeTmp := func() {
+		if rel, relErr := filepath.Rel(targetDir, tmpName); relErr != nil || strings.HasPrefix(rel, "..") || rel == "." {
+			return
+		}
+		_ = os.Remove(tmpName)
+	}
 
 	if _, err := io.Copy(tmpFile, in); err != nil {
 		_ = tmpFile.Close()
-		_ = os.Remove(tmpName)
+		removeTmp()
 		return err
 	}
 	if err := tmpFile.Close(); err != nil {
-		_ = os.Remove(tmpName)
+		removeTmp()
 		return err
 	}
 	// Set executable permission; no-op on Windows.
 	_ = os.Chmod(tmpName, 0o755)
-	if err := os.Rename(tmpName, targetPath); err != nil {
-		_ = os.Remove(tmpName)
+	if err := os.Rename(tmpName, absTarget); err != nil {
+		removeTmp()
 		return err
 	}
 	return nil

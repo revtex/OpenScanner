@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] — 2026-04-24
+
+### Security
+
+- Call upload now reads audio back through `os.Root` when embedding it in
+  the WebSocket broadcast, ensuring the read is confined to the
+  recordings directory regardless of the stored path. Addresses a Snyk
+  path-traversal taint warning on `os.ReadFile`.
+- `GET /api/calls/:id/audio` now opens the recording through `os.Root`
+  and streams via `http.ServeContent` instead of letting `c.File` touch
+  a joined absolute path. Addresses a Snyk path-traversal taint warning
+  where the DB-stored `audio_path` reached `c.File` after only string
+  sanitisation.
+- `GET /api/shared/:token/audio` uses the same `os.Root` + `ServeContent`
+  pattern so the shared-link download path is also confined to the
+  recordings directory.
+- `openscanner upgrade --binary <path>` now resolves both the source and
+  destination paths to absolute cleaned form before any filesystem
+  operation, and rejects a source that isn't a regular file before
+  opening it. The operator already has full authority here, but the
+  validation short-circuits obvious mistakes (directories, device nodes,
+  broken symlinks) and addresses Snyk CLI-input path-traversal warnings
+  on `os.Open` and `os.Remove`.
+- Dirmonitor `delete_after=1` cleanup now deletes via `os.Root.Remove`
+  scoped to the watched directory. The existing symlink-resolve + `Rel`
+  escape check is retained as defence-in-depth; the structural root
+  bound ensures no file outside the watched directory can ever be
+  removed regardless of parser output. Addresses Snyk path-traversal
+  taint warnings on the dirmonitor cleanup path.
+- Dirmonitor ingest now reads the just-ingested audio back through
+  `os.Root` when embedding it in the WebSocket broadcast frame,
+  confining the read to the recordings directory. Addresses a Snyk
+  path-traversal taint warning on `os.ReadFile`.
+- The `openscanner` CLI now validates the `--server` /
+  `OPENSCANNER_SERVER` URL before it reaches `net/http`: the string
+  must parse, use an `http` or `https` scheme, and carry a non-empty
+  host. Userinfo and fragments are stripped. The CLI only ever talks to
+  a URL the operator supplied, but the explicit validation shuts down
+  Snyk SSRF taint warnings and turns typos into a clear error message.
+- The bookmarks download button now sanitises the server-supplied
+  `audioName` before assigning it to `<a download>` — path separators,
+  control characters, quote/angle-bracket characters, and leading dots
+  are stripped, and the result is capped at 200 chars. Addresses a Snyk
+  DOM-XSS taint warning and also yields safer filenames on Windows.
+- The search-panel download button uses the same `sanitizeDownloadFilename`
+  helper, extracted to `services/downloadFilename.ts` so both call sites
+  share one implementation. Addresses the same Snyk DOM-XSS finding for
+  `SearchPanel.tsx`.
+
 ## [1.1.1] — 2026-04-24
 
 ### Changed
