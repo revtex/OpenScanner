@@ -165,7 +165,12 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	}
 
 	// WebSocket endpoints.
-	r.GET("/ws", gin.WrapF(ws.HandleListenerWS(deps.Hub, deps.Queries)))
+	// /api/ws is the canonical OpenScanner listener route. /ws is a temporary
+	// compatibility alias that delegates to the same handler so existing
+	// rdio-scanner-shaped clients keep working during the legacy-API transition.
+	listenerWS := gin.WrapF(ws.HandleListenerWS(deps.Hub, deps.Queries))
+	r.GET("/api/ws", listenerWS)
+	r.GET("/ws", listenerWS)
 	r.GET("/api/admin/ws", gin.WrapF(ws.HandleAdminWS(deps.Hub, deps.Queries)))
 
 	// Serve embedded frontend (SPA mode).

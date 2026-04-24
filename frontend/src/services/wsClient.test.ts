@@ -109,7 +109,7 @@ describe("wsClient", () => {
     wsClient.connect(store.dispatch);
     expect(constructed).toHaveLength(1);
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    expect(constructed[0].url).toBe(`${proto}//${window.location.host}/ws`);
+    expect(constructed[0].url).toBe(`${proto}//${window.location.host}/api/ws`);
   });
 
   it("sends the auth token as a JSON array after onopen", () => {

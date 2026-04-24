@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Canonical `GET /api/ws` listener WebSocket route. The existing `GET /ws`
+  remains as a compatibility alias that delegates to the same handler;
+  retirement of the alias is tracked in the native-API design plan. The
+  frontend now connects to `/api/ws`, and the Vite dev proxy covers both
+  paths.
+
+### Changed
+
+- Deployment guide reverse-proxy instructions now list `/api/ws` alongside
+  `/ws` and `/api/admin/ws` as paths that need WebSocket-upgrade forwarding.
+
 ## [1.1.2] — 2026-04-24
 
 ### Security
