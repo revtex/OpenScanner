@@ -1,0 +1,131 @@
+// Tests for the WS admin request router — specifically the framing /
+// dispatch layer (unknown op → error envelope, known op → delegated to
+// admin.Operations). Business logic for each op is covered in
+// internal/admin's own test files.
+package ws
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"testing"
+
+	"github.com/openscanner/openscanner/internal/admin"
+	"github.com/openscanner/openscanner/internal/db"
+	_ "modernc.org/sqlite"
+)
+
+func TestAdminOpHandlers_CoversEveryWireOp(t *testing.T) {
+	// If a new admin op is added to admin.Operations but not wired into
+	// adminOpHandlers, the WS layer silently drops it. This sanity check
+	// catches that before it hits production.
+	sqlDB, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatalf("open DB: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	queries := db.New(sqlDB)
+
+	hub := NewHub(queries, "test")
+	c := &Client{hub: hub, userID: 1, isAdmin: true}
+
+	handlers := c.adminOpHandlers()
+
+	// The 58 ops expected on the wire. Keep this list sorted so diffs are
+	// readable when an op is intentionally added.
+	want := []string{
+		"activity.chart", "activity.stats", "activity.top-talkgroups",
+		"apikeys.create", "apikeys.delete", "apikeys.list", "apikeys.update",
+		"config.get", "config.update",
+		"dirmonitors.create", "dirmonitors.delete", "dirmonitors.list", "dirmonitors.update",
+		"downstreams.create", "downstreams.delete", "downstreams.list", "downstreams.update",
+		"export.config", "export.groups", "export.tags", "export.talkgroups", "export.units",
+		"fs.directories",
+		"groups.create", "groups.delete", "groups.list", "groups.update",
+		"import.config",
+		"logs.level", "logs.query",
+		"radioreference.apply",
+		"shared-links.delete", "shared-links.list",
+		"systems.create", "systems.delete", "systems.list", "systems.update",
+		"tags.create", "tags.delete", "tags.list", "tags.update",
+		"talkgroups.create", "talkgroups.delete", "talkgroups.list", "talkgroups.update",
+		"transcription.delete", "transcription.download", "transcription.models",
+		"transcription.stats", "transcription.status",
+		"units.create", "units.delete", "units.list", "units.update",
+		"users.create", "users.delete", "users.list", "users.update",
+		"webhooks.create", "webhooks.delete", "webhooks.list", "webhooks.update",
+	}
+	for _, op := range want {
+		if _, ok := handlers[op]; !ok {
+			t.Errorf("adminOpHandlers missing wire op %q", op)
+		}
+	}
+	if got := len(handlers); got != len(want) {
+		t.Errorf("adminOpHandlers has %d entries, want %d", got, len(want))
+	}
+}
+
+func TestHandleAdminRequest_UnknownOp_ReturnsErrorEnvelope(t *testing.T) {
+	sqlDB, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatalf("open DB: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	queries := db.New(sqlDB)
+	hub := NewHub(queries, "test")
+
+	// Capture anything the router tries to send.
+	sendCh := make(chan []byte, 1)
+	c := &Client{
+		hub:     hub,
+		userID:  1,
+		isAdmin: true,
+		send:    sendCh,
+	}
+
+	c.handleAdminRequest(context.Background(), adminRequest{ReqID: "r1", Op: "does.not.exist"})
+
+	select {
+	case msg := <-sendCh:
+		// Must be a valid ADM_RES error envelope referencing reqId "r1".
+		var frame []json.RawMessage
+		if err := json.Unmarshal(msg, &frame); err != nil {
+			t.Fatalf("response is not JSON array: %v", err)
+		}
+		var cmd string
+		if err := json.Unmarshal(frame[0], &cmd); err != nil || cmd != "ADM_RES" {
+			t.Fatalf("cmd = %q (err %v), want ADM_RES", cmd, err)
+		}
+		if !containsSub(string(msg), `"ok":false`) {
+			t.Errorf("expected error envelope ok:false; got %s", msg)
+		}
+		if !containsSub(string(msg), "unknown op") {
+			t.Errorf("expected 'unknown op' in error; got %s", msg)
+		}
+	default:
+		t.Fatal("no ADM_RES frame was sent")
+	}
+}
+
+func TestErrorString_DistinguishesUserAndInternal(t *testing.T) {
+	uerr := admin.UserError("bad input")
+	msg, isUser := errorString(uerr)
+	if !isUser || msg != "bad input" {
+		t.Errorf("UserError path: got (%q, %v), want (\"bad input\", true)", msg, isUser)
+	}
+
+	other := errors.New("boom")
+	msg, isUser = errorString(other)
+	if isUser || msg != "internal error" {
+		t.Errorf("internal path: got (%q, %v), want (\"internal error\", false)", msg, isUser)
+	}
+}
+
+func containsSub(s, sub string) bool {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
+}

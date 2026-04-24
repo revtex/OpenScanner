@@ -36,6 +36,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kardianos/service"
+	"github.com/openscanner/openscanner/internal/admin"
 	"github.com/openscanner/openscanner/internal/api"
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/auth"
@@ -1224,7 +1225,7 @@ func migrateSecrets(ctx context.Context, queries *db.Queries, sqlDB *sql.DB, enc
 	// Check for encrypted values with no key configured.
 	if encryptionKey == "" {
 		for _, s := range settings {
-			if ws.SensitiveSettingKeys[s.Key] && auth.IsEncrypted(s.Value) {
+			if admin.SensitiveSettingKeys[s.Key] && auth.IsEncrypted(s.Value) {
 				return fmt.Errorf("setting %q is encrypted but no encryption key is configured — set --encryption-key or OPENSCANNER_ENCRYPTION_KEY", s.Key)
 			}
 		}
@@ -1250,7 +1251,7 @@ func migrateSecrets(ctx context.Context, queries *db.Queries, sqlDB *sql.DB, enc
 	migrated := 0
 
 	for _, s := range settings {
-		if !ws.SensitiveSettingKeys[s.Key] {
+		if !admin.SensitiveSettingKeys[s.Key] {
 			continue
 		}
 		if s.Value == "" {
