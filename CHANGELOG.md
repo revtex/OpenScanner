@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] — 2026-04-24
+
 ### Changed
 
 - Docker images are now built for both `linux/amd64` and `linux/arm64`,
   so `docker pull` works on Apple Silicon, Raspberry Pi, and other
   arm64 hosts.
 - Docker image tagging no longer produces `sha-<short-sha>` tags on every
-  push. Published images now carry only semver (`1.1.0`, `1.1`, `latest`)
+  push. Published images now carry only semver (`1.1.1`, `1.1`, `latest`)
   and branch (`main`, `dev`) tags, so `ghcr.io/revtex/openscanner:dev` is
   the canonical pre-release channel.
 - New weekly `GHCR cleanup` workflow prunes leftover untagged and
