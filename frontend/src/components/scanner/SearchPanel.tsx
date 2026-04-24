@@ -37,6 +37,7 @@ import {
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { selectToken } from "@/app/slices/authSlice";
 import { audioPlayer } from "@/services/audioPlayer";
+import { sanitizeDownloadFilename } from "@/services/downloadFilename";
 import type { Call } from "@/types";
 
 interface SearchPanelProps {
@@ -540,7 +541,10 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = call.audioName || `call-${call.id}.mp3`;
+        a.download = sanitizeDownloadFilename(
+          call.audioName,
+          `call-${call.id}.mp3`,
+        );
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

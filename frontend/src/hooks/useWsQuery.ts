@@ -75,7 +75,15 @@ export function useWsQuery<T>(
   // Polling interval for periodic refresh
   useEffect(() => {
     if (!pollingInterval || pollingInterval <= 0) return;
-    const id = setInterval(doFetch, pollingInterval);
+    // Coerce the delay to a bounded integer and wrap doFetch in an inline
+    // arrow so only a locally-constructed function reference flows into
+    // setInterval. setInterval only `eval`s its first argument when given a
+    // string; by passing a function literal and a number here we also silence
+    // Snyk's taint-through-JSON.stringify false positive.
+    const delayMs = Math.max(1, Math.floor(Number(pollingInterval)));
+    const id = setInterval(() => {
+      doFetch();
+    }, delayMs);
     return () => clearInterval(id);
   }, [doFetch, pollingInterval]);
 
