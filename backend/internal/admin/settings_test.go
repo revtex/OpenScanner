@@ -1,14 +1,12 @@
-// Tests for the settings encryption round-trip in opConfigGet / opConfigUpdate.
+// Tests for the settings encryption round-trip in ConfigGet / ConfigUpdate.
 //
-// The handlers are methods on *Client; rather than standing up a full
-// WebSocket connection, we construct a minimal Client with only the fields
-// the handlers touch (hub, userID, isAdmin) and call the methods directly.
-// This is an internal test (package ws) so it can reach unexported fields.
-package ws
+// These live in the admin package (after the Phase-2 restructure) because
+// the CRUD semantics belong here; the WebSocket framing layer is tested
+// separately in internal/ws/admin_router_test.go.
+package admin
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -18,9 +16,8 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// newAdminClientForSettings builds a minimal Client/Hub wired against an
-// in-memory SQLite instance and returns everything the tests need.
-func newAdminClientForSettings(t *testing.T, encryptionKey string) (*Client, *db.Queries, *sql.DB) {
+// newTestOperations builds an Operations bound to an in-memory SQLite DB.
+func newTestOperations(t *testing.T, encryptionKey string) (*Operations, *db.Queries) {
 	t.Helper()
 	sqlDB, err := db.Open(":memory:")
 	if err != nil {
@@ -29,29 +26,23 @@ func newAdminClientForSettings(t *testing.T, encryptionKey string) (*Client, *db
 	t.Cleanup(func() { _ = sqlDB.Close() })
 
 	queries := db.New(sqlDB)
-	hub := NewHub(queries, "test", HubDeps{
+	ops := New(queries, Deps{
 		SQLDB:         sqlDB,
 		EncryptionKey: encryptionKey,
-	})
-
-	c := &Client{
-		hub:     hub,
-		userID:  1,
-		isAdmin: true,
-	}
-	return c, queries, sqlDB
+	}, nil)
+	return ops, queries
 }
 
-func TestAdminOps_SettingsUpsert_EncryptsSensitiveKey(t *testing.T) {
+func TestConfigUpdate_EncryptsSensitiveKey(t *testing.T) {
 	const encKey = "test-encryption-key"
-	c, queries, _ := newAdminClientForSettings(t, encKey)
+	ops, queries := newTestOperations(t, encKey)
 
 	params, _ := json.Marshal(map[string]any{
 		"settings": []map[string]string{{"key": "vapidPrivateKey", "value": "secret123"}},
 	})
 
-	if _, err := c.opConfigUpdate(context.Background(), params); err != nil {
-		t.Fatalf("opConfigUpdate: %v", err)
+	if _, err := ops.ConfigUpdate(context.Background(), params, 1); err != nil {
+		t.Fatalf("ConfigUpdate: %v", err)
 	}
 
 	stored, err := queries.GetSetting(context.Background(), "vapidPrivateKey")
@@ -61,7 +52,6 @@ func TestAdminOps_SettingsUpsert_EncryptsSensitiveKey(t *testing.T) {
 	if !auth.IsEncrypted(stored.Value) {
 		t.Errorf("stored value should start with enc::; got %q", stored.Value)
 	}
-	// Decrypt and confirm round-trip.
 	plain, err := auth.DecryptString(stored.Value, encKey)
 	if err != nil {
 		t.Fatalf("DecryptString: %v", err)
@@ -71,44 +61,42 @@ func TestAdminOps_SettingsUpsert_EncryptsSensitiveKey(t *testing.T) {
 	}
 }
 
-// TestAdminOps_SettingsUpsert_JwtSecret_NotUserMutable asserts that jwtSecret
-// is marked sensitive (so ListSettings decrypts it when returning) BUT is not
-// in the admin-allowed mutation set — it is managed exclusively by
-// auth.InitJWTSecret at startup.
-func TestAdminOps_SettingsUpsert_JwtSecret_NotUserMutable(t *testing.T) {
+// TestConfigUpdate_JwtSecret_NotUserMutable asserts that jwtSecret is marked
+// sensitive (so ConfigGet decrypts it) BUT is not in the admin-allowed
+// mutation set — it is managed exclusively by auth.InitJWTSecret at startup.
+func TestConfigUpdate_JwtSecret_NotUserMutable(t *testing.T) {
 	const encKey = "another-test-key"
-	c, _, _ := newAdminClientForSettings(t, encKey)
+	ops, _ := newTestOperations(t, encKey)
 
 	if !SensitiveSettingKeys["jwtSecret"] {
 		t.Error("jwtSecret must be in SensitiveSettingKeys")
 	}
-	if wsAllowedSettingKeys["jwtSecret"] {
-		t.Error("jwtSecret must NOT be in wsAllowedSettingKeys (managed by InitJWTSecret)")
+	if AllowedSettingKeys("jwtSecret") {
+		t.Error("jwtSecret must NOT be in allowedSettingKeys (managed by InitJWTSecret)")
 	}
 
-	// Confirm that attempting to mutate it via the admin op is rejected.
 	params, _ := json.Marshal(map[string]any{
 		"settings": []map[string]string{{"key": "jwtSecret", "value": "raw-signing-secret"}},
 	})
-	_, err := c.opConfigUpdate(context.Background(), params)
+	_, err := ops.ConfigUpdate(context.Background(), params, 1)
 	if err == nil {
-		t.Fatal("opConfigUpdate should reject jwtSecret as an unknown key")
+		t.Fatal("ConfigUpdate should reject jwtSecret as an unknown key")
 	}
 	if !strings.Contains(err.Error(), "jwtSecret") {
 		t.Errorf("error should mention 'jwtSecret'; got: %v", err)
 	}
 }
 
-func TestAdminOps_SettingsUpsert_NonSensitiveNotEncrypted(t *testing.T) {
+func TestConfigUpdate_NonSensitiveNotEncrypted(t *testing.T) {
 	const encKey = "test-encryption-key"
-	c, queries, _ := newAdminClientForSettings(t, encKey)
+	ops, queries := newTestOperations(t, encKey)
 
 	params, _ := json.Marshal(map[string]any{
 		"settings": []map[string]string{{"key": "logLevel", "value": "debug"}},
 	})
 
-	if _, err := c.opConfigUpdate(context.Background(), params); err != nil {
-		t.Fatalf("opConfigUpdate: %v", err)
+	if _, err := ops.ConfigUpdate(context.Background(), params, 1); err != nil {
+		t.Fatalf("ConfigUpdate: %v", err)
 	}
 
 	stored, err := queries.GetSetting(context.Background(), "logLevel")
@@ -123,17 +111,16 @@ func TestAdminOps_SettingsUpsert_NonSensitiveNotEncrypted(t *testing.T) {
 	}
 }
 
-func TestAdminOps_SettingsUpsert_NoEncryptionKey_StoresPlaintext(t *testing.T) {
-	// Empty encryption key — sensitive keys are stored plaintext (with warning
-	// logged at runtime; we don't assert on logs here).
-	c, queries, _ := newAdminClientForSettings(t, "")
+func TestConfigUpdate_NoEncryptionKey_StoresPlaintext(t *testing.T) {
+	// Empty encryption key — sensitive keys are stored plaintext.
+	ops, queries := newTestOperations(t, "")
 
 	params, _ := json.Marshal(map[string]any{
 		"settings": []map[string]string{{"key": "vapidPrivateKey", "value": "plain-secret"}},
 	})
 
-	if _, err := c.opConfigUpdate(context.Background(), params); err != nil {
-		t.Fatalf("opConfigUpdate: %v", err)
+	if _, err := ops.ConfigUpdate(context.Background(), params, 1); err != nil {
+		t.Fatalf("ConfigUpdate: %v", err)
 	}
 
 	stored, err := queries.GetSetting(context.Background(), "vapidPrivateKey")
@@ -148,11 +135,10 @@ func TestAdminOps_SettingsUpsert_NoEncryptionKey_StoresPlaintext(t *testing.T) {
 	}
 }
 
-func TestAdminOps_SettingsList_DecryptsSensitiveKey(t *testing.T) {
+func TestConfigGet_DecryptsSensitiveKey(t *testing.T) {
 	const encKey = "list-test-key"
-	c, queries, _ := newAdminClientForSettings(t, encKey)
+	ops, queries := newTestOperations(t, encKey)
 
-	// Seed an already-encrypted sensitive setting and a plaintext normal one.
 	encrypted, err := auth.EncryptString("my-vapid-key", encKey)
 	if err != nil {
 		t.Fatalf("seed EncryptString: %v", err)
@@ -168,9 +154,9 @@ func TestAdminOps_SettingsList_DecryptsSensitiveKey(t *testing.T) {
 		t.Fatalf("seed UpsertSetting (logLevel): %v", err)
 	}
 
-	result, err := c.opConfigGet(context.Background(), nil)
+	result, err := ops.ConfigGet(context.Background(), nil, 1)
 	if err != nil {
-		t.Fatalf("opConfigGet: %v", err)
+		t.Fatalf("ConfigGet: %v", err)
 	}
 
 	m, ok := result.(map[string]any)
@@ -195,9 +181,7 @@ func TestAdminOps_SettingsList_DecryptsSensitiveKey(t *testing.T) {
 	}
 }
 
-// TestSensitiveSettingKeys_Documented is a schema-level sanity check: any key
-// added to the sensitive list without being wired through the encryption path
-// would be a latent bug.
+// TestSensitiveSettingKeys_Documented is a schema-level sanity check.
 func TestSensitiveSettingKeys_Documented(t *testing.T) {
 	want := []string{"vapidPrivateKey", "jwtSecret"}
 	for _, k := range want {

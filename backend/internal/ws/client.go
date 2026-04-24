@@ -105,15 +105,6 @@ type adminRequest struct {
 	Params json.RawMessage `json:"params,omitempty"`
 }
 
-// adminOpHandler is the function signature for all admin WS operation handlers.
-type adminOpHandler func(ctx context.Context, params json.RawMessage) (any, error)
-
-// userError is returned by op handlers for validation errors that should be
-// shown verbatim to the client. Other errors are treated as internal.
-type userError string
-
-func (e userError) Error() string { return string(e) }
-
 // CanReceive reports whether this client is authorized to receive a call for
 // the given system and talkgroup. If grants is nil/empty, everything is allowed.
 func (c *Client) CanReceive(systemID, talkgroupID int64) bool {
@@ -484,15 +475,14 @@ func (c *Client) handleAdminRequest(ctx context.Context, req adminRequest) {
 		return
 	}
 
-	data, err := handler(ctx, req.Params)
+	data, err := handler(ctx, req.Params, c.userID)
 	var msg []byte
 	if err != nil {
-		var uerr userError
-		if errors.As(err, &uerr) {
-			msg, _ = NewADMRESErrorMessage(req.ReqID, err.Error())
+		if errMsg, isUser := errorString(err); isUser {
+			msg, _ = NewADMRESErrorMessage(req.ReqID, errMsg)
 		} else {
 			slog.Error("ws: admin op failed", "op", req.Op, "reqId", req.ReqID, "error", err)
-			msg, _ = NewADMRESErrorMessage(req.ReqID, "internal error")
+			msg, _ = NewADMRESErrorMessage(req.ReqID, errMsg)
 		}
 	} else {
 		msg, _ = NewADMRESMessage(req.ReqID, data)

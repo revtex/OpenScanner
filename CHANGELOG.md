@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Admin CRUD business logic has been extracted from `internal/ws` into a
+  new transport-agnostic `internal/admin` package. The WebSocket layer
+  now only routes `ADM_REQ` frames to `admin.Operations` methods; the
+  wire protocol, action names, and response shapes are unchanged.
 - Deployment guide reverse-proxy instructions now list `/api/ws` alongside
   `/ws` and `/api/admin/ws` as paths that need WebSocket-upgrade forwarding.
 
