@@ -124,3 +124,10 @@ Detailed conventions live in the individual agent files. The non-negotiables for
 - Pure internal refactors, CI-only tweaks, and typo fixes can skip the CHANGELOG — the PR should be labeled `skip-changelog`
 - The `changelog` CI job blocks merges into `main` when `CHANGELOG.md` wasn't touched and the label isn't applied
 - Full release process: [docs/plans/release-guide.md](../docs/plans/release-guide.md)
+
+## Releases
+
+- **Any user-visible fix or feature ships as a version release.** Do not merge a user-visible change into `main` and leave it sitting in `[Unreleased]` — cut a tag (`vX.Y.Z`) in the same session so binaries, PDFs, and semver Docker tags (`latest`, `X.Y.Z`, `X.Y`) are published
+- Bugs that affect how users install, run, or consume OpenScanner (Docker pulls, binary availability, install docs, config parsing) count as user-visible even when the diff is only CI/workflow YAML
+- Pure CI/tooling/internal-docs changes (e.g. iterating on a cleanup workflow, refactoring an action, tweaking dev-container setup) may batch under `[Unreleased]` and ship with the next real release
+- When in doubt, ask the user rather than batching — an unreleased user-visible fix is worse than an extra patch release
