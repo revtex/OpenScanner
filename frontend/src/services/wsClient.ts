@@ -104,7 +104,7 @@ class WsClient {
     this.dispatch?.(setConnectionStatus("connecting"));
 
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${proto}//${window.location.host}/ws`;
+    const url = `${proto}//${window.location.host}/api/ws`;
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {

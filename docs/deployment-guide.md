@@ -117,7 +117,7 @@ Most people already have a web server (Caddy, nginx, Traefik) on their home serv
 
 Two rules to remember when proxying:
 
-- **Forward WebSocket upgrades** on `/ws` and `/api/admin/ws` — the live audio stream and admin events use them.
+- **Forward WebSocket upgrades** on `/api/ws`, `/ws`, and `/api/admin/ws` — the live audio stream and admin events use them. `/api/ws` is the canonical listener endpoint; `/ws` is a compatibility alias kept for legacy clients and should also be proxied.
 - **Send `X-Forwarded-Proto`** so OpenScanner knows whether to mark cookies as secure.
 
 If the proxy is on the same machine, it's also a good idea to bind OpenScanner to localhost only so nothing bypasses the proxy. In your compose file:
