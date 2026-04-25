@@ -29,6 +29,17 @@ sw.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Pass through audio downloads untouched. Letting the SW intercept
+  // these would force-buffer the full body in memory and strip the
+  // browser's native Range-request handling that <audio> relies on.
+  // Matches /api/calls/:id/audio and /api/shared/:token/audio.
+  if (
+    /^\/api\/calls\/\d+\/audio$/.test(url.pathname) ||
+    /^\/api\/shared\/[^/]+\/audio$/.test(url.pathname)
+  ) {
+    return;
+  }
+
   // Network-first for API calls
   if (url.pathname.startsWith("/api")) {
     event.respondWith(
