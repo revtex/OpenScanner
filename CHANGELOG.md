@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-04-25
+
+### Security
+
+- Pin transitive `postcss` to `>=8.5.10` via a pnpm override to address GHSA / CVE: "PostCSS has XSS via Unescaped `</style>` in its CSS Stringify Output" (medium). PostCSS is a dev-only dependency pulled in by Vite/Tailwind and never reaches the production runtime, but the override removes the Dependabot alert and ensures contributors building from source pick up the patched version.
+
 ## [1.2.0] — 2026-04-25
 
 ### Added
