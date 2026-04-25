@@ -100,6 +100,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ParseEncodingPreset` fallback) instead of `aac_lc_32k`. New installs
   enabling audio conversion will now default to MP3 32 kbps as the UI
   advertises.
+- Audio playback now silently recovers from a 401 on `/api/calls/:id/audio`
+  by triggering a single token refresh and retrying the same call. Fixes
+  the case where a sibling device login (phone, tablet, second tab) pushes
+  a desktop's access JWT out of the per-user concurrent-token cap and
+  leaves \<audio\> playback failing until the next scheduled refresh.
 
 ## [1.1.2] — 2026-04-24
 
