@@ -3,10 +3,10 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
-import AdminLayout from "@/components/admin/AdminLayout";
-import { scannerSlice } from "@/app/slices/scannerSlice";
-import { authSlice } from "@/app/slices/authSlice";
-import { callsSlice } from "@/app/slices/callsSlice";
+import Admin from "@/pages/Admin";
+import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
+import { authSlice } from "@/app/slices/shared/authSlice";
+import { callsSlice } from "@/app/slices/scanner/callsSlice";
 import { api } from "@/app/api";
 import type { RootState } from "@/app/store";
 
@@ -49,7 +49,7 @@ function renderAdmin(preloadedState?: Partial<RootState>) {
     ...render(
       <Provider store={store}>
         <MemoryRouter initialEntries={["/admin/users"]}>
-          <AdminLayout />
+          <Admin />
         </MemoryRouter>
       </Provider>,
     ),
@@ -58,7 +58,7 @@ function renderAdmin(preloadedState?: Partial<RootState>) {
 
 // --- Tests ---
 
-describe("AdminLayout", () => {
+describe("Admin", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

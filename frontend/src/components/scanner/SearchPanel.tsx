@@ -33,11 +33,11 @@ import {
   setBookmarkedOnly,
   setTranscript,
   resetFilters,
-} from "@/app/slices/callsSlice";
+} from "@/app/slices/scanner/callsSlice";
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
-import { selectToken } from "@/app/slices/authSlice";
+import { selectToken } from "@/app/slices/shared/authSlice";
 import { audioPlayer } from "@/services/audio/player";
-import { sanitizeDownloadFilename } from "@/services/downloadFilename";
+import { sanitizeDownloadFilename } from "@/services/util/downloadFilename";
 import type { Call } from "@/types";
 
 interface SearchPanelProps {

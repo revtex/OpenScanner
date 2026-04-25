@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { wsClient } from "@/services/ws/client";
-import { setCredentials, usePostRefreshMutation } from "@/app/slices/authSlice";
+import { setCredentials, usePostRefreshMutation } from "@/app/slices/shared/authSlice";
 import type { ConnectionStatus } from "@/types";
 
 export function useWebSocket(): { connectionStatus: ConnectionStatus } {

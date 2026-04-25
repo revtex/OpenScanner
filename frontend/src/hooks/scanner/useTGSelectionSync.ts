@@ -6,12 +6,12 @@ import {
   restoreFromDisabledTGs,
   restoreAvoidList,
   resetTGSelection,
-} from "@/app/slices/scannerSlice";
+} from "@/app/slices/scanner/scannerSlice";
 import {
   selectToken,
   useGetTGSelectionQuery,
   useUpdateTGSelectionMutation,
-} from "@/app/slices/authSlice";
+} from "@/app/slices/shared/authSlice";
 import type { AvoidEntry } from "@/types";
 
 function storageKey(instanceId: string): string {

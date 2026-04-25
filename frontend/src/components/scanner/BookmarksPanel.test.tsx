@@ -17,7 +17,7 @@ vi.mock("@/services/audio/player", () => ({
   },
 }));
 
-vi.mock("@/app/slices/authSlice", () => ({
+vi.mock("@/app/slices/shared/authSlice", () => ({
   selectToken: () => "fake-token",
 }));
 
@@ -26,7 +26,7 @@ vi.mock("@/app/store", () => ({
     selector({ scanner: { config: null } }),
 }));
 
-vi.mock("@/app/slices/shareSlice", () => ({
+vi.mock("@/app/slices/scanner/shareSlice", () => ({
   useShareCallMutation: () => [vi.fn(), {}],
 }));
 

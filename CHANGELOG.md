@@ -53,6 +53,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ui.ts`). The original `index.ts` is now a barrel that re-exports
   everything, so all existing `@/types` imports keep working unchanged.
   New code can also import from a specific module (e.g. `@/types/admin`).
+- Frontend layout polish on top of the directory restructure:
+  `app/slices/` split into `shared/` (`authSlice`), `scanner/`
+  (`scannerSlice`, `callsSlice`, `shareSlice`), and `admin/`
+  (`adminSlice`, `activitySlice`); `components/admin/AdminLayout.tsx`
+  inlined into `pages/Admin.tsx` (replacing the 5-line shim);
+  `components/admin/NavigationGuardContext.tsx` relocated to
+  `hooks/admin/useNavigationGuard.tsx`; and `services/downloadFilename.ts`
+  moved to `services/util/downloadFilename.ts`. All call sites updated;
+  no runtime behaviour change.
 
 ### Fixed
 

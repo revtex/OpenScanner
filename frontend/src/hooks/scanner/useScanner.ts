@@ -13,7 +13,7 @@ import {
   toggleTG,
   setAllTGs,
   setTGsBySystem,
-} from "@/app/slices/scannerSlice";
+} from "@/app/slices/scanner/scannerSlice";
 import type { AvoidEntry } from "@/types";
 
 export function useScanner() {

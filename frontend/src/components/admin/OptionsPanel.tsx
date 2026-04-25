@@ -11,7 +11,7 @@ import {
   useGetConfigQuery,
   useUpdateConfigMutation,
 } from "@/hooks/admin/useAdminWsOps";
-import { useNavigationGuard } from "@/components/admin/NavigationGuardContext";
+import { useNavigationGuard } from "@/hooks/admin/useNavigationGuard";
 import type { AdminSetting } from "@/types";
 
 // ─── Known setting keys and their input types ───

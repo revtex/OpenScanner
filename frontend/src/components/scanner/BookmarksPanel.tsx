@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useGetBookmarkCallsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { useAppSelector } from "@/app/store";
-import { selectToken } from "@/app/slices/authSlice";
+import { selectToken } from "@/app/slices/shared/authSlice";
 import { audioPlayer } from "@/services/audio/player";
-import { sanitizeDownloadFilename } from "@/services/downloadFilename";
+import { sanitizeDownloadFilename } from "@/services/util/downloadFilename";
 import { ShareCallButton } from "@/components/scanner/ShareCallButton";
 import { X, Play, Download, Star, ChevronDown } from "lucide-react";
 import type { Call } from "@/types";

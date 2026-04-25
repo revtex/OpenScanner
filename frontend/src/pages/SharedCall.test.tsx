@@ -11,7 +11,7 @@ vi.mock("react-router-dom", async () => {
 });
 
 const mockUseGetSharedCallQuery = vi.fn();
-vi.mock("@/app/slices/shareSlice", () => ({
+vi.mock("@/app/slices/scanner/shareSlice", () => ({
   useGetSharedCallQuery: (...args: unknown[]) =>
     mockUseGetSharedCallQuery(...args),
 }));

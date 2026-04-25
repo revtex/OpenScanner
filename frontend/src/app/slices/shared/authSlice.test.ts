@@ -5,7 +5,7 @@ import {
   clearCredentials,
   setAuthReady,
   setSetupStatus,
-} from "@/app/slices/authSlice";
+} from "@/app/slices/shared/authSlice";
 
 const { reducer } = authSlice;
 
