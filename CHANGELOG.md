@@ -105,6 +105,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the case where a sibling device login (phone, tablet, second tab) pushes
   a desktop's access JWT out of the per-user concurrent-token cap and
   leaves \<audio\> playback failing until the next scheduled refresh.
+- Per-user concurrent JWT cap raised from 5 to 20 (`auth.MaxRefreshFamilies`).
+  With a 15-minute access TTL refreshing roughly four times per hour, the
+  old limit pushed a desktop's session off the active list within an hour
+  of normal multi-device use. 20 leaves headroom for desktop + phone +
+  tablet without inflating the deny list.
+- WebSocket clients (listener and admin) now detach handlers and wait for
+  `open` before closing a still-`CONNECTING` socket during reconnect.
+  Suppresses the cosmetic "WebSocket is closed before the connection is
+  established" browser console warning that appeared after a token-expiry
+  reconnect.
 
 ## [1.1.2] — 2026-04-24
 

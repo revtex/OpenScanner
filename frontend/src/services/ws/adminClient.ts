@@ -118,11 +118,21 @@ class AdminWsClient {
 
   private doConnect(): void {
     if (this.ws) {
-      this.ws.onopen = null;
-      this.ws.onmessage = null;
-      this.ws.onclose = null;
-      this.ws.onerror = null;
-      this.ws.close();
+      const old = this.ws;
+      old.onopen = null;
+      old.onmessage = null;
+      old.onclose = null;
+      old.onerror = null;
+      // If the previous socket hasn't finished its handshake yet,
+      // calling close() on it makes the browser log a noisy
+      // "WebSocket is closed before the connection is established"
+      // warning that's purely cosmetic. Detach handlers and let it
+      // settle on its own — once OPEN, close it cleanly.
+      if (old.readyState === WebSocket.CONNECTING) {
+        old.onopen = () => old.close();
+      } else if (old.readyState === WebSocket.OPEN) {
+        old.close();
+      }
       this.ws = null;
     }
 

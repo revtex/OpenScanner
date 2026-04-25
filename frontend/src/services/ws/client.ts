@@ -46,11 +46,16 @@ class WsClient {
     if (this.ws) {
       // Detach handlers before closing to avoid browser console noise
       // when the socket is still in CONNECTING state.
-      this.ws.onopen = null;
-      this.ws.onmessage = null;
-      this.ws.onclose = null;
-      this.ws.onerror = null;
-      this.ws.close();
+      const old = this.ws;
+      old.onopen = null;
+      old.onmessage = null;
+      old.onclose = null;
+      old.onerror = null;
+      if (old.readyState === WebSocket.CONNECTING) {
+        old.onopen = () => old.close();
+      } else if (old.readyState === WebSocket.OPEN) {
+        old.close();
+      }
       this.ws = null;
     }
     this.recentCallIds = [];
@@ -70,7 +75,16 @@ class WsClient {
 
   private doConnect(): void {
     if (this.ws) {
-      this.ws.close();
+      const old = this.ws;
+      old.onopen = null;
+      old.onmessage = null;
+      old.onclose = null;
+      old.onerror = null;
+      if (old.readyState === WebSocket.CONNECTING) {
+        old.addEventListener("open", () => old.close(), { once: true });
+      } else if (old.readyState === WebSocket.OPEN) {
+        old.close();
+      }
       this.ws = null;
     }
 
