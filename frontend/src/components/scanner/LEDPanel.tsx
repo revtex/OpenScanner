@@ -17,8 +17,8 @@ import {
   selectUsername,
   clearCredentials,
   usePostLogoutMutation,
-} from "@/app/slices/authSlice";
-import { useChangePasswordMutation } from "@/app/slices/authSlice";
+} from "@/app/slices/shared/authSlice";
+import { useChangePasswordMutation } from "@/app/slices/shared/authSlice";
 
 export function LEDPanel() {
   const { isDark, toggle } = useTheme();

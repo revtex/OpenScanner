@@ -3,9 +3,9 @@ import { render, waitFor, act } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
-import { scannerSlice } from "@/app/slices/scannerSlice";
-import { authSlice } from "@/app/slices/authSlice";
-import { callsSlice } from "@/app/slices/callsSlice";
+import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
+import { authSlice } from "@/app/slices/shared/authSlice";
+import { callsSlice } from "@/app/slices/scanner/callsSlice";
 import { api } from "@/app/api";
 import type { RootState } from "@/app/store";
 import { useAuthInit } from "@/hooks/shared/useAuthInit";
@@ -13,9 +13,9 @@ import { useAuthInit } from "@/hooks/shared/useAuthInit";
 // ── Mock the refresh mutation ─────────────────────────────────────────────
 
 const mockPostRefresh = vi.fn();
-vi.mock("@/app/slices/authSlice", async () => {
-  const actual = await vi.importActual<typeof import("@/app/slices/authSlice")>(
-    "@/app/slices/authSlice",
+vi.mock("@/app/slices/shared/authSlice", async () => {
+  const actual = await vi.importActual<typeof import("@/app/slices/shared/authSlice")>(
+    "@/app/slices/shared/authSlice",
   );
   return {
     ...actual,

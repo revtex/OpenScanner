@@ -4,7 +4,7 @@ import { Provider } from "react-redux";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { store } from "@/app/store";
 import { useAppSelector } from "@/app/store";
-import { selectAuthReady } from "@/app/slices/authSlice";
+import { selectAuthReady } from "@/app/slices/shared/authSlice";
 import { useAuthInit } from "@/hooks/shared/useAuthInit";
 import { useTokenRefresh } from "@/hooks/shared/useTokenRefresh";
 import "@/index.css";

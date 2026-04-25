@@ -1,5 +1,5 @@
 import type { AppDispatch } from "@/app/store";
-import { clearCredentials } from "@/app/slices/authSlice";
+import { clearCredentials } from "@/app/slices/shared/authSlice";
 
 type TokenExpiredCallback = () => Promise<string | null>;
 type EventCallback = (topic: string, data: unknown, at: number) => void;

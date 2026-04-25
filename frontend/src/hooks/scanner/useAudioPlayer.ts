@@ -7,7 +7,7 @@ import {
   setCurrentCall,
   clearCurrentCall,
   setAudioActive,
-} from "@/app/slices/scannerSlice";
+} from "@/app/slices/scanner/scannerSlice";
 
 export function useAudioPlayer() {
   const dispatch = useAppDispatch();

@@ -4,7 +4,7 @@ import {
   setCredentials,
   setAuthReady,
   usePostRefreshMutation,
-} from "@/app/slices/authSlice";
+} from "@/app/slices/shared/authSlice";
 
 /**
  * Attempts a silent token refresh on app mount.

@@ -6,8 +6,8 @@ import {
   setListenerCount,
   setConnectionStatus,
   transcriptReceived,
-} from "@/app/slices/scannerSlice";
-import { clearCredentials } from "@/app/slices/authSlice";
+} from "@/app/slices/scanner/scannerSlice";
+import { clearCredentials } from "@/app/slices/shared/authSlice";
 import type { Call, WsCommand, TranscriptionSegment } from "@/types";
 
 const MAX_BACKOFF = 30_000;
