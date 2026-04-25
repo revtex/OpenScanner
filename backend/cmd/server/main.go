@@ -37,7 +37,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kardianos/service"
 	"github.com/openscanner/openscanner/internal/admin"
-	"github.com/openscanner/openscanner/internal/api"
+	"github.com/openscanner/openscanner/internal/handler/routes"
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/cli"
@@ -892,7 +892,7 @@ func (p *program) run() {
 	// Start transcription result consumer (stores results in DB, broadcasts TRN).
 	go consumeTranscriptionResults(ctx, queries, hub, transcriberMgr)
 
-	api.RegisterRoutes(router, api.Deps{
+	routes.RegisterRoutes(router, routes.Deps{
 		Queries:            queries,
 		RateLimiter:        rateLimiter,
 		Processor:          processor,

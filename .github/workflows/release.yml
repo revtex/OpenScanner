@@ -57,7 +57,7 @@ jobs:
 
       - name: Generate Swagger docs
         working-directory: backend
-        run: swag init -d cmd/server,internal/api -g main.go --parseDependency --parseInternal -o docs
+        run: swag init -d cmd/server,internal/handler -g main.go --parseDependency --parseInternal -o docs
 
       - name: Build binary
         working-directory: backend
