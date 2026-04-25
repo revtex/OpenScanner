@@ -123,9 +123,10 @@ func (h *Hub) Broadcast(data []byte, filter func(*Client) bool) {
 	}
 }
 
-// BroadcastCAL sends a CAL message (with embedded base64 audio) to matching
-// clients. Audio is now part of the JSON text frame — no separate binary frame.
-// Also notifies admin clients so the activity dashboard can refresh.
+// BroadcastCAL sends a metadata-only CAL message to matching clients.
+// Audio bytes are no longer embedded — clients fetch them on demand from
+// GET /api/calls/:id/audio. Also notifies admin clients so the activity
+// dashboard can refresh.
 func (h *Hub) BroadcastCAL(calMsg []byte, filter func(*Client) bool) {
 	h.Broadcast(calMsg, filter)
 	h.BroadcastAdminEvent("activity.updated", nil)

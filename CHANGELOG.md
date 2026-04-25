@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- WebSocket `CAL` messages no longer carry embedded base64 audio. Audio
+  is fetched on demand from the existing `GET /api/calls/:id/audio` HTTP
+  endpoint, authenticated via the `os_session` cookie introduced in the
+  previous release entry. Frontend playback rewrite ships as the
+  immediately-following release entry.
 - HTTP handlers have been decomposed from the monolithic `internal/api`
   package into feature-scoped subpackages under `internal/handler/`
   (`auth`, `calls`, `bookmarks`, `share`, `setup`, `health`,
