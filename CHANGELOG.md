@@ -48,6 +48,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `useAdminActivity`, `useAdminLogs`, `useWsQuery`), each with a barrel
   `index.ts`. All call sites have been updated to the new specific paths.
   No runtime behaviour change.
+- Frontend `types/index.ts` god-file split into topic-scoped modules
+  (`call.ts`, `config.ts`, `ws.ts`, `auth.ts`, `api.ts`, `admin.ts`,
+  `ui.ts`). The original `index.ts` is now a barrel that re-exports
+  everything, so all existing `@/types` imports keep working unchanged.
+  New code can also import from a specific module (e.g. `@/types/admin`).
 
 ### Fixed
 
