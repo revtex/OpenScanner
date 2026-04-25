@@ -95,6 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Lock the primary admin's Allowed Systems selector in the user editor; the first user always has access to every system and the badges are now read-only with all systems shown as allowed.
 - Default `audioEncodingPreset` seeded into the settings table is now
   `mp3_32k` (matching the dropdown's "(default)" label and the Go
   `ParseEncodingPreset` fallback) instead of `aac_lc_32k`. New installs
