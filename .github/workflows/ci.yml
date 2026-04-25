@@ -43,7 +43,7 @@ jobs:
         run: go install github.com/swaggo/swag/cmd/swag@latest
       - name: Generate Swagger docs
         working-directory: backend
-        run: swag init -d cmd/server,internal/api -g main.go --parseDependency --parseInternal -o docs
+        run: swag init -d cmd/server,internal/handler -g main.go --parseDependency --parseInternal -o docs
       - name: Test
         run: cd backend && go test ./...
 

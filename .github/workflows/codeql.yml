@@ -45,7 +45,7 @@ jobs:
       - name: Generate Swagger docs
         if: matrix.language == 'go'
         working-directory: backend
-        run: swag init -d cmd/server,internal/api -g main.go --parseDependency --parseInternal -o docs
+        run: swag init -d cmd/server,internal/handler -g main.go --parseDependency --parseInternal -o docs
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4

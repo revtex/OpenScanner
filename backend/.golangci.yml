@@ -50,7 +50,7 @@ issues:
     - "internal/db/models\\.go$"
     - "internal/db/db\\.go$"
     - "internal/db/querier\\.go$"
-    - "internal/api/swagger_models\\.go$" # swagger stubs — field names must mirror wire shape for doc readability
+    - "internal/handler/shared/dto\\.go$" # swagger stubs — field names must mirror wire shape for doc readability
   exclude-rules:
     # Test files: relax a handful of rules that don't add value there.
     - path: _test\.go
