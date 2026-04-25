@@ -86,6 +86,86 @@ func OptionalJWTAuth() gin.HandlerFunc {
 	}
 }
 
+// applyClaimsToContext sets the standard JWT claim values onto the Gin context.
+// Shared by the bearer and session-cookie auth paths.
+func applyClaimsToContext(c *gin.Context, claims *auth.Claims) {
+	c.Set("userID", claims.UserID)
+	c.Set("username", claims.Username)
+	c.Set("role", claims.Role)
+	c.Set("jti", claims.ID)
+}
+
+// claimsValid runs the same revocation, expiration and account-expiration
+// checks as JWTAuth/OptionalJWTAuth. Returns true when the token can be used
+// to identify the user.
+func claimsValid(claims *auth.Claims) bool {
+	if auth.Tokens.IsRevoked(claims.ID) {
+		return false
+	}
+	if claims.AccountExp > 0 && time.Now().Unix() > claims.AccountExp {
+		return false
+	}
+	return true
+}
+
+// OptionalJWTOrSessionAuth resolves identity from, in priority order:
+//
+//  1. Authorization: Bearer header (existing behaviour, unchanged).
+//  2. os_session cookie (new) — only honoured when the request is same-site,
+//     determined by the Sec-Fetch-Site fetch metadata header. SameSite=Strict
+//     on the cookie itself already enforces same-site at the browser layer;
+//     this is defence-in-depth at the server.
+//  3. Anonymous (no userID set in context — downstream handlers fall back to
+//     publicAccess semantics or 401 as appropriate).
+//
+// The middleware never aborts the request: invalid/expired/revoked credentials
+// (header or cookie) silently fall through to anonymous so that the
+// publicAccess setting still controls access. This mirrors OptionalJWTAuth.
+func OptionalJWTOrSessionAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 1. Bearer header takes priority.
+		if header := c.GetHeader("Authorization"); strings.HasPrefix(header, "Bearer ") {
+			tokenStr := strings.TrimPrefix(header, "Bearer ")
+			if claims, err := auth.ParseToken(tokenStr); err == nil && claimsValid(claims) {
+				applyClaimsToContext(c, claims)
+			}
+			c.Next()
+			return
+		}
+
+		// 2. os_session cookie — only for same-site requests.
+		cookieValue, err := c.Cookie(auth.SessionCookieName)
+		if err != nil || cookieValue == "" {
+			c.Next()
+			return
+		}
+
+		// Sec-Fetch-Site is a fetch-metadata header. Browsers always send it
+		// for HTTP/1.1+ requests. Acceptable values for a same-origin/same-site
+		// request are "same-origin", "same-site", and "none" (the user
+		// directly typed/bookmarked the URL). If the header is missing
+		// (older clients, tests), fall back to trusting the SameSite=Strict
+		// browser-side enforcement.
+		switch c.GetHeader("Sec-Fetch-Site") {
+		case "", "same-origin", "same-site", "none":
+			// allowed
+		default:
+			// "cross-site" or any unrecognised value — refuse to authenticate
+			// from the cookie. Treat as anonymous; do not 401.
+			c.Next()
+			return
+		}
+
+		claims, err := auth.ParseToken(cookieValue)
+		if err != nil || !claimsValid(claims) {
+			c.Next()
+			return
+		}
+		applyClaimsToContext(c, claims)
+		c.Next()
+	}
+}
+
 // RequireAdmin checks that the authenticated user has the admin role.
 // Must be chained after JWTAuth. Aborts with 403 if the role is not admin.
 func RequireAdmin() gin.HandlerFunc {

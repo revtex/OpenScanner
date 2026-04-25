@@ -72,7 +72,15 @@ type Deps struct {
 func RegisterRoutes(r *gin.Engine, deps Deps) {
 	healthHandler := health.New(deps.Version)
 	setupHandler := setup.New(deps.Queries)
-	authH := authhandler.New(deps.Queries, deps.RateLimiter, deps.Hub)
+	// Avoid the typed-nil interface footgun: only promote deps.Hub into the
+	// WSDisconnecter interface when the concrete pointer is non-nil. This
+	// keeps tests that pass Deps{} (no Hub) from triggering nil-pointer
+	// dereferences on logout / token revocation paths.
+	var disconnecter authhandler.WSDisconnecter
+	if deps.Hub != nil {
+		disconnecter = deps.Hub
+	}
+	authH := authhandler.New(deps.Queries, deps.RateLimiter, disconnecter)
 	callHandler := calls.New(deps.Queries, deps.Processor, deps.Hub, deps.DownstreamNotifier, deps.Transcriber)
 	shareHandler := share.New(deps.Queries, deps.Processor)
 	bookmarkHandler := bookmarks.New(deps.Queries)
@@ -110,7 +118,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 
 	// Call search — public access with optional auth for bookmarks.
 	api.GET("/calls", middleware.OptionalJWTAuth(), callHandler.GetCalls)
-	api.GET("/calls/:id/audio", middleware.OptionalJWTAuth(), callHandler.GetCallAudio)
+	api.GET("/calls/:id/audio", middleware.OptionalJWTOrSessionAuth(), callHandler.GetCallAudio)
 	api.GET("/calls/:id/transcript", middleware.OptionalJWTAuth(), callHandler.GetCallTranscript)
 
 	// Shared calls — token-based public access (no auth required).

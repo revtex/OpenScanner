@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Session cookie (`os_session`) issued on login and refresh, cleared on
+  logout. The `GET /api/calls/:id/audio` route now accepts authentication
+  via either the existing `Authorization: Bearer` header or the new
+  cookie, so `<audio>` element playback can be authenticated without
+  client-side header injection. Cookie is httpOnly, Secure when served
+  over HTTPS, `SameSite=Strict`, scoped to `/api`. Cross-site requests
+  are rejected via a `Sec-Fetch-Site` check; invalid or expired cookies
+  fall through to anonymous so existing `publicAccess=true` deployments
+  continue to work unchanged.
 - Canonical `GET /api/ws` listener WebSocket route. The existing `GET /ws`
   remains as a compatibility alias that delegates to the same handler. The
   frontend now connects to `/api/ws`, and the Vite dev proxy covers both

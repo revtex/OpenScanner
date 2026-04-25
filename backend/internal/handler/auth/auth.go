@@ -183,6 +183,12 @@ func (h *Handler) PostLogin(c *gin.Context) {
 		auth.SetRefreshCookie(c, rawRefresh, 0)
 	}
 
+	// Also set the os_session cookie carrying the access JWT so that
+	// <audio src=…> and other same-origin browser requests can authenticate
+	// without injecting an Authorization header. Lifetime mirrors the
+	// access-token TTL; the frontend bearer flow continues to work unchanged.
+	auth.SetSessionCookie(c, token, int(auth.AccessTokenExpiry.Seconds()))
+
 	h.logAuthEvent(c.Request.Context(), "info", "login success: "+user.Username, ip)
 	slog.Info("user logged in", "user_id", user.ID, "username", user.Username, "ip", ip)
 
@@ -238,6 +244,7 @@ func (h *Handler) PostLogout(c *gin.Context) {
 		}
 	}
 	auth.ClearRefreshCookie(c)
+	auth.ClearSessionCookie(c)
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
@@ -348,6 +355,10 @@ func (h *Handler) PostRefresh(c *gin.Context) {
 
 	// Set new cookie with same Max-Age as original.
 	auth.SetRefreshCookie(c, newRaw, int(auth.RefreshTokenExpiry.Seconds()))
+
+	// Rotate the os_session cookie alongside the refresh cookie so the
+	// browser-only <audio> auth path always carries a fresh access JWT.
+	auth.SetSessionCookie(c, accessToken, int(auth.AccessTokenExpiry.Seconds()))
 
 	c.JSON(http.StatusOK, refreshResponse{
 		Token: accessToken,
