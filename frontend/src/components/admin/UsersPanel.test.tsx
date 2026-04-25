@@ -64,7 +64,7 @@ const deleteUserMutate = vi.fn((_arg: unknown) => ({
   unwrap: deleteUserUnwrap,
 }));
 
-vi.mock("@/hooks/useAdminWsOps", () => ({
+vi.mock("@/hooks/admin/useAdminWsOps", () => ({
   useListUsersQuery: () => ({ data: mockUsers, isLoading: false }),
   useListSystemsQuery: () => ({ data: mockSystems, isLoading: false }),
   useCreateUserMutation: () => [createUserMutate, {}],

@@ -9,8 +9,8 @@ import {
   setLive,
   resetDisplay,
 } from "@/app/slices/scannerSlice";
-import { useScanner } from "@/hooks/useScanner";
-import { useTGSelectionSync } from "@/hooks/useTGSelectionSync";
+import { useScanner } from "@/hooks/scanner/useScanner";
+import { useTGSelectionSync } from "@/hooks/scanner/useTGSelectionSync";
 import { LEDPanel } from "@/components/scanner/LEDPanel";
 import { DisplayPanel } from "@/components/scanner/DisplayPanel";
 import { ControlToolbar } from "@/components/scanner/ControlToolbar";

@@ -5,8 +5,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { store } from "@/app/store";
 import { useAppSelector } from "@/app/store";
 import { selectAuthReady } from "@/app/slices/authSlice";
-import { useAuthInit } from "@/hooks/useAuthInit";
-import { useTokenRefresh } from "@/hooks/useTokenRefresh";
+import { useAuthInit } from "@/hooks/shared/useAuthInit";
+import { useTokenRefresh } from "@/hooks/shared/useTokenRefresh";
 import "@/index.css";
 
 const Scanner = lazy(() => import("@/pages/Scanner"));

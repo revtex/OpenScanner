@@ -10,7 +10,7 @@ import {
 import {
   useGetConfigQuery,
   useUpdateConfigMutation,
-} from "@/hooks/useAdminWsOps";
+} from "@/hooks/admin/useAdminWsOps";
 import { useNavigationGuard } from "@/components/admin/NavigationGuardContext";
 import type { AdminSetting } from "@/types";
 

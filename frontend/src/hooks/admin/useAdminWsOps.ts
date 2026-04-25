@@ -1,4 +1,4 @@
-import { useWsQuery, useWsMutation, useLazyWsQuery } from "@/hooks/useWsQuery";
+import { useWsQuery, useWsMutation, useLazyWsQuery } from "@/hooks/admin/useWsQuery";
 import type {
   AdminUser,
   AdminSystem,
