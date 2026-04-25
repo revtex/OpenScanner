@@ -4,10 +4,39 @@ import { Provider } from "react-redux";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { store } from "@/app/store";
 import { useAppSelector } from "@/app/store";
-import { selectAuthReady } from "@/app/slices/shared/authSlice";
+import { selectAuthReady, setCredentials } from "@/app/slices/shared/authSlice";
 import { useAuthInit } from "@/hooks/shared/useAuthInit";
 import { useTokenRefresh } from "@/hooks/shared/useTokenRefresh";
+import { audioPlayer } from "@/services/audio/player";
+import type { RefreshResponse } from "@/types";
 import "@/index.css";
+
+// Wire a silent auth-recovery hook into the audio player so that when an
+// `<audio>` fetch returns 401 (e.g. another device pushed our access JWT
+// out of the per-user concurrent-token cap) we transparently refresh the
+// session cookie and retry the same call once. Bypasses RTK Query's
+// retry-on-401 plumbing because media-element fetches don't go through it.
+audioPlayer.setAuthRecovery(async () => {
+  try {
+    const res = await fetch("/api/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as RefreshResponse;
+    store.dispatch(
+      setCredentials({
+        token: data.token,
+        role: data.user.role,
+        username: data.user.username,
+        passwordNeedChange: false,
+      }),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+});
 
 const Scanner = lazy(() => import("@/pages/Scanner"));
 const Login = lazy(() => import("@/pages/Login"));

@@ -5,6 +5,12 @@ interface QueueItem {
   call: Call;
   /** True for search/bookmark plays — discardable on a newer playNow. */
   onDemand?: boolean;
+  /**
+   * Set after we've already attempted a silent auth refresh + retry for
+   * this item. Prevents an infinite refresh loop when the failure isn't
+   * actually about auth.
+   */
+  recoveryTried?: boolean;
 }
 
 // Extend window for Safari's prefixed AudioContext.
@@ -43,6 +49,7 @@ class AudioPlayer {
   private callStartCb: ((call: Call) => void) | null = null;
   private callEndCb: (() => void) | null = null;
   private queueChangeCb: ((length: number) => void) | null = null;
+  private authRecovery: (() => Promise<boolean>) | null = null;
 
   constructor() {
     this.bootstrapAudio();
@@ -228,6 +235,20 @@ class AudioPlayer {
     this.queueChangeCb = cb;
   }
 
+  /**
+   * Register a callback invoked when an audio fetch fails. The callback
+   * should attempt a silent auth refresh (e.g. POST /api/auth/refresh)
+   * and resolve to `true` if it succeeded — in which case the player
+   * retries the current call with the new session cookie. Required
+   * because <audio src=…> bypasses the RTK Query 401 retry path, so a
+   * server-side token revocation (e.g. a sibling device exhausting the
+   * concurrent-token cap) would otherwise leave playback broken until
+   * the next scheduled refresh fires.
+   */
+  setAuthRecovery(fn: () => Promise<boolean>): void {
+    this.authRecovery = fn;
+  }
+
   clearQueue(): void {
     this.queue = [];
     this.queueChangeCb?.(0);
@@ -347,14 +368,41 @@ class AudioPlayer {
 
   private handleError = (): void => {
     if (!this.currentItem) return;
-    console.warn(
-      "[audioPlayer] failed to play call",
-      this.currentItem.call.id,
-    );
+    const item = this.currentItem;
+
+    // First failure for this item: try a silent auth refresh in case the
+    // session cookie's JWT was revoked server-side (concurrent-token cap,
+    // explicit logout-elsewhere, etc.). On success, reload the same src
+    // — the new Set-Cookie will be picked up automatically.
+    if (!item.recoveryTried && this.authRecovery && this.audio) {
+      item.recoveryTried = true;
+      const recovery = this.authRecovery;
+      const audio = this.audio;
+      void recovery().then((ok) => {
+        if (!ok || this.currentItem !== item || this.audio !== audio) {
+          this.skipCurrent(item);
+          return;
+        }
+        try {
+          audio.load();
+        } catch {
+          // ignore
+        }
+        audio.play().catch(() => this.skipCurrent(item));
+      });
+      return;
+    }
+
+    this.skipCurrent(item);
+  };
+
+  private skipCurrent(item: QueueItem): void {
+    if (this.currentItem !== item) return;
+    console.warn("[audioPlayer] failed to play call", item.call.id);
     this.currentItem = null;
     this._playing = false;
     this.playNext();
-  };
+  }
 
   private playNext(): void {
     const next = this.queue.shift();
