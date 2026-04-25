@@ -107,9 +107,13 @@ export default function UsersPanel() {
     e.preventDefault();
     try {
       if (editingId != null) {
+        const payload = formToUpdatePayload(form);
+        if (editingId === 1) {
+          payload.systemsJson = null;
+        }
         await updateUser({
           id: editingId,
-          ...formToUpdatePayload(form),
+          ...payload,
         }).unwrap();
       } else {
         await createUser(formToCreatePayload(form)).unwrap();
@@ -403,25 +407,41 @@ export default function UsersPanel() {
                 <div className="flex flex-col gap-1 mt-3">
                   <span className="text-sm font-medium">Allowed Systems</span>
                   <span className="text-xs text-base-content/60">
-                    Select which systems this user can access. If none selected,
-                    all systems are allowed.
+                    {editingId === 1
+                      ? "The primary admin always has access to all systems."
+                      : "Select which systems this user can access. If none selected, all systems are allowed."}
                   </span>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {systems
                       .slice()
                       .sort((a, b) => a.order - b.order)
                       .map((sys) => {
-                        const selected = selectedSystems.includes(sys.id);
+                        const selected =
+                          editingId === 1 || selectedSystems.includes(sys.id);
+                        const locked = editingId === 1;
                         return (
                           <button
                             key={sys.id}
                             type="button"
-                            className={`badge badge-lg gap-1.5 cursor-pointer transition-colors ${
+                            disabled={locked}
+                            aria-disabled={locked}
+                            className={`badge badge-lg gap-1.5 transition-colors ${
+                              locked
+                                ? "cursor-not-allowed opacity-60"
+                                : "cursor-pointer"
+                            } ${
                               selected
                                 ? "badge-primary"
                                 : "badge-ghost hover:badge-outline"
                             }`}
-                            onClick={() => toggleSystem(sys.id)}
+                            onClick={() => {
+                              if (!locked) toggleSystem(sys.id);
+                            }}
+                            title={
+                              locked
+                                ? "The primary admin always has access to all systems."
+                                : undefined
+                            }
                           >
                             <span
                               className={`inline-block w-2 h-2 rounded-full ${
