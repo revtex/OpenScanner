@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 )
@@ -83,9 +84,15 @@ func TestNewCALMessage(t *testing.T) {
 		"id":       float64(42),
 		"systemID": float64(10),
 	}
-	data, err := NewCALMessage(payload, nil)
+	data, err := NewCALMessage(payload)
 	if err != nil {
 		t.Fatalf("NewCALMessage error: %v", err)
+	}
+
+	// Strong guard: marshalled bytes must not contain an "audio" key.
+	// Embedded base64 audio was removed; clients fetch audio over HTTP.
+	if bytes.Contains(data, []byte(`"audio":`)) {
+		t.Errorf("CAL message must not contain an \"audio\" field, got: %s", data)
 	}
 
 	var arr []json.RawMessage
@@ -111,34 +118,8 @@ func TestNewCALMessage(t *testing.T) {
 	if body["id"] != float64(42) {
 		t.Errorf("payload id = %v, want 42", body["id"])
 	}
-	// Audio should be absent when nil is passed.
 	if _, ok := body["audio"]; ok {
-		t.Error("expected no 'audio' key when audioData is nil")
-	}
-}
-
-func TestNewCALMessage_WithAudio(t *testing.T) {
-	payload := map[string]any{
-		"id": float64(1),
-	}
-	audio := []byte{0xFF, 0xFB, 0x90, 0x00} // fake MP3 header
-	data, err := NewCALMessage(payload, audio)
-	if err != nil {
-		t.Fatalf("NewCALMessage error: %v", err)
-	}
-
-	var arr []json.RawMessage
-	if err := json.Unmarshal(data, &arr); err != nil {
-		t.Fatalf("not valid JSON array: %v", err)
-	}
-
-	var body map[string]any
-	if err := json.Unmarshal(arr[1], &body); err != nil {
-		t.Fatalf("unmarshal payload: %v", err)
-	}
-	audioB64, ok := body["audio"].(string)
-	if !ok || audioB64 == "" {
-		t.Fatal("expected base64 'audio' field in payload")
+		t.Error("payload must not contain an 'audio' key")
 	}
 }
 

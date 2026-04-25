@@ -5,10 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -521,34 +519,6 @@ func (h *Handler) PostCallUpload(c *gin.Context) {
 
 	// Broadcast to WebSocket listeners.
 	if h.hub != nil {
-		// Read audio file for inline embedding in the CAL JSON frame.
-		// Use os.Root so the read is scoped to RecordingsDir and cannot
-		// follow a traversal sequence or symlink out of the directory,
-		// regardless of what relPath contains.
-		const maxBroadcastAudioBytes = 20 << 20 // 20 MiB
-		var audioBytes []byte
-		if root, rootErr := os.OpenRoot(h.processor.RecordingsDir()); rootErr != nil {
-			slog.Warn("failed to open recordings root for WS broadcast", "error", rootErr)
-		} else {
-			if fi, statErr := root.Stat(relPath); statErr != nil {
-				slog.Warn("failed to stat audio for WS broadcast", "path", relPath, "error", statErr)
-			} else if fi.Size() > maxBroadcastAudioBytes {
-				slog.Warn("audio file too large for inline WS broadcast, sending metadata only",
-					"path", relPath, "size_bytes", fi.Size(), "max_bytes", maxBroadcastAudioBytes)
-			} else if f, openErr := root.Open(relPath); openErr != nil {
-				slog.Warn("failed to open audio for WS broadcast", "path", relPath, "error", openErr)
-			} else {
-				readBytes, readErr := io.ReadAll(io.LimitReader(f, maxBroadcastAudioBytes))
-				f.Close()
-				if readErr != nil {
-					slog.Warn("failed to read audio for WS broadcast", "path", relPath, "error", readErr)
-				} else {
-					audioBytes = readBytes
-				}
-			}
-			root.Close()
-		}
-
 		calPayload := map[string]any{
 			"id":          callID,
 			"audioName":   filepath.Base(relPath),
@@ -592,7 +562,7 @@ func (h *Handler) PostCallUpload(c *gin.Context) {
 		if frequenciesJSON.Valid {
 			calPayload["frequencies"] = frequenciesJSON.String
 		}
-		calMsg, err := ws.NewCALMessage(calPayload, audioBytes)
+		calMsg, err := ws.NewCALMessage(calPayload)
 		if err != nil {
 			slog.Error("failed to build CAL message", "error", err)
 		} else {
