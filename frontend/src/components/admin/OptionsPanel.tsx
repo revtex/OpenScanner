@@ -543,17 +543,11 @@ export default function OptionsPanel() {
         <h1 className="text-xl font-semibold mb-1">Options</h1>
         <p className="text-sm text-base-content/70">
           Global settings for the scanner. Changes take effect immediately for
-          all connected clients.
-          <span className="inline-flex items-center gap-1 ml-2">
-            <span className="badge badge-sm border-success/30 bg-success/10 text-success">
-              Active
-            </span>
-            = in use,{" "}
-            <span className="badge badge-sm border-warning/30 bg-warning/10 text-warning">
-              Planned
-            </span>
-            = saved but not wired yet.
-          </span>
+          all connected clients. A{" "}
+          <span className="badge badge-sm border-warning/30 bg-warning/10 text-warning">
+            Planned
+          </span>{" "}
+          badge marks options that are saved but not yet wired up.
         </p>
       </div>
 
