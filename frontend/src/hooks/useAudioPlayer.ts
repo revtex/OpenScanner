@@ -1,8 +1,8 @@
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { store } from "@/app/store";
-import { audioPlayer } from "@/services/audioPlayer";
-import { wsClient } from "@/services/wsClient";
+import { audioPlayer } from "@/services/audio/player";
+import { wsClient } from "@/services/ws/client";
 import {
   setCurrentCall,
   clearCurrentCall,

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { audioPlayer } from "@/services/audioPlayer";
+import { audioPlayer } from "@/services/audio/player";
 
 interface SourceEntry {
   pos: number;

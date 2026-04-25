@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
-import { adminWsClient } from "@/services/adminWsClient";
+import { adminWsClient } from "@/services/ws/adminClient";
 import { setCredentials, usePostRefreshMutation } from "@/app/slices/authSlice";
 import { api } from "@/app/api";
 

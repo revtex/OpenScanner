@@ -1,5 +1,5 @@
 import type { Call } from "@/types";
-import { bootstrapBeepContext } from "@/services/beepPlayer";
+import { bootstrapBeepContext } from "@/services/audio/beep";
 
 interface QueueItem {
   call: Call;
