@@ -92,60 +92,22 @@ export default function BookmarksPanel({
 
   const bookmarkedCalls = bookmarkData?.calls ?? [];
 
-  const handlePlay = async (bc: BookmarkCall) => {
-    try {
-      const headers: HeadersInit = {};
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
-      const resp = await fetch(`/api/calls/${bc.id}/audio`, { headers });
-      if (!resp.ok) {
-        console.error("failed to load bookmark audio", bc.id, resp.status);
-        return;
-      }
-
-      const buf = await resp.arrayBuffer();
-      const mimeType =
-        resp.headers.get("Content-Type") || bc.audioType || "audio/mpeg";
-      const blob = new Blob([buf], { type: mimeType });
-      const audioUrl = URL.createObjectURL(blob);
-      const call = bookmarkCallToCall(bc);
-      audioPlayer.playNow(call, buf, audioUrl);
-    } catch (err) {
-      console.error("failed to play bookmark", bc.id, err);
-    }
+  const handlePlay = (bc: BookmarkCall) => {
+    const call = bookmarkCallToCall(bc);
+    audioPlayer.playNow(call);
   };
 
   const handleUnbookmark = (callId: number) => {
     toggleBookmark(callId);
   };
 
-  const handleDownload = async (bc: BookmarkCall) => {
-    try {
-      const headers: HeadersInit = {};
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
-      const resp = await fetch(`/api/calls/${bc.id}/audio`, { headers });
-      if (!resp.ok) {
-        console.error("failed to download bookmark audio", bc.id, resp.status);
-        return;
-      }
-
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = sanitizeDownloadFilename(bc.audioName, `call-${bc.id}.mp3`);
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("failed to download bookmark", bc.id, err);
-    }
+  const handleDownload = (bc: BookmarkCall) => {
+    const a = document.createElement("a");
+    a.href = `/api/calls/${bc.id}/audio`;
+    a.download = sanitizeDownloadFilename(bc.audioName, `call-${bc.id}.mp3`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (
