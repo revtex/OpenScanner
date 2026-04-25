@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   audio with FFmpeg before storing. Select the codec and bitrate below."
   to reflect that MP3 and AAC outputs are both supported via the encoding
   preset.
+- Frontend `services/` directory grouped into `services/ws/` (`client.ts`,
+  `client.test.ts`, `adminClient.ts`) and `services/audio/` (`player.ts`,
+  `beep.ts`). All `@/services/*` imports across components and hooks have
+  been updated to the new paths. No runtime behaviour change.
 
 ### Fixed
 

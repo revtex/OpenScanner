@@ -13,7 +13,7 @@ import {
   Search,
 } from "lucide-react";
 import { useCallback } from "react";
-import { playBeep } from "@/services/beepPlayer";
+import { playBeep } from "@/services/audio/beep";
 import type { AvoidEntry } from "@/types";
 
 interface ControlToolbarProps {

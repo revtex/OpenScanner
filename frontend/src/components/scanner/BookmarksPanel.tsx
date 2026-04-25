@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useGetBookmarkCallsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { useAppSelector } from "@/app/store";
 import { selectToken } from "@/app/slices/authSlice";
-import { audioPlayer } from "@/services/audioPlayer";
+import { audioPlayer } from "@/services/audio/player";
 import { sanitizeDownloadFilename } from "@/services/downloadFilename";
 import { ShareCallButton } from "@/components/scanner/ShareCallButton";
 import { X, Play, Download, Star, ChevronDown } from "lucide-react";

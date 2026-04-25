@@ -36,7 +36,7 @@ import {
 } from "@/app/slices/callsSlice";
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { selectToken } from "@/app/slices/authSlice";
-import { audioPlayer } from "@/services/audioPlayer";
+import { audioPlayer } from "@/services/audio/player";
 import { sanitizeDownloadFilename } from "@/services/downloadFilename";
 import type { Call } from "@/types";
 

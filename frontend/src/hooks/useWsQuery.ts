@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { adminWsClient } from "@/services/adminWsClient";
+import { adminWsClient } from "@/services/ws/adminClient";
 
 // ─── useWsQuery ─────────────────────────────────────────────────────────────
 
