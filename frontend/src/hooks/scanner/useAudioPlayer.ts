@@ -2,7 +2,6 @@ import { useEffect, useCallback, useState, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { store } from "@/app/store";
 import { audioPlayer } from "@/services/audio/player";
-import { wsClient } from "@/services/ws/client";
 import {
   setCurrentCall,
   clearCurrentCall,
@@ -39,51 +38,11 @@ export function useAudioPlayer() {
       setPendingCount(length);
     });
 
-    wsClient.onAudioReceived((call, audioUrl, audioData) => {
-      // LIVE mode gates only streaming WS audio. Manual playback
-      // (Search/Bookmarks) uses audioPlayer.playNow and remains available.
-      if (!store.getState().scanner.isLive) {
-        try {
-          URL.revokeObjectURL(audioUrl);
-        } catch {
-          // ignore
-        }
-        return;
-      }
-      audioPlayer.play(call, audioData, audioUrl);
-    });
-
     // If restored as paused (e.g. after refresh), tell audioPlayer so
     // incoming calls queue instead of trying to auto-play.
     if (store.getState().scanner.isPaused) {
       audioPlayer.pause();
     }
-
-    // Client-side filter — checks hold, avoid, and tgSelection each
-    // time a CAL arrives so changes take effect immediately.
-    wsClient.setCallFilter((call) => {
-      const { heldTG, heldSystem, avoidList, tgSelection } =
-        store.getState().scanner;
-
-      // Hold: if a talkgroup is held, only that TG plays
-      if (heldTG !== null) return call.talkgroup === heldTG;
-
-      // Hold: if a system is held, only calls from that system play
-      if (heldSystem !== null) {
-        if (call.system !== heldSystem) return false;
-      }
-
-      // Avoid: block avoided talkgroups
-      const now = Date.now();
-      for (const entry of avoidList) {
-        if (entry.talkgroupId === call.talkgroup) {
-          if (entry.expiresAt === 0 || entry.expiresAt > now) return false;
-        }
-      }
-
-      // tgSelection: undefined = enabled; only explicit false rejects
-      return tgSelection[call.talkgroup] !== false;
-    });
 
     // Stop all audio when the hook unmounts (e.g. navigating away).
     return () => {

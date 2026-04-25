@@ -13,28 +13,11 @@ import type { Call, WsCommand, TranscriptionSegment } from "@/types";
 const MAX_BACKOFF = 30_000;
 const DEDUP_SIZE = 100;
 
-type AudioReceivedCallback = (
-  call: Call,
-  audioUrl: string,
-  audioData: ArrayBuffer,
-) => void;
-type CallFilter = (call: Call) => boolean;
 type TokenExpiredCallback = () => Promise<string | null>;
 
 interface WsAuth {
   token?: string;
   publicAccess?: boolean;
-}
-
-/** Decode a base64 string to an ArrayBuffer. */
-function base64ToArrayBuffer(b64: string): ArrayBuffer {
-  const bin = atob(b64);
-  const buf = new ArrayBuffer(bin.length);
-  const view = new Uint8Array(buf);
-  for (let i = 0; i < bin.length; i++) {
-    view[i] = bin.charCodeAt(i);
-  }
-  return buf;
 }
 
 class WsClient {
@@ -43,8 +26,6 @@ class WsClient {
   private backoff = 1000;
   private dispatch: AppDispatch | null = null;
   private auth: WsAuth = {};
-  private audioCallback: AudioReceivedCallback | null = null;
-  private callFilter: CallFilter | null = null;
   private tokenExpiredCallback: TokenExpiredCallback | null = null;
   private intentionalClose = false;
   private recentCallIds: number[] = [];
@@ -81,14 +62,6 @@ class WsClient {
       const msg = payload !== undefined ? [command, payload] : [command];
       this.ws.send(JSON.stringify(msg));
     }
-  }
-
-  onAudioReceived(cb: AudioReceivedCallback): void {
-    this.audioCallback = cb;
-  }
-
-  setCallFilter(filter: CallFilter): void {
-    this.callFilter = filter;
   }
 
   onTokenExpired(cb: TokenExpiredCallback): void {
@@ -160,14 +133,13 @@ class WsClient {
           "dateTime" in payload
         ) {
           const raw = payload as Record<string, unknown>;
-          const audioB64 = raw.audio as string | undefined;
-          // Strip the audio field before dispatching metadata to Redux.
-          delete raw.audio;
-          const call = raw as unknown as Call;
-
-          if (this.callFilter && !this.callFilter(call)) {
-            break;
+          // Older servers embedded base64 audio bytes here; the field is
+          // ignored now that audio is fetched on demand from
+          // /api/calls/:id/audio.
+          if ("audio" in raw) {
+            delete raw.audio;
           }
+          const call = raw as unknown as Call;
 
           // Dedup: skip if this call ID was already processed recently.
           if (this.recentCallIds.includes(call.id)) {
@@ -179,14 +151,6 @@ class WsClient {
           }
 
           this.dispatch?.(callReceived(call));
-
-          if (audioB64) {
-            const audioData = base64ToArrayBuffer(audioB64);
-            const mimeType = call.audioType || "audio/mpeg";
-            const blob = new Blob([audioData], { type: mimeType });
-            const audioUrl = URL.createObjectURL(blob);
-            this.audioCallback?.(call, audioUrl, audioData);
-          }
         }
         break;
       case "CFG":

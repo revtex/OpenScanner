@@ -76,6 +76,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `hooks/admin/useNavigationGuard.tsx`; and `services/downloadFilename.ts`
   moved to `services/util/downloadFilename.ts`. All call sites updated;
   no runtime behaviour change.
+- Frontend audio playback now uses the platform `<audio>` element backed
+  by `MediaElementAudioSourceNode`. Each call is fetched on demand from
+  the existing `/api/calls/:id/audio` endpoint authenticated via the
+  session cookie. Drops the WebSocket-embedded base64 path, fixing
+  Mobile Edge AAC playback and dramatically reducing per-call memory
+  pressure on the client.
 
 ### Fixed
 
