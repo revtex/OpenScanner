@@ -117,13 +117,27 @@ Detailed conventions live in the individual agent files. The non-negotiables for
 - Do not commit or push unless the user explicitly asks
 - Do not delete files as a shortcut; if a file looks unfamiliar, read it first
 
+## Local-only planning docs (`docs/plans/`)
+
+- The entire `docs/plans/` directory is **gitignored** (see [.gitignore](../.gitignore)). Files there are local working notes only.
+- **Never** mention plan files, plan filenames, or contents of `docs/plans/*` in:
+  - `CHANGELOG.md`
+  - committed docs (`docs/*.md` outside `docs/plans/`)
+  - commit messages
+  - PR titles or PR descriptions
+  - code comments
+  - any other tracked file
+- Treat plan docs the way you'd treat a personal scratchpad: useful while working, invisible to anyone reading the repository.
+- When asked to write a plan, place it under `docs/plans/` and do not stage or commit it. Do not link to it from tracked files (the link would 404 for everyone else).
+- If you find an existing tracked file that links into `docs/plans/`, treat that link as a bug and remove the reference.
+
 ## Changelog
 
 - User-visible changes (new features, fixes, config/schema changes, security patches) **must** add a bullet under the `[Unreleased]` section of `CHANGELOG.md` in the same PR
 - Group bullets under `### Added`, `### Changed`, `### Fixed`, `### Security`, `### Removed`, or `### Deprecated` (Keep a Changelog format)
 - Pure internal refactors, CI-only tweaks, and typo fixes can skip the CHANGELOG — the PR should be labeled `skip-changelog`
 - The `changelog` CI job blocks merges into `main` when `CHANGELOG.md` wasn't touched and the label isn't applied
-- Full release process: [docs/plans/release-guide.md](../docs/plans/release-guide.md)
+- CHANGELOG bullets describe **what changed in the product**, never **what plan was followed**. Don't reference plan filenames or phase numbers from `docs/plans/`.
 
 ## Releases
 

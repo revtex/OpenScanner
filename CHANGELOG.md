@@ -10,8 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Canonical `GET /api/ws` listener WebSocket route. The existing `GET /ws`
-  remains as a compatibility alias that delegates to the same handler;
-  retirement of the alias is tracked in the native-API design plan. The
+  remains as a compatibility alias that delegates to the same handler. The
   frontend now connects to `/api/ws`, and the Vite dev proxy covers both
   paths.
 

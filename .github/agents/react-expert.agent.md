@@ -160,7 +160,7 @@ frontend/
 
 ## UI Design Principles
 
-Full visual specification with ASCII wireframes, color palette, component mapping, responsive breakpoints, and animations is in `docs/plans/plan.md` § "Web UI Design". Key points:
+Local-only design notes (in the gitignored `docs/plans/` working directory) may contain extended ASCII wireframes and palette spec. The canonical, in-repo summary follows. Key points:
 
 - **Dark-first** — custom DaisyUI `openscanner` theme; `base-100` (#121212), `base-200` (#1e1e1e), `base-300` (#2d2d2d), `primary` (#00e676 green), `secondary` (#ff9100 orange), `error` (#ff1744 red)
 - **Scanner page** — vertically-stacked single column, max-width 640px, 24px padding:
