@@ -87,6 +87,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   session cookie. Drops the WebSocket-embedded base64 path, fixing
   Mobile Edge AAC playback and dramatically reducing per-call memory
   pressure on the client.
+- Service worker now passes audio fetches (`/api/calls/:id/audio` and
+  `/api/shared/:token/audio`) straight through to the network instead of
+  intercepting them. Lets the browser handle Range requests natively for
+  the `<audio>` element and avoids buffering full call bodies in the
+  worker.
 
 ### Fixed
 
