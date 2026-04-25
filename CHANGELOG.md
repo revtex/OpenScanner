@@ -24,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now lives in `internal/handler/routes`, and shared swagger DTOs and
   helpers live in `internal/handler/shared`. No route paths, methods,
   middleware ordering, response shapes, or status codes changed.
+- Backend file-level cleanup: `internal/handler/calls/calls.go` (~1500 LOC)
+  split into `upload.go`, `audio.go`, `search.go`, `transcript.go`, and a
+  slim `calls.go` retaining the `Handler` struct and constructor;
+  `internal/middleware/middleware.go` split into `cors.go`, `auth.go`,
+  `logging.go`, `limits.go`. Same package, same exports, no behaviour
+  change.
 - Admin CRUD business logic has been extracted from `internal/ws` into a
   new transport-agnostic `internal/admin` package. The WebSocket layer
   now only routes `ADM_REQ` frames to `admin.Operations` methods; the
