@@ -115,7 +115,7 @@ This reviewer covers the whole application. Sections below map to subsystems:
 ### A07 — Identification & Authentication Failures
 
 - [ ] Login rate limiter: 3 failures → 10-minute lockout per IP
-- [ ] Max 5 concurrent JWT tokens per user enforced (oldest invalidated on 6th login)
+- [ ] Max `auth.MaxRefreshFamilies` (20) concurrent JWT tokens per user enforced (oldest invalidated on overflow)
 - [ ] JWT tokens are invalidated on logout (server-side token tracker)
 - [ ] Refresh token family rotation: reuse of an old token revokes the entire family
 - [ ] Refresh cookie flags: `HttpOnly`, `Secure` in production, `SameSite=Lax`
