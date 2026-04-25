@@ -117,7 +117,7 @@ Most people already have a web server (Caddy, nginx, Traefik) on their home serv
 
 Two rules to remember when proxying:
 
-- **Forward WebSocket upgrades** on `/api/ws`, `/ws`, and `/api/admin/ws` — the live audio stream and admin events use them. `/api/ws` is the canonical listener endpoint; `/ws` is a compatibility alias kept for legacy clients and should also be proxied.
+- **Forward WebSocket upgrades** on `/api/ws`, `/ws`, and `/api/admin/ws` — the live call feed and admin events use them. `/api/ws` is the canonical listener endpoint; `/ws` is a compatibility alias kept for legacy clients and should also be proxied. (Audio is delivered separately as a regular HTTP response from `/api/calls/:id/audio` and does not require WebSocket forwarding.)
 - **Send `X-Forwarded-Proto`** so OpenScanner knows whether to mark cookies as secure.
 
 If the proxy is on the same machine, it's also a good idea to bind OpenScanner to localhost only so nothing bypasses the proxy. In your compose file:
@@ -181,7 +181,7 @@ server {
 }
 ```
 
-After starting the proxy, open the public URL in a browser and confirm the live scanner still plays audio — that's the quickest way to verify the WebSocket forwarding is working.
+After starting the proxy, open the public URL in a browser and confirm the live scanner shows new calls and plays audio. New calls arriving prove the WebSocket forwarding is working; audio playing proves the standard HTTPS forwarding (and cookies) are working.
 
 > **Tip:** Make sure your server's clock is accurate (NTP is usually on by default). Login tokens have expiry times, and a clock that's off by several minutes will cause confusing login failures.
 
@@ -340,7 +340,7 @@ After deploying, check these to confirm everything works:
 - [ ] The browser URL shows the scanner interface (or the setup page on first run)
 - [ ] Admin login works and the dashboard loads
 - [ ] A test upload from your recorder appears in OpenScanner
-- [ ] The live scanner feed plays audio (this proves WebSockets are working)
+- [ ] The live scanner feed shows new calls in real time (this proves WebSockets are working) and plays them back (this proves audio HTTP fetches and cookies are working)
 
 ---
 
