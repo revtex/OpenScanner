@@ -15,7 +15,7 @@ import type { Call, ScannerConfig } from "@/types";
 const mockToggle = vi.fn();
 let mockIsDark = true;
 
-vi.mock("@/hooks/useTheme", () => ({
+vi.mock("@/hooks/shared/useTheme", () => ({
   useTheme: () => ({
     isDark: mockIsDark,
     toggle: mockToggle,

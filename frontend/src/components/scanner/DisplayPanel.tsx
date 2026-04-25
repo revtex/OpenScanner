@@ -12,7 +12,7 @@ import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { useShareCallMutation } from "@/app/slices/shareSlice";
 import { HistoryPanel } from "@/components/scanner/HistoryPanel";
 import { TranscriptPanel } from "@/components/scanner/TranscriptPanel";
-import { useActiveUnit } from "@/hooks/useActiveUnit";
+import { useActiveUnit } from "@/hooks/scanner/useActiveUnit";
 import { useAppSelector } from "@/app/store";
 import type { AvoidEntry, Call } from "@/types";
 

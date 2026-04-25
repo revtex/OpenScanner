@@ -8,7 +8,7 @@ import { authSlice } from "@/app/slices/authSlice";
 import { callsSlice } from "@/app/slices/callsSlice";
 import { api } from "@/app/api";
 import type { RootState } from "@/app/store";
-import { useAuthInit } from "@/hooks/useAuthInit";
+import { useAuthInit } from "@/hooks/shared/useAuthInit";
 
 // ── Mock the refresh mutation ─────────────────────────────────────────────
 

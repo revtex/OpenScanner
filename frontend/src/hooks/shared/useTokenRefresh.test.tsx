@@ -6,7 +6,7 @@ import { scannerSlice } from "@/app/slices/scannerSlice";
 import { authSlice, setCredentials } from "@/app/slices/authSlice";
 import { callsSlice } from "@/app/slices/callsSlice";
 import { api } from "@/app/api";
-import { useTokenRefresh } from "@/hooks/useTokenRefresh";
+import { useTokenRefresh } from "@/hooks/shared/useTokenRefresh";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 

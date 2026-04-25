@@ -20,7 +20,7 @@ import {
   useLazyExportTagsQuery,
   useImportConfigMutation,
   useListSystemsQuery,
-} from "@/hooks/useAdminWsOps";
+} from "@/hooks/admin/useAdminWsOps";
 import { selectToken } from "@/app/slices/authSlice";
 import { useAppSelector } from "@/app/store";
 import RadioReferenceCard from "@/components/admin/RadioReferenceCard";

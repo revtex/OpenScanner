@@ -36,7 +36,7 @@ import {
   clearCredentials,
   usePostLogoutMutation,
 } from "@/app/slices/authSlice";
-import { useAdminWebSocket } from "@/hooks/useAdminWebSocket";
+import { useAdminWebSocket } from "@/hooks/admin/useAdminWebSocket";
 import UsersPanel from "@/components/admin/UsersPanel";
 import SystemsPanel from "@/components/admin/SystemsPanel";
 import GroupsTagsPanel from "@/components/admin/GroupsTagsPanel";

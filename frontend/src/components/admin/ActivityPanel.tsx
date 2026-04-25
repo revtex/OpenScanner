@@ -1,4 +1,4 @@
-import { useAdminActivity } from "@/hooks/useAdminActivity";
+import { useAdminActivity } from "@/hooks/admin/useAdminActivity";
 import type { ChartBucket } from "@/app/slices/activitySlice";
 import {
   Activity,

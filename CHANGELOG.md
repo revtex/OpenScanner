@@ -41,6 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `client.test.ts`, `adminClient.ts`) and `services/audio/` (`player.ts`,
   `beep.ts`). All `@/services/*` imports across components and hooks have
   been updated to the new paths. No runtime behaviour change.
+- Frontend `hooks/` directory split into `hooks/shared/` (`useAuthInit`,
+  `useTheme`, `useTokenRefresh`, `useWebSocket`), `hooks/scanner/`
+  (`useScanner`, `useAudioPlayer`, `useTGSelectionSync`, `useActiveUnit`),
+  and `hooks/admin/` (`useAdminWebSocket`, `useAdminWsOps`,
+  `useAdminActivity`, `useAdminLogs`, `useWsQuery`), each with a barrel
+  `index.ts`. All call sites have been updated to the new specific paths.
+  No runtime behaviour change.
 
 ### Fixed
 

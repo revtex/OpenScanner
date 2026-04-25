@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "@/hooks/useTheme";
+import { useTheme } from "@/hooks/shared/useTheme";
 import { useAppSelector, useAppDispatch } from "@/app/store";
 import {
   selectToken,
