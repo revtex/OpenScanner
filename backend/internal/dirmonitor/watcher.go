@@ -787,8 +787,8 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 		watchedReal, _ := filepath.EvalSymlinks(filepath.Clean(dw.Directory))
 
 		removeWithinRoot := func(absPath, label string) {
-			real, _ := filepath.EvalSymlinks(filepath.Clean(absPath))
-			rel, err := filepath.Rel(watchedReal, real)
+			realPath, _ := filepath.EvalSymlinks(filepath.Clean(absPath))
+			rel, err := filepath.Rel(watchedReal, realPath)
 			if err != nil || strings.HasPrefix(rel, "..") || rel == "." {
 				slog.Warn("dirmonitor: refusing to delete "+label+" outside watched directory",
 					"file", absPath, "dir", dw.Directory)
