@@ -30,6 +30,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wire protocol, action names, and response shapes are unchanged.
 - Deployment guide reverse-proxy instructions now list `/api/ws` alongside
   `/ws` and `/api/admin/ws` as paths that need WebSocket-upgrade forwarding.
+- Admin Options panel no longer shows an "Active" badge on every wired
+  setting; only "Planned" badges are rendered for not-yet-implemented
+  options.
+- Admin Options "Audio Conversion" description now reads "Convert incoming
+  audio with FFmpeg before storing. Select the codec and bitrate below."
+  to reflect that MP3 and AAC outputs are both supported via the encoding
+  preset.
+
+### Fixed
+
+- Default `audioEncodingPreset` seeded into the settings table is now
+  `mp3_32k` (matching the dropdown's "(default)" label and the Go
+  `ParseEncodingPreset` fallback) instead of `aac_lc_32k`. New installs
+  enabling audio conversion will now default to MP3 32 kbps as the UI
+  advertises.
 
 ## [1.1.2] — 2026-04-24
 
