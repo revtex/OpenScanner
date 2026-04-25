@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -676,50 +675,6 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 
 	// ── Broadcast to WebSocket listeners ────────────────────────────────────
 	if s.hub != nil {
-		// Read audio file for inline embedding in the CAL JSON frame.
-		// SECURITY: limit audio read size for WS broadcast to prevent OOM
-		// for large audio files. Files exceeding the limit are still stored
-		// on disk; the client will fetch them via HTTP.
-		const maxBroadcastAudioBytes = 20 << 20 // 20 MiB
-		var audioBytes []byte
-		// Open the recordings directory as an os.Root so the audio read is
-		// structurally confined regardless of what relPath looks like. This
-		// narrows the path for static taint analysis on top of the existing
-		// filepath.Rel escape check.
-		if root, rootErr := os.OpenRoot(s.processor.RecordingsDir()); rootErr != nil {
-			slog.Warn("dirmonitor: failed to open recordings root for WS broadcast",
-				"error", rootErr)
-		} else {
-			func() {
-				defer root.Close()
-				f, openErr := root.Open(relPath)
-				if openErr != nil {
-					slog.Warn("dirmonitor: failed to open audio for WS broadcast",
-						"path", relPath, "error", openErr)
-					return
-				}
-				defer f.Close()
-				fi, statErr := f.Stat()
-				if statErr != nil {
-					slog.Warn("dirmonitor: failed to stat audio for WS broadcast",
-						"path", relPath, "error", statErr)
-					return
-				}
-				if fi.Size() > maxBroadcastAudioBytes {
-					slog.Warn("dirmonitor: audio file too large for inline WS broadcast, sending metadata only",
-						"path", relPath, "size_bytes", fi.Size(), "max_bytes", maxBroadcastAudioBytes)
-					return
-				}
-				readBytes, readErr := io.ReadAll(io.LimitReader(f, maxBroadcastAudioBytes))
-				if readErr != nil {
-					slog.Warn("dirmonitor: failed to read audio for WS broadcast",
-						"path", relPath, "error", readErr)
-					return
-				}
-				audioBytes = readBytes
-			}()
-		}
-
 		calPayload := map[string]any{
 			"id":          callID,
 			"audioName":   filepath.Base(relPath),
@@ -755,7 +710,7 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 			calPayload["frequencies"] = freqJSON.String
 		}
 
-		calMsg, err := ws.NewCALMessage(calPayload, audioBytes)
+		calMsg, err := ws.NewCALMessage(calPayload)
 		if err != nil {
 			slog.Error("dirmonitor: failed to build CAL message", "error", err)
 		} else {
@@ -832,8 +787,8 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 		watchedReal, _ := filepath.EvalSymlinks(filepath.Clean(dw.Directory))
 
 		removeWithinRoot := func(absPath, label string) {
-			real, _ := filepath.EvalSymlinks(filepath.Clean(absPath))
-			rel, err := filepath.Rel(watchedReal, real)
+			realPath, _ := filepath.EvalSymlinks(filepath.Clean(absPath))
+			rel, err := filepath.Rel(watchedReal, realPath)
 			if err != nil || strings.HasPrefix(rel, "..") || rel == "." {
 				slog.Warn("dirmonitor: refusing to delete "+label+" outside watched directory",
 					"file", absPath, "dir", dw.Directory)

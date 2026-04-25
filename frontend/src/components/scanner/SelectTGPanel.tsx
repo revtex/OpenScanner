@@ -8,7 +8,7 @@ import {
   setTGsByGroup,
   setTGsByTag,
   removeAvoid,
-} from "@/app/slices/scannerSlice";
+} from "@/app/slices/scanner/scannerSlice";
 import type { TalkgroupConfig, AvoidEntry } from "@/types";
 
 interface SelectTGPanelProps {

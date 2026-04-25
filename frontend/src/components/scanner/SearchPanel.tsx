@@ -33,11 +33,11 @@ import {
   setBookmarkedOnly,
   setTranscript,
   resetFilters,
-} from "@/app/slices/callsSlice";
+} from "@/app/slices/scanner/callsSlice";
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
-import { selectToken } from "@/app/slices/authSlice";
-import { audioPlayer } from "@/services/audioPlayer";
-import { sanitizeDownloadFilename } from "@/services/downloadFilename";
+import { selectToken } from "@/app/slices/shared/authSlice";
+import { audioPlayer } from "@/services/audio/player";
+import { sanitizeDownloadFilename } from "@/services/util/downloadFilename";
 import type { Call } from "@/types";
 
 interface SearchPanelProps {
@@ -463,59 +463,35 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     return count;
   }, [filters]);
 
-  const handleRowClick = useCallback(
-    async (call: CallSearchResult) => {
-      try {
-        const headers: HeadersInit = {};
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
-        }
+  const handleRowClick = useCallback(async (call: CallSearchResult) => {
+    const playCall: Call = {
+      id: call.id,
+      audioName: call.audioName || `call-${call.id}`,
+      audioType: call.audioType || "audio/mpeg",
+      dateTime: call.dateTime,
+      systemId: call.systemId,
+      system: call.systemId,
+      talkgroupId: call.talkgroupId,
+      talkgroup: call.talkgroupId,
+      frequency: call.frequency,
+      duration: call.duration,
+      source: call.source,
+      site: call.site,
+      channel: call.channel,
+      decoder: call.decoder,
+      errorCount: call.errorCount,
+      spikeCount: call.spikeCount,
+      talkerAlias: call.talkerAlias,
+      systemLabel: call.systemLabel,
+      talkgroupLabel: call.talkgroupLabel,
+      talkgroupName: call.talkgroupName,
+      talkgroupTag: call.talkgroupTag,
+      talkgroupGroup: call.talkgroupGroup,
+      transcript: call.transcript,
+    };
 
-        const resp = await fetch(`/api/calls/${call.id}/audio`, { headers });
-        if (!resp.ok) {
-          console.error("failed to load call audio", call.id, resp.status);
-          return;
-        }
-
-        const buf = await resp.arrayBuffer();
-        const mimeType =
-          resp.headers.get("Content-Type") || call.audioType || "audio/mpeg";
-        const blob = new Blob([buf], { type: mimeType });
-        const audioUrl = URL.createObjectURL(blob);
-
-        const playCall: Call = {
-          id: call.id,
-          audioName: call.audioName || `call-${call.id}`,
-          audioType: call.audioType || blob.type || "audio/mpeg",
-          dateTime: call.dateTime,
-          systemId: call.systemId,
-          system: call.systemId,
-          talkgroupId: call.talkgroupId,
-          talkgroup: call.talkgroupId,
-          frequency: call.frequency,
-          duration: call.duration,
-          source: call.source,
-          site: call.site,
-          channel: call.channel,
-          decoder: call.decoder,
-          errorCount: call.errorCount,
-          spikeCount: call.spikeCount,
-          talkerAlias: call.talkerAlias,
-          systemLabel: call.systemLabel,
-          talkgroupLabel: call.talkgroupLabel,
-          talkgroupName: call.talkgroupName,
-          talkgroupTag: call.talkgroupTag,
-          talkgroupGroup: call.talkgroupGroup,
-          transcript: call.transcript,
-        };
-
-        audioPlayer.playNow(playCall, buf, audioUrl);
-      } catch (err) {
-        console.error("failed to play call", call.id, err);
-      }
-    },
-    [token],
-  );
+    audioPlayer.playNow(playCall);
+  }, []);
 
   const [showFilters, setShowFilters] = useState(false);
 
@@ -523,38 +499,17 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
     setOpenFilterSection((prev) => (prev === sectionId ? "" : sectionId));
   }, []);
 
-  const handleDownload = useCallback(
-    async (call: CallSearchResult) => {
-      try {
-        const headers: HeadersInit = {};
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
-        }
-
-        const resp = await fetch(`/api/calls/${call.id}/audio`, { headers });
-        if (!resp.ok) {
-          console.error("failed to download call audio", call.id, resp.status);
-          return;
-        }
-
-        const blob = await resp.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = sanitizeDownloadFilename(
-          call.audioName,
-          `call-${call.id}.mp3`,
-        );
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } catch (err) {
-        console.error("failed to download call", call.id, err);
-      }
-    },
-    [token],
-  );
+  const handleDownload = useCallback((call: CallSearchResult) => {
+    const a = document.createElement("a");
+    a.href = `/api/calls/${call.id}/audio`;
+    a.download = sanitizeDownloadFilename(
+      call.audioName,
+      `call-${call.id}.mp3`,
+    );
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, []);
 
   if (!isOpen) return null;
 

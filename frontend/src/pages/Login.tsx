@@ -8,7 +8,7 @@ import {
   selectToken,
   usePostLoginMutation,
   useChangePasswordMutation,
-} from "@/app/slices/authSlice";
+} from "@/app/slices/shared/authSlice";
 
 interface LoginLocationState {
   from?: string;

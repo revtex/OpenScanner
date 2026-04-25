@@ -5,9 +5,9 @@ import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import ApiKeysPanel from "@/components/admin/ApiKeysPanel";
-import { scannerSlice } from "@/app/slices/scannerSlice";
-import { authSlice } from "@/app/slices/authSlice";
-import { callsSlice } from "@/app/slices/callsSlice";
+import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
+import { authSlice } from "@/app/slices/shared/authSlice";
+import { callsSlice } from "@/app/slices/scanner/callsSlice";
 import { api } from "@/app/api";
 import type { AdminApiKey, AdminSystem } from "@/types";
 
@@ -60,7 +60,7 @@ const deleteApiKeyMutate = vi.fn((_arg: unknown) => ({
   unwrap: deleteApiKeyUnwrap,
 }));
 
-vi.mock("@/hooks/useAdminWsOps", () => ({
+vi.mock("@/hooks/admin/useAdminWsOps", () => ({
   useListApiKeysQuery: () => ({ data: mockKeys, isLoading: false }),
   useListSystemsQuery: () => ({ data: mockSystems, isLoading: false }),
   useGetConfigQuery: () => ({ data: { settings: [] }, isLoading: false }),

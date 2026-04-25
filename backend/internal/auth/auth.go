@@ -40,8 +40,11 @@ const (
 	RefreshTokenExpiry = 30 * 24 * time.Hour
 
 	// MaxRefreshFamilies is the maximum number of active refresh token families per user.
-	// Matches the "max 5 concurrent JWT tokens per user" rule in the security policy.
-	MaxRefreshFamilies = 5
+	// With access TTL = 15 min and silent refresh ≈1 min before expiry, every active
+	// browser/tab consumes ~4 token slots per hour. 20 leaves comfortable headroom for
+	// a typical multi-device homelab user (desktop + phone + tablet) without bloating
+	// the deny list, and still bounds the impact of a stolen refresh family.
+	MaxRefreshFamilies = 20
 )
 
 // JWTSecret is the HS256 signing key. It is initialised lazily:
@@ -275,10 +278,11 @@ type tokenEntry struct {
 	ExpiresAt time.Time
 }
 
-// NewTokenTracker creates a TokenTracker with a default max of 5 tokens per user.
+// NewTokenTracker creates a TokenTracker with a default max of MaxRefreshFamilies
+// active tokens per user.
 func NewTokenTracker() *TokenTracker {
 	return &TokenTracker{
-		MaxTokens:  5,
+		MaxTokens:  MaxRefreshFamilies,
 		userTokens: make(map[int64][]tokenEntry),
 		denied:     make(map[string]time.Time),
 	}

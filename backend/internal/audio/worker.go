@@ -23,12 +23,12 @@ const (
 type EncodingPreset string
 
 const (
-	PresetAACLC32k EncodingPreset = "aac_lc_32k" // AAC-LC 32 kbps (default)
+	PresetAACLC32k EncodingPreset = "aac_lc_32k" // AAC-LC 32 kbps
 	PresetAACLC24k EncodingPreset = "aac_lc_24k" // AAC-LC 24 kbps
 	PresetAACLC16k EncodingPreset = "aac_lc_16k" // AAC-LC 16 kbps
 	PresetHEAAC12k EncodingPreset = "he_aac_12k" // HE-AAC 12 kbps
 	PresetHEAAC8k  EncodingPreset = "he_aac_8k"  // HE-AAC  8 kbps
-	PresetMP3_32k  EncodingPreset = "mp3_32k"    // MP3  32 kbps
+	PresetMP3_32k  EncodingPreset = "mp3_32k"    // MP3  32 kbps (default)
 	PresetMP3_24k  EncodingPreset = "mp3_24k"    // MP3  24 kbps
 	PresetMP3_16k  EncodingPreset = "mp3_16k"    // MP3  16 kbps
 )

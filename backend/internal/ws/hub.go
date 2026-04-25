@@ -3,39 +3,26 @@ package ws
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 	"sync"
 	"time"
 
+	"github.com/openscanner/openscanner/internal/admin"
 	"github.com/openscanner/openscanner/internal/db"
 )
 
 // Reloader triggers a service config reload (e.g. dirmonitor, downstream).
-type Reloader interface {
-	Reload()
-}
+// Kept as a ws-local alias to admin.Reloader so external callers that
+// reference ws.Reloader continue to compile.
+type Reloader = admin.Reloader
 
 // TranscriberReloader can hot-reload the transcription subsystem.
-type TranscriberReloader interface {
-	Reload(enabled bool, baseURL, model, language string, diarize bool) bool
-	Enabled() bool
-	BaseURL() string
-	QueueDepth() int
-}
+type TranscriberReloader = admin.TranscriberReloader
 
-// HubDeps holds optional dependencies injected into the Hub for admin WS operations.
-type HubDeps struct {
-	SQLDB             *sql.DB
-	DirMonitorReload  Reloader
-	DownstreamReload  Reloader
-	TranscriberReload TranscriberReloader
-	FFmpegAvailable   bool
-	FDKAACAvailable   bool
-	WhisperAvailable  bool
-	RecordingsDir     string
-	EncryptionKey     string
-}
+// HubDeps holds optional dependencies injected into the Hub for admin WS
+// operations. It is an alias for admin.Deps so callers can keep using
+// ws.HubDeps{...} while the underlying fields live in the admin package.
+type HubDeps = admin.Deps
 
 // StartTime is the process start time, used for uptime calculations.
 var StartTime = time.Now()
@@ -44,7 +31,7 @@ var StartTime = time.Now()
 type Hub struct {
 	queries *db.Queries
 	version string
-	deps    HubDeps
+	admin   *admin.Operations // transport-agnostic admin ops
 
 	mu      sync.RWMutex
 	clients map[*Client]struct{}
@@ -73,16 +60,17 @@ func NewHub(queries *db.Queries, version string, deps ...HubDeps) *Hub {
 	if len(deps) > 0 {
 		d = deps[0]
 	}
-	return &Hub{
+	h := &Hub{
 		queries:    queries,
 		version:    version,
-		deps:       d,
 		clients:    make(map[*Client]struct{}),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		broadcast:  make(chan broadcastMsg, 256),
 		done:       make(chan struct{}),
 	}
+	h.admin = admin.New(queries, d, h)
+	return h
 }
 
 // Run starts the hub's event loop. It blocks until ctx is cancelled.
@@ -135,9 +123,10 @@ func (h *Hub) Broadcast(data []byte, filter func(*Client) bool) {
 	}
 }
 
-// BroadcastCAL sends a CAL message (with embedded base64 audio) to matching
-// clients. Audio is now part of the JSON text frame — no separate binary frame.
-// Also notifies admin clients so the activity dashboard can refresh.
+// BroadcastCAL sends a metadata-only CAL message to matching clients.
+// Audio bytes are no longer embedded — clients fetch them on demand from
+// GET /api/calls/:id/audio. Also notifies admin clients so the activity
+// dashboard can refresh.
 func (h *Hub) BroadcastCAL(calMsg []byte, filter func(*Client) bool) {
 	h.Broadcast(calMsg, filter)
 	h.BroadcastAdminEvent("activity.updated", nil)
@@ -274,7 +263,9 @@ func (h *Hub) DisconnectByJTI(jti string) {
 // This handles the circular dependency where dwService needs hub but hub
 // needs dwService's Reloader.
 func (h *Hub) SetDirMonitorReloader(r Reloader) {
-	h.deps.DirMonitorReload = r
+	if h.admin != nil {
+		h.admin.Deps.DirMonitorReload = r
+	}
 }
 
 // debounceLSC schedules an LSC broadcast, resetting the timer if one is already

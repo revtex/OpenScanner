@@ -9,7 +9,7 @@ import {
   useCreateTagMutation,
   useUpdateTagMutation,
   useDeleteTagMutation,
-} from "@/hooks/useAdminWsOps";
+} from "@/hooks/admin/useAdminWsOps";
 import type { AdminGroup, AdminTag } from "@/types";
 
 // ─── Generic label CRUD table ───

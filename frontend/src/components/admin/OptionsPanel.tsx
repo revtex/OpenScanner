@@ -10,8 +10,8 @@ import {
 import {
   useGetConfigQuery,
   useUpdateConfigMutation,
-} from "@/hooks/useAdminWsOps";
-import { useNavigationGuard } from "@/components/admin/NavigationGuardContext";
+} from "@/hooks/admin/useAdminWsOps";
+import { useNavigationGuard } from "@/hooks/admin/useNavigationGuard";
 import type { AdminSetting } from "@/types";
 
 // ─── Known setting keys and their input types ───
@@ -164,7 +164,8 @@ const DESCRIPTIONS: Record<string, string> = {
     "Include patched talkgroups in search results (may slow search).",
   showListenersCount:
     "Display the active listener count on the main scanner screen.",
-  audioConversion: "Convert incoming audio to AAC/M4A using FFmpeg.",
+  audioConversion:
+    "Convert incoming audio with FFmpeg before storing. Select the codec and bitrate below.",
   audioEncodingPreset:
     "Codec and bitrate for converted audio. HE-AAC presets require libfdk_aac in your FFmpeg build. Lower bitrates save storage; choose based on your quality needs.",
   disableDuplicateDetection:
@@ -309,11 +310,7 @@ export default function OptionsPanel() {
       <span className="badge badge-sm border-warning/30 bg-warning/10 text-warning">
         Planned
       </span>
-    ) : (
-      <span className="badge badge-sm border-success/30 bg-success/10 text-success">
-        Active
-      </span>
-    );
+    ) : null;
 
     if (isBooleanKey(key)) {
       return (
@@ -546,17 +543,11 @@ export default function OptionsPanel() {
         <h1 className="text-xl font-semibold mb-1">Options</h1>
         <p className="text-sm text-base-content/70">
           Global settings for the scanner. Changes take effect immediately for
-          all connected clients.
-          <span className="inline-flex items-center gap-1 ml-2">
-            <span className="badge badge-sm border-success/30 bg-success/10 text-success">
-              Active
-            </span>
-            = in use,{" "}
-            <span className="badge badge-sm border-warning/30 bg-warning/10 text-warning">
-              Planned
-            </span>
-            = saved but not wired yet.
-          </span>
+          all connected clients. A{" "}
+          <span className="badge badge-sm border-warning/30 bg-warning/10 text-warning">
+            Planned
+          </span>{" "}
+          badge marks options that are saved but not yet wired up.
         </p>
       </div>
 

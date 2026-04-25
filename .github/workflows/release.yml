@@ -39,6 +39,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "1.25"
+          cache-dependency-path: backend/go.sum
 
       - name: Install swag
         run: go install github.com/swaggo/swag/cmd/swag@latest
@@ -56,7 +57,7 @@ jobs:
 
       - name: Generate Swagger docs
         working-directory: backend
-        run: swag init -d cmd/server,internal/api -g main.go --parseDependency --parseInternal -o docs
+        run: swag init -d cmd/server,internal/handler -g main.go --parseDependency --parseInternal -o docs
 
       - name: Build binary
         working-directory: backend

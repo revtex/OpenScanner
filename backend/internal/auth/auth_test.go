@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -118,30 +119,31 @@ func TestGenerateAndParseToken(t *testing.T) {
 	})
 }
 
-func TestTokenTracker_MaxFiveTokens(t *testing.T) {
+func TestTokenTracker_MaxConcurrentTokens(t *testing.T) {
 	tt := auth.NewTokenTracker()
 	expires := time.Now().Add(24 * time.Hour)
+	n := auth.MaxRefreshFamilies
 
-	// Issue 5 tokens for user 1 — all should be active.
-	jtis := make([]string, 6)
-	for i := 0; i < 5; i++ {
-		jtis[i] = "jti-" + time.Now().Format("150405.000") + "-" + string(rune('a'+i))
+	// Issue n tokens for user 1 — all should be active.
+	jtis := make([]string, n+1)
+	for i := 0; i < n; i++ {
+		jtis[i] = "jti-" + time.Now().Format("150405.000000") + "-" + strconv.Itoa(i)
 		tt.Track(1, jtis[i], expires)
 	}
-	for i := 0; i < 5; i++ {
+	for i := 0; i < n; i++ {
 		if tt.IsRevoked(jtis[i]) {
-			t.Errorf("token %d should not be revoked with only 5 active", i)
+			t.Errorf("token %d should not be revoked with only %d active", i, n)
 		}
 	}
 
-	// Issue a 6th token — the oldest (jtis[0]) should be revoked.
-	jtis[5] = "jti-sixth"
-	tt.Track(1, jtis[5], expires)
+	// Issue an (n+1)th token — the oldest (jtis[0]) should be revoked.
+	jtis[n] = "jti-overflow"
+	tt.Track(1, jtis[n], expires)
 
 	if !tt.IsRevoked(jtis[0]) {
-		t.Error("oldest token (index 0) should be revoked after 6th login")
+		t.Errorf("oldest token (index 0) should be revoked after %d-th login", n+1)
 	}
-	for i := 1; i <= 5; i++ {
+	for i := 1; i <= n; i++ {
 		if tt.IsRevoked(jtis[i]) {
 			t.Errorf("token %d should still be active", i)
 		}

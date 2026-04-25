@@ -1,9 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
 import { api } from "@/app/api";
-import { scannerSlice } from "@/app/slices/scannerSlice";
-import { authSlice } from "@/app/slices/authSlice";
-import { callsSlice } from "@/app/slices/callsSlice";
+import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
+import { authSlice } from "@/app/slices/shared/authSlice";
+import { callsSlice } from "@/app/slices/scanner/callsSlice";
+import { audioListenerMiddleware } from "@/app/audioListenerMiddleware";
 
 export const store = configureStore({
   reducer: {
@@ -13,7 +14,9 @@ export const store = configureStore({
     calls: callsSlice.reducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(api.middleware),
+    getDefaultMiddleware()
+      .prepend(audioListenerMiddleware.middleware)
+      .concat(api.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

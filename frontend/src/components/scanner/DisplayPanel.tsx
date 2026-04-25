@@ -9,10 +9,10 @@ import {
 import { Share2, Sun, Copy, X, ExternalLink } from "lucide-react";
 import { BookmarkButton } from "@/components/scanner/BookmarkButton";
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
-import { useShareCallMutation } from "@/app/slices/shareSlice";
+import { useShareCallMutation } from "@/app/slices/scanner/shareSlice";
 import { HistoryPanel } from "@/components/scanner/HistoryPanel";
 import { TranscriptPanel } from "@/components/scanner/TranscriptPanel";
-import { useActiveUnit } from "@/hooks/useActiveUnit";
+import { useActiveUnit } from "@/hooks/scanner/useActiveUnit";
 import { useAppSelector } from "@/app/store";
 import type { AvoidEntry, Call } from "@/types";
 

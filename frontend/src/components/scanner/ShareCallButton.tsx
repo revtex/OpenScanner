@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { Share2, Copy, ExternalLink, X } from "lucide-react";
-import { useShareCallMutation } from "@/app/slices/shareSlice";
+import { useShareCallMutation } from "@/app/slices/scanner/shareSlice";
 
 interface ShareCallButtonProps {
   callId: number;

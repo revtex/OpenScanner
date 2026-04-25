@@ -4,9 +4,9 @@ import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import Login from "@/pages/Login";
-import { scannerSlice } from "@/app/slices/scannerSlice";
-import { authSlice } from "@/app/slices/authSlice";
-import { callsSlice } from "@/app/slices/callsSlice";
+import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
+import { authSlice } from "@/app/slices/shared/authSlice";
+import { callsSlice } from "@/app/slices/scanner/callsSlice";
 import { api } from "@/app/api";
 import type { RootState } from "@/app/store";
 
@@ -36,9 +36,9 @@ vi.mock("@/app/api", async () => {
     useGetSetupStatusQuery: () => mockUseGetSetupStatusQuery(),
   };
 });
-vi.mock("@/app/slices/authSlice", async () => {
-  const actual = await vi.importActual<typeof import("@/app/slices/authSlice")>(
-    "@/app/slices/authSlice",
+vi.mock("@/app/slices/shared/authSlice", async () => {
+  const actual = await vi.importActual<typeof import("@/app/slices/shared/authSlice")>(
+    "@/app/slices/shared/authSlice",
   );
   return {
     ...actual,

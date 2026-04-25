@@ -7,6 +7,118 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-04-25
+
+### Added
+
+- Session cookie (`os_session`) issued on login and refresh, cleared on
+  logout. The `GET /api/calls/:id/audio` route now accepts authentication
+  via either the existing `Authorization: Bearer` header or the new
+  cookie, so `<audio>` element playback can be authenticated without
+  client-side header injection. Cookie is httpOnly, Secure when served
+  over HTTPS, `SameSite=Strict`, scoped to `/api`. Cross-site requests
+  are rejected via a `Sec-Fetch-Site` check; invalid or expired cookies
+  fall through to anonymous so existing `publicAccess=true` deployments
+  continue to work unchanged.
+- Canonical `GET /api/ws` listener WebSocket route. The existing `GET /ws`
+  remains as a compatibility alias that delegates to the same handler. The
+  frontend now connects to `/api/ws`, and the Vite dev proxy covers both
+  paths.
+
+### Changed
+
+- WebSocket `CAL` messages no longer carry embedded base64 audio. Audio
+  is fetched on demand from the existing `GET /api/calls/:id/audio` HTTP
+  endpoint, authenticated via the `os_session` cookie introduced in the
+  previous release entry. Frontend playback rewrite ships as the
+  immediately-following release entry.
+- HTTP handlers have been decomposed from the monolithic `internal/api`
+  package into feature-scoped subpackages under `internal/handler/`
+  (`auth`, `calls`, `bookmarks`, `share`, `setup`, `health`,
+  `admin/{imports,radioreference,transcriptions}`). Route registration
+  now lives in `internal/handler/routes`, and shared swagger DTOs and
+  helpers live in `internal/handler/shared`. No route paths, methods,
+  middleware ordering, response shapes, or status codes changed.
+- Backend file-level cleanup: `internal/handler/calls/calls.go` (~1500 LOC)
+  split into `upload.go`, `audio.go`, `search.go`, `transcript.go`, and a
+  slim `calls.go` retaining the `Handler` struct and constructor;
+  `internal/middleware/middleware.go` split into `cors.go`, `auth.go`,
+  `logging.go`, `limits.go`. Same package, same exports, no behaviour
+  change.
+- Admin CRUD business logic has been extracted from `internal/ws` into a
+  new transport-agnostic `internal/admin` package. The WebSocket layer
+  now only routes `ADM_REQ` frames to `admin.Operations` methods; the
+  wire protocol, action names, and response shapes are unchanged.
+- Deployment guide reverse-proxy instructions now list `/api/ws` alongside
+  `/ws` and `/api/admin/ws` as paths that need WebSocket-upgrade forwarding.
+- Admin Options panel no longer shows an "Active" badge on every wired
+  setting; only "Planned" badges are rendered for not-yet-implemented
+  options.
+- Admin Options "Audio Conversion" description now reads "Convert incoming
+  audio with FFmpeg before storing. Select the codec and bitrate below."
+  to reflect that MP3 and AAC outputs are both supported via the encoding
+  preset.
+- Frontend `services/` directory grouped into `services/ws/` (`client.ts`,
+  `client.test.ts`, `adminClient.ts`) and `services/audio/` (`player.ts`,
+  `beep.ts`). All `@/services/*` imports across components and hooks have
+  been updated to the new paths. No runtime behaviour change.
+- Frontend `hooks/` directory split into `hooks/shared/` (`useAuthInit`,
+  `useTheme`, `useTokenRefresh`, `useWebSocket`), `hooks/scanner/`
+  (`useScanner`, `useAudioPlayer`, `useTGSelectionSync`, `useActiveUnit`),
+  and `hooks/admin/` (`useAdminWebSocket`, `useAdminWsOps`,
+  `useAdminActivity`, `useAdminLogs`, `useWsQuery`), each with a barrel
+  `index.ts`. All call sites have been updated to the new specific paths.
+  No runtime behaviour change.
+- Frontend `types/index.ts` god-file split into topic-scoped modules
+  (`call.ts`, `config.ts`, `ws.ts`, `auth.ts`, `api.ts`, `admin.ts`,
+  `ui.ts`). The original `index.ts` is now a barrel that re-exports
+  everything, so all existing `@/types` imports keep working unchanged.
+  New code can also import from a specific module (e.g. `@/types/admin`).
+- Frontend layout polish on top of the directory restructure:
+  `app/slices/` split into `shared/` (`authSlice`), `scanner/`
+  (`scannerSlice`, `callsSlice`, `shareSlice`), and `admin/`
+  (`adminSlice`, `activitySlice`); `components/admin/AdminLayout.tsx`
+  inlined into `pages/Admin.tsx` (replacing the 5-line shim);
+  `components/admin/NavigationGuardContext.tsx` relocated to
+  `hooks/admin/useNavigationGuard.tsx`; and `services/downloadFilename.ts`
+  moved to `services/util/downloadFilename.ts`. All call sites updated;
+  no runtime behaviour change.
+- Frontend audio playback now uses the platform `<audio>` element backed
+  by `MediaElementAudioSourceNode`. Each call is fetched on demand from
+  the existing `/api/calls/:id/audio` endpoint authenticated via the
+  session cookie. Drops the WebSocket-embedded base64 path, fixing
+  Mobile Edge AAC playback and dramatically reducing per-call memory
+  pressure on the client.
+- Service worker now passes audio fetches (`/api/calls/:id/audio` and
+  `/api/shared/:token/audio`) straight through to the network instead of
+  intercepting them. Lets the browser handle Range requests natively for
+  the `<audio>` element and avoids buffering full call bodies in the
+  worker.
+
+### Fixed
+
+- Lock the primary admin's Allowed Systems selector in the user editor; the first user always has access to every system and the badges are now read-only with all systems shown as allowed.
+- Default `audioEncodingPreset` seeded into the settings table is now
+  `mp3_32k` (matching the dropdown's "(default)" label and the Go
+  `ParseEncodingPreset` fallback) instead of `aac_lc_32k`. New installs
+  enabling audio conversion will now default to MP3 32 kbps as the UI
+  advertises.
+- Audio playback now silently recovers from a 401 on `/api/calls/:id/audio`
+  by triggering a single token refresh and retrying the same call. Fixes
+  the case where a sibling device login (phone, tablet, second tab) pushes
+  a desktop's access JWT out of the per-user concurrent-token cap and
+  leaves \<audio\> playback failing until the next scheduled refresh.
+- Per-user concurrent JWT cap raised from 5 to 20 (`auth.MaxRefreshFamilies`).
+  With a 15-minute access TTL refreshing roughly four times per hour, the
+  old limit pushed a desktop's session off the active list within an hour
+  of normal multi-device use. 20 leaves headroom for desktop + phone +
+  tablet without inflating the deny list.
+- WebSocket clients (listener and admin) now detach handlers and wait for
+  `open` before closing a still-`CONNECTING` socket during reconnect.
+  Suppresses the cosmetic "WebSocket is closed before the connection is
+  established" browser console warning that appeared after a token-expiry
+  reconnect.
+
 ## [1.1.2] — 2026-04-24
 
 ### Security

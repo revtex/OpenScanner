@@ -36,9 +36,16 @@ These are **instructional**, written for operators and end users — not for con
 - Screenshots are fine to reference by filename but are not required; text must stand alone.
 - Accuracy is non-negotiable. Paths, flag names, env var names, URLs, and ports must match the code exactly. If the code says `--listen`, the doc says `--listen`, not `--address`.
 
-### Design docs and specs (`docs/plans/*.md`)
+### Design docs and specs (`docs/plans/*.md`) — LOCAL ONLY
 
-These are for contributors and maintainers. Use technical language, reference code paths, include Mermaid diagrams, cite file paths with line numbers. The audience rules above do **not** apply here.
+The `docs/plans/` directory is **gitignored**. Files there are local-only working notes used while implementing a feature; they are never committed and never visible to anyone other than the author.
+
+Rules:
+
+- Place new design docs / specs / phase plans under `docs/plans/` only when the user explicitly asks for a plan. Do not stage or commit them.
+- **Never reference `docs/plans/*` paths from tracked files** (CHANGELOG, committed docs, commit messages, PR descriptions, code comments). The link would 404 for everyone else.
+- If you encounter an existing tracked file that links into `docs/plans/`, treat that link as a bug and remove it.
+- Inside a plan doc itself, technical language, code paths, Mermaid diagrams, and line-number citations are fine — the audience is just you and the user.
 
 ### Quick check before submitting a user guide
 
@@ -57,25 +64,12 @@ These are for contributors and maintainers. Use technical language, reference co
 
 ## Doc Files
 
-| File                       | Purpose                                                              |
-| -------------------------- | -------------------------------------------------------------------- |
-| `docs/admin-guide.md`      | UI walkthrough for the admin dashboard                               |
-| `docs/deployment-guide.md` | Bare metal, Docker, reverse proxy, Let's Encrypt, secrets encryption |
-| `docs/recorder-guide.md`   | Per-recorder setup instructions                                      |
-| `docs/plans/`              | Design plans and specs (architecture, API, etc.)                     |
-
-### Plans Directory (`docs/plans/`)
-
-| File                                    | Purpose                                           |
-| --------------------------------------- | ------------------------------------------------- |
-| `docs/plans/plan.md`                    | Master project plan and UI design spec            |
-| `docs/plans/architecture.md`            | System diagram, component descriptions, data flow |
-| `docs/plans/api.md`                     | Full API endpoint reference                       |
-| `docs/plans/recorder-integration.md`    | Recorder integration design                       |
-| `docs/plans/transcription.md`           | Transcription feature design (go-whisper)         |
-| `docs/plans/refresh-token-auth-plan.md` | Refresh token auth flow design                    |
-| `docs/plans/security-hardening-plan.md` | Security hardening roadmap                        |
-| Other plan files                        | Feature-specific implementation plans             |
+| File                       | Purpose                                                                       |
+| -------------------------- | ----------------------------------------------------------------------------- |
+| `docs/admin-guide.md`      | UI walkthrough for the admin dashboard                                        |
+| `docs/deployment-guide.md` | Bare metal, Docker, reverse proxy, Let's Encrypt, secrets encryption          |
+| `docs/recorder-guide.md`   | Per-recorder setup instructions                                               |
+| `docs/plans/`              | **LOCAL ONLY** — gitignored working notes; never reference from tracked files |
 
 ## Key Diagrams to Maintain
 

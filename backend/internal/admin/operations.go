@@ -1,0 +1,466 @@
+// Package admin holds the transport-agnostic CRUD / config / import-export
+// business logic for OpenScanner's admin surface.
+//
+// Every method on Operations takes (ctx, params, callerID) and returns
+// (any, error); callers (currently internal/ws) are responsible for
+// transport framing, authentication, authorization, and error envelope.
+// This package MUST NOT import internal/ws or net/http-transport packages.
+package admin
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"log/slog"
+	"net/url"
+	"strings"
+	"time"
+
+	"github.com/openscanner/openscanner/internal/auth"
+	"github.com/openscanner/openscanner/internal/db"
+)
+
+// ── Public helper types ──
+
+// UserError is returned by Operations methods for validation errors that
+// should be shown verbatim to the client. Callers can use errors.As to
+// distinguish these from internal errors.
+type UserError string
+
+func (e UserError) Error() string { return string(e) }
+
+// Reloader triggers a service config reload (dirmonitor, downstream).
+type Reloader interface {
+	Reload()
+}
+
+// TranscriberReloader can hot-reload the transcription subsystem.
+type TranscriberReloader interface {
+	Reload(enabled bool, baseURL, model, language string, diarize bool) bool
+	Enabled() bool
+	BaseURL() string
+	QueueDepth() int
+}
+
+// EventSink is the interface Operations uses to push admin events and
+// broadcast config refreshes without importing the WebSocket package. The
+// WS hub implements all three methods today, so the interface is satisfied
+// automatically; tests can provide a no-op implementation.
+type EventSink interface {
+	BroadcastAdminEvent(topic string, data any)
+	BroadcastCFG(ctx context.Context)
+	DisconnectByUser(userID int64)
+	ClientCount() int
+}
+
+// Deps are the optional dependencies used by admin operations. Any field
+// left zero disables the corresponding feature path at runtime (matches
+// the prior ws.HubDeps behaviour exactly).
+type Deps struct {
+	SQLDB             *sql.DB
+	DirMonitorReload  Reloader
+	DownstreamReload  Reloader
+	TranscriberReload TranscriberReloader
+	FFmpegAvailable   bool
+	FDKAACAvailable   bool
+	WhisperAvailable  bool
+	RecordingsDir     string
+	EncryptionKey     string
+}
+
+// Operations owns the admin CRUD business logic. It is transport-agnostic —
+// callers wrap its methods in whatever RPC / WS / HTTP envelope they use.
+type Operations struct {
+	Queries *db.Queries
+	Deps    Deps
+	Events  EventSink
+
+	// StartTime is used by activity-stats and uptime calculations. It
+	// defaults to time.Now() on New() but can be overridden for tests.
+	StartTime time.Time
+}
+
+// New constructs a new Operations bound to the given queries, deps, and
+// event sink. The event sink may be nil for test fixtures that don't
+// exercise broadcast-triggering paths.
+func New(queries *db.Queries, deps Deps, events EventSink) *Operations {
+	return &Operations{
+		Queries:   queries,
+		Deps:      deps,
+		Events:    events,
+		StartTime: time.Now(),
+	}
+}
+
+// SetWhisperAvailable updates the cached ffmpeg/whisper capability after a
+// transcription hot-reload. Kept for the config-update and import flows
+// that mutate the live pool state.
+func (o *Operations) SetWhisperAvailable(v bool) { o.Deps.WhisperAvailable = v }
+
+// broadcastAdminEvent is a nil-safe wrapper around Events.BroadcastAdminEvent.
+func (o *Operations) broadcastAdminEvent(topic string, data any) {
+	if o.Events != nil {
+		o.Events.BroadcastAdminEvent(topic, data)
+	}
+}
+
+// broadcastCFG is a nil-safe wrapper around Events.BroadcastCFG.
+func (o *Operations) broadcastCFG(ctx context.Context) {
+	if o.Events != nil {
+		o.Events.BroadcastCFG(ctx)
+	}
+}
+
+// disconnectByUser is a nil-safe wrapper around Events.DisconnectByUser.
+func (o *Operations) disconnectByUser(userID int64) {
+	if o.Events != nil {
+		o.Events.DisconnectByUser(userID)
+	}
+}
+
+// ── Helpers ──
+
+func ptrToNullStr(p *string) sql.NullString {
+	if p == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *p, Valid: true}
+}
+
+func ptrToNullInt(p *int64) sql.NullInt64 {
+	if p == nil {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: *p, Valid: true}
+}
+
+func nullStr(n sql.NullString) *string {
+	if !n.Valid {
+		return nil
+	}
+	return &n.String
+}
+
+func nullInt(n sql.NullInt64) *int64 {
+	if !n.Valid {
+		return nil
+	}
+	return &n.Int64
+}
+
+func isUniqueViolation(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "UNIQUE")
+}
+
+func validHTTPURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	return u.Scheme == "http" || u.Scheme == "https"
+}
+
+// remapSystemsJSON rewrites the system PKs embedded in a systems_json column
+// (used by api_keys, downstreams, webhooks, and users) so that grants
+// referring to a system by its old PK end up referring to the freshly
+// inserted row's PK after import. Accepts and returns a *string mirroring
+// the export shape (nil = "all systems"). Any system PK that doesn't appear
+// in the remap is dropped from the grant rather than silently broken.
+//
+// Shape: `[{"id": <int64>, "talkgroups": [<int64>...]}]` per
+// auth.SystemGrant.
+func remapSystemsJSON(in *string, systemRemap map[int64]int64) *string {
+	if in == nil || strings.TrimSpace(*in) == "" {
+		return in
+	}
+	var grants []auth.SystemGrant
+	if err := json.Unmarshal([]byte(*in), &grants); err != nil {
+		// Fall through with nil grants — try the legacy flat-id form.
+		var ids []int64
+		if jerr := json.Unmarshal([]byte(*in), &ids); jerr != nil {
+			slog.Warn("import config: systems_json not recognised; preserving as-is",
+				"error", err)
+			return in
+		}
+		mapped := make([]int64, 0, len(ids))
+		for _, id := range ids {
+			if newID, ok := systemRemap[id]; ok {
+				mapped = append(mapped, newID)
+			} else {
+				slog.Warn("import config: dropping unknown system grant", "system_pk", id)
+			}
+		}
+		out, _ := json.Marshal(mapped)
+		s := string(out)
+		return &s
+	}
+	mapped := make([]auth.SystemGrant, 0, len(grants))
+	for _, g := range grants {
+		newID, ok := systemRemap[g.ID]
+		if !ok {
+			slog.Warn("import config: dropping unknown system grant", "system_pk", g.ID)
+			continue
+		}
+		mapped = append(mapped, auth.SystemGrant{ID: newID, Talkgroups: g.Talkgroups})
+	}
+	out, _ := json.Marshal(mapped)
+	s := string(out)
+	return &s
+}
+
+// validRoles is the set of allowed user roles.
+var validRoles = map[string]bool{
+	auth.RoleAdmin:    true,
+	auth.RoleListener: true,
+}
+
+// SensitiveSettingKeys are settings whose values are encrypted at rest.
+// Exported because cmd/server/main.go consults it during secret migration.
+var SensitiveSettingKeys = map[string]bool{
+	"vapidPrivateKey": true,
+	"jwtSecret":       true,
+}
+
+// allowedSettingKeys mirrors the allowed setting keys from config.go.
+var allowedSettingKeys = map[string]bool{
+	"activityDashboard":           true,
+	"afsSystems":                  true,
+	"apiKeyCallRate":              true,
+	"audioConversion":             true,
+	"audioEncodingPreset":         true,
+	"autoPopulateSystems":         true,
+	"branding":                    true,
+	"disableDuplicateDetection":   true,
+	"duplicateDetectionTimeFrame": true,
+	"email":                       true,
+	"keypadBeeps":                 true,
+	"logLevel":                    true,
+	"maxClients":                  true,
+	"playbackGoesLive":            true,
+	"pruneDays":                   true,
+	"publicAccess":                true,
+	"pushNotifications":           true,
+	"searchPatchedTalkgroups":     true,
+	"shareableLinks":              true,
+	"sharedLinkExpiry":            true,
+	"showListenersCount":          true,
+	"sortTalkgroups":              true,
+	"tagsToggle":                  true,
+	"time12hFormat":               true,
+	"transcriptionDiarize":        true,
+	"transcriptionEnabled":        true,
+	"transcriptionLanguage":       true,
+	"liveTranscriptDisplay":       true,
+	"transcriptionModel":          true,
+	"transcriptionUrl":            true,
+	"vapidPrivateKey":             true,
+	"vapidPublicKey":              true,
+	"webhooksEnabled":             true,
+}
+
+// AllowedSettingKeys reports whether a settings key is allowed to be mutated
+// via the admin API. Exposed for tests.
+func AllowedSettingKeys(key string) bool { return allowedSettingKeys[key] }
+
+// hiddenTopLevelDirs for FS browsing.
+var hiddenTopLevelDirs = map[string]bool{
+	"bin": true, "boot": true, "dev": true, "lib": true,
+	"lib32": true, "lib64": true, "libx32": true,
+	"proc": true, "run": true, "sbin": true, "sys": true,
+	"usr": true, "etc": true, "snap": true, "lost+found": true,
+}
+
+// ── Response mappers (exported for tests / transport layers) ──
+
+func mapUser(u db.User) map[string]any {
+	return map[string]any{
+		"id":          u.ID,
+		"username":    u.Username,
+		"role":        u.Role,
+		"disabled":    u.Disabled,
+		"systemsJson": nullStr(u.SystemsJson),
+		"expiration":  nullInt(u.Expiration),
+		"limit":       nullInt(u.Limit),
+		"createdAt":   u.CreatedAt,
+		"updatedAt":   u.UpdatedAt,
+	}
+}
+
+func mapUsers(users []db.User) []map[string]any {
+	out := make([]map[string]any, len(users))
+	for i, u := range users {
+		out[i] = mapUser(u)
+	}
+	return out
+}
+
+func mapSystem(s db.System) map[string]any {
+	return map[string]any{
+		"id":                     s.ID,
+		"systemId":               s.SystemID,
+		"label":                  s.Label,
+		"autoPopulateTalkgroups": s.AutoPopulateTalkgroups,
+		"blacklistsJson":         nullStr(s.BlacklistsJson),
+		"led":                    nullStr(s.Led),
+		"order":                  s.Order,
+	}
+}
+
+func mapSystems(systems []db.System) []map[string]any {
+	out := make([]map[string]any, len(systems))
+	for i, s := range systems {
+		out[i] = mapSystem(s)
+	}
+	return out
+}
+
+func mapTalkgroup(t db.Talkgroup) map[string]any {
+	return map[string]any{
+		"id":          t.ID,
+		"systemId":    t.SystemID,
+		"talkgroupId": t.TalkgroupID,
+		"label":       nullStr(t.Label),
+		"name":        nullStr(t.Name),
+		"frequency":   nullInt(t.Frequency),
+		"led":         nullStr(t.Led),
+		"groupId":     nullInt(t.GroupID),
+		"tagId":       nullInt(t.TagID),
+		"order":       t.Order,
+	}
+}
+
+func mapTalkgroups(tgs []db.Talkgroup) []map[string]any {
+	out := make([]map[string]any, len(tgs))
+	for i, t := range tgs {
+		out[i] = mapTalkgroup(t)
+	}
+	return out
+}
+
+func mapUnit(u db.Unit) map[string]any {
+	return map[string]any{
+		"id":       u.ID,
+		"systemId": u.SystemID,
+		"unitId":   u.UnitID,
+		"label":    nullStr(u.Label),
+		"order":    u.Order,
+	}
+}
+
+func mapUnits(units []db.Unit) []map[string]any {
+	out := make([]map[string]any, len(units))
+	for i, u := range units {
+		out[i] = mapUnit(u)
+	}
+	return out
+}
+
+func mapAPIKey(k db.ApiKey) map[string]any {
+	fingerprint := auth.HashAPIKey(k.Key)
+	if len(fingerprint) > 12 {
+		fingerprint = fingerprint[:12]
+	}
+	return map[string]any{
+		"id":            k.ID,
+		"fingerprint":   fingerprint,
+		"ident":         nullStr(k.Ident),
+		"disabled":      k.Disabled,
+		"systemsJson":   nullStr(k.SystemsJson),
+		"callRateLimit": nullInt(k.CallRateLimit),
+		"order":         k.Order,
+	}
+}
+
+func mapAPIKeys(keys []db.ApiKey) []map[string]any {
+	out := make([]map[string]any, len(keys))
+	for i, k := range keys {
+		out[i] = mapAPIKey(k)
+	}
+	return out
+}
+
+func mapDirMonitor(d db.Dirmonitor) map[string]any {
+	return map[string]any{
+		"id":          d.ID,
+		"directory":   d.Directory,
+		"type":        d.Type,
+		"mask":        nullStr(d.Mask),
+		"extension":   nullStr(d.Extension),
+		"frequency":   nullInt(d.Frequency),
+		"delay":       nullInt(d.Delay),
+		"deleteAfter": d.DeleteAfter,
+		"usePolling":  d.UsePolling,
+		"disabled":    d.Disabled,
+		"systemId":    nullInt(d.SystemID),
+		"talkgroupId": nullInt(d.TalkgroupID),
+		"order":       d.Order,
+	}
+}
+
+func mapDirMonitors(dms []db.Dirmonitor) []map[string]any {
+	out := make([]map[string]any, len(dms))
+	for i, d := range dms {
+		out[i] = mapDirMonitor(d)
+	}
+	return out
+}
+
+func mapDownstream(d db.Downstream) map[string]any {
+	return map[string]any{
+		"id":          d.ID,
+		"url":         d.Url,
+		"hasApiKey":   d.ApiKey != "",
+		"systemsJson": nullStr(d.SystemsJson),
+		"disabled":    d.Disabled,
+		"order":       d.Order,
+	}
+}
+
+func mapDownstreams(ds []db.Downstream) []map[string]any {
+	out := make([]map[string]any, len(ds))
+	for i, d := range ds {
+		out[i] = mapDownstream(d)
+	}
+	return out
+}
+
+func mapWebhook(w db.Webhook) map[string]any {
+	return map[string]any{
+		"id":          w.ID,
+		"url":         w.Url,
+		"type":        w.Type,
+		"secret":      nullStr(w.Secret),
+		"systemsJson": nullStr(w.SystemsJson),
+		"disabled":    w.Disabled,
+		"order":       w.Order,
+	}
+}
+
+func mapWebhooks(ws []db.Webhook) []map[string]any {
+	out := make([]map[string]any, len(ws))
+	for i, w := range ws {
+		out[i] = mapWebhook(w)
+	}
+	return out
+}
+
+func mapSharedLink(r db.ListSharedLinksRow) map[string]any {
+	m := map[string]any{
+		"id":             r.ID,
+		"callId":         r.CallID,
+		"token":          r.Token,
+		"createdAt":      r.CreatedAt,
+		"sharedBy":       r.SharedBy,
+		"dateTime":       r.DateTime,
+		"duration":       r.Duration.Int64,
+		"systemLabel":    r.SystemLabel.String,
+		"talkgroupLabel": r.TalkgroupLabel.String,
+		"talkgroupName":  r.TalkgroupName.String,
+	}
+	if r.ExpiresAt.Valid {
+		m["expiresAt"] = r.ExpiresAt.Int64
+	} else {
+		m["expiresAt"] = nil
+	}
+	return m
+}
