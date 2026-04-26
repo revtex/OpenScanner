@@ -22,10 +22,10 @@ import (
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/downstream"
-	authhandler "github.com/openscanner/openscanner/internal/handler/auth"
 	"github.com/openscanner/openscanner/internal/handler/admin/imports"
 	"github.com/openscanner/openscanner/internal/handler/admin/radioreference"
 	"github.com/openscanner/openscanner/internal/handler/admin/transcriptions"
+	authhandler "github.com/openscanner/openscanner/internal/handler/auth"
 	"github.com/openscanner/openscanner/internal/handler/bookmarks"
 	"github.com/openscanner/openscanner/internal/handler/calls"
 	"github.com/openscanner/openscanner/internal/handler/health"
@@ -188,6 +188,75 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	r.GET("/api/ws", listenerWS)
 	r.GET("/ws", listenerWS)
 	r.GET("/api/admin/ws", gin.WrapF(ws.HandleAdminWS(deps.Hub, deps.Queries)))
+
+	// ----- Native API (Phase N-1, plan §4.1) ---------------------------------
+	// All v1 routes carry the V1Marker so version-aware middleware can branch,
+	// and the V1ErrorEnvelope rewriter normalises any 4xx/5xx body emitted by
+	// shared handlers into the native {error:{code,message,details}} shape.
+	v1 := r.Group("/api/v1")
+	v1.Use(middleware.V1Marker(), middleware.V1ErrorEnvelope())
+
+	// Unauthenticated.
+	v1.GET("/health", healthHandler.Get)
+	v1.GET("/setup/status", setupHandler.GetSetupStatus)
+	v1.POST("/setup", middleware.MaxBodySize(1<<20), setupHandler.PostSetup)
+	v1.POST("/auth/login", middleware.MaxBodySize(1<<20), middleware.RateLimit(deps.RateLimiter), authH.PostLogin)
+	v1.POST("/auth/refresh", middleware.MaxBodySize(1<<20), middleware.RateLimit(deps.RateLimiter), authH.PostRefresh)
+
+	// Public call surfaces (optional auth, share links).
+	v1.GET("/calls", middleware.OptionalJWTAuth(), callHandler.GetCalls)
+	v1.GET("/calls/:id/audio", middleware.OptionalJWTOrSessionAuth(), callHandler.GetCallAudio)
+	v1.GET("/calls/:id/transcript", middleware.OptionalJWTAuth(), callHandler.GetCallTranscript)
+	v1SharedRateLimit := middleware.RateLimitByIP(30)
+	v1.GET("/shared/:token", v1SharedRateLimit, shareHandler.GetSharedCallByToken)
+	v1.GET("/shared/:token/audio", v1SharedRateLimit, shareHandler.GetSharedCallAudio)
+
+	// JWT-protected v1 routes.
+	v1Auth := v1.Group("")
+	v1Auth.Use(middleware.JWTAuth())
+	{
+		v1Auth.POST("/auth/logout", authH.PostLogout)
+		v1Auth.PUT("/auth/password", authH.PutPassword)
+		v1Auth.GET("/auth/me", authH.GetMe)
+		// /api/auth/tg-selection is renamed to /api/v1/listener/tg-selection
+		// per plan §4.1; the handler body is reused unchanged.
+		v1Auth.GET("/listener/tg-selection", authH.GetTGSelection)
+		v1Auth.PUT("/listener/tg-selection", authH.PutTGSelection)
+		v1Auth.POST("/calls/:id/share", shareHandler.PostShareCall)
+		v1Auth.DELETE("/calls/:id/share", shareHandler.DeleteShareCall)
+		v1Auth.GET("/calls/:id/share", shareHandler.GetCallShare)
+		v1Auth.GET("/bookmarks", bookmarkHandler.GetBookmarkIDs)
+		v1Auth.GET("/bookmarks/calls", bookmarkHandler.GetBookmarkCalls)
+		v1Auth.POST("/bookmarks", bookmarkHandler.PostToggleBookmark)
+	}
+
+	// Native upload — Authorization: Bearer <api-key> only (enforced by
+	// APIKeyAuth's v1 branch, keyed off V1Marker).
+	v1Upload := v1.Group("")
+	v1Upload.Use(middleware.MaxBodySize(50<<20), middleware.APIKeyAuth(deps.Queries))
+	{
+		v1Upload.POST("/calls", callHandler.PostCallUploadV1)
+		v1Upload.POST("/calls/test", callHandler.PostCallsTestV1)
+	}
+
+	// Admin v1 routes.
+	v1Admin := v1.Group("/admin")
+	v1Admin.Use(middleware.JWTAuth(), middleware.RequireAdmin(), middleware.MaxBodySize(2<<20))
+	{
+		v1Admin.POST("/import/talkgroups", importsHandler.ImportTalkgroups)
+		v1Admin.POST("/import/units", importsHandler.ImportUnits)
+		v1Admin.POST("/import/groups", importsHandler.ImportGroups)
+		v1Admin.POST("/import/tags", importsHandler.ImportTags)
+		// Plan §4.1 drops the trailing `/csv` segment on the v1 path.
+		v1Admin.POST("/radioreference/preview", rrHandler.PreviewCSV)
+		v1Admin.GET("/transcriptions/status", transcriptionsHandler.GetStatus)
+		v1Admin.POST("/docs/session", authhandler.PostDocsSession)
+	}
+	v1SwaggerDocs := v1.Group("/admin/docs")
+	v1SwaggerDocs.Use(middleware.SwaggerCookieAuth())
+	{
+		v1SwaggerDocs.GET("/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 
 	// Serve embedded frontend (SPA mode).
 	serveFrontend(r)
