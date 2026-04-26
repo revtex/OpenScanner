@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Native `/api/v1/*` REST surface alongside the existing legacy routes. All v1 responses use a structured error envelope (`{"error":{"code","message","details"}}`) with stable string codes (`validation_failed`, `unauthorized`, `forbidden`, `not_found`, `conflict`, `unprocessable`, `rate_limited`, `internal`); 5xx envelopes include the request ID under `details.requestId`.
+- v1 call-upload endpoint (`POST /api/v1/calls`) with native multipart field names (`systemId`, `talkgroupId`, `startedAt`, `frequencyHz`, `durationMs`, `unitId`) and RFC 3339 `startedAt` enforcement (unix timestamps no longer accepted on v1). Companion `POST /api/v1/calls/test` returns 204 on a valid API key.
+- v1 listener endpoints: `GET/PUT /api/v1/listener/tg-selection` (renamed from `/api/auth/tg-selection`), `GET /api/v1/calls`, `GET /api/v1/calls/:id/audio`, `GET /api/v1/calls/:id/transcript`, share/bookmark endpoints, and unauthenticated `/api/v1/health`, `/api/v1/setup/*`, `/api/v1/auth/{login,refresh,logout,password,me}`.
+- v1 admin endpoints under `/api/v1/admin/*` for talkgroup/unit/group/tag imports, RadioReference preview (path simplified — no `/csv` suffix), transcription status, and Swagger session bootstrap.
+
+### Changed
+
+- API-key authentication on `/api/v1/*` upload routes accepts only `Authorization: Bearer <api-key>`; the legacy `X-API-Key` header, `?key=` query parameter, and `key=` form field continue to work on legacy routes only. JWT-shaped Bearer tokens on v1 API-key routes are rejected with `invalid_credentials`.
+
 ## [1.2.1] — 2026-04-25
 
 ### Security

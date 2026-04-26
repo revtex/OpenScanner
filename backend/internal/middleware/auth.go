@@ -182,24 +182,62 @@ func RequireAdmin() gin.HandlerFunc {
 	}
 }
 
-// APIKeyAuth reads the API key from the X-API-Key header, ?key= query param,
-// or (for Trunk Recorder compatibility) a multipart "key" form field — in that
-// order. It looks up the key in the database and sets "apiKeyID" in the Gin
-// context. Aborts with 401 if the key is missing, not found, or disabled.
+// APIKeyAuth reads the API key from the API-key transports allowed for the
+// active API version, then looks up the key in the database and sets
+// "apiKeyID" in the Gin context. Aborts with 401 if the key is missing, not
+// found, or disabled.
+//
+// On legacy paths the three rdio-scanner-style transports are accepted, in
+// priority order: X-API-Key header, ?key= query param, and (for Trunk
+// Recorder's rdioscanner_uploader plugin) a multipart "key" form field.
+//
+// On the native /api/v1/* surface — identified by the gin context flag
+// "apiVersion" == "v1", set by V1Marker() on the v1 route group — only
+// Authorization: Bearer <api-key> is honoured. JWT-shaped Bearer values
+// (three base64url segments separated by dots) are rejected with the
+// invalid_credentials envelope so the client surfaces the right error.
+//
+// The API-key value format itself is unchanged; only the wire transport
+// differs between the two surfaces.
 func APIKeyAuth(queries *db.Queries) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestID, _ := c.Get("requestID")
+		isV1 := c.GetString("apiVersion") == "v1"
 
-		// Prefer header, then query string. Only fall back to PostForm
-		// (which parses the entire multipart body) when both are empty.
-		key := c.GetHeader("X-API-Key")
-		if key == "" {
-			key = c.Query("key")
-		}
-		if key == "" {
-			// Trunk Recorder's rdioscanner_uploader plugin sends the API key
-			// as a multipart form field named "key" rather than a header.
-			key = c.PostForm("key")
+		// Resolve the API key string from the transports allowed for this
+		// API version. Legacy: header → query → form (rdio-scanner-shaped).
+		// Native v1: Authorization: Bearer only.
+		var key string
+		if isV1 {
+			header := c.GetHeader("Authorization")
+			if strings.HasPrefix(header, "Bearer ") {
+				key = strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
+			}
+			// Reject JWT-shaped tokens here so Bearer-JWT-on-API-key-route
+			// returns the canonical invalid_credentials envelope rather than
+			// "API key required".
+			if key != "" && looksLikeJWT(key) {
+				slog.Warn("api key auth (v1): rejected JWT-shaped bearer",
+					"request_id", requestID,
+					"ip", c.ClientIP(),
+					"path", c.Request.URL.Path,
+				)
+				c.AbortWithStatusJSON(401, gin.H{
+					"error": gin.H{
+						"code":    "invalid_credentials",
+						"message": "API key required (Authorization: Bearer)",
+					},
+				})
+				return
+			}
+		} else {
+			key = c.GetHeader("X-API-Key")
+			if key == "" {
+				key = c.Query("key")
+			}
+			if key == "" {
+				key = c.PostForm("key")
+			}
 		}
 		if key == "" {
 			slog.Warn("api key auth: missing X-API-Key header",
@@ -257,6 +295,26 @@ func APIKeyAuth(queries *db.Queries) gin.HandlerFunc {
 		)
 		c.Next()
 	}
+}
+
+// looksLikeJWT returns true when s has the structural shape of a JWT:
+// three non-empty base64url segments separated by two dots. Used by the v1
+// APIKeyAuth path to surface a clearer error when a caller mistakenly sends
+// a user JWT to an API-key-protected endpoint.
+func looksLikeJWT(s string) bool {
+	if len(s) < 20 {
+		return false
+	}
+	if strings.Count(s, ".") != 2 {
+		return false
+	}
+	parts := strings.Split(s, ".")
+	for _, p := range parts {
+		if p == "" {
+			return false
+		}
+	}
+	return true
 }
 
 // SwaggerCookieAuth validates the short-lived docs session cookie.
