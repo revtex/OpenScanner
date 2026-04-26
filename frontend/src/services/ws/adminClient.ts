@@ -1,5 +1,10 @@
 import type { AppDispatch } from "@/app/store";
 import { clearCredentials } from "@/app/slices/shared/authSlice";
+import type {
+  WsAdminInbound,
+  WsAdminOutbound,
+  WsAdminResponse,
+} from "@/types/ws";
 
 type TokenExpiredCallback = () => Promise<string | null>;
 type EventCallback = (topic: string, data: unknown, at: number) => void;
@@ -78,13 +83,12 @@ class AdminWsClient {
         timer,
       });
 
-      const msg: [
-        string,
-        { reqId: string; op: string; params?: Record<string, unknown> },
-      ] = [
-        "ADM_REQ",
-        { reqId, op, ...(params !== undefined ? { params } : {}) },
-      ];
+      const msg: WsAdminOutbound = {
+        type: "admin.request",
+        reqId,
+        op,
+        ...(params !== undefined ? { params } : {}),
+      };
       this.ws.send(JSON.stringify(msg));
     });
   }
@@ -137,7 +141,7 @@ class AdminWsClient {
     }
 
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${proto}//${location.host}/api/admin/ws`;
+    const url = `${proto}//${location.host}/api/v1/ws/admin`;
 
     this.ws = new WebSocket(url);
 
@@ -182,43 +186,58 @@ class AdminWsClient {
       return;
     }
 
-    if (!Array.isArray(parsed) || parsed.length === 0) {
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed) ||
+      typeof (parsed as { type?: unknown }).type !== "string"
+    ) {
       return;
     }
 
-    const command = parsed[0] as string;
+    const msg = parsed as WsAdminInbound;
 
-    if (command === "ADM_RES") {
-      this.handleResponse(parsed[1] as Record<string, unknown>);
-    } else if (command === "ADM_EVT") {
-      this.handleEvent(parsed[1] as Record<string, unknown>);
-    } else if (command === "XPR") {
-      this.handleTokenExpired();
+    switch (msg.type) {
+      case "admin.response":
+        this.handleResponse(msg);
+        break;
+      case "admin.event":
+        this.handleEvent(msg.topic, msg.data, msg.at);
+        break;
+      case "session.expired":
+        this.handleTokenExpired();
+        break;
+      default: {
+        const _exhaustive: never = msg;
+        void _exhaustive;
+        break;
+      }
     }
   }
 
-  private handleResponse(payload: Record<string, unknown>): void {
-    const reqId = payload.reqId as string;
-    const pending = this.pendingRequests.get(reqId);
+  private handleResponse(payload: WsAdminResponse): void {
+    const pending = this.pendingRequests.get(payload.reqId);
     if (!pending) return;
 
     clearTimeout(pending.timer);
-    this.pendingRequests.delete(reqId);
+    this.pendingRequests.delete(payload.reqId);
 
     if (payload.ok) {
       pending.resolve(payload.data);
     } else {
-      pending.reject(
-        new Error((payload.error as string) ?? "Unknown admin WS error"),
-      );
+      // Surface the v1 error envelope through the promise. Code is
+      // attached so callers can branch on validation_failed vs
+      // unknown_op vs internal_error without parsing the message string.
+      const err = new Error(
+        payload.error?.message ?? "Unknown admin WS error",
+      ) as Error & { code?: string; details?: unknown };
+      err.code = payload.error?.code;
+      err.details = payload.error?.details;
+      pending.reject(err);
     }
   }
 
-  private handleEvent(payload: Record<string, unknown>): void {
-    const topic = payload.topic as string;
-    const data = payload.data;
-    const at = (payload.at as number) ?? 0;
-
+  private handleEvent(topic: string, data: unknown, at: number): void {
     // Notify topic-specific listeners
     const topicListeners = this.eventListeners.get(topic);
     if (topicListeners) {

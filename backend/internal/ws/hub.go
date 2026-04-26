@@ -49,7 +49,14 @@ type Hub struct {
 const lscDebounceDuration = 3 * time.Second
 
 type broadcastMsg struct {
-	data   []byte
+	// data is the legacy 3-letter array-framed payload, sent to every
+	// matching client whose protocolVersion is the legacy default.
+	data []byte
+	// v1 is the optional native JSON-object framed payload, sent to every
+	// matching client whose protocolVersion == "v1". When nil, v1 clients
+	// receive the legacy bytes (used by callers that have not been
+	// migrated to dual-encoding yet).
+	v1     []byte
 	filter func(*Client) bool
 }
 
@@ -100,13 +107,17 @@ func (h *Hub) Run(ctx context.Context) {
 				h.debounceLSC()
 			}
 		case msg := <-h.broadcast:
-			slog.Debug("ws: broadcasting message", "size", len(msg.data), "has_filter", msg.filter != nil)
+			slog.Debug("ws: broadcasting message", "size", len(msg.data), "has_filter", msg.filter != nil, "has_v1", msg.v1 != nil)
 			h.mu.RLock()
 			for c := range h.clients {
 				if msg.filter != nil && !msg.filter(c) {
 					continue
 				}
-				c.trySend(msg.data)
+				data := msg.data
+				if c.protocolVersion == protocolV1 && msg.v1 != nil {
+					data = msg.v1
+				}
+				c.trySend(data)
 			}
 			h.mu.RUnlock()
 		}
@@ -123,12 +134,42 @@ func (h *Hub) Broadcast(data []byte, filter func(*Client) bool) {
 	}
 }
 
-// BroadcastCAL sends a metadata-only CAL message to matching clients.
-// Audio bytes are no longer embedded — clients fetch them on demand from
-// GET /api/calls/:id/audio. Also notifies admin clients so the activity
-// dashboard can refresh.
-func (h *Hub) BroadcastCAL(calMsg []byte, filter func(*Client) bool) {
-	h.Broadcast(calMsg, filter)
+// broadcastBoth enqueues a broadcast carrying both the legacy and the
+// native (v1) encoding of the same logical event. Each client receives the
+// frame matching its negotiated protocol version. Non-blocking.
+func (h *Hub) broadcastBoth(legacy, v1 []byte, filter func(*Client) bool) {
+	select {
+	case h.broadcast <- broadcastMsg{data: legacy, v1: v1, filter: filter}:
+	default:
+		slog.Warn("ws: broadcast channel full, dropping message")
+	}
+}
+
+// BroadcastCAL fans out a new-call event to matching clients in both the
+// legacy and native (v1) wire formats. The payload map is the same one
+// already produced by the upload and dirmonitor handlers — its camelCase
+// fields (id, audioName, audioType, dateTime, systemId, talkgroupId,
+// frequency, duration, source, sources, frequencies, errorCount,
+// spikeCount, talkerAlias, site, channel, decoder) are reused verbatim
+// inside the native call.new envelope. Also notifies admin clients so the
+// activity dashboard can refresh.
+func (h *Hub) BroadcastCAL(payload map[string]any, filter func(*Client) bool) {
+	legacy, err := NewCALMessage(payload)
+	if err != nil {
+		slog.Error("ws: failed to build legacy CAL", "error", err)
+		return
+	}
+	v1, err := NewCallNewV1(payload)
+	if err != nil {
+		slog.Error("ws: failed to build native call.new", "error", err)
+		// Fall back to legacy-only — v1 clients will receive the legacy
+		// bytes, which is wrong but fails closed rather than dropping the
+		// call entirely.
+		h.Broadcast(legacy, filter)
+		h.BroadcastAdminEvent("activity.updated", nil)
+		return
+	}
+	h.broadcastBoth(legacy, v1, filter)
 	h.BroadcastAdminEvent("activity.updated", nil)
 }
 
@@ -141,39 +182,51 @@ func (h *Hub) BroadcastCFG(ctx context.Context) {
 		return
 	}
 	slog.Debug("ws: rebuilding and broadcasting CFG")
-	cfgMsg, err := buildCFGMessage(ctx, h.queries)
+	legacy, v1, err := buildCFGFrames(ctx, h.queries)
 	if err != nil {
 		slog.Error("ws: failed to build CFG for broadcast", "error", err)
 		return
 	}
-	h.Broadcast(cfgMsg, nil)
+	h.broadcastBoth(legacy, v1, nil)
 	slog.Debug("ws: cfg broadcast complete", "clients", h.ClientCount())
 }
 
-// BroadcastAdminEvent sends an ADM_EVT to all connected admin clients.
+// BroadcastAdminEvent sends an admin event (legacy ADM_EVT / native
+// admin.event) to all connected admin clients in both wire formats.
 func (h *Hub) BroadcastAdminEvent(topic string, data any) {
-	msg, err := NewADMEVTMessage(topic, data)
+	legacy, err := NewADMEVTMessage(topic, data)
 	if err != nil {
 		slog.Error("ws: failed to build admin event", "topic", topic, "error", err)
 		return
 	}
-	h.Broadcast(msg, func(c *Client) bool {
-		return c.isAdmin
-	})
+	v1, err := NewAdminEventV1(topic, data)
+	if err != nil {
+		slog.Error("ws: failed to build native admin.event", "topic", topic, "error", err)
+		h.Broadcast(legacy, func(c *Client) bool { return c.isAdmin })
+		return
+	}
+	h.broadcastBoth(legacy, v1, func(c *Client) bool { return c.isAdmin })
 }
 
-// BroadcastTRN sends a transcript-ready message to all connected listener
-// clients. segments may be nil when diarization is disabled.
+// BroadcastTRN sends a transcript-ready message (legacy TRN / native
+// call.transcript) to all connected listener clients in both wire formats.
+// segments may be nil when diarization is disabled.
 func (h *Hub) BroadcastTRN(callID int64, text string, segments any) {
 	if h == nil {
 		return
 	}
-	msg, err := NewTRNMessage(callID, text, segments)
+	legacy, err := NewTRNMessage(callID, text, segments)
 	if err != nil {
 		slog.Error("ws: failed to build TRN message", "call_id", callID, "error", err)
 		return
 	}
-	h.Broadcast(msg, nil)
+	v1, err := NewCallTranscriptV1(callID, text, segments)
+	if err != nil {
+		slog.Error("ws: failed to build native call.transcript", "call_id", callID, "error", err)
+		h.Broadcast(legacy, nil)
+		return
+	}
+	h.broadcastBoth(legacy, v1, nil)
 }
 
 // ClientCount returns the number of non-admin (listener) clients.
@@ -233,8 +286,7 @@ func (h *Hub) DisconnectByUser(userID int64) {
 
 	for _, c := range targets {
 		slog.Info("ws: disconnecting user session", "user_id", userID, "is_admin", c.isAdmin)
-		msg, _ := NewXPRMessage()
-		c.trySend(msg)
+		c.trySend(c.encodeSessionExpired())
 		h.Unregister(c)
 	}
 }
@@ -253,8 +305,7 @@ func (h *Hub) DisconnectByJTI(jti string) {
 
 	if target != nil {
 		slog.Info("ws: disconnecting session by JTI", "jti", jti, "user_id", target.userID)
-		msg, _ := NewXPRMessage()
-		target.trySend(msg)
+		target.trySend(target.encodeSessionExpired())
 		h.Unregister(target)
 	}
 }
@@ -278,12 +329,18 @@ func (h *Hub) debounceLSC() {
 	}
 	h.lscTimer = time.AfterFunc(lscDebounceDuration, func() {
 		count := h.ClientCount()
-		msg, err := NewLSCMessage(count)
+		legacy, err := NewLSCMessage(count)
 		if err != nil {
 			slog.Error("ws: failed to build LSC message", "error", err)
 			return
 		}
-		h.Broadcast(msg, nil)
+		v1, err := NewListenerCountV1(count)
+		if err != nil {
+			slog.Error("ws: failed to build native listener.count", "error", err)
+			h.Broadcast(legacy, nil)
+			return
+		}
+		h.broadcastBoth(legacy, v1, nil)
 	})
 }
 

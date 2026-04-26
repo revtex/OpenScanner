@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v1 call-upload endpoint (`POST /api/v1/calls`) with native multipart field names (`systemId`, `talkgroupId`, `startedAt`, `frequencyHz`, `durationMs`, `unitId`) and RFC 3339 `startedAt` enforcement (unix timestamps no longer accepted on v1). Companion `POST /api/v1/calls/test` returns 204 on a valid API key.
 - v1 listener endpoints: `GET/PUT /api/v1/listener/tg-selection` (renamed from `/api/auth/tg-selection`), `GET /api/v1/calls`, `GET /api/v1/calls/:id/audio`, `GET /api/v1/calls/:id/transcript`, share/bookmark endpoints, and unauthenticated `/api/v1/health`, `/api/v1/setup/*`, `/api/v1/auth/{login,refresh,logout,password,me}`.
 - v1 admin endpoints under `/api/v1/admin/*` for talkgroup/unit/group/tag imports, RadioReference preview (path simplified — no `/csv` suffix), transcription status, and Swagger session bootstrap.
+- Native JSON-object framed WebSocket protocol on `GET /api/v1/ws/listener` and `GET /api/v1/ws/admin`. Frames carry a `type` discriminator (`connection.welcome`, `scanner.config`, `call.new`, `call.transcript`, `listener.count`, `listener.feedMap.snapshot`/`update`, `session.expired`, `connection.rejected`, `admin.event`, `admin.request`, `admin.response`) instead of the legacy 3-letter array opcodes. Admin error responses mirror the REST `{code,message,details?}` envelope. The frontend connects to the v1 paths; legacy `/ws`, `/api/ws`, and `/api/admin/ws` keep emitting the array-framed protocol unchanged for in-the-wild clients.
 
 ### Changed
 

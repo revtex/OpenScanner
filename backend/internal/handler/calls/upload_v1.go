@@ -518,7 +518,8 @@ func (h *Handler) PostCallUploadV1(c *gin.Context) {
 			calPayload["frequencies"] = frequenciesJSON.String
 		}
 		if calMsg, err := ws.NewCALMessage(calPayload); err == nil {
-			h.hub.BroadcastCAL(calMsg, func(cl *ws.Client) bool {
+			_ = calMsg
+			h.hub.BroadcastCAL(calPayload, func(cl *ws.Client) bool {
 				return cl.CanReceive(system.ID, talkgroup.ID)
 			})
 		} else {
