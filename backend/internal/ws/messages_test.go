@@ -236,3 +236,208 @@ func TestNewMAXMessage(t *testing.T) {
 		t.Errorf("command = %q, want %q", cmd, "MAX")
 	}
 }
+
+// TestLegacyWireFormat_ByteEqual is a Phase N-0 contract-freeze guard for the
+// rdio-scanner-shaped legacy WebSocket protocol. Each row pins the exact JSON
+// bytes produced by a server-emitted constructor. Any future change to the
+// array-framed wire shape (element order, key order, opcode, type
+// representation) breaks this test loudly so the upcoming /api/v1/* native API
+// work cannot accidentally drift the legacy surface.
+//
+// Plan reference: docs/plans/native-api-design-plan.md §4.2 (WebSocket
+// surface) — the tabled "Legacy command" column is what these bytes pin.
+func TestLegacyWireFormat_ByteEqual(t *testing.T) {
+	tests := []struct {
+		name string
+		got  func(t *testing.T) []byte
+		want []byte
+	}{
+		{
+			// CAL — payload is metadata only; audio bytes are fetched over HTTP.
+			name: "CAL with simple payload",
+			got: func(t *testing.T) []byte {
+				// json.Marshal of map[string]any sorts keys alphabetically, so
+				// the byte output is deterministic for a fixed input.
+				b, err := NewCALMessage(map[string]any{
+					"id":          float64(42),
+					"systemId":    float64(10),
+					"talkgroupId": float64(100),
+				})
+				if err != nil {
+					t.Fatalf("NewCALMessage: %v", err)
+				}
+				return b
+			},
+			want: []byte(`["CAL",{"id":42,"systemId":10,"talkgroupId":100}]`),
+		},
+		{
+			// CFG — wraps an opaque config payload.
+			name: "CFG with config payload",
+			got: func(t *testing.T) []byte {
+				b, err := NewCFGMessage(map[string]any{
+					"systems": []any{},
+				})
+				if err != nil {
+					t.Fatalf("NewCFGMessage: %v", err)
+				}
+				return b
+			},
+			want: []byte(`["CFG",{"systems":[]}]`),
+		},
+		{
+			// VER — fixed 3-string struct in fixed key order.
+			name: "VER welcome",
+			got: func(t *testing.T) []byte {
+				b, err := NewVERMessage("1.2.3", "OpenScanner", "admin@example.com")
+				if err != nil {
+					t.Fatalf("NewVERMessage: %v", err)
+				}
+				return b
+			},
+			want: []byte(`["VER",{"branding":"OpenScanner","email":"admin@example.com","version":"1.2.3"}]`),
+		},
+		{
+			name: "LSC listener count",
+			got: func(t *testing.T) []byte {
+				b, err := NewLSCMessage(7)
+				if err != nil {
+					t.Fatalf("NewLSCMessage: %v", err)
+				}
+				return b
+			},
+			want: []byte(`["LSC",7]`),
+		},
+		{
+			name: "XPR session expired",
+			got: func(t *testing.T) []byte {
+				b, err := NewXPRMessage()
+				if err != nil {
+					t.Fatalf("NewXPRMessage: %v", err)
+				}
+				return b
+			},
+			want: []byte(`["XPR"]`),
+		},
+		{
+			name: "MAX max clients reached",
+			got: func(t *testing.T) []byte {
+				b, err := NewMAXMessage()
+				if err != nil {
+					t.Fatalf("NewMAXMessage: %v", err)
+				}
+				return b
+			},
+			want: []byte(`["MAX"]`),
+		},
+		{
+			name: "LFM live feed map",
+			got: func(t *testing.T) []byte {
+				b, err := NewLFMMessage(map[string]any{
+					"1": map[string]any{"100": true},
+				})
+				if err != nil {
+					t.Fatalf("NewLFMMessage: %v", err)
+				}
+				return b
+			},
+			want: []byte(`["LFM",{"1":{"100":true}}]`),
+		},
+		{
+			name: "TRN transcript without segments",
+			got: func(t *testing.T) []byte {
+				b, err := NewTRNMessage(42, "hello world", nil)
+				if err != nil {
+					t.Fatalf("NewTRNMessage: %v", err)
+				}
+				return b
+			},
+			want: []byte(`["TRN",{"callId":42,"text":"hello world"}]`),
+		},
+		{
+			name: "TRN transcript with segments",
+			got: func(t *testing.T) []byte {
+				b, err := NewTRNMessage(7, "two", []any{
+					map[string]any{"start": float64(0), "end": float64(1), "text": "two"},
+				})
+				if err != nil {
+					t.Fatalf("NewTRNMessage: %v", err)
+				}
+				return b
+			},
+			want: []byte(`["TRN",{"callId":7,"segments":[{"end":1,"start":0,"text":"two"}],"text":"two"}]`),
+		},
+		{
+			name: "ADM_RES success response",
+			got: func(t *testing.T) []byte {
+				b, err := NewADMRESMessage("req-1", map[string]any{"ok": true})
+				if err != nil {
+					t.Fatalf("NewADMRESMessage: %v", err)
+				}
+				return b
+			},
+			want: []byte(`["ADM_RES",{"data":{"ok":true},"ok":true,"reqId":"req-1"}]`),
+		},
+		{
+			name: "ADM_RES error response",
+			got: func(t *testing.T) []byte {
+				b, err := NewADMRESErrorMessage("req-2", "boom")
+				if err != nil {
+					t.Fatalf("NewADMRESErrorMessage: %v", err)
+				}
+				return b
+			},
+			want: []byte(`["ADM_RES",{"error":"boom","ok":false,"reqId":"req-2"}]`),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.got(t)
+			if !bytes.Equal(got, tt.want) {
+				t.Errorf("legacy wire shape drift\n got:  %s\n want: %s", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestLegacyWireFormat_ADMEVT_ByteEqual pins the ADM_EVT shape but excludes
+// the volatile "at" timestamp. The constructor stamps time.Now().Unix() into
+// the payload, so we round-trip through the parser and assert the stable
+// keys byte-for-byte while only requiring "at" to be a positive integer.
+//
+// Plan reference: docs/plans/native-api-design-plan.md §4.2 — ADM_EVT row.
+func TestLegacyWireFormat_ADMEVT_ByteEqual(t *testing.T) {
+	data, err := NewADMEVTMessage("systems.updated", map[string]any{"id": float64(1)})
+	if err != nil {
+		t.Fatalf("NewADMEVTMessage: %v", err)
+	}
+
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("not valid JSON array: %v", err)
+	}
+	if len(arr) != 2 {
+		t.Fatalf("expected 2 elements, got %d", len(arr))
+	}
+	if !bytes.Equal(arr[0], []byte(`"ADM_EVT"`)) {
+		t.Errorf("opcode = %s, want \"ADM_EVT\"", arr[0])
+	}
+
+	var body struct {
+		Topic string         `json:"topic"`
+		At    int64          `json:"at"`
+		Data  map[string]any `json:"data"`
+	}
+	if err := json.Unmarshal(arr[1], &body); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if body.Topic != "systems.updated" {
+		t.Errorf("topic = %q, want %q", body.Topic, "systems.updated")
+	}
+	if body.At <= 0 {
+		t.Errorf("at = %d, want positive unix seconds", body.At)
+	}
+	if body.Data["id"] != float64(1) {
+		t.Errorf("data.id = %v, want 1", body.Data["id"])
+	}
+}
