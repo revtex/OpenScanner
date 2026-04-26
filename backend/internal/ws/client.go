@@ -40,6 +40,15 @@ const (
 	revalidatePeriod    = 5 * time.Minute
 )
 
+// Protocol version markers attached to a Client at connect time. The hub
+// fan-out uses this to pick the correct wire encoding (legacy 3-letter
+// array frames vs. native JSON-object frames). The empty string defaults
+// to legacy for back-compat with code paths that don't set the field.
+const (
+	protocolLegacy = ""
+	protocolV1     = "v1"
+)
+
 // systemGrant represents a system-level grant with optional talkgroup filtering.
 type systemGrant struct {
 	ID         int64   `json:"id"`
@@ -56,6 +65,11 @@ type Client struct {
 	userID  int64
 	jti     string      // JWT token ID, for single-session disconnect
 	queries *db.Queries // for periodic account revalidation
+
+	// protocolVersion selects the on-wire encoding for messages sent to
+	// this client. Set once at connect time by the handler that accepted
+	// the upgrade; never mutated afterwards.
+	protocolVersion string
 
 	// Drop counter for slow-client telemetry. Incremented whenever a
 	// broadcast / send-site drops a message because the send buffer is full.
@@ -103,6 +117,20 @@ type adminRequest struct {
 	ReqID  string          `json:"reqId"`
 	Op     string          `json:"op"`
 	Params json.RawMessage `json:"params,omitempty"`
+}
+
+// isV1 reports whether this client negotiated the native v1 protocol.
+func (c *Client) isV1() bool { return c.protocolVersion == protocolV1 }
+
+// encodeSessionExpired returns the wire bytes for a session-expired
+// notification in the protocol negotiated by this client.
+func (c *Client) encodeSessionExpired() []byte {
+	if c.isV1() {
+		b, _ := NewSessionExpiredV1()
+		return b
+	}
+	b, _ := NewXPRMessage()
+	return b
 }
 
 // CanReceive reports whether this client is authorized to receive a call for
@@ -164,8 +192,25 @@ func wsAcceptOptions(r *http.Request) *websocket.AcceptOptions {
 	}
 }
 
-// HandleListenerWS upgrades the HTTP connection for a listener WebSocket.
+// HandleListenerWS upgrades the HTTP connection for a legacy (3-letter
+// array-framed) listener WebSocket. Used on /ws and /api/ws.
 func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
+	return handleListenerWS(hub, queries, false)
+}
+
+// HandleListenerWSv1 upgrades the HTTP connection for a native (JSON-object
+// framed) listener WebSocket. Used on /api/v1/ws/listener. The auth
+// handshake is identical to the legacy path; only the per-client encoder
+// differs (selected via Client.protocolVersion).
+func HandleListenerWSv1(hub *Hub, queries *db.Queries) http.HandlerFunc {
+	return handleListenerWS(hub, queries, true)
+}
+
+func handleListenerWS(hub *Hub, queries *db.Queries, isV1 bool) http.HandlerFunc {
+	protoVer := protocolLegacy
+	if isV1 {
+		protoVer = protocolV1
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := websocket.Accept(w, r, wsAcceptOptions(r))
 		if err != nil {
@@ -173,11 +218,12 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 				"error", err,
 				"origin", r.Header.Get("Origin"),
 				"host", r.Host,
+				"v1", isV1,
 			)
 			return
 		}
 
-		slog.Debug("ws: listener connection accepted", "ip", r.RemoteAddr)
+		slog.Debug("ws: listener connection accepted", "ip", r.RemoteAddr, "v1", isV1)
 
 		ctx := r.Context()
 
@@ -185,9 +231,7 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 		if maxStr, err := queries.GetSetting(ctx, "maxClients"); err == nil {
 			if maxClients, err := strconv.Atoi(maxStr.Value); err == nil && maxClients > 0 {
 				if hub.ClientCount() >= maxClients {
-					msg, _ := NewMAXMessage()
-					_ = conn.Write(ctx, websocket.MessageText, msg)
-					conn.Close(websocket.StatusNormalClosure, "max clients reached")
+					writeMaxAndClose(ctx, conn, isV1)
 					return
 				}
 			}
@@ -200,16 +244,17 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 		}
 
 		client := &Client{
-			hub:     hub,
-			conn:    conn,
-			send:    make(chan []byte, sendBufSize),
-			queries: queries,
+			hub:             hub,
+			conn:            conn,
+			send:            make(chan []byte, sendBufSize),
+			queries:         queries,
+			protocolVersion: protoVer,
 		}
 
 		if publicAccess {
 			slog.Debug("ws: listener authenticated via public access")
 			// Public access — no auth required, receive all.
-			if err := sendWelcome(ctx, conn, hub, queries); err != nil {
+			if err := sendWelcome(ctx, conn, hub, queries, isV1); err != nil {
 				slog.Error("ws: failed to send welcome", "error", err)
 				conn.Close(websocket.StatusInternalError, "")
 				return
@@ -235,66 +280,56 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
-		cmd, payload, err := ParseCommand(data)
-		if err != nil {
+		tokenStr, ok := extractAuthToken(data, isV1)
+		if !ok {
 			conn.Close(websocket.StatusPolicyViolation, "invalid message")
 			return
 		}
 
-		// Try as JWT token string (the entire message may be just a token).
-		// First try to parse as a JSON string from payload, otherwise use raw cmd.
-		tokenStr := cmd
-		if payload != nil {
-			// The message might be ["<token>"] where cmd is the token.
-			tokenStr = cmd
-		}
-		// Also handle case where client sends raw token as first array element.
 		claims, err := auth.ParseToken(tokenStr)
 		if err != nil {
 			slog.Info("ws: invalid JWT on listener WS")
-			sendExpiredAndClose(ctx, conn)
+			sendExpiredAndClose(ctx, conn, isV1)
 			return
 		}
 		if auth.Tokens.IsRevoked(claims.ID) {
 			slog.Info("ws: revoked JWT on listener WS", "jti", claims.ID)
-			sendExpiredAndClose(ctx, conn)
+			sendExpiredAndClose(ctx, conn, isV1)
 			return
 		}
 		if claims.Role != auth.RoleListener && claims.Role != auth.RoleAdmin {
 			slog.Info("ws: invalid role on listener WS", "role", claims.Role)
-			sendExpiredAndClose(ctx, conn)
+			sendExpiredAndClose(ctx, conn, isV1)
 			return
 		}
 		// Load user grants.
 		user, err := queries.GetUser(ctx, claims.UserID)
 		if err != nil || user.Disabled != 0 {
 			slog.Info("ws: user not found or disabled on listener WS", "user_id", claims.UserID)
-			sendExpiredAndClose(ctx, conn)
+			sendExpiredAndClose(ctx, conn, isV1)
 			return
 		}
 		// Enforce account expiration on WS connections.
 		if user.Expiration.Valid && user.Expiration.Int64 > 0 {
 			if time.Now().Unix() > user.Expiration.Int64 {
 				slog.Info("ws: expired user on listener WS", "user_id", claims.UserID)
-				sendExpiredAndClose(ctx, conn)
+				sendExpiredAndClose(ctx, conn, isV1)
 				return
 			}
 		}
 		// Check user connection limit.
 		if user.Limit.Valid && user.Limit.Int64 > 0 {
 			if int64(hub.countByUser(user.ID)) >= user.Limit.Int64 {
-				msg, _ := NewMAXMessage()
-				_ = conn.Write(ctx, websocket.MessageText, msg)
-				conn.Close(websocket.StatusNormalClosure, "connection limit")
+				writeMaxAndClose(ctx, conn, isV1)
 				return
 			}
 		}
 		client.userID = user.ID
 		client.jti = claims.ID
 		client.grants = parseGrants(user.SystemsJson)
-		slog.Debug("ws: listener authenticated via jwt", "user_id", user.ID, "grants", len(client.grants))
+		slog.Debug("ws: listener authenticated via jwt", "user_id", user.ID, "grants", len(client.grants), "v1", isV1)
 
-		if err := sendWelcome(ctx, conn, hub, queries); err != nil {
+		if err := sendWelcome(ctx, conn, hub, queries, isV1); err != nil {
 			slog.Error("ws: failed to send welcome", "error", err)
 			conn.Close(websocket.StatusInternalError, "")
 			return
@@ -306,10 +341,51 @@ func HandleListenerWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 	}
 }
 
-// HandleAdminWS upgrades the HTTP connection for an admin WebSocket.
+// writeMaxAndClose emits the version-appropriate "rejected" frame and
+// closes the connection cleanly.
+func writeMaxAndClose(ctx context.Context, conn *websocket.Conn, isV1 bool) {
+	var msg []byte
+	if isV1 {
+		msg, _ = NewRejectedV1("max_clients")
+	} else {
+		msg, _ = NewMAXMessage()
+	}
+	_ = conn.Write(ctx, websocket.MessageText, msg)
+	conn.Close(websocket.StatusNormalClosure, "max clients reached")
+}
+
+// extractAuthToken pulls the JWT bearer token out of the first message in
+// the auth handshake. Both legacy and v1 currently accept the same wire
+// shape — a JSON array whose first element is the token string — keyed by
+// ParseCommand. The isV1 flag is reserved for a future divergence (e.g.
+// {"type":"auth","token":"..."}); today it is unused but kept on the
+// signature to make the intent explicit.
+func extractAuthToken(data []byte, _ bool) (string, bool) {
+	cmd, _, err := ParseCommand(data)
+	if err != nil {
+		return "", false
+	}
+	return cmd, true
+}
+
+// HandleAdminWS upgrades the HTTP connection for a legacy admin WebSocket.
 // Auth is performed via the first message (JWT token) after upgrade,
 // matching the listener WS pattern — token never appears in the URL.
 func HandleAdminWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
+	return handleAdminWS(hub, queries, false)
+}
+
+// HandleAdminWSv1 upgrades the HTTP connection for a native (JSON-object
+// framed) admin WebSocket. Used on /api/v1/ws/admin.
+func HandleAdminWSv1(hub *Hub, queries *db.Queries) http.HandlerFunc {
+	return handleAdminWS(hub, queries, true)
+}
+
+func handleAdminWS(hub *Hub, queries *db.Queries, isV1 bool) http.HandlerFunc {
+	protoVer := protocolLegacy
+	if isV1 {
+		protoVer = protocolV1
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := websocket.Accept(w, r, wsAcceptOptions(r))
 		if err != nil {
@@ -317,6 +393,7 @@ func HandleAdminWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 				"error", err,
 				"origin", r.Header.Get("Origin"),
 				"host", r.Host,
+				"v1", isV1,
 			)
 			return
 		}
@@ -338,22 +415,21 @@ func HandleAdminWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 			return
 		}
 
-		// Parse the first message as a JWT token.
-		cmd, _, err := ParseCommand(data)
-		if err != nil {
+		tokenStr, ok := extractAuthToken(data, isV1)
+		if !ok {
 			conn.Close(websocket.StatusPolicyViolation, "invalid message")
 			return
 		}
 
-		claims, err := auth.ParseToken(cmd)
+		claims, err := auth.ParseToken(tokenStr)
 		if err != nil || auth.Tokens.IsRevoked(claims.ID) {
 			slog.Info("ws: invalid or revoked JWT on admin WS")
-			sendExpiredAndClose(ctx, conn)
+			sendExpiredAndClose(ctx, conn, isV1)
 			return
 		}
 		if claims.Role != auth.RoleAdmin {
 			slog.Info("ws: non-admin JWT on admin WS", "role", claims.Role)
-			sendExpiredAndClose(ctx, conn)
+			sendExpiredAndClose(ctx, conn, isV1)
 			return
 		}
 
@@ -361,27 +437,28 @@ func HandleAdminWS(hub *Hub, queries *db.Queries) http.HandlerFunc {
 		user, err := queries.GetUser(ctx, claims.UserID)
 		if err != nil || user.Disabled != 0 {
 			slog.Info("ws: admin user not found or disabled", "user_id", claims.UserID)
-			sendExpiredAndClose(ctx, conn)
+			sendExpiredAndClose(ctx, conn, isV1)
 			return
 		}
 		if user.Expiration.Valid && user.Expiration.Int64 > 0 {
 			if time.Now().Unix() > user.Expiration.Int64 {
 				slog.Info("ws: expired admin user", "user_id", claims.UserID)
-				sendExpiredAndClose(ctx, conn)
+				sendExpiredAndClose(ctx, conn, isV1)
 				return
 			}
 		}
 
-		slog.Debug("ws: admin authenticated via first-message JWT", "user_id", claims.UserID)
+		slog.Debug("ws: admin authenticated via first-message JWT", "user_id", claims.UserID, "v1", isV1)
 
 		client := &Client{
-			hub:     hub,
-			conn:    conn,
-			send:    make(chan []byte, sendBufSize),
-			isAdmin: true,
-			userID:  claims.UserID,
-			jti:     claims.ID,
-			queries: queries,
+			hub:             hub,
+			conn:            conn,
+			send:            make(chan []byte, sendBufSize),
+			isAdmin:         true,
+			userID:          claims.UserID,
+			jti:             claims.ID,
+			queries:         queries,
+			protocolVersion: protoVer,
 		}
 
 		hub.Register(client)
@@ -417,6 +494,11 @@ func (c *Client) readPump(ctx context.Context) {
 			return
 		}
 		if typ != websocket.MessageText {
+			continue
+		}
+
+		if c.isV1() {
+			c.dispatchV1(ctx, data)
 			continue
 		}
 
@@ -470,24 +552,88 @@ func (c *Client) handleAdminRequest(ctx context.Context, req adminRequest) {
 	handlers := c.adminOpHandlers()
 	handler, ok := handlers[req.Op]
 	if !ok {
-		msg, _ := NewADMRESErrorMessage(req.ReqID, "unknown op: "+req.Op)
-		c.trySend(msg)
+		c.trySend(c.encodeAdminError(req.ReqID, NativeErrCodeUnknownOp, "unknown op: "+req.Op))
 		return
 	}
 
 	data, err := handler(ctx, req.Params, c.userID)
-	var msg []byte
 	if err != nil {
 		if errMsg, isUser := errorString(err); isUser {
-			msg, _ = NewADMRESErrorMessage(req.ReqID, errMsg)
+			c.trySend(c.encodeAdminError(req.ReqID, NativeErrCodeValidation, errMsg))
 		} else {
 			slog.Error("ws: admin op failed", "op", req.Op, "reqId", req.ReqID, "error", err)
-			msg, _ = NewADMRESErrorMessage(req.ReqID, errMsg)
+			c.trySend(c.encodeAdminError(req.ReqID, NativeErrCodeInternal, errMsg))
 		}
-	} else {
-		msg, _ = NewADMRESMessage(req.ReqID, data)
+		return
 	}
-	c.trySend(msg)
+	c.trySend(c.encodeAdminResponse(req.ReqID, data))
+}
+
+// encodeAdminResponse builds a successful admin response in the protocol
+// version negotiated by this client.
+func (c *Client) encodeAdminResponse(reqID string, data any) []byte {
+	if c.isV1() {
+		b, _ := NewAdminResponseV1(reqID, data)
+		return b
+	}
+	b, _ := NewADMRESMessage(reqID, data)
+	return b
+}
+
+// encodeAdminError builds an error admin response in the protocol version
+// negotiated by this client. The legacy frame ignores the error code and
+// only carries the message.
+func (c *Client) encodeAdminError(reqID, code, message string) []byte {
+	if c.isV1() {
+		b, _ := NewAdminResponseErrorV1(reqID, code, message, nil)
+		return b
+	}
+	b, _ := NewADMRESErrorMessage(reqID, message)
+	return b
+}
+
+// dispatchV1 routes a single inbound v1 (JSON-object framed) message from
+// this client. Mirrors the legacy switch in readPump but keys off the
+// "type" discriminator instead of the array opcode.
+func (c *Client) dispatchV1(ctx context.Context, data []byte) {
+	var env nativeEnvelope
+	if err := json.Unmarshal(data, &env); err != nil {
+		slog.Warn("ws: failed to parse v1 envelope", "error", err)
+		return
+	}
+	switch env.Type {
+	case TypeFeedMapUpdate:
+		var u nativeFeedMapUpdate
+		if err := json.Unmarshal(data, &u); err != nil {
+			slog.Warn("ws: failed to parse listener.feedMap.update", "error", err)
+			return
+		}
+		// Echo back as a snapshot so the client confirms its own state.
+		if msg, err := NewFeedMapSnapshotV1(u.FeedMap); err == nil {
+			c.trySend(msg)
+		}
+	case TypeAdminRequest:
+		if !c.isAdmin {
+			slog.Warn("ws: non-admin client sent admin.request")
+			return
+		}
+		var req nativeAdminRequest
+		if err := json.Unmarshal(data, &req); err != nil {
+			slog.Warn("ws: failed to parse admin.request", "error", err)
+			return
+		}
+		if req.ReqID == "" {
+			slog.Warn("ws: admin.request missing reqId")
+			return
+		}
+		c.handleAdminRequest(ctx, adminRequest{
+			ReqID:  req.ReqID,
+			Op:     req.Op,
+			Params: req.Params,
+		})
+	default:
+		slog.Warn("ws: received unknown v1 message type", "type", env.Type)
+	}
 }
 
 func (c *Client) opActivityStats(ctx context.Context, _ json.RawMessage) (any, error) {
@@ -631,13 +777,13 @@ func (c *Client) writePump(ctx context.Context) {
 			user, err := c.queries.GetUser(ctx, c.userID)
 			if err != nil || user.Disabled != 0 {
 				slog.Info("ws: revalidation failed, disconnecting", "user_id", c.userID, "reason", "disabled or not found")
-				sendExpiredAndClose(ctx, c.conn)
+				sendExpiredAndClose(ctx, c.conn, c.isV1())
 				return
 			}
 			if user.Expiration.Valid && user.Expiration.Int64 > 0 {
 				if time.Now().Unix() > user.Expiration.Int64 {
 					slog.Info("ws: revalidation failed, disconnecting", "user_id", c.userID, "reason", "expired")
-					sendExpiredAndClose(ctx, c.conn)
+					sendExpiredAndClose(ctx, c.conn, c.isV1())
 					return
 				}
 			}
@@ -645,17 +791,25 @@ func (c *Client) writePump(ctx context.Context) {
 	}
 }
 
-// sendExpiredAndClose sends an XPR message and closes the connection.
-func sendExpiredAndClose(ctx context.Context, conn *websocket.Conn) {
-	msg, _ := NewXPRMessage()
+// sendExpiredAndClose sends a session-expired frame in the protocol
+// version negotiated by the handler and closes the connection. It runs
+// before a Client struct exists (during the auth handshake), so the
+// caller passes isV1 explicitly.
+func sendExpiredAndClose(ctx context.Context, conn *websocket.Conn, isV1 bool) {
+	var msg []byte
+	if isV1 {
+		msg, _ = NewSessionExpiredV1()
+	} else {
+		msg, _ = NewXPRMessage()
+	}
 	_ = conn.Write(ctx, websocket.MessageText, msg)
 	conn.Close(websocket.StatusPolicyViolation, "auth failed")
 }
 
-// sendWelcome sends VER and CFG messages to a newly authenticated client.
-func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *db.Queries) error {
-	slog.Debug("ws: sending welcome (VER+CFG)")
-	// Build VER message.
+// sendWelcome sends the post-auth welcome frames (legacy VER+CFG, native
+// connection.welcome + scanner.config) on the given connection.
+func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *db.Queries, isV1 bool) error {
+	slog.Debug("ws: sending welcome", "v1", isV1)
 	branding := ""
 	if s, err := queries.GetSetting(ctx, "branding"); err == nil {
 		branding = s.Value
@@ -664,24 +818,64 @@ func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *d
 	if s, err := queries.GetSetting(ctx, "email"); err == nil {
 		email = s.Value
 	}
-	verMsg, err := NewVERMessage(hub.version, branding, email)
+
+	var welcome []byte
+	var err error
+	if isV1 {
+		welcome, err = NewWelcomeV1(hub.version, branding, email)
+	} else {
+		welcome, err = NewVERMessage(hub.version, branding, email)
+	}
 	if err != nil {
 		return err
 	}
-	if err := conn.Write(ctx, websocket.MessageText, verMsg); err != nil {
+	if err := conn.Write(ctx, websocket.MessageText, welcome); err != nil {
 		return err
 	}
 
-	cfgMsg, err := buildCFGMessage(ctx, queries)
+	legacyCFG, v1CFG, err := buildCFGFrames(ctx, queries)
 	if err != nil {
 		return err
 	}
-	return conn.Write(ctx, websocket.MessageText, cfgMsg)
+	if isV1 {
+		return conn.Write(ctx, websocket.MessageText, v1CFG)
+	}
+	return conn.Write(ctx, websocket.MessageText, legacyCFG)
 }
 
-// buildCFGMessage constructs the CFG WebSocket message from the current
-// database state (systems, talkgroups, groups, tags, settings).
+// buildCFGMessage constructs the legacy CFG WebSocket message from the
+// current database state. Kept for any external callers; new code paths
+// should use buildCFGFrames to receive both encodings at once.
 func buildCFGMessage(ctx context.Context, queries *db.Queries) ([]byte, error) {
+	payload, err := buildCFGPayload(ctx, queries)
+	if err != nil {
+		return nil, err
+	}
+	return NewCFGMessage(payload)
+}
+
+// buildCFGFrames returns the legacy and native (v1) CFG frames for the
+// current database state. Both frames carry the same config payload, only
+// the wire envelope differs.
+func buildCFGFrames(ctx context.Context, queries *db.Queries) (legacy, v1 []byte, err error) {
+	payload, err := buildCFGPayload(ctx, queries)
+	if err != nil {
+		return nil, nil, err
+	}
+	legacy, err = NewCFGMessage(payload)
+	if err != nil {
+		return nil, nil, err
+	}
+	v1, err = NewScannerConfigV1(payload)
+	if err != nil {
+		return nil, nil, err
+	}
+	return legacy, v1, nil
+}
+
+// buildCFGPayload constructs the CFG payload (without any framing) from
+// the current database state (systems, talkgroups, groups, tags, settings).
+func buildCFGPayload(ctx context.Context, queries *db.Queries) (map[string]any, error) {
 	// Resolve group and tag labels first so talkgroups carry string labels,
 	// matching the TalkgroupConfig type expected by the frontend.
 	groups, _ := queries.ListGroups(ctx)
@@ -780,5 +974,5 @@ func buildCFGMessage(ctx context.Context, queries *db.Queries) ([]byte, error) {
 		cfgPayload["liveTranscriptDisplay"] = s.Value == "true"
 	}
 
-	return NewCFGMessage(cfgPayload)
+	return cfgPayload, nil
 }

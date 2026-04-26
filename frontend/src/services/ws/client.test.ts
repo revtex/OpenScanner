@@ -104,12 +104,14 @@ describe("wsClient", () => {
     vi.restoreAllMocks();
   });
 
-  it("connects on first call using ws:// derived from window.location", () => {
+  it("connects on first call to /api/v1/ws/listener derived from window.location", () => {
     const store = makeStore();
     wsClient.connect(store.dispatch);
     expect(constructed).toHaveLength(1);
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    expect(constructed[0].url).toBe(`${proto}//${window.location.host}/api/ws`);
+    expect(constructed[0].url).toBe(
+      `${proto}//${window.location.host}/api/v1/ws/listener`,
+    );
   });
 
   it("sends the auth token as a JSON array after onopen", () => {
@@ -177,20 +179,20 @@ describe("wsClient", () => {
     expect(constructed).toHaveLength(4);
   });
 
-  it("deduplicates CAL messages by call id", () => {
+  it("deduplicates call.new messages by call id", () => {
     const store = makeStore();
     const dispatchSpy = vi.spyOn(store, "dispatch");
     wsClient.connect(store.dispatch);
     constructed[0].simulateOpen();
     dispatchSpy.mockClear();
 
-    const payload = {
+    const call = {
       id: 42,
       dateTime: "2026-01-01T00:00:00Z",
       systemId: 1,
       talkgroupId: 100,
     };
-    const msg = JSON.stringify(["CAL", payload]);
+    const msg = JSON.stringify({ type: "call.new", call });
 
     constructed[0].simulateMessage(msg);
     constructed[0].simulateMessage(msg);
@@ -214,26 +216,26 @@ describe("wsClient", () => {
     dispatchSpy.mockClear();
 
     constructed[0].simulateMessage(
-      JSON.stringify([
-        "CAL",
-        {
+      JSON.stringify({
+        type: "call.new",
+        call: {
           id: 1,
           dateTime: "2026-01-01T00:00:00Z",
           systemId: 1,
           talkgroupId: 100,
         },
-      ]),
+      }),
     );
     constructed[0].simulateMessage(
-      JSON.stringify([
-        "CAL",
-        {
+      JSON.stringify({
+        type: "call.new",
+        call: {
           id: 2,
           dateTime: "2026-01-01T00:00:01Z",
           systemId: 1,
           talkgroupId: 100,
         },
-      ]),
+      }),
     );
 
     const callReceivedDispatches = dispatchSpy.mock.calls.filter(
@@ -265,15 +267,15 @@ describe("wsClient", () => {
     // it out, then id 1 again — it should be accepted as new.
     const send = (id: number) =>
       constructed[0].simulateMessage(
-        JSON.stringify([
-          "CAL",
-          {
+        JSON.stringify({
+          type: "call.new",
+          call: {
             id,
             dateTime: "2026-01-01T00:00:00Z",
             systemId: 1,
             talkgroupId: 100,
           },
-        ]),
+        }),
       );
 
     send(1);
@@ -290,5 +292,52 @@ describe("wsClient", () => {
 
     // 1 (initial) + 100 (fills) + 1 (re-accept after eviction) = 102
     expect(callReceivedCount).toBe(102);
+  });
+
+  it("dispatches setBranding when connection.welcome arrives", () => {
+    const store = makeStore();
+    const dispatchSpy = vi.spyOn(store, "dispatch");
+    wsClient.connect(store.dispatch);
+    constructed[0].simulateOpen();
+    dispatchSpy.mockClear();
+
+    constructed[0].simulateMessage(
+      JSON.stringify({
+        type: "connection.welcome",
+        version: "1.2.3",
+        branding: "OpenScanner",
+        email: "ops@example.com",
+      }),
+    );
+
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "scanner/setBranding",
+        payload: {
+          version: "1.2.3",
+          branding: "OpenScanner",
+          email: "ops@example.com",
+        },
+      }),
+    );
+  });
+
+  it("serialises outbound listener.feedMap.update as a JSON object frame", () => {
+    const store = makeStore();
+    wsClient.connect(store.dispatch);
+    constructed[0].simulateOpen();
+    constructed[0].send.mockClear();
+
+    wsClient.send({
+      type: "listener.feedMap.update",
+      feedMap: { "1": { "100": true } },
+    });
+
+    expect(constructed[0].send).toHaveBeenCalledWith(
+      JSON.stringify({
+        type: "listener.feedMap.update",
+        feedMap: { "1": { "100": true } },
+      }),
+    );
   });
 });

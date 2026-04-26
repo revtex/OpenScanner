@@ -8,7 +8,8 @@ import {
   transcriptReceived,
 } from "@/app/slices/scanner/scannerSlice";
 import { clearCredentials } from "@/app/slices/shared/authSlice";
-import type { Call, WsCommand, TranscriptionSegment } from "@/types";
+import type { SystemConfig } from "@/types";
+import type { WsListenerInbound, WsListenerOutbound } from "@/types/ws";
 
 const MAX_BACKOFF = 30_000;
 const DEDUP_SIZE = 100;
@@ -62,10 +63,9 @@ class WsClient {
     this.dispatch?.(setConnectionStatus("disconnected"));
   }
 
-  send(command: WsCommand, payload?: unknown): void {
+  send(message: WsListenerOutbound): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      const msg = payload !== undefined ? [command, payload] : [command];
-      this.ws.send(JSON.stringify(msg));
+      this.ws.send(JSON.stringify(message));
     }
   }
 
@@ -91,7 +91,7 @@ class WsClient {
     this.dispatch?.(setConnectionStatus("connecting"));
 
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${proto}//${window.location.host}/api/ws`;
+    const url = `${proto}//${window.location.host}/api/v1/ws/listener`;
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
@@ -126,127 +126,98 @@ class WsClient {
   }
 
   private handleTextMessage(data: string): void {
-    let parsed: unknown[];
+    let parsed: unknown;
     try {
-      parsed = JSON.parse(data) as unknown[];
+      parsed = JSON.parse(data);
     } catch {
       return;
     }
 
-    if (!Array.isArray(parsed) || parsed.length === 0) return;
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed) ||
+      typeof (parsed as { type?: unknown }).type !== "string"
+    ) {
+      return;
+    }
 
-    const command = parsed[0] as WsCommand;
-    const payload = parsed[1];
+    const msg = parsed as WsListenerInbound;
 
-    switch (command) {
-      case "CAL":
-        if (
-          payload &&
-          typeof payload === "object" &&
-          "id" in payload &&
-          "dateTime" in payload
-        ) {
-          const raw = payload as Record<string, unknown>;
-          // Older servers embedded base64 audio bytes here; the field is
-          // ignored now that audio is fetched on demand from
-          // /api/calls/:id/audio.
-          if ("audio" in raw) {
-            delete raw.audio;
-          }
-          const call = raw as unknown as Call;
+    switch (msg.type) {
+      case "call.new": {
+        const call = msg.call;
+        if (!call || typeof call.id !== "number") break;
 
-          // Dedup: skip if this call ID was already processed recently.
-          if (this.recentCallIds.includes(call.id)) {
-            break;
-          }
-          this.recentCallIds.push(call.id);
-          if (this.recentCallIds.length > DEDUP_SIZE) {
-            this.recentCallIds.shift();
-          }
-
-          this.dispatch?.(callReceived(call));
+        // Dedup: skip if this call ID was already processed recently.
+        if (this.recentCallIds.includes(call.id)) {
+          break;
         }
+        this.recentCallIds.push(call.id);
+        if (this.recentCallIds.length > DEDUP_SIZE) {
+          this.recentCallIds.shift();
+        }
+
+        this.dispatch?.(callReceived(call));
         break;
-      case "CFG":
+      }
+      case "scanner.config": {
+        if (!this.dispatch) break;
+        const cfg = msg.config;
+        // scanner.config carries systems + display prefs. Branding/email/
+        // version arrive separately via connection.welcome, so only
+        // override if scanner.config explicitly provides them.
+        this.dispatch(
+          setConfig({
+            systems: (cfg.systems ?? []) as SystemConfig[],
+            branding: cfg.branding,
+            email: cfg.email,
+            version: cfg.version,
+            time12hFormat:
+              cfg.time12hFormat === true || cfg.time12hFormat === "true",
+            showListenersCount:
+              cfg.showListenersCount === true ||
+              cfg.showListenersCount === "true",
+            playbackGoesLive:
+              cfg.playbackGoesLive === true || cfg.playbackGoesLive === "true",
+            shareableLinks:
+              cfg.shareableLinks === true || cfg.shareableLinks === "true",
+            keypadBeeps: cfg.keypadBeeps ?? "",
+            transcriptionEnabled:
+              cfg.transcriptionEnabled === true ||
+              cfg.transcriptionEnabled === "true",
+            liveTranscriptDisplay:
+              cfg.liveTranscriptDisplay === true ||
+              cfg.liveTranscriptDisplay === "true",
+          }),
+        );
+        break;
+      }
+      case "connection.welcome":
         if (this.dispatch) {
-          const cfg = payload as {
-            systems?: unknown;
-            branding?: string;
-            email?: string;
-            version?: string;
-            time12hFormat?: boolean | string;
-            showListenersCount?: boolean | string;
-            playbackGoesLive?: boolean | string;
-            shareableLinks?: boolean | string;
-            keypadBeeps?: string;
-            transcriptionEnabled?: boolean | string;
-            liveTranscriptDisplay?: boolean | string;
-          };
-          // CFG carries systems + display prefs. Branding/email/version
-          // arrive separately via VER, so only override if CFG explicitly
-          // provides them — otherwise keep current values.
-          this.dispatch(
-            setConfig({
-              systems: (cfg.systems ?? []) as import("@/types").SystemConfig[],
-              branding: cfg.branding,
-              email: cfg.email,
-              version: cfg.version,
-              time12hFormat:
-                cfg.time12hFormat === true || cfg.time12hFormat === "true",
-              showListenersCount:
-                cfg.showListenersCount === true ||
-                cfg.showListenersCount === "true",
-              playbackGoesLive:
-                cfg.playbackGoesLive === true ||
-                cfg.playbackGoesLive === "true",
-              shareableLinks:
-                cfg.shareableLinks === true || cfg.shareableLinks === "true",
-              keypadBeeps: cfg.keypadBeeps ?? "",
-              transcriptionEnabled:
-                cfg.transcriptionEnabled === true ||
-                cfg.transcriptionEnabled === "true",
-              liveTranscriptDisplay:
-                cfg.liveTranscriptDisplay === true ||
-                cfg.liveTranscriptDisplay === "true",
-            }),
-          );
-        }
-        break;
-      case "VER":
-        if (this.dispatch && payload && typeof payload === "object") {
-          const ver = payload as {
-            version?: string;
-            branding?: string;
-            email?: string;
-          };
-          // VER updates branding/version/email — merge with existing config
           this.dispatch(
             setBranding({
-              branding: ver.branding ?? "",
-              email: ver.email ?? "",
-              version: ver.version ?? "",
+              branding: msg.branding ?? "",
+              email: msg.email ?? "",
+              version: msg.version ?? "",
             }),
           );
         }
         break;
-      case "LSC":
-        if (typeof payload === "number") {
-          this.dispatch?.(setListenerCount(payload));
-        }
+      case "listener.count":
+        this.dispatch?.(setListenerCount(msg.count));
         break;
-      case "XPR":
+      case "session.expired":
         // Token expired — attempt silent refresh before disconnecting.
-        console.warn("[WsClient] Token expired, attempting refresh");
+        console.warn("[WsClient] Session expired, attempting refresh");
         if (this.tokenExpiredCallback) {
           this.tokenExpiredCallback().then((newToken) => {
             if (newToken) {
-              // Update auth and reconnect with new token.
               this.auth = { ...this.auth, token: newToken };
               this.disconnect();
               this.intentionalClose = false;
               this.doConnect();
             } else {
-              // Refresh failed — clear credentials.
               this.dispatch?.(clearCredentials());
               this.disconnect();
             }
@@ -256,26 +227,29 @@ class WsClient {
           this.disconnect();
         }
         break;
-      case "MAX":
-        console.warn("[WsClient] Server max clients reached");
+      case "connection.rejected":
+        console.warn("[WsClient] Connection rejected:", msg.reason);
         break;
-      case "TRN":
-        if (
-          payload &&
-          typeof payload === "object" &&
-          "callId" in payload &&
-          "text" in payload
-        ) {
-          const trn = payload as {
-            callId: number;
-            text: string;
-            segments?: TranscriptionSegment[];
-          };
-          this.dispatch?.(transcriptReceived(trn));
-        }
+      case "call.transcript":
+        this.dispatch?.(
+          transcriptReceived({
+            callId: msg.callId,
+            text: msg.text,
+            segments: msg.segments,
+          }),
+        );
         break;
-      default:
+      case "listener.feedMap.snapshot":
+        // Server-echoed feedmap snapshot. No reducer wired today; logged
+        // for parity with the legacy LFM behaviour.
         break;
+      default: {
+        // Exhaustiveness check — TS will error here if a message type is
+        // added to WsListenerInbound without a matching case.
+        const _exhaustive: never = msg;
+        void _exhaustive;
+        break;
+      }
     }
   }
 

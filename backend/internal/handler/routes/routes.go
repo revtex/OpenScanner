@@ -189,6 +189,12 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	r.GET("/ws", listenerWS)
 	r.GET("/api/admin/ws", gin.WrapF(ws.HandleAdminWS(deps.Hub, deps.Queries)))
 
+	// Native (v1) WebSocket endpoints. Registered on the root router rather
+	// than inside the /api/v1 group because the V1ErrorEnvelope middleware
+	// buffers HTTP response bodies, which would corrupt the WebSocket upgrade.
+	r.GET("/api/v1/ws/listener", gin.WrapF(ws.HandleListenerWSv1(deps.Hub, deps.Queries)))
+	r.GET("/api/v1/ws/admin", gin.WrapF(ws.HandleAdminWSv1(deps.Hub, deps.Queries)))
+
 	// ----- Native API (Phase N-1, plan §4.1) ---------------------------------
 	// All v1 routes carry the V1Marker so version-aware middleware can branch,
 	// and the V1ErrorEnvelope rewriter normalises any 4xx/5xx body emitted by
