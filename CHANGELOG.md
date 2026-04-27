@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Frontend now talks to the native `/api/v1/*` surface for every REST call (RTK Query base URL, raw `fetch()` for audio downloads and silent token refresh, the service-worker passthrough rules, the dev-server proxy, and the Swagger UI bootstrap). Tg-selection moves from `/api/auth/tg-selection` to `/api/v1/listener/tg-selection`; RadioReference CSV preview moves to `/api/v1/admin/radioreference/preview`; legacy-usage report is consumed at `/api/v1/admin/legacy-usage`. Legacy `/api/*` routes remain available for non-frontend clients with the existing deprecation headers.
 - API-key authentication on `/api/v1/*` upload routes accepts only `Authorization: Bearer <api-key>`; the legacy `X-API-Key` header, `?key=` query parameter, and `key=` form field continue to work on legacy routes only. JWT-shaped Bearer tokens on v1 API-key routes are rejected with `invalid_credentials`.
 
 ## [1.2.1] — 2026-04-25

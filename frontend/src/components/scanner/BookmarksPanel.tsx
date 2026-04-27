@@ -67,7 +67,7 @@ function bookmarkCallToCall(bc: BookmarkCall): Call {
     talkgroupLabel: bc.talkgroupLabel,
     talkgroupName: bc.talkgroupName,
     talkgroupLedColor: bc.talkgroupLed,
-    audioUrl: `/api/calls/${bc.id}/audio`,
+    audioUrl: `/api/v1/calls/${bc.id}/audio`,
   };
 }
 
@@ -103,7 +103,7 @@ export default function BookmarksPanel({
 
   const handleDownload = (bc: BookmarkCall) => {
     const a = document.createElement("a");
-    a.href = `/api/calls/${bc.id}/audio`;
+    a.href = `/api/v1/calls/${bc.id}/audio`;
     a.download = sanitizeDownloadFilename(bc.audioName, `call-${bc.id}.mp3`);
     document.body.appendChild(a);
     a.click();

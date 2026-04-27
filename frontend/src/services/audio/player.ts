@@ -26,7 +26,7 @@ declare global {
  * header injection is required.
  */
 function audioUrlFor(call: Call): string {
-  return `/api/calls/${call.id}/audio`;
+  return `/api/v1/calls/${call.id}/audio`;
 }
 
 /**
@@ -237,7 +237,7 @@ class AudioPlayer {
 
   /**
    * Register a callback invoked when an audio fetch fails. The callback
-   * should attempt a silent auth refresh (e.g. POST /api/auth/refresh)
+   * should attempt a silent auth refresh (e.g. POST /api/v1/auth/refresh)
    * and resolve to `true` if it succeeded — in which case the player
    * retries the current call with the new session cookie. Required
    * because <audio src=…> bypasses the RTK Query 401 retry path, so a

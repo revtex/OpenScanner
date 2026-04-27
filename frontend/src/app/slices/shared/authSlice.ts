@@ -110,14 +110,14 @@ const authApi = api.injectEndpoints({
       { disabledTGs: number[]; avoidList?: AvoidEntry[] },
       void
     >({
-      query: () => "/auth/tg-selection",
+      query: () => "/listener/tg-selection",
     }),
     updateTGSelection: builder.mutation<
       { ok: boolean },
       { disabledTGs: number[]; avoidList: AvoidEntry[] }
     >({
       query: (body) => ({
-        url: "/auth/tg-selection",
+        url: "/listener/tg-selection",
         method: "PUT",
         body,
       }),

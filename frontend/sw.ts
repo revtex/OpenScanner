@@ -32,10 +32,12 @@ sw.addEventListener("fetch", (event) => {
   // Pass through audio downloads untouched. Letting the SW intercept
   // these would force-buffer the full body in memory and strip the
   // browser's native Range-request handling that <audio> relies on.
-  // Matches /api/calls/:id/audio and /api/shared/:token/audio.
+  // Matches /api/v1/calls/:id/audio and /api/v1/shared/:token/audio
+  // (and the legacy /api/calls /api/shared variants during the
+  // transition window).
   if (
-    /^\/api\/calls\/\d+\/audio$/.test(url.pathname) ||
-    /^\/api\/shared\/[^/]+\/audio$/.test(url.pathname)
+    /^\/api(?:\/v1)?\/calls\/\d+\/audio$/.test(url.pathname) ||
+    /^\/api(?:\/v1)?\/shared\/[^/]+\/audio$/.test(url.pathname)
   ) {
     return;
   }
