@@ -501,7 +501,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
 
   const handleDownload = useCallback((call: CallSearchResult) => {
     const a = document.createElement("a");
-    a.href = `/api/calls/${call.id}/audio`;
+    a.href = `/api/v1/calls/${call.id}/audio`;
     a.download = sanitizeDownloadFilename(
       call.audioName,
       `call-${call.id}.mp3`,

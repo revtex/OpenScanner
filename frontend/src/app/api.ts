@@ -12,7 +12,7 @@ import type {
 } from "@/types";
 
 const rawBaseQuery = fetchBaseQuery({
-  baseUrl: "/api",
+  baseUrl: "/api/v1",
   prepareHeaders: (headers, { getState }) => {
     const state = getState() as { auth: { token: string | null } };
     const token = state.auth?.token;
@@ -149,7 +149,7 @@ export const api = createApi({
       providesTags: ["Bookmarks"],
     }),
     getLegacyUsage: builder.query<LegacyUsageResponse, void>({
-      query: () => "/v1/admin/legacy-usage",
+      query: () => "/admin/legacy-usage",
       providesTags: ["LegacyUsage"],
     }),
   }),

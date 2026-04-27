@@ -1,6 +1,6 @@
 // REST request/response envelopes (non-admin).
 
-// Setup status from GET /api/setup/status
+// Setup status from GET /api/v1/setup/status
 export interface SetupStatus {
   needsSetup: boolean;
   publicAccess: boolean;
