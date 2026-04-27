@@ -843,17 +843,6 @@ func sendWelcome(ctx context.Context, conn *websocket.Conn, hub *Hub, queries *d
 	return conn.Write(ctx, websocket.MessageText, legacyCFG)
 }
 
-// buildCFGMessage constructs the legacy CFG WebSocket message from the
-// current database state. Kept for any external callers; new code paths
-// should use buildCFGFrames to receive both encodings at once.
-func buildCFGMessage(ctx context.Context, queries *db.Queries) ([]byte, error) {
-	payload, err := buildCFGPayload(ctx, queries)
-	if err != nil {
-		return nil, err
-	}
-	return NewCFGMessage(payload)
-}
-
 // buildCFGFrames returns the legacy and native (v1) CFG frames for the
 // current database state. Both frames carry the same config payload, only
 // the wire envelope differs.
