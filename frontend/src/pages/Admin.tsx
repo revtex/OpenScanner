@@ -50,6 +50,7 @@ import WebhooksPanel from "@/components/admin/WebhooksPanel";
 import ActivityPanel from "@/components/admin/ActivityPanel";
 import SharedLinksPanel from "@/components/admin/SharedLinksPanel";
 import TranscriptionPanel from "@/components/admin/TranscriptionPanel";
+import LegacyUsageBanner from "@/components/admin/LegacyUsageBanner";
 
 const navItems = [
   { to: "/admin/activity", label: "Activity", icon: Activity },
@@ -200,6 +201,7 @@ export default function Admin() {
           </div>
 
           <main className="flex-1 p-6 max-w-300 w-full mx-auto">
+            <LegacyUsageBanner />
             <Routes>
               <Route path="activity" element={<ActivityPanel />} />
               <Route path="users" element={<UsersPanel />} />

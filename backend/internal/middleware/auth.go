@@ -285,6 +285,9 @@ func APIKeyAuth(queries *db.Queries) gin.HandlerFunc {
 		}
 
 		c.Set("apiKeyID", apiKey.ID)
+		if apiKey.Ident.Valid {
+			c.Set("apiKeyIdent", apiKey.Ident.String)
+		}
 		if apiKey.CallRateLimit.Valid {
 			c.Set("apiKeyCallRate", apiKey.CallRateLimit.Int64)
 		}
