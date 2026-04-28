@@ -119,6 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Swagger UI now opens correctly from the admin Tools panel. The short-lived `os_swagger` session cookie was scoped to `/api/admin/docs`, so the browser refused to send it on the v1 docs URL (`/api/v1/admin/docs/index.html`) and the docs route returned `swagger session required`. The cookie path is now `/api`, covering both legacy and v1 docs routes.
 - Lock the primary admin's Allowed Systems selector in the user editor; the first user always has access to every system and the badges are now read-only with all systems shown as allowed.
 - Default `audioEncodingPreset` seeded into the settings table is now
   `mp3_32k` (matching the dropdown's "(default)" label and the Go

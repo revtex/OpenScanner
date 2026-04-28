@@ -411,7 +411,9 @@ func SetSwaggerCookie(c interface {
 	value := fmt.Sprintf("%d.%s", expiry, sig)
 
 	c.SetSameSite(http.SameSiteStrictMode)
-	c.SetCookie(SwaggerCookieName, value, maxAge, "/api/admin/docs", "", secure, true)
+	// Path "/api" so the cookie is sent on both the legacy
+	// /api/admin/docs/* route and the v1 /api/v1/admin/docs/* route.
+	c.SetCookie(SwaggerCookieName, value, maxAge, "/api", "", secure, true)
 }
 
 // ValidateSwaggerCookie checks that the swagger cookie value is valid and
