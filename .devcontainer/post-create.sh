@@ -5,7 +5,8 @@ set -euo pipefail
 sudo chown -R vscode:vscode /home/vscode/go
 sudo chown -R vscode:vscode /home/vscode/.local/share/pnpm
 
-# pnpm virtual-store-dir (see frontend/.npmrc) — persistent across /tmp wipes
+# pnpm virtual-store-dir (see NPM_CONFIG_VIRTUAL_STORE_DIR in
+# devcontainer.json) — persistent across /tmp wipes
 mkdir -p /home/vscode/.cache/pnpm-vstore
 
 echo "==> Installing backend Go dependencies..."
