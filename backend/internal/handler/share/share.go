@@ -119,7 +119,7 @@ type ShareCreateResponse struct {
 //
 // @Summary      Share a call
 // @Description  Creates a shared_links record for the call and returns the token + URL.
-// @Tags         Sharing
+// @Tags         Sharing,v1-Calls
 // @Produce      json
 // @Security     BearerAuth
 // @Param        id   path      int  true  "Call ID"
@@ -131,6 +131,7 @@ type ShareCreateResponse struct {
 // @Failure      404  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /calls/{id}/share [post]
+// @Router       /v1/calls/{id}/share [post]
 func (h *Handler) PostShareCall(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -220,7 +221,7 @@ func (h *Handler) PostShareCall(c *gin.Context) {
 //
 // @Summary      Unshare a call
 // @Description  Removes the shared_links record. Only the original sharer or an admin can unshare.
-// @Tags         Sharing
+// @Tags         Sharing,v1-Calls
 // @Produce      json
 // @Security     BearerAuth
 // @Param        id   path      int  true  "Call ID"
@@ -230,6 +231,7 @@ func (h *Handler) PostShareCall(c *gin.Context) {
 // @Failure      404  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /calls/{id}/share [delete]
+// @Router       /v1/calls/{id}/share [delete]
 func (h *Handler) DeleteShareCall(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -290,7 +292,7 @@ func (h *Handler) isSharedLinkExpired(c *gin.Context, expiresAt sql.NullInt64, c
 //
 // @Summary      Get shared call by token
 // @Description  Returns call metadata as JSON for public viewing. No authentication required.
-// @Tags         Sharing
+// @Tags         Sharing,v1-Calls
 // @Produce      json
 // @Param        token  path      string  true  "Share token"
 // @Failure      400    {object}  ErrorResponse
@@ -298,6 +300,7 @@ func (h *Handler) isSharedLinkExpired(c *gin.Context, expiresAt sql.NullInt64, c
 // @Failure      404    {object}  ErrorResponse
 // @Failure      500    {object}  ErrorResponse
 // @Router       /shared/{token} [get]
+// @Router       /v1/shared/{token} [get]
 func (h *Handler) GetSharedCallByToken(c *gin.Context) {
 	ctx := c.Request.Context()
 	token := c.Param("token")
@@ -349,7 +352,7 @@ func (h *Handler) GetSharedCallByToken(c *gin.Context) {
 //
 // @Summary      Get shared call audio
 // @Description  Serves the audio file for a shared call. No authentication required.
-// @Tags         Sharing
+// @Tags         Sharing,v1-Calls
 // @Produce      application/octet-stream
 // @Param        token  path      string  true  "Share token"
 // @Failure      400    {object}  ErrorResponse
@@ -357,6 +360,7 @@ func (h *Handler) GetSharedCallByToken(c *gin.Context) {
 // @Failure      404    {object}  ErrorResponse
 // @Failure      500    {object}  ErrorResponse
 // @Router       /shared/{token}/audio [get]
+// @Router       /v1/shared/{token}/audio [get]
 func (h *Handler) GetSharedCallAudio(c *gin.Context) {
 	token := c.Param("token")
 	if token == "" {
@@ -436,7 +440,7 @@ func (h *Handler) GetSharedCallAudio(c *gin.Context) {
 //
 // @Summary      Get call share status
 // @Description  Returns the share token for a call if it exists, for authenticated users.
-// @Tags         Sharing
+// @Tags         Sharing,v1-Calls
 // @Produce      json
 // @Security     BearerAuth
 // @Param        id   path      int  true  "Call ID"
@@ -445,6 +449,7 @@ func (h *Handler) GetSharedCallAudio(c *gin.Context) {
 // @Failure      404  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /calls/{id}/share [get]
+// @Router       /v1/calls/{id}/share [get]
 func (h *Handler) GetCallShare(c *gin.Context) {
 	ctx := c.Request.Context()
 

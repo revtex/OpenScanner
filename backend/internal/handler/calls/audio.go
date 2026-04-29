@@ -18,7 +18,7 @@ import (
 //
 //	@Summary		Get call audio file
 //	@Description	Stream the audio file for a specific call. Authentication is optional when the publicAccess setting is enabled; otherwise a valid JWT is required.
-//	@Tags			Calls
+//	@Tags			Calls,v1-Calls
 //	@Security		BearerAuth
 //	@Produce		application/octet-stream
 //	@Param			id	path	int	true	"Call ID"
@@ -28,6 +28,7 @@ import (
 //	@Failure		404	{object}	ErrorResponse	"Call or audio not found"
 //	@Failure		500	{object}	ErrorResponse	"Internal server error"
 //	@Router			/calls/{id}/audio [get]
+//	@Router			/v1/calls/{id}/audio [get]
 func (h *Handler) GetCallAudio(c *gin.Context) {
 	ctx := c.Request.Context()
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)

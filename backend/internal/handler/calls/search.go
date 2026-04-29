@@ -38,6 +38,7 @@ import (
 //	@Failure		400	{object}	ErrorResponse		"Invalid query parameter"
 //	@Failure		500	{object}	ErrorResponse		"Internal server error"
 //	@Router			/calls [get]
+//	@Router			/v1/calls [get]
 func (h *Handler) GetCalls(c *gin.Context) {
 	ctx := c.Request.Context()
 

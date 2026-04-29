@@ -49,7 +49,7 @@ type BookmarkCallsResponse struct {
 //
 //	@Summary		Toggle bookmark on a call
 //	@Description	Creates a bookmark if one does not exist for the given call and user, or removes it if it already exists.
-//	@Tags			Bookmarks
+//	@Tags			Bookmarks,v1-Calls
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
@@ -59,6 +59,7 @@ type BookmarkCallsResponse struct {
 //	@Failure		401	{object}	ErrorResponse	"Authentication required"
 //	@Failure		500	{object}	ErrorResponse	"Internal server error"
 //	@Router			/bookmarks [post]
+//	@Router			/v1/bookmarks [post]
 func (h *Handler) PostToggleBookmark(c *gin.Context) {
 	var req struct {
 		CallID int64 `json:"callId"`
@@ -145,13 +146,14 @@ func (h *Handler) PostToggleBookmark(c *gin.Context) {
 //
 //	@Summary		List bookmarked call IDs
 //	@Description	Returns an array of call IDs that the authenticated user has bookmarked.
-//	@Tags			Bookmarks
+//	@Tags			Bookmarks,v1-Calls
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Success		200	{object}	BookmarkIDsResponse
 //	@Failure		401	{object}	ErrorResponse	"Authentication required"
 //	@Failure		500	{object}	ErrorResponse	"Internal server error"
 //	@Router			/bookmarks [get]
+//	@Router			/v1/bookmarks [get]
 func (h *Handler) GetBookmarkIDs(c *gin.Context) {
 	uid, _ := c.Get("userID")
 	userID := uid.(int64)
@@ -171,13 +173,14 @@ func (h *Handler) GetBookmarkIDs(c *gin.Context) {
 //
 //	@Summary		List bookmarked calls with metadata
 //	@Description	Returns full call details for all calls bookmarked by the authenticated user.
-//	@Tags			Bookmarks
+//	@Tags			Bookmarks,v1-Calls
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Success		200	{object}	BookmarkCallsResponse
 //	@Failure		401	{object}	ErrorResponse	"Authentication required"
 //	@Failure		500	{object}	ErrorResponse	"Internal server error"
 //	@Router			/bookmarks/calls [get]
+//	@Router			/v1/bookmarks/calls [get]
 func (h *Handler) GetBookmarkCalls(c *gin.Context) {
 	uid, _ := c.Get("userID")
 	userID := uid.(int64)

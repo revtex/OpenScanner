@@ -34,11 +34,12 @@ type setupStatusResponse struct {
 //
 //	@Summary		Get setup status
 //	@Description	Returns whether initial setup is needed and whether public access is active. Always unauthenticated.
-//	@Tags			Setup
+//	@Tags			Setup,v1-Setup
 //	@Produce		json
 //	@Success		200	{object}	setupStatusResponse
 //	@Failure		500	{object}	ErrorResponse
 //	@Router			/setup/status [get]
+//	@Router			/v1/setup/status [get]
 func (h *Handler) GetSetupStatus(c *gin.Context) {
 	ctx := c.Request.Context()
 	requestID, _ := c.Get("requestID")
@@ -75,7 +76,7 @@ type setupRequest struct {
 //
 //	@Summary		Complete initial setup
 //	@Description	Creates the initial admin user and marks setup as complete. Returns 409 if setup is already done, 400 for invalid input.
-//	@Tags			Setup
+//	@Tags			Setup,v1-Setup
 //	@Accept			json
 //	@Produce		json
 //	@Param			request	body	setupRequest	true	"Admin credentials"
@@ -84,6 +85,7 @@ type setupRequest struct {
 //	@Failure		409	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
 //	@Router			/setup [post]
+//	@Router			/v1/setup [post]
 func (h *Handler) PostSetup(c *gin.Context) {
 	// Serialise concurrent setup requests to prevent TOCTOU race (OWASP A01).
 	h.mu.Lock()

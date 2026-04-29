@@ -61,7 +61,7 @@ type loginResponse struct {
 //
 // @Summary      Log in
 // @Description  Authenticate with username and password, returns a JWT token.
-// @Tags         Auth
+// @Tags         Auth,v1-Auth
 // @Accept       json
 // @Produce      json
 // @Param        body  body      loginRequest   true  "Login credentials"
@@ -71,6 +71,7 @@ type loginResponse struct {
 // @Failure      429   {object}  ErrorResponse
 // @Failure      500   {object}  ErrorResponse
 // @Router       /auth/login [post]
+// @Router       /v1/auth/login [post]
 func (h *Handler) PostLogin(c *gin.Context) {
 	ip := c.ClientIP()
 
@@ -218,13 +219,14 @@ func (h *Handler) logAuthEvent(ctx context.Context, level, message, ip string) {
 //
 // @Summary      Log out
 // @Description  Revoke the current JWT token.
-// @Tags         Auth
+// @Tags         Auth,v1-Auth
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  object{ok=bool}
 // @Failure      401  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /auth/logout [post]
+// @Router       /v1/auth/logout [post]
 func (h *Handler) PostLogout(c *gin.Context) {
 	if jtiVal, ok := c.Get("jti"); ok {
 		if jti, ok := jtiVal.(string); ok {
@@ -259,12 +261,13 @@ type refreshResponse struct {
 //
 // @Summary      Refresh access token
 // @Description  Exchange a valid refresh token cookie for a new access token and rotated refresh token.
-// @Tags         Auth
+// @Tags         Auth,v1-Auth
 // @Produce      json
 // @Success      200  {object}  refreshResponse
 // @Failure      401  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /auth/refresh [post]
+// @Router       /v1/auth/refresh [post]
 func (h *Handler) PostRefresh(c *gin.Context) {
 	rawToken, err := c.Cookie(auth.RefreshCookieName)
 	if err != nil || rawToken == "" {
@@ -380,7 +383,7 @@ type changePasswordRequest struct {
 //
 // @Summary      Change password
 // @Description  Change the current user's password. Requires the current password for verification.
-// @Tags         Auth
+// @Tags         Auth,v1-Auth
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
@@ -390,6 +393,7 @@ type changePasswordRequest struct {
 // @Failure      401   {object}  ErrorResponse
 // @Failure      500   {object}  ErrorResponse
 // @Router       /auth/password [put]
+// @Router       /v1/auth/password [put]
 func (h *Handler) PutPassword(c *gin.Context) {
 	userIDVal, _ := c.Get("userID")
 	userID, _ := userIDVal.(int64)
@@ -459,13 +463,14 @@ func (h *Handler) PutPassword(c *gin.Context) {
 //
 // @Summary      Current user
 // @Description  Return the authenticated user's profile.
-// @Tags         Auth
+// @Tags         Auth,v1-Auth
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  loginUserResponse
 // @Failure      401  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /auth/me [get]
+// @Router       /v1/auth/me [get]
 func (h *Handler) GetMe(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	username, _ := c.Get("username")
@@ -502,13 +507,14 @@ type avoidTGEntry struct {
 //
 // @Summary      Get talkgroup selection
 // @Description  Return the authenticated user's disabled talkgroup IDs.
-// @Tags         Auth
+// @Tags         Auth,v1-Listener
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  tgSelectionResponse
 // @Failure      401  {object}  ErrorResponse
 // @Failure      500  {object}  ErrorResponse
 // @Router       /auth/tg-selection [get]
+// @Router       /v1/listener/tg-selection [get]
 func (h *Handler) GetTGSelection(c *gin.Context) {
 	userIDVal, _ := c.Get("userID")
 	userID, _ := userIDVal.(int64)
@@ -551,7 +557,7 @@ func (h *Handler) GetTGSelection(c *gin.Context) {
 //
 // @Summary      Update talkgroup selection
 // @Description  Save the authenticated user's disabled talkgroup IDs.
-// @Tags         Auth
+// @Tags         Auth,v1-Listener
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
@@ -561,6 +567,7 @@ func (h *Handler) GetTGSelection(c *gin.Context) {
 // @Failure      401   {object}  ErrorResponse
 // @Failure      500   {object}  ErrorResponse
 // @Router       /auth/tg-selection [put]
+// @Router       /v1/listener/tg-selection [put]
 func (h *Handler) PutTGSelection(c *gin.Context) {
 	userIDVal, _ := c.Get("userID")
 	userID, _ := userIDVal.(int64)
@@ -603,11 +610,12 @@ func (h *Handler) PutTGSelection(c *gin.Context) {
 //
 // @Summary      Create Swagger docs session cookie
 // @Description  Issues a short-lived HTTP-only cookie used to access /api/admin/docs.
-// @Tags         Admin
+// @Tags         Admin,v1-Admin
 // @Produce      json
 // @Success      200  {object}  object{ok=bool}
 // @Security     BearerAuth
 // @Router       /admin/docs/session [post]
+// @Router       /v1/admin/docs/session [post]
 func PostDocsSession(c *gin.Context) {
 	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
 	auth.SetSwaggerCookie(c, secure)

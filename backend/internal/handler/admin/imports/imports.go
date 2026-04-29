@@ -114,7 +114,7 @@ func col(record []string, i int) string {
 //
 //	@Summary      Import talkgroups from CSV
 //	@Description  Accepts a multipart CSV file with talkgroup data and a system_id form field. Supports OpenScanner format (talkgroup_id, label, name, tag_id, group_id, frequency, led, order) and rdio-scanner format (dec, hex, alpha_tag, description, tag, group, priority). Header rows are auto-detected; tag/group names are resolved to IDs automatically. Use mode=overwrite (default) to update existing talkgroups or mode=skip to leave existing talkgroups unchanged.
-//	@Tags         Admin
+//	@Tags         Admin,v1-Admin
 //	@Accept       multipart/form-data
 //	@Produce      json
 //	@Param        system_id  formData  int     true   "System ID to import talkgroups into"
@@ -125,6 +125,7 @@ func col(record []string, i int) string {
 //	@Failure      500  {object}  shared.ErrorResponse
 //	@Security     BearerAuth
 //	@Router       /admin/import/talkgroups [post]
+//	@Router       /v1/admin/import/talkgroups [post]
 func (h *Handler) ImportTalkgroups(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -328,7 +329,7 @@ func (h *Handler) ImportTalkgroups(c *gin.Context) {
 //
 //	@Summary      Import units from CSV
 //	@Description  Accepts a multipart CSV file with unit data and a system_id form field. Columns: unit_id, label, order. Header rows are auto-skipped. Use mode=overwrite (default) to update existing units or mode=skip to leave existing units unchanged.
-//	@Tags         Admin
+//	@Tags         Admin,v1-Admin
 //	@Accept       multipart/form-data
 //	@Produce      json
 //	@Param        system_id  formData  int     true   "System ID to import units into"
@@ -339,6 +340,7 @@ func (h *Handler) ImportTalkgroups(c *gin.Context) {
 //	@Failure      500  {object}  shared.ErrorResponse
 //	@Security     BearerAuth
 //	@Router       /admin/import/units [post]
+//	@Router       /v1/admin/import/units [post]
 func (h *Handler) ImportUnits(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -617,7 +619,7 @@ func (h *Handler) importLabelOnly(c *gin.Context, kind string,
 //
 //	@Summary		Import groups from CSV
 //	@Description	Accepts a multipart CSV file with a single 'label' column (header optional). Existing labels are skipped; new labels are inserted.
-//	@Tags			Admin
+//	@Tags			Admin,v1-Admin
 //	@Accept			multipart/form-data
 //	@Produce		json
 //	@Param			file	formData	file	true	"CSV file"
@@ -626,6 +628,7 @@ func (h *Handler) importLabelOnly(c *gin.Context, kind string,
 //	@Failure		500		{object}	shared.ErrorResponse
 //	@Security		BearerAuth
 //	@Router			/admin/import/groups [post]
+//	@Router			/v1/admin/import/groups [post]
 func (h *Handler) ImportGroups(c *gin.Context) {
 	h.importLabelOnly(c, "groups",
 		func(ctx context.Context, label string) (int64, bool, error) {
@@ -649,7 +652,7 @@ func (h *Handler) ImportGroups(c *gin.Context) {
 //
 //	@Summary		Import tags from CSV
 //	@Description	Accepts a multipart CSV file with a single 'label' column (header optional). Existing labels are skipped; new labels are inserted.
-//	@Tags			Admin
+//	@Tags			Admin,v1-Admin
 //	@Accept			multipart/form-data
 //	@Produce		json
 //	@Param			file	formData	file	true	"CSV file"
@@ -658,6 +661,7 @@ func (h *Handler) ImportGroups(c *gin.Context) {
 //	@Failure		500		{object}	shared.ErrorResponse
 //	@Security		BearerAuth
 //	@Router			/admin/import/tags [post]
+//	@Router			/v1/admin/import/tags [post]
 func (h *Handler) ImportTags(c *gin.Context) {
 	h.importLabelOnly(c, "tags",
 		func(ctx context.Context, label string) (int64, bool, error) {

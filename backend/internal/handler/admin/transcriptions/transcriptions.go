@@ -34,12 +34,13 @@ func New(queries *db.Queries, whisperAvailable bool) *Handler {
 //
 //	@Summary		Get transcription status
 //	@Description	Returns transcription settings, total count, and whisper availability.
-//	@Tags			Admin
+//	@Tags			Admin,v1-Admin
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Success		200	{object}	transcriptionStatusResponse
 //	@Failure		500	{object}	shared.ErrorResponse
 //	@Router			/admin/transcriptions/status [get]
+//	@Router			/v1/admin/transcriptions/status [get]
 func (h *Handler) GetStatus(c *gin.Context) {
 	ctx := c.Request.Context()
 

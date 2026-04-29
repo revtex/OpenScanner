@@ -21,10 +21,11 @@ func New(version string) *Handler {
 //
 //	@Summary		Health check
 //	@Description	Returns server status and version for readiness probes and Docker HEALTHCHECK.
-//	@Tags			Health
+//	@Tags			Health,v1-Health
 //	@Produce		json
 //	@Success		200	{object}	object{status=string,version=string}	"Server is healthy"
 //	@Router			/health [get]
+//	@Router			/v1/health [get]
 func (h *Handler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "ok",

@@ -26,7 +26,7 @@ type transcriptResponse struct {
 //
 //	@Summary		Get call transcript
 //	@Description	Returns the transcription text, segments, language and model for a call. Authentication is optional when the publicAccess setting is enabled; otherwise a valid JWT is required.
-//	@Tags			Calls
+//	@Tags			Calls,v1-Calls
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Param			id	path		int	true	"Call ID"
@@ -35,6 +35,7 @@ type transcriptResponse struct {
 //	@Failure		404	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
 //	@Router			/calls/{id}/transcript [get]
+//	@Router			/v1/calls/{id}/transcript [get]
 func (h *Handler) GetCallTranscript(c *gin.Context) {
 	ctx := c.Request.Context()
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
