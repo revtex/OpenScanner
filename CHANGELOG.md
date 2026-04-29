@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-04-29
+
 ### Added
 
 - Native `/api/v1/*` REST surface alongside the existing legacy routes. All v1 responses use a structured error envelope (`{"error":{"code","message","details"}}`) with stable string codes (`validation_failed`, `unauthorized`, `forbidden`, `not_found`, `conflict`, `unprocessable`, `rate_limited`, `internal`); 5xx envelopes include the request ID under `details.requestId`.
