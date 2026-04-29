@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] — 2026-04-29
+
+### Fixed
+
+- Idle browser tabs no longer get logged out when the access JWT expires. The frontend now single-flights `POST /api/v1/auth/refresh` so simultaneous 401s on tab wake (config, calls list, listener TG selection, WebSocket reauth, scheduled refresh, etc.) coalesce onto one network request. Previously, parallel refresh attempts presented the same single-use refresh token; the server treated the second attempt as a replay and revoked the entire token family, forcing a re-login despite the 30-day refresh cookie.
+- Release workflow now creates the GitHub Release when a tag is pushed without one, instead of failing with `release not found` when uploading binaries. Future `git push --tags` releases publish artifacts without a manual `gh release create` step.
+
 ## [1.3.0] — 2026-04-29
 
 ### Added
