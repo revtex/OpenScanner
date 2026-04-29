@@ -75,7 +75,7 @@ const adminApi = api.injectEndpoints({
     // ── RadioReference CSV preview (multipart file upload) ──
     rrPreviewCSV: builder.mutation<RRPreviewResponse, FormData>({
       query: (body) => ({
-        url: "/admin/radioreference/preview/csv",
+        url: "/admin/radioreference/preview",
         method: "POST",
         body,
       }),

@@ -5,10 +5,14 @@ import {
   type FetchArgs,
   type FetchBaseQueryError,
 } from "@reduxjs/toolkit/query/react";
-import type { SetupStatus, RefreshResponse } from "@/types";
+import type {
+  SetupStatus,
+  RefreshResponse,
+  LegacyUsageResponse,
+} from "@/types";
 
 const rawBaseQuery = fetchBaseQuery({
-  baseUrl: "/api",
+  baseUrl: "/api/v1",
   prepareHeaders: (headers, { getState }) => {
     const state = getState() as { auth: { token: string | null } };
     const token = state.auth?.token;
@@ -86,6 +90,7 @@ export const api = createApi({
     "Bookmarks",
     "Setup",
     "SharedLinks",
+    "LegacyUsage",
   ],
   baseQuery: baseQueryWithRefresh,
   endpoints: (builder) => ({
@@ -143,6 +148,10 @@ export const api = createApi({
       query: () => "/bookmarks/calls",
       providesTags: ["Bookmarks"],
     }),
+    getLegacyUsage: builder.query<LegacyUsageResponse, void>({
+      query: () => "/admin/legacy-usage",
+      providesTags: ["LegacyUsage"],
+    }),
   }),
 });
 
@@ -152,4 +161,5 @@ export const {
   useGetBookmarkIDsQuery,
   useToggleBookmarkMutation,
   useGetBookmarkCallsQuery,
+  useGetLegacyUsageQuery,
 } = api;

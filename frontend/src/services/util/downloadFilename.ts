@@ -11,8 +11,8 @@ export function sanitizeDownloadFilename(
   // Take only the basename — strip anything that looks like a path.
   const base = name.replace(/^.*[\\/]/, "");
   // Strip control characters and quote/angle-bracket injection attempts.
-  // eslint-disable-next-line no-control-regex
   const cleaned = base
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x1f\x7f"<>|]/g, "")
     .replace(/^\.+/, "")
     .trim();

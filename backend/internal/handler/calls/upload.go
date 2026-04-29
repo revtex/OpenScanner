@@ -566,7 +566,8 @@ func (h *Handler) PostCallUpload(c *gin.Context) {
 		if err != nil {
 			slog.Error("failed to build CAL message", "error", err)
 		} else {
-			h.hub.BroadcastCAL(calMsg, func(cl *ws.Client) bool {
+			_ = calMsg
+			h.hub.BroadcastCAL(calPayload, func(cl *ws.Client) bool {
 				return cl.CanReceive(system.ID, talkgroup.ID)
 			})
 			slog.Debug("call-upload: ws broadcast sent", "call_id", callID)

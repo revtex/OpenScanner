@@ -25,7 +25,7 @@ import { selectToken } from "@/app/slices/shared/authSlice";
 import { useAppSelector } from "@/app/store";
 import RadioReferenceCard from "@/components/admin/RadioReferenceCard";
 
-const SWAGGER_URL = "/api/admin/docs/index.html";
+const SWAGGER_URL = "/api/v1/admin/docs/index.html";
 
 export default function ToolsPanel() {
   const token = useAppSelector(selectToken);
@@ -611,7 +611,7 @@ export default function ToolsPanel() {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={async () => {
-                  const res = await fetch("/api/admin/docs/session", {
+                  const res = await fetch("/api/v1/admin/docs/session", {
                     method: "POST",
                     headers: { Authorization: `Bearer ${token}` },
                   });

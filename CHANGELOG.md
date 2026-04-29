@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-04-29
+
+### Added
+
+- Native `/api/v1/*` REST surface alongside the existing legacy routes. All v1 responses use a structured error envelope (`{"error":{"code","message","details"}}`) with stable string codes (`validation_failed`, `unauthorized`, `forbidden`, `not_found`, `conflict`, `unprocessable`, `rate_limited`, `internal`); 5xx envelopes include the request ID under `details.requestId`.
+- v1 call-upload endpoint (`POST /api/v1/calls`) with native multipart field names (`systemId`, `talkgroupId`, `startedAt`, `frequencyHz`, `durationMs`, `unitId`) and RFC 3339 `startedAt` enforcement (unix timestamps no longer accepted on v1). Companion `POST /api/v1/calls/test` returns 204 on a valid API key.
+- v1 listener endpoints: `GET/PUT /api/v1/listener/tg-selection` (renamed from `/api/auth/tg-selection`), `GET /api/v1/calls`, `GET /api/v1/calls/:id/audio`, `GET /api/v1/calls/:id/transcript`, share/bookmark endpoints, and unauthenticated `/api/v1/health`, `/api/v1/setup/*`, `/api/v1/auth/{login,refresh,logout,password,me}`.
+- v1 admin endpoints under `/api/v1/admin/*` for talkgroup/unit/group/tag imports, RadioReference preview (path simplified — no `/csv` suffix), transcription status, and Swagger session bootstrap.
+- Native JSON-object framed WebSocket protocol on `GET /api/v1/ws/listener` and `GET /api/v1/ws/admin`. Frames carry a `type` discriminator (`connection.welcome`, `scanner.config`, `call.new`, `call.transcript`, `listener.count`, `listener.feedMap.snapshot`/`update`, `session.expired`, `connection.rejected`, `admin.event`, `admin.request`, `admin.response`) instead of the legacy 3-letter array opcodes. Admin error responses mirror the REST `{code,message,details?}` envelope. The frontend connects to the v1 paths; legacy `/ws`, `/api/ws`, and `/api/admin/ws` keep emitting the array-framed protocol unchanged for in-the-wild clients.
+- RFC 8594 deprecation headers (`Deprecation: true`, `Sunset`, `Link: <successor>; rel="successor-version"`, `Cache-Control: no-store`) on every legacy `/api/*` and legacy WebSocket route, pointing at the native `/api/v1/*` successor. Per-request structured warn log (`legacy endpoint hit`) records method, path, and a truncated API-key identifier — never the raw key.
+- Admin endpoint `GET /api/v1/admin/legacy-usage` returning a 24-hour aggregate of legacy-endpoint hits (`{method, path, apiKeyIdent, count, lastSeen}`), backed by an in-memory ring buffer (no schema change).
+- Admin dashboard banner that surfaces legacy-API usage from the new endpoint, with an expandable details table (method, path, API key, count, last seen) and per-session dismiss.
+
+### Changed
+
+- Frontend now talks to the native `/api/v1/*` surface for every REST call (RTK Query base URL, raw `fetch()` for audio downloads and silent token refresh, the service-worker passthrough rules, the dev-server proxy, and the Swagger UI bootstrap). Tg-selection moves from `/api/auth/tg-selection` to `/api/v1/listener/tg-selection`; RadioReference CSV preview moves to `/api/v1/admin/radioreference/preview`; legacy-usage report is consumed at `/api/v1/admin/legacy-usage`. Legacy `/api/*` routes remain available for non-frontend clients with the existing deprecation headers.
+- API-key authentication on `/api/v1/*` upload routes accepts only `Authorization: Bearer <api-key>`; the legacy `X-API-Key` header, `?key=` query parameter, and `key=` form field continue to work on legacy routes only. JWT-shaped Bearer tokens on v1 API-key routes are rejected with `invalid_credentials`.
+- Swagger UI now documents every native `/api/v1/*` endpoint, not just the three previously annotated handlers. Legacy `/api/*` annotations remain in place until those routes are retired.
+
 ## [1.2.1] — 2026-04-25
 
 ### Security
@@ -103,6 +122,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Swagger UI now opens correctly from the admin Tools panel. The short-lived `os_swagger` session cookie was scoped to `/api/admin/docs`, so the browser refused to send it on the v1 docs URL (`/api/v1/admin/docs/index.html`) and the docs route returned `swagger session required`. The cookie path is now `/api`, covering both legacy and v1 docs routes.
 - Lock the primary admin's Allowed Systems selector in the user editor; the first user always has access to every system and the badges are now read-only with all systems shown as allowed.
 - Default `audioEncodingPreset` seeded into the settings table is now
   `mp3_32k` (matching the dropdown's "(default)" label and the Go

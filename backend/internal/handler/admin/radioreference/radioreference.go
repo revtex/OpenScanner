@@ -71,7 +71,7 @@ func New(queries *db.Queries) *Handler {
 //
 //	@Summary      Preview RadioReference CSV enrichment
 //	@Description  Upload a RadioReference CSV export and preview which local talkgroups would be enriched. Frequency is never updated. Columns: talkgroup id (decimal/tgid), alpha tag, description, group/category, tag/service type, led, order.
-//	@Tags         Admin - RadioReference
+//	@Tags         Admin - RadioReference,v1-Admin
 //	@Accept       multipart/form-data
 //	@Produce      json
 //	@Param        system_id  formData  int   true  "Local system ID to match talkgroups against"
@@ -80,6 +80,7 @@ func New(queries *db.Queries) *Handler {
 //	@Failure      400  {object}  shared.ErrorResponse
 //	@Security     BearerAuth
 //	@Router       /admin/radioreference/preview/csv [post]
+//	@Router       /v1/admin/radioreference/preview [post]
 func (h *Handler) PreviewCSV(c *gin.Context) {
 	ctx := c.Request.Context()
 

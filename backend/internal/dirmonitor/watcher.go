@@ -714,7 +714,8 @@ func (s *Service) ingestCall(ctx context.Context, dw db.Dirmonitor, parsed *Pars
 		if err != nil {
 			slog.Error("dirmonitor: failed to build CAL message", "error", err)
 		} else {
-			s.hub.BroadcastCAL(calMsg, func(cl *ws.Client) bool {
+			_ = calMsg
+			s.hub.BroadcastCAL(calPayload, func(cl *ws.Client) bool {
 				return cl.CanReceive(system.ID, talkgroup.ID)
 			})
 		}

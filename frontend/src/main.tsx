@@ -18,7 +18,7 @@ import "@/index.css";
 // retry-on-401 plumbing because media-element fetches don't go through it.
 audioPlayer.setAuthRecovery(async () => {
   try {
-    const res = await fetch("/api/auth/refresh", {
+    const res = await fetch("/api/v1/auth/refresh", {
       method: "POST",
       credentials: "include",
     });

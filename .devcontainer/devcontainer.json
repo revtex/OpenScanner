@@ -15,6 +15,13 @@
     "5173": { "label": "Vite Dev", "onAutoForward": "notify" }
   },
 
+  "containerEnv": {
+    // Keep pnpm's virtual store off the workspace mount (9p doesn't
+    // support the rename/link calls pnpm needs). /home/vscode is on the
+    // container overlay and survives /tmp wipes. CI runners ignore this.
+    "NPM_CONFIG_VIRTUAL_STORE_DIR": "/home/vscode/.cache/pnpm-vstore/openscanner-frontend"
+  },
+
   "postCreateCommand": "bash .devcontainer/post-create.sh",
 
   "customizations": {
