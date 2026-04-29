@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.2] — 2026-04-29
+
 ### Fixed
 
 - Refresh-token cookie is now scoped to `/api` instead of `/api/auth`, so the browser actually sends it to the native `/api/v1/auth/refresh` endpoint introduced in 1.3.0. Per RFC 6265 §5.1.4 path-matching, a `/api/auth`-scoped cookie does NOT match `/api/v1/auth/refresh`, which silently broke every silent refresh on the v1 surface — the moment the 15-minute access JWT expired the server returned 401 "no refresh token" and the user was bounced to the login screen. **This is the primary cause of the ~15-minute logoffs reported against 1.3.0/1.3.1.**
