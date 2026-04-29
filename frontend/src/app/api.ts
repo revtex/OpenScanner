@@ -27,40 +27,74 @@ const rawBaseQuery = fetchBaseQuery({
  * Wrapper that intercepts 401 responses and attempts a silent token refresh.
  * If the refresh succeeds, the original request is retried with the new token.
  * If the refresh fails, credentials are cleared (user sees login screen).
+ *
+ * Refresh is single-flighted: if multiple requests 401 simultaneously (typical
+ * on tab wake / network resume), or multiple call sites trigger
+ * POST /auth/refresh in parallel (RTK Query 401 handler + scheduled refresh
+ * + WS reconnect + audio recovery), only one network refresh actually goes
+ * out and the rest await the same promise. Without this, parallel refresh
+ * attempts present the same single-use refresh token; the server detects
+ * "replay" on the loser and revokes the entire token family — forcing
+ * re-login even though the refresh cookie is nowhere near its TTL.
  */
+type RefreshQueryResult = Awaited<ReturnType<typeof rawBaseQuery>>;
+let refreshInFlight: Promise<RefreshQueryResult> | null = null;
+
+function runRefresh(
+  storeApi: Parameters<typeof rawBaseQuery>[1],
+  extraOptions: Parameters<typeof rawBaseQuery>[2],
+): Promise<RefreshQueryResult> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const refreshResult = await rawBaseQuery(
+          { url: "/auth/refresh", method: "POST" },
+          storeApi,
+          extraOptions,
+        );
+        if (refreshResult.data) {
+          const refreshData = refreshResult.data as RefreshResponse;
+          storeApi.dispatch({
+            type: "auth/setCredentials",
+            payload: {
+              token: refreshData.token,
+              role: refreshData.user.role,
+              username: refreshData.user.username,
+              passwordNeedChange: false,
+            },
+          });
+        }
+        return refreshResult;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+  }
+  return refreshInFlight;
+}
+
 const baseQueryWithRefresh: BaseQueryFn<
   string | FetchArgs,
   unknown,
   FetchBaseQueryError
 > = async (args, storeApi, extraOptions) => {
+  const url = typeof args === "string" ? args : args.url;
+
+  // Coalesce direct calls to /auth/refresh (useAuthInit, useTokenRefresh,
+  // WS reauth) onto the same in-flight promise as 401-triggered refreshes.
+  if (url === "/auth/refresh") {
+    const result = await runRefresh(storeApi, extraOptions);
+    if (result.error && result.error.status === 401) {
+      storeApi.dispatch({ type: "auth/clearCredentials" });
+    }
+    return result;
+  }
+
   let result = await rawBaseQuery(args, storeApi, extraOptions);
 
   if (result.error && result.error.status === 401) {
-    // Don't try to refresh if the failing request IS the refresh endpoint.
-    const url = typeof args === "string" ? args : args.url;
-    if (url === "/auth/refresh") {
-      storeApi.dispatch({ type: "auth/clearCredentials" });
-      return result;
-    }
-
-    // Attempt silent refresh.
-    const refreshResult = await rawBaseQuery(
-      { url: "/auth/refresh", method: "POST" },
-      storeApi,
-      extraOptions,
-    );
-
+    const refreshResult = await runRefresh(storeApi, extraOptions);
     if (refreshResult.data) {
-      const refreshData = refreshResult.data as RefreshResponse;
-      storeApi.dispatch({
-        type: "auth/setCredentials",
-        payload: {
-          token: refreshData.token,
-          role: refreshData.user.role,
-          username: refreshData.user.username,
-          passwordNeedChange: false,
-        },
-      });
       // Retry original request with new token.
       result = await rawBaseQuery(args, storeApi, extraOptions);
     } else {
