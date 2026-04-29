@@ -10,8 +10,13 @@ const (
 	// RefreshCookieName is the HTTP cookie name for the refresh token.
 	RefreshCookieName = "refresh_token"
 
-	// RefreshCookiePath restricts the cookie to auth endpoints only.
-	RefreshCookiePath = "/api/auth"
+	// RefreshCookiePath scopes the cookie to /api so it is sent to BOTH the
+	// legacy /api/auth/refresh endpoint and the native /api/v1/auth/refresh
+	// endpoint. A narrower path (e.g. /api/auth) does NOT match /api/v1/...
+	// per RFC 6265 §5.1.4 path-matching, which silently broke v1 refreshes
+	// in 1.3.0 — the browser stopped sending the cookie and every refresh
+	// returned 401 "no refresh token" the moment the access JWT expired.
+	RefreshCookiePath = "/api"
 
 	// SessionCookieName is the HTTP cookie name for the session access token.
 	// The cookie value is the access JWT itself; ParseToken + Tokens.IsRevoked

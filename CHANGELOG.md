@@ -7,13 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Refresh-token cookie is now scoped to `/api` instead of `/api/auth`, so the browser actually sends it to the native `/api/v1/auth/refresh` endpoint introduced in 1.3.0. Per RFC 6265 §5.1.4 path-matching, a `/api/auth`-scoped cookie does NOT match `/api/v1/auth/refresh`, which silently broke every silent refresh on the v1 surface — the moment the 15-minute access JWT expired the server returned 401 "no refresh token" and the user was bounced to the login screen. **This is the primary cause of the ~15-minute logoffs reported against 1.3.0/1.3.1.**
+- Audio-element auth recovery now shares the same single-flighted `/api/v1/auth/refresh` promise as the rest of the app. Previously, a 401 on an `<audio>` fetch fired a parallel refresh that bypassed the RTK Query coalescing introduced in 1.3.1; if it raced the scheduled refresh it would replay the single-use refresh cookie and revoke the token family.
+
 ### Security
 
 - Refresh-token rotation now tolerates a 30-second replay grace window for already-rotated tokens (per OAuth 2.0 Security BCP §4.13). When the same refresh cookie is presented twice within the window — parallel browser tabs, service-worker retries, page reload mid-rotation, or any scenario the per-tab single-flight cannot cover — the server returns the cached successor tokens issued on the original rotation instead of revoking the entire token family. Replays after the grace window still revoke the family, preserving the theft-detection signal.
-
-### Fixed
-
-- Audio-element auth recovery now shares the same single-flighted `/api/v1/auth/refresh` promise as the rest of the app. Previously, a 401 on an `<audio>` fetch fired a parallel refresh that bypassed the RTK Query coalescing introduced in 1.3.1; if it raced the scheduled refresh it would replay the single-use refresh cookie and revoke the token family, logging the user out roughly every 25 minutes (and randomly when audio playback failed near a refresh tick).
 
 ## [1.3.1] — 2026-04-29
 
