@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Release workflow now creates the GitHub Release when a tag is pushed without one, instead of failing with `release not found` when uploading binaries. Future `git push --tags` releases publish artifacts without a manual `gh release create` step.
+
 ## [1.3.0] — 2026-04-29
 
 ### Added
