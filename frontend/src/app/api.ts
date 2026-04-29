@@ -24,47 +24,65 @@ const rawBaseQuery = fetchBaseQuery({
 });
 
 /**
- * Wrapper that intercepts 401 responses and attempts a silent token refresh.
- * If the refresh succeeds, the original request is retried with the new token.
- * If the refresh fails, credentials are cleared (user sees login screen).
+ * Single-flighted silent token refresh shared by every code path that may
+ * trigger POST /auth/refresh (RTK Query 401 retry, scheduled refresh,
+ * useAuthInit on mount, WebSocket reauth, audio-element auth recovery).
  *
- * Refresh is single-flighted: if multiple requests 401 simultaneously (typical
- * on tab wake / network resume), or multiple call sites trigger
- * POST /auth/refresh in parallel (RTK Query 401 handler + scheduled refresh
- * + WS reconnect + audio recovery), only one network refresh actually goes
- * out and the rest await the same promise. Without this, parallel refresh
- * attempts present the same single-use refresh token; the server detects
- * "replay" on the loser and revokes the entire token family — forcing
- * re-login even though the refresh cookie is nowhere near its TTL.
+ * Coalescing avoids redundant network round-trips and keeps every caller
+ * in this tab on the same access JWT. The backend additionally tolerates
+ * a brief replay of an already-rotated refresh token (see
+ * `RefreshReplayGrace` in backend/internal/handler/auth/replay_cache.go),
+ * so cross-tab races, service-worker retries, and reload-mid-rotation
+ * scenarios converge on identical tokens instead of revoking the family.
+ *
+ * Implemented as a plain `fetch()` (not via RTK Query's rawBaseQuery) so
+ * non-RTK callers (audio recovery in main.tsx) can hit the exact same
+ * promise without going through RTK plumbing.
  */
-type RefreshQueryResult = Awaited<ReturnType<typeof rawBaseQuery>>;
-let refreshInFlight: Promise<RefreshQueryResult> | null = null;
+export type RefreshSessionResult =
+  | { data: RefreshResponse }
+  | { error: FetchBaseQueryError };
 
-function runRefresh(
-  storeApi: Parameters<typeof rawBaseQuery>[1],
-  extraOptions: Parameters<typeof rawBaseQuery>[2],
-): Promise<RefreshQueryResult> {
+type DispatchFn = (action: { type: string; payload?: unknown }) => void;
+
+let refreshInFlight: Promise<RefreshSessionResult> | null = null;
+
+export function refreshSession(
+  dispatch: DispatchFn,
+): Promise<RefreshSessionResult> {
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
       try {
-        const refreshResult = await rawBaseQuery(
-          { url: "/auth/refresh", method: "POST" },
-          storeApi,
-          extraOptions,
-        );
-        if (refreshResult.data) {
-          const refreshData = refreshResult.data as RefreshResponse;
-          storeApi.dispatch({
-            type: "auth/setCredentials",
-            payload: {
-              token: refreshData.token,
-              role: refreshData.user.role,
-              username: refreshData.user.username,
-              passwordNeedChange: false,
-            },
-          });
+        const res = await fetch("/api/v1/auth/refresh", {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!res.ok) {
+          return {
+            error: {
+              status: res.status,
+              data: undefined,
+            } as FetchBaseQueryError,
+          };
         }
-        return refreshResult;
+        const data = (await res.json()) as RefreshResponse;
+        dispatch({
+          type: "auth/setCredentials",
+          payload: {
+            token: data.token,
+            role: data.user.role,
+            username: data.user.username,
+            passwordNeedChange: false,
+          },
+        });
+        return { data };
+      } catch (e) {
+        return {
+          error: {
+            status: "FETCH_ERROR",
+            error: e instanceof Error ? e.message : String(e),
+          } as FetchBaseQueryError,
+        };
       } finally {
         refreshInFlight = null;
       }
@@ -73,6 +91,11 @@ function runRefresh(
   return refreshInFlight;
 }
 
+/**
+ * Wrapper that intercepts 401 responses and attempts a silent token refresh.
+ * If the refresh succeeds, the original request is retried with the new token.
+ * If the refresh fails, credentials are cleared (user sees login screen).
+ */
 const baseQueryWithRefresh: BaseQueryFn<
   string | FetchArgs,
   unknown,
@@ -81,20 +104,22 @@ const baseQueryWithRefresh: BaseQueryFn<
   const url = typeof args === "string" ? args : args.url;
 
   // Coalesce direct calls to /auth/refresh (useAuthInit, useTokenRefresh,
-  // WS reauth) onto the same in-flight promise as 401-triggered refreshes.
+  // WS reauth) onto the same in-flight promise as 401-triggered refreshes
+  // and the audio-recovery refresh in main.tsx.
   if (url === "/auth/refresh") {
-    const result = await runRefresh(storeApi, extraOptions);
-    if (result.error && result.error.status === 401) {
+    const result = await refreshSession(storeApi.dispatch);
+    if ("error" in result) {
       storeApi.dispatch({ type: "auth/clearCredentials" });
+      return { error: result.error };
     }
-    return result;
+    return { data: result.data };
   }
 
   let result = await rawBaseQuery(args, storeApi, extraOptions);
 
   if (result.error && result.error.status === 401) {
-    const refreshResult = await runRefresh(storeApi, extraOptions);
-    if (refreshResult.data) {
+    const refreshResult = await refreshSession(storeApi.dispatch);
+    if ("data" in refreshResult) {
       // Retry original request with new token.
       result = await rawBaseQuery(args, storeApi, extraOptions);
     } else {
