@@ -27,6 +27,10 @@ type Handler struct {
 	queries     *db.Queries
 	rateLimiter *auth.RateLimiter
 	hub         WSDisconnecter
+	// replayCache absorbs harmless duplicate refresh requests (parallel
+	// tabs, service-worker retries, reloads mid-rotation) within a short
+	// grace window without revoking the token family. See replay_cache.go.
+	replayCache *replayCache
 }
 
 // New constructs an auth Handler.
@@ -35,6 +39,7 @@ func New(queries *db.Queries, rateLimiter *auth.RateLimiter, hub WSDisconnecter)
 		queries:     queries,
 		rateLimiter: rateLimiter,
 		hub:         hub,
+		replayCache: newReplayCache(RefreshReplayGrace),
 	}
 }
 
@@ -284,8 +289,28 @@ func (h *Handler) PostRefresh(c *gin.Context) {
 		return
 	}
 
-	// If the token has been revoked, this is a replay attack — revoke the entire family.
+	// If the token has been revoked, this MAY be a replay attack — but it
+	// is far more likely to be a benign duplicate (parallel tab, service
+	// worker, reload mid-rotation). If we already rotated this exact token
+	// within the grace window, replay the cached successor so both racing
+	// clients converge on the same access JWT and refresh cookie. Outside
+	// the grace window, treat it as theft and revoke the family.
 	if rt.Revoked != 0 {
+		if cached, ok := h.replayCache.get(tokenHash); ok {
+			slog.Info("auth: refresh replay within grace window, returning cached successor",
+				"family_id", rt.FamilyID, "user_id", rt.UserID)
+			auth.SetRefreshCookie(c, cached.refreshRaw, int(auth.RefreshTokenExpiry.Seconds()))
+			auth.SetSessionCookie(c, cached.accessToken, int(auth.AccessTokenExpiry.Seconds()))
+			c.JSON(http.StatusOK, refreshResponse{
+				Token: cached.accessToken,
+				User: loginUserResponse{
+					ID:       cached.userID,
+					Username: cached.username,
+					Role:     cached.role,
+				},
+			})
+			return
+		}
 		slog.Warn("auth: refresh token replay detected, revoking family",
 			"family_id", rt.FamilyID, "user_id", rt.UserID)
 		_ = h.queries.RevokeRefreshTokenFamily(c.Request.Context(), rt.FamilyID)
@@ -362,6 +387,19 @@ func (h *Handler) PostRefresh(c *gin.Context) {
 	// Rotate the os_session cookie alongside the refresh cookie so the
 	// browser-only <audio> auth path always carries a fresh access JWT.
 	auth.SetSessionCookie(c, accessToken, int(auth.AccessTokenExpiry.Seconds()))
+
+	// Cache the issued response keyed by the OLD token hash so a duplicate
+	// presentation of the same cookie within the grace window (parallel
+	// tab, SW retry, reload mid-rotation) is answered idempotently rather
+	// than treated as replay-and-revoke. See replay_cache.go.
+	h.replayCache.put(tokenHash, replayCacheEntry{
+		accessToken: accessToken,
+		refreshRaw:  newRaw,
+		userID:      user.ID,
+		username:    user.Username,
+		role:        user.Role,
+		familyID:    rt.FamilyID,
+	})
 
 	c.JSON(http.StatusOK, refreshResponse{
 		Token: accessToken,

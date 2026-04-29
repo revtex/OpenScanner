@@ -3,11 +3,43 @@ package auth_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/openscanner/openscanner/internal/auth"
 )
+
+// refreshEndpointPaths enumerates every server URL path that MUST receive
+// the refresh-token cookie. Per RFC 6265 §5.1.4 path-matching, the cookie's
+// Path attribute must be a prefix of each of these — otherwise the browser
+// silently drops the cookie on those requests and silent refresh fails the
+// moment the access JWT expires. Add new refresh endpoints here when they
+// ship; the test will fail if the cookie's Path doesn't cover them.
+var refreshEndpointPaths = []string{
+	"/api/auth/refresh",    // legacy surface
+	"/api/v1/auth/refresh", // native v1 surface (added in 1.3.0)
+}
+
+// sessionEndpointPaths likewise enumerates URL paths that need the access
+// JWT session cookie (e.g. <audio src=".../audio">).
+var sessionEndpointPaths = []string{
+	"/api/calls/123/audio",
+	"/api/v1/calls/123/audio",
+}
+
+// assertCookiePathCovers fails the test if cookiePath is not a prefix of
+// every URL path in endpoints (per RFC 6265 §5.1.4 path-matching). This
+// catches the class of bug where a Path attribute stops matching real
+// endpoints after a route migration.
+func assertCookiePathCovers(t *testing.T, cookiePath string, endpoints []string) {
+	t.Helper()
+	for _, ep := range endpoints {
+		if !strings.HasPrefix(ep, cookiePath) {
+			t.Errorf("cookie Path=%q does not cover endpoint %q (RFC 6265 path-match would fail; browser would not send the cookie)", cookiePath, ep)
+		}
+	}
+}
 
 func init() {
 	gin.SetMode(gin.TestMode)
@@ -75,6 +107,11 @@ func TestSetRefreshCookie(t *testing.T) {
 			if ck.Path != auth.RefreshCookiePath {
 				t.Errorf("Path = %q, want %q", ck.Path, auth.RefreshCookiePath)
 			}
+			// Behavioural assertion: the Path must actually cover every
+			// refresh endpoint the frontend can hit. This catches the
+			// 1.3.0 regression where the constant lagged behind the v1
+			// route move and the cookie stopped being delivered.
+			assertCookiePathCovers(t, ck.Path, refreshEndpointPaths)
 			if tc.maxAge > 0 {
 				if ck.MaxAge != tc.maxAge {
 					t.Errorf("MaxAge = %d, want %d", ck.MaxAge, tc.maxAge)
@@ -99,6 +136,7 @@ func TestClearRefreshCookie(t *testing.T) {
 	if ck.Path != auth.RefreshCookiePath {
 		t.Errorf("Path = %q, want %q", ck.Path, auth.RefreshCookiePath)
 	}
+	assertCookiePathCovers(t, ck.Path, refreshEndpointPaths)
 	if !ck.HttpOnly {
 		t.Error("HttpOnly = false, want true")
 	}
@@ -142,6 +180,7 @@ func TestSetSessionCookie(t *testing.T) {
 			if ck.Path != auth.SessionCookiePath {
 				t.Errorf("Path = %q, want %q", ck.Path, auth.SessionCookiePath)
 			}
+			assertCookiePathCovers(t, ck.Path, sessionEndpointPaths)
 			if tc.maxAge > 0 && ck.MaxAge != tc.maxAge {
 				t.Errorf("MaxAge = %d, want %d", ck.MaxAge, tc.maxAge)
 			}
