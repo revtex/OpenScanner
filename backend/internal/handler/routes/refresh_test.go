@@ -5,7 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
+	"io"
 	"testing"
 	"time"
 
@@ -238,5 +241,82 @@ func TestRefreshToken_SeparateUsersIndependent(t *testing.T) {
 	}
 	if got := countActiveFamilies(t, queries, userB); got != 1 {
 		t.Errorf("user B families = %d, want 1", got)
+	}
+}
+
+// TestRefreshCookie_DeliveredToEveryRefreshEndpoint is an end-to-end
+// regression test for the 1.3.0 cookie-path bug: the refresh cookie was
+// scoped to /api/auth, which per RFC 6265 §5.1.4 path-matching does NOT
+// cover /api/v1/auth/refresh. Browsers silently dropped the cookie on the
+// v1 refresh endpoint and every silent-refresh attempt 401'd, bouncing the
+// user to the login screen ~15 minutes after login.
+//
+// The previous tests used httptest.NewRequest + req.AddCookie(...) which
+// force-attaches the cookie regardless of path-matching, so they could
+// never have caught this. This test uses a real http.Client + cookiejar
+// against httptest.NewServer so the standard library enforces RFC 6265
+// path-matching exactly the way a browser does.
+func TestRefreshCookie_DeliveredToEveryRefreshEndpoint(t *testing.T) {
+	engine, queries := newTestEngine(t)
+	seedAdminUser(t, queries, "alice", "password123")
+
+	srv := httptest.NewServer(engine)
+	t.Cleanup(srv.Close)
+
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("cookiejar.New: %v", err)
+	}
+	client := &http.Client{Jar: jar}
+
+	// Log in via the v1 endpoint so the cookie jar captures the
+	// Set-Cookie header exactly as a browser would.
+	loginBody, _ := json.Marshal(map[string]string{"username": "alice", "password": "password123"})
+	loginResp, err := client.Post(srv.URL+"/api/v1/auth/login", "application/json", bytes.NewReader(loginBody))
+	if err != nil {
+		t.Fatalf("login POST: %v", err)
+	}
+	_ = loginResp.Body.Close()
+	if loginResp.StatusCode != http.StatusOK {
+		t.Fatalf("login status = %d, want 200", loginResp.StatusCode)
+	}
+
+	// Sanity: jar must hold the refresh cookie. Query at the refresh
+	// endpoint path (not "/") because the cookie's declared Path scopes
+	// it under /api — RFC 6265 path-matching means jar.Cookies("/")
+	// would (correctly) hide it, while a query at /api/v1/auth/refresh
+	// must return it for the cookie to be delivered there.
+	probeURL, _ := url.Parse(srv.URL + "/api/v1/auth/refresh")
+	var refreshCookieFound bool
+	for _, c := range jar.Cookies(probeURL) {
+		if c.Name == auth.RefreshCookieName {
+			refreshCookieFound = true
+			break
+		}
+	}
+	if !refreshCookieFound {
+		t.Fatalf("refresh cookie not delivered to /api/v1/auth/refresh (Set-Cookie headers: %v)", loginResp.Header.Values("Set-Cookie"))
+	}
+
+	// For every refresh endpoint URL the frontend can hit, posting an
+	// empty body MUST result in the cookie being delivered (i.e. the
+	// server sees it and returns 200, not 401 "no refresh token"). Each
+	// refresh rotates the cookie; the jar captures the new value on the
+	// response so subsequent calls in the loop keep working.
+	endpoints := []string{
+		"/api/auth/refresh",    // legacy
+		"/api/v1/auth/refresh", // v1 (the path that broke in 1.3.0)
+	}
+	for _, ep := range endpoints {
+		req, _ := http.NewRequest(http.MethodPost, srv.URL+ep, nil)
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("POST %s: %v", ep, err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("POST %s status = %d, want 200 (cookie not delivered? body: %s)", ep, resp.StatusCode, string(body))
+		}
 	}
 }
