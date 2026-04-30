@@ -11,7 +11,7 @@ vi.mock("@/app/api", () => ({
   useToggleBookmarkMutation: () => mockToggleBookmarkMutation(),
 }));
 
-vi.mock("@/services/audio/player", () => ({
+vi.mock("@/shared/services/audio/player", () => ({
   audioPlayer: {
     play: vi.fn(),
   },

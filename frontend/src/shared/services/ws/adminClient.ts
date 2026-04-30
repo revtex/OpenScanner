@@ -4,7 +4,7 @@ import type {
   WsAdminInbound,
   WsAdminOutbound,
   WsAdminResponse,
-} from "@/types/ws";
+} from "@/shared/types/ws";
 
 type TokenExpiredCallback = () => Promise<string | null>;
 type EventCallback = (topic: string, data: unknown, at: number) => void;

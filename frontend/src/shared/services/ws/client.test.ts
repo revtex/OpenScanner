@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { wsClient } from "@/services/ws/client";
+import { wsClient } from "@/shared/services/ws/client";
 import { configureStore } from "@reduxjs/toolkit";
 import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
 import { authSlice } from "@/app/slices/shared/authSlice";

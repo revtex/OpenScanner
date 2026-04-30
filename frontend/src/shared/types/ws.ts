@@ -2,7 +2,7 @@
 // See docs/plans/native-api-design-plan.md §4.2.
 
 import type { Call, TranscriptionSegment } from "@/types/call";
-import type { SystemConfig } from "@/types/config";
+import type { SystemConfig } from "@/shared/types/config";
 
 // Connection status for WS
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";

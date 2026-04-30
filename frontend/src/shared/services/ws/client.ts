@@ -9,7 +9,7 @@ import {
 } from "@/app/slices/scanner/scannerSlice";
 import { clearCredentials } from "@/app/slices/shared/authSlice";
 import type { SystemConfig } from "@/types";
-import type { WsListenerInbound, WsListenerOutbound } from "@/types/ws";
+import type { WsListenerInbound, WsListenerOutbound } from "@/shared/types/ws";
 
 const MAX_BACKOFF = 30_000;
 const DEDUP_SIZE = 100;

@@ -36,8 +36,8 @@ import {
 } from "@/app/slices/scanner/callsSlice";
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { selectToken } from "@/app/slices/shared/authSlice";
-import { audioPlayer } from "@/services/audio/player";
-import { sanitizeDownloadFilename } from "@/services/download/filename";
+import { audioPlayer } from "@/shared/services/audio/player";
+import { sanitizeDownloadFilename } from "@/shared/services/download/filename";
 import type { Call } from "@/types";
 
 interface SearchPanelProps {

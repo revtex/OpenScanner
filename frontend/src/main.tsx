@@ -7,7 +7,7 @@ import { useAppSelector } from "@/app/store";
 import { selectAuthReady } from "@/app/slices/shared/authSlice";
 import { useAuthInit } from "@/hooks/shared/useAuthInit";
 import { useTokenRefresh } from "@/hooks/shared/useTokenRefresh";
-import { audioPlayer } from "@/services/audio/player";
+import { audioPlayer } from "@/shared/services/audio/player";
 import { refreshSession } from "@/app/api";
 import "@/index.css";
 

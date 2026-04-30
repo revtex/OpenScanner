@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { adminWsClient } from "@/services/ws/adminClient";
+import { adminWsClient } from "@/shared/services/ws/adminClient";
 import type { AdminLog } from "@/types";
 
 interface LogQueryParams {

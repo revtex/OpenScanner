@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
-import { useWebSocket } from "@/hooks/shared/useWebSocket";
+import { useWebSocket } from "@/shared/hooks/useWebSocket";
 import { useAudioPlayer } from "@/hooks/scanner/useAudioPlayer";
 import {
   togglePause,

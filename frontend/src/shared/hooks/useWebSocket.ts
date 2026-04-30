@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
-import { wsClient } from "@/services/ws/client";
+import { wsClient } from "@/shared/services/ws/client";
 import { setCredentials, usePostRefreshMutation } from "@/app/slices/shared/authSlice";
 import type { ConnectionStatus } from "@/types";
 

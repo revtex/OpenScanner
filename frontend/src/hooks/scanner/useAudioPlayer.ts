@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { store } from "@/app/store";
-import { audioPlayer } from "@/services/audio/player";
+import { audioPlayer } from "@/shared/services/audio/player";
 import {
   setCurrentCall,
   clearCurrentCall,

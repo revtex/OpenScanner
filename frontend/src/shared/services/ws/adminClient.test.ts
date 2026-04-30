@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { configureStore } from "@reduxjs/toolkit";
-import { adminWsClient } from "@/services/ws/adminClient";
+import { adminWsClient } from "@/shared/services/ws/adminClient";
 import { authSlice } from "@/app/slices/shared/authSlice";
 
 // ── Fake WebSocket stub ───────────────────────────────────────────────────
