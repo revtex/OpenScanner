@@ -79,12 +79,20 @@ export default tseslint.config(
                 "@/features/*/*",
                 "!@/features/*/index",
                 "!@/features/admin/_shell",
+                // Admin sub-feature barrels live at depth 3 (e.g.
+                // @/features/admin/users). The next pattern enforces no
+                // *deeper* imports into them.
+                "!@/features/admin/*",
               ],
               message:
                 "Import from a feature's public barrel only (e.g. @/features/scanner). Reaching into a feature's internals is forbidden. (features/admin/_shell is the documented exception — admin chrome shared by sub-features.)",
             },
             {
-              group: ["@/features/admin/*/*", "!@/features/admin/*/index"],
+              group: [
+                "@/features/admin/*/*",
+                "!@/features/admin/*/index",
+                "!@/features/admin/_shell/*",
+              ],
               message:
                 "Admin sub-features are opaque to each other. Import from the sub-feature barrel (e.g. @/features/admin/users) only.",
             },

@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
-import LegacyUsageBanner from "@/components/admin/LegacyUsageBanner";
+import LegacyUsageBanner from "./LegacyUsageBanner";
 import { api } from "@/app/api";
 import { scannerSlice } from "@/features/scanner";
 import { authSlice } from "@/features/auth";

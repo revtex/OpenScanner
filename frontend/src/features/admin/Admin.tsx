@@ -50,7 +50,7 @@ import WebhooksPanel from "@/components/admin/WebhooksPanel";
 import ActivityPanel from "@/components/admin/ActivityPanel";
 import SharedLinksPanel from "@/components/admin/SharedLinksPanel";
 import TranscriptionPanel from "@/components/admin/TranscriptionPanel";
-import LegacyUsageBanner from "@/components/admin/LegacyUsageBanner";
+import LegacyUsageBanner from "@/features/admin/legacy-usage";
 
 const navItems = [
   { to: "/admin/activity", label: "Activity", icon: Activity },

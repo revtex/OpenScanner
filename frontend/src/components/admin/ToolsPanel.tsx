@@ -23,7 +23,7 @@ import {
 } from "@/features/admin/_shell";
 import { selectToken } from "@/features/auth";
 import { useAppSelector } from "@/app/store";
-import RadioReferenceCard from "@/components/admin/RadioReferenceCard";
+import RadioReferenceCard from "@/features/admin/radio-reference";
 
 const SWAGGER_URL = "/api/v1/admin/docs/index.html";
 

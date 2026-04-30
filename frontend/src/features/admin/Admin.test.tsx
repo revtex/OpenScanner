@@ -29,7 +29,7 @@ vi.mock("react-router-dom", async () => {
 
 // LegacyUsageBanner mounts on Admin; stub the data hook so it stays empty
 // and we don't trigger a real fetch in jsdom.
-vi.mock("@/components/admin/LegacyUsageBanner", () => ({
+vi.mock("@/features/admin/legacy-usage", () => ({
   default: () => null,
 }));
 
