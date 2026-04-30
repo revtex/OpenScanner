@@ -67,6 +67,44 @@ export default tseslint.config(
       "no-template-curly-in-string": "error",
       "no-promise-executor-return": "error",
       "require-atomic-updates": "off", // too many false positives with async effects
+
+      // Bulletproof-style feature boundaries. See docs/plans/frontend-features-migration-plan.md.
+      // Direction: pages/ → features/ → shared/ → app/. Sibling features may only cross via barrels.
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features/*/*", "!@/features/*/index"],
+              message:
+                "Import from a feature's public barrel only (e.g. @/features/scanner). Reaching into a feature's internals is forbidden.",
+            },
+            {
+              group: ["@/features/admin/*/*", "!@/features/admin/*/index"],
+              message:
+                "Admin sub-features are opaque to each other. Import from the sub-feature barrel (e.g. @/features/admin/users) only.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // shared/ is the lowest layer — it cannot depend on features/.
+    files: ["src/shared/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features/*", "@/pages/*"],
+              message:
+                "shared/ cannot depend on features/ or pages/. Move the symbol up to the feature, or down into shared/ if it's truly cross-feature.",
+            },
+          ],
+        },
+      ],
     },
   },
   {
