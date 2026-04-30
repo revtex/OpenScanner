@@ -17,7 +17,7 @@ vi.mock("@/shared/services/audio/player", () => ({
   },
 }));
 
-vi.mock("@/app/slices/shared/authSlice", () => ({
+vi.mock("@/features/auth", () => ({
   selectToken: () => "fake-token",
 }));
 

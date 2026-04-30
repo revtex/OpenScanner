@@ -21,7 +21,7 @@ import {
   useImportConfigMutation,
   useListSystemsQuery,
 } from "@/hooks/admin/useAdminWsOps";
-import { selectToken } from "@/app/slices/shared/authSlice";
+import { selectToken } from "@/features/auth";
 import { useAppSelector } from "@/app/store";
 import RadioReferenceCard from "@/components/admin/RadioReferenceCard";
 

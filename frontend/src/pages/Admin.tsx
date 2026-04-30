@@ -35,7 +35,7 @@ import {
   selectRole,
   clearCredentials,
   usePostLogoutMutation,
-} from "@/app/slices/shared/authSlice";
+} from "@/features/auth";
 import { useAdminWebSocket } from "@/hooks/admin/useAdminWebSocket";
 import UsersPanel from "@/components/admin/UsersPanel";
 import SystemsPanel from "@/components/admin/SystemsPanel";

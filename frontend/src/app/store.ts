@@ -2,7 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
 import { api } from "@/app/api";
 import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
-import { authSlice } from "@/app/slices/shared/authSlice";
+import { authSlice } from "@/features/auth";
 import { callsSlice } from "@/app/slices/scanner/callsSlice";
 import { audioListenerMiddleware } from "@/app/audioListenerMiddleware";
 

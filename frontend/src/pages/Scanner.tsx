@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGetSetupStatusQuery } from "@/app/api";
 import { useAppDispatch, useAppSelector } from "@/app/store";
-import { setSetupStatus, selectToken } from "@/app/slices/shared/authSlice";
+import { setSetupStatus, selectToken } from "@/features/auth";
 import {
   expireAvoids,
   setPaused,

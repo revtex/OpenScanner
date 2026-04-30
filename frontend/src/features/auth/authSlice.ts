@@ -1,12 +1,11 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { api } from "@/app/api";
-import type { AvoidEntry } from "@/types";
+import type { AvoidEntry, SetupStatus } from "@/types";
 import type {
-  SetupStatus,
   LoginResponse,
   RefreshResponse,
   ChangePasswordRequest,
-} from "@/types";
+} from "./types";
 
 interface AuthState {
   token: string | null;

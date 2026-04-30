@@ -3,17 +3,17 @@ import { render, act } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
-import { authSlice, setCredentials } from "@/app/slices/shared/authSlice";
+import { authSlice, setCredentials } from "./authSlice";
 import { callsSlice } from "@/app/slices/scanner/callsSlice";
 import { api } from "@/app/api";
-import { useTokenRefresh } from "@/hooks/shared/useTokenRefresh";
+import { useTokenRefresh } from "./useTokenRefresh";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 
 const mockPostRefresh = vi.fn();
-vi.mock("@/app/slices/shared/authSlice", async () => {
-  const actual = await vi.importActual<typeof import("@/app/slices/shared/authSlice")>(
-    "@/app/slices/shared/authSlice",
+vi.mock("./authSlice", async () => {
+  const actual = await vi.importActual<typeof import("./authSlice")>(
+    "./authSlice",
   );
   return {
     ...actual,

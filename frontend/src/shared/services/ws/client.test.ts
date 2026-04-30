@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { wsClient } from "@/shared/services/ws/client";
 import { configureStore } from "@reduxjs/toolkit";
 import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
-import { authSlice } from "@/app/slices/shared/authSlice";
+import { authSlice } from "@/features/auth";
 import { callsSlice } from "@/app/slices/scanner/callsSlice";
 import { api } from "@/app/api";
 

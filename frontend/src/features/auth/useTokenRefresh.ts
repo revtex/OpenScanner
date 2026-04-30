@@ -5,7 +5,7 @@ import {
   setCredentials,
   clearCredentials,
   usePostRefreshMutation,
-} from "@/app/slices/shared/authSlice";
+} from "./authSlice";
 
 /**
  * Schedules a silent access token refresh 1 minute before the current

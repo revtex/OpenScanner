@@ -5,11 +5,8 @@ import {
   type FetchArgs,
   type FetchBaseQueryError,
 } from "@reduxjs/toolkit/query/react";
-import type {
-  SetupStatus,
-  RefreshResponse,
-  LegacyUsageResponse,
-} from "@/types";
+import type { SetupStatus, LegacyUsageResponse } from "@/types";
+import type { RefreshResponse } from "@/features/auth";
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: "/api/v1",

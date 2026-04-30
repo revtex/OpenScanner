@@ -6,7 +6,7 @@ import { Provider } from "react-redux";
 import LegacyUsageBanner from "@/components/admin/LegacyUsageBanner";
 import { api } from "@/app/api";
 import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
-import { authSlice } from "@/app/slices/shared/authSlice";
+import { authSlice } from "@/features/auth";
 import { callsSlice } from "@/app/slices/scanner/callsSlice";
 import type { LegacyUsageResponse } from "@/types";
 

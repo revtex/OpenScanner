@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { adminWsClient } from "@/shared/services/ws/adminClient";
-import { setCredentials, usePostRefreshMutation } from "@/app/slices/shared/authSlice";
+import { setCredentials, usePostRefreshMutation } from "@/features/auth";
 import { api } from "@/app/api";
 
 export function useAdminWebSocket(): void {

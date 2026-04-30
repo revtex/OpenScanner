@@ -108,9 +108,51 @@ export default tseslint.config(
     },
   },
   {
+    // Documented debt: the WS layer (shared/) currently dispatches auth
+    // actions (clearCredentials on close, setCredentials/usePostRefreshMutation
+    // for token refresh) because both auth and admin features consume the
+    // same WS client/hook. Inverting via callbacks is tracked as a follow-up;
+    // until then these specific files may import from the @/features/auth
+    // barrel. Internal-paths into the feature remain forbidden.
+    files: [
+      "src/shared/services/ws/client.ts",
+      "src/shared/services/ws/client.test.ts",
+      "src/shared/services/ws/adminClient.ts",
+      "src/shared/services/ws/adminClient.test.ts",
+      "src/shared/hooks/useWebSocket.ts",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features/*/*", "!@/features/*/index"],
+              message:
+                "Import from a feature's public barrel only. Reaching into a feature's internals is forbidden.",
+            },
+            {
+              group: ["@/features/*", "!@/features/auth"],
+              message:
+                "shared/ cannot depend on features/ except @/features/auth (WS-layer debt — see comment in eslint.config.js).",
+            },
+            {
+              group: ["@/pages/*"],
+              message: "shared/ cannot depend on pages/.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["src/main.tsx"],
     rules: {
       "react-refresh/only-export-components": "off",
+      // main.tsx is the route-wiring file: it pulls in lazy-loaded page
+      // modules directly to avoid forcing pages through feature barrels
+      // (which would otherwise create cycles with app/store.ts).
+      "no-restricted-imports": "off",
     },
   },
   {

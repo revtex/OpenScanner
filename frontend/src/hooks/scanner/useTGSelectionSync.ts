@@ -11,7 +11,7 @@ import {
   selectToken,
   useGetTGSelectionQuery,
   useUpdateTGSelectionMutation,
-} from "@/app/slices/shared/authSlice";
+} from "@/features/auth";
 import type { AvoidEntry } from "@/types";
 
 function storageKey(instanceId: string): string {

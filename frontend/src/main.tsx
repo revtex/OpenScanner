@@ -4,9 +4,9 @@ import { Provider } from "react-redux";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { store } from "@/app/store";
 import { useAppSelector } from "@/app/store";
-import { selectAuthReady } from "@/app/slices/shared/authSlice";
-import { useAuthInit } from "@/hooks/shared/useAuthInit";
-import { useTokenRefresh } from "@/hooks/shared/useTokenRefresh";
+import { selectAuthReady } from "@/features/auth";
+import { useAuthInit } from "@/features/auth/useAuthInit";
+import { useTokenRefresh } from "@/features/auth/useTokenRefresh";
 import { audioPlayer } from "@/shared/services/audio/player";
 import { refreshSession } from "@/app/api";
 import "@/index.css";
@@ -25,8 +25,8 @@ audioPlayer.setAuthRecovery(async () => {
 });
 
 const Scanner = lazy(() => import("@/pages/Scanner"));
-const Login = lazy(() => import("@/pages/Login"));
-const Setup = lazy(() => import("@/pages/Setup"));
+const Login = lazy(() => import("@/features/auth/Login"));
+const Setup = lazy(() => import("@/features/setup/Setup"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const SharedCall = lazy(() => import("@/pages/SharedCall"));
 

@@ -7,7 +7,7 @@ import {
   setConnectionStatus,
   transcriptReceived,
 } from "@/app/slices/scanner/scannerSlice";
-import { clearCredentials } from "@/app/slices/shared/authSlice";
+import { clearCredentials } from "@/features/auth";
 import type { SystemConfig } from "@/types";
 import type { WsListenerInbound, WsListenerOutbound } from "@/shared/types/ws";
 

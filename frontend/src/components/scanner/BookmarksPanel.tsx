@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useGetBookmarkCallsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { useAppSelector } from "@/app/store";
-import { selectToken } from "@/app/slices/shared/authSlice";
+import { selectToken } from "@/features/auth";
 import { audioPlayer } from "@/shared/services/audio/player";
 import { sanitizeDownloadFilename } from "@/shared/services/download/filename";
 import { ShareCallButton } from "@/components/scanner/ShareCallButton";

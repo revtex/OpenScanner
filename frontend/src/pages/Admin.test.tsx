@@ -5,7 +5,7 @@ import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import Admin from "@/pages/Admin";
 import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
-import { authSlice } from "@/app/slices/shared/authSlice";
+import { authSlice } from "@/features/auth";
 import { callsSlice } from "@/app/slices/scanner/callsSlice";
 import { api } from "@/app/api";
 import type { RootState } from "@/app/store";

@@ -1,5 +1,5 @@
 import type { AppDispatch } from "@/app/store";
-import { clearCredentials } from "@/app/slices/shared/authSlice";
+import { clearCredentials } from "@/features/auth";
 import type {
   WsAdminInbound,
   WsAdminOutbound,

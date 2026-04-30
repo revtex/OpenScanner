@@ -4,7 +4,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import SearchPanel from "@/components/scanner/SearchPanel";
 import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
-import { authSlice } from "@/app/slices/shared/authSlice";
+import { authSlice } from "@/features/auth";
 import { callsSlice } from "@/app/slices/scanner/callsSlice";
 import { api } from "@/app/api";
 import type { RootState } from "@/app/store";
