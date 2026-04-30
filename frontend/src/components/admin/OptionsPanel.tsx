@@ -10,8 +10,8 @@ import {
 import {
   useGetConfigQuery,
   useUpdateConfigMutation,
-} from "@/hooks/admin/useAdminWsOps";
-import { useNavigationGuard } from "@/hooks/admin/useNavigationGuard";
+} from "@/features/admin/_shell";
+import { useNavigationGuard } from "@/features/admin/_shell";
 import type { AdminSetting } from "@/types";
 
 // ─── Known setting keys and their input types ───

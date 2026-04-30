@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { Upload, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
-import { useRrPreviewCSVMutation } from "@/app/slices/admin/adminSlice";
-import { useRrApplyMutation, useListSystemsQuery } from "@/hooks/admin/useAdminWsOps";
+import { useRrPreviewCSVMutation } from "@/features/admin/_shell";
+import { useRrApplyMutation, useListSystemsQuery } from "@/features/admin/_shell";
 import type {
   RRPreviewResponse,
   RRPreviewRow,

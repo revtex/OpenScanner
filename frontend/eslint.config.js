@@ -75,9 +75,13 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ["@/features/*/*", "!@/features/*/index"],
+              group: [
+                "@/features/*/*",
+                "!@/features/*/index",
+                "!@/features/admin/_shell",
+              ],
               message:
-                "Import from a feature's public barrel only (e.g. @/features/scanner). Reaching into a feature's internals is forbidden.",
+                "Import from a feature's public barrel only (e.g. @/features/scanner). Reaching into a feature's internals is forbidden. (features/admin/_shell is the documented exception — admin chrome shared by sub-features.)",
             },
             {
               group: ["@/features/admin/*/*", "!@/features/admin/*/index"],
@@ -138,7 +142,11 @@ export default tseslint.config(
                 "Import from a feature's public barrel only. Reaching into a feature's internals is forbidden.",
             },
             {
-              group: ["@/features/*", "!@/features/auth", "!@/features/scanner"],
+              group: [
+                "@/features/*",
+                "!@/features/auth",
+                "!@/features/scanner",
+              ],
               message:
                 "shared/ cannot depend on features/ except @/features/auth and @/features/scanner (WS-layer / Call-type debt — see comment in eslint.config.js).",
             },

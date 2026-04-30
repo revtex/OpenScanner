@@ -52,7 +52,7 @@ const noopMutate = vi.fn(() => ({
   unwrap: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("@/hooks/admin/useAdminWsOps", () => ({
+vi.mock("@/features/admin/_shell", () => ({
   useListSystemsQuery: () => ({ data: mockSystems, isLoading: false }),
   useCreateSystemMutation: () => [createSystemMutate, {}],
   useUpdateSystemMutation: () => [updateSystemMutate, {}],

@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
-import Admin from "@/pages/Admin";
+import Admin from "./Admin";
 import { scannerSlice } from "@/features/scanner";
 import { authSlice } from "@/features/auth";
 import { callsSlice } from "@/features/scanner";

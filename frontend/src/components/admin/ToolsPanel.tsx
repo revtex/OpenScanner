@@ -11,7 +11,7 @@ import {
   useImportUnitsMutation,
   useImportGroupsMutation,
   useImportTagsMutation,
-} from "@/app/slices/admin/adminSlice";
+} from "@/features/admin/_shell";
 import {
   useLazyExportConfigQuery,
   useLazyExportTalkgroupsQuery,
@@ -20,7 +20,7 @@ import {
   useLazyExportTagsQuery,
   useImportConfigMutation,
   useListSystemsQuery,
-} from "@/hooks/admin/useAdminWsOps";
+} from "@/features/admin/_shell";
 import { selectToken } from "@/features/auth";
 import { useAppSelector } from "@/app/store";
 import RadioReferenceCard from "@/components/admin/RadioReferenceCard";

@@ -18,7 +18,7 @@ import {
   useListTagsQuery,
   useGetConfigQuery,
   useUpdateConfigMutation,
-} from "@/hooks/admin/useAdminWsOps";
+} from "@/features/admin/_shell";
 import type { AdminSystem, AdminTalkgroup, AdminUnit } from "@/types";
 
 // ─── System card ───

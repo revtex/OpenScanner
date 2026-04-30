@@ -8,7 +8,7 @@ import {
   useDeleteDirMonitorMutation,
   useListSystemsQuery,
   useListTalkgroupsQuery,
-} from "@/hooks/admin/useAdminWsOps";
+} from "@/features/admin/_shell";
 import type { AdminDirMonitor } from "@/types";
 
 const DIRMONITOR_TYPES = [

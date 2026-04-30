@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useUpdateConfigMutation } from "@/hooks/admin/useAdminWsOps";
+import { useUpdateConfigMutation } from "@/features/admin/_shell";
 import { useAdminLogs, useAdminLogLevel } from "@/hooks/admin/useAdminLogs";
 import type { AdminLog } from "@/types";
 

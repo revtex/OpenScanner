@@ -10,7 +10,7 @@ import {
 import {
   NavigationGuardProvider,
   useNavigationGuard,
-} from "@/hooks/admin/useNavigationGuard";
+} from "./_shell/useNavigationGuard";
 import {
   Activity,
   Users,
@@ -36,7 +36,7 @@ import {
   clearCredentials,
   usePostLogoutMutation,
 } from "@/features/auth";
-import { useAdminWebSocket } from "@/hooks/admin/useAdminWebSocket";
+import { useAdminWebSocket } from "./_shell/useAdminWebSocket";
 import UsersPanel from "@/components/admin/UsersPanel";
 import SystemsPanel from "@/components/admin/SystemsPanel";
 import GroupsTagsPanel from "@/components/admin/GroupsTagsPanel";

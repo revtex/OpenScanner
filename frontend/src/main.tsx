@@ -27,7 +27,7 @@ audioPlayer.setAuthRecovery(async () => {
 const Scanner = lazy(() => import("@/features/scanner/Scanner"));
 const Login = lazy(() => import("@/features/auth/Login"));
 const Setup = lazy(() => import("@/features/setup/Setup"));
-const Admin = lazy(() => import("@/pages/Admin"));
+const Admin = lazy(() => import("@/features/admin/Admin"));
 const SharedCall = lazy(() => import("@/features/shared-call/SharedCall"));
 
 const LoadingSpinner = (

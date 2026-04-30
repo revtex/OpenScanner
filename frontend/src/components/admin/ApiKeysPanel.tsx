@@ -7,7 +7,7 @@ import {
   useDeleteApiKeyMutation,
   useListSystemsQuery,
   useGetConfigQuery,
-} from "@/hooks/admin/useAdminWsOps";
+} from "@/features/admin/_shell";
 import type { AdminApiKey } from "@/types";
 
 // ─── Form state ───

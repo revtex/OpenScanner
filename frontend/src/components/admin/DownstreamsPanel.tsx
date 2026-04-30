@@ -6,7 +6,7 @@ import {
   useUpdateDownstreamMutation,
   useDeleteDownstreamMutation,
   useListSystemsQuery,
-} from "@/hooks/admin/useAdminWsOps";
+} from "@/features/admin/_shell";
 import type { AdminDownstream } from "@/types";
 
 interface DownstreamFormState {

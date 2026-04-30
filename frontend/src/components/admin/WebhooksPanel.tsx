@@ -5,7 +5,7 @@ import {
   useCreateWebhookMutation,
   useUpdateWebhookMutation,
   useDeleteWebhookMutation,
-} from "@/hooks/admin/useAdminWsOps";
+} from "@/features/admin/_shell";
 import type { AdminWebhook } from "@/types";
 
 interface WebhookFormState {

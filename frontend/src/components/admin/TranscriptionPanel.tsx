@@ -7,7 +7,7 @@ import {
   useTranscriptionDeleteMutation,
   useTranscriptionStatsQuery,
   useUpdateConfigMutation,
-} from "@/hooks/admin/useAdminWsOps";
+} from "@/features/admin/_shell";
 import type { WhisperModel } from "@/types";
 
 const KNOWN_MODELS = [

@@ -60,7 +60,7 @@ const deleteApiKeyMutate = vi.fn((_arg: unknown) => ({
   unwrap: deleteApiKeyUnwrap,
 }));
 
-vi.mock("@/hooks/admin/useAdminWsOps", () => ({
+vi.mock("@/features/admin/_shell", () => ({
   useListApiKeysQuery: () => ({ data: mockKeys, isLoading: false }),
   useListSystemsQuery: () => ({ data: mockSystems, isLoading: false }),
   useGetConfigQuery: () => ({ data: { settings: [] }, isLoading: false }),
