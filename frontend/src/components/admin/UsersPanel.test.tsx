@@ -5,9 +5,9 @@ import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import UsersPanel from "@/components/admin/UsersPanel";
-import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
+import { scannerSlice } from "@/features/scanner";
 import { authSlice } from "@/features/auth";
-import { callsSlice } from "@/app/slices/scanner/callsSlice";
+import { callsSlice } from "@/features/scanner";
 import { api } from "@/app/api";
 import type { AdminUser, AdminSystem } from "@/types";
 

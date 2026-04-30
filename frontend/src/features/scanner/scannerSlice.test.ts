@@ -17,8 +17,9 @@ import {
   setAllTGs,
   setConfig,
   transcriptReceived,
-} from "@/app/slices/scanner/scannerSlice";
-import type { Call, ScannerConfig } from "@/types";
+} from "./scannerSlice";
+import type { ScannerConfig } from "@/types";
+import type { Call } from "./types";
 
 const reducer = scannerSlice.reducer;
 

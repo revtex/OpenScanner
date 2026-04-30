@@ -1,4 +1,4 @@
-import type { Call, TranscriptionSegment } from "@/types";
+import type { Call, TranscriptionSegment } from "../types";
 
 const SPEAKER_COLORS = [
   "bg-primary/10",

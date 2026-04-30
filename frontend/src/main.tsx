@@ -24,11 +24,11 @@ audioPlayer.setAuthRecovery(async () => {
   return "data" in result;
 });
 
-const Scanner = lazy(() => import("@/pages/Scanner"));
+const Scanner = lazy(() => import("@/features/scanner/Scanner"));
 const Login = lazy(() => import("@/features/auth/Login"));
 const Setup = lazy(() => import("@/features/setup/Setup"));
 const Admin = lazy(() => import("@/pages/Admin"));
-const SharedCall = lazy(() => import("@/pages/SharedCall"));
+const SharedCall = lazy(() => import("@/features/shared-call/SharedCall"));
 
 const LoadingSpinner = (
   <div className="flex items-center justify-center min-h-screen">

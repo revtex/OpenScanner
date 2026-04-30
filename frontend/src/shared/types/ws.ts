@@ -1,7 +1,7 @@
 // WS framing types — native v1 protocol (JSON-object frames).
 // See docs/plans/native-api-design-plan.md §4.2.
 
-import type { Call, TranscriptionSegment } from "@/types/call";
+import type { Call, TranscriptionSegment } from "@/features/scanner";
 import type { SystemConfig } from "@/shared/types/config";
 
 // Connection status for WS

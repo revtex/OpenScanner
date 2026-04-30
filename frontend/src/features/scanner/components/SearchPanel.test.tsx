@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
-import SearchPanel from "@/components/scanner/SearchPanel";
-import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
+import SearchPanel from "../components/SearchPanel";
+import { scannerSlice } from "../scannerSlice";
 import { authSlice } from "@/features/auth";
-import { callsSlice } from "@/app/slices/scanner/callsSlice";
+import { callsSlice } from "../callsSlice";
 import { api } from "@/app/api";
 import type { RootState } from "@/app/store";
 import type { ScannerConfig } from "@/types";
@@ -14,10 +14,10 @@ import type { ScannerConfig } from "@/types";
 
 const mockSearchCallsQuery = vi.fn();
 
-vi.mock("@/app/slices/scanner/callsSlice", async () => {
+vi.mock("../callsSlice", async () => {
   const actual = await vi.importActual<
-    typeof import("@/app/slices/scanner/callsSlice")
-  >("@/app/slices/scanner/callsSlice");
+    typeof import("../callsSlice")
+  >("../callsSlice");
   return {
     ...actual,
     useSearchCallsQuery: (...args: unknown[]) => mockSearchCallsQuery(...args),

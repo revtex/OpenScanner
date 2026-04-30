@@ -6,5 +6,4 @@ export * from "@/shared/types/api";
 export * from "@/shared/types/ws";
 export * from "@/shared/types/ui";
 export * from "@/shared/types/config";
-export * from "./call";
 export * from "./admin";

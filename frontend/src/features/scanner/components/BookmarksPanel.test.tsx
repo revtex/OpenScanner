@@ -26,11 +26,11 @@ vi.mock("@/app/store", () => ({
     selector({ scanner: { config: null } }),
 }));
 
-vi.mock("@/app/slices/scanner/shareSlice", () => ({
+vi.mock("../shareSlice", () => ({
   useShareCallMutation: () => [vi.fn(), {}],
 }));
 
-import BookmarksPanel from "@/components/scanner/BookmarksPanel";
+import BookmarksPanel from "../components/BookmarksPanel";
 
 describe("BookmarksPanel", () => {
   function setup(overrides?: { calls?: unknown[]; isLoading?: boolean }) {

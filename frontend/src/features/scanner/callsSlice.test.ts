@@ -18,7 +18,7 @@ import {
   setDownloadMode,
   setTranscript,
   resetFilters,
-} from "@/app/slices/scanner/callsSlice";
+} from "./callsSlice";
 
 const reducer = callsSlice.reducer;
 

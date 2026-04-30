@@ -7,14 +7,15 @@ import {
   useRef,
 } from "react";
 import { Share2, Sun, Copy, X, ExternalLink } from "lucide-react";
-import { BookmarkButton } from "@/components/scanner/BookmarkButton";
+import { BookmarkButton } from "../components/BookmarkButton";
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
-import { useShareCallMutation } from "@/app/slices/scanner/shareSlice";
-import { HistoryPanel } from "@/components/scanner/HistoryPanel";
-import { TranscriptPanel } from "@/components/scanner/TranscriptPanel";
-import { useActiveUnit } from "@/hooks/scanner/useActiveUnit";
+import { useShareCallMutation } from "../shareSlice";
+import { HistoryPanel } from "../components/HistoryPanel";
+import { TranscriptPanel } from "../components/TranscriptPanel";
+import { useActiveUnit } from "../hooks/useActiveUnit";
 import { useAppSelector } from "@/app/store";
-import type { AvoidEntry, Call } from "@/types";
+import type { AvoidEntry } from "@/types";
+import type { Call } from "../types";
 
 interface DisplayPanelProps {
   currentCall: Call | null;

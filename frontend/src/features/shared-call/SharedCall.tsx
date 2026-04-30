@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { useGetSharedCallQuery } from "@/app/slices/scanner/shareSlice";
+import { useGetSharedCallQuery } from "@/features/scanner";
 import { Download, Radio } from "lucide-react";
 
 function formatDuration(secs: number): string {

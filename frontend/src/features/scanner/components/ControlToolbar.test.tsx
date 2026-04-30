@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { ControlToolbar } from "@/components/scanner/ControlToolbar";
+import { ControlToolbar } from "../components/ControlToolbar";
 
 function defaultProps() {
   return {

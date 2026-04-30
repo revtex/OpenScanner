@@ -8,15 +8,15 @@ import {
   setPaused,
   setLive,
   resetDisplay,
-} from "@/app/slices/scanner/scannerSlice";
-import { useScanner } from "@/hooks/scanner/useScanner";
-import { useTGSelectionSync } from "@/hooks/scanner/useTGSelectionSync";
-import { LEDPanel } from "@/components/scanner/LEDPanel";
-import { DisplayPanel } from "@/components/scanner/DisplayPanel";
-import { ControlToolbar } from "@/components/scanner/ControlToolbar";
-import SelectTGPanel from "@/components/scanner/SelectTGPanel";
-import SearchPanel from "@/components/scanner/SearchPanel";
-import BookmarksPanel from "@/components/scanner/BookmarksPanel";
+} from "./scannerSlice";
+import { useScanner } from "./hooks/useScanner";
+import { useTGSelectionSync } from "./hooks/useTGSelectionSync";
+import { LEDPanel } from "./components/LEDPanel";
+import { DisplayPanel } from "./components/DisplayPanel";
+import { ControlToolbar } from "./components/ControlToolbar";
+import SelectTGPanel from "./components/SelectTGPanel";
+import SearchPanel from "./components/SearchPanel";
+import BookmarksPanel from "./components/BookmarksPanel";
 
 export default function Scanner() {
   const navigate = useNavigate();

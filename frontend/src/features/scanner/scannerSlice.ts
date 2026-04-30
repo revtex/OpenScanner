@@ -1,11 +1,10 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type {
-  Call,
   AvoidEntry,
   ConnectionStatus,
   ScannerConfig,
-  TranscriptionSegment,
 } from "@/types";
+import type { Call, TranscriptionSegment } from "./types";
 
 const MAX_HISTORY = 5;
 

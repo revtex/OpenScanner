@@ -108,18 +108,24 @@ export default tseslint.config(
     },
   },
   {
-    // Documented debt: the WS layer (shared/) currently dispatches auth
-    // actions (clearCredentials on close, setCredentials/usePostRefreshMutation
-    // for token refresh) because both auth and admin features consume the
-    // same WS client/hook. Inverting via callbacks is tracked as a follow-up;
-    // until then these specific files may import from the @/features/auth
-    // barrel. Internal-paths into the feature remain forbidden.
+    // Documented debt: the WS layer (shared/) currently dispatches auth +
+    // scanner actions because both auth and admin features consume the same
+    // WS client/hook. shared/services/audio/player.ts and shared/types/ws.ts
+    // also reference scanner-domain types (Call, TranscriptionSegment) which
+    // logically belong to features/scanner/types.ts. Inverting via callbacks
+    // and either moving Call to shared/types/ or accepting these as
+    // permanent type-only imports is tracked as a follow-up; until then
+    // these specific files may import from the @/features/auth and
+    // @/features/scanner barrels. Internal-paths into the feature remain
+    // forbidden.
     files: [
+      "src/shared/services/audio/player.ts",
       "src/shared/services/ws/client.ts",
       "src/shared/services/ws/client.test.ts",
       "src/shared/services/ws/adminClient.ts",
       "src/shared/services/ws/adminClient.test.ts",
       "src/shared/hooks/useWebSocket.ts",
+      "src/shared/types/ws.ts",
     ],
     rules: {
       "no-restricted-imports": [
@@ -132,9 +138,9 @@ export default tseslint.config(
                 "Import from a feature's public barrel only. Reaching into a feature's internals is forbidden.",
             },
             {
-              group: ["@/features/*", "!@/features/auth"],
+              group: ["@/features/*", "!@/features/auth", "!@/features/scanner"],
               message:
-                "shared/ cannot depend on features/ except @/features/auth (WS-layer debt — see comment in eslint.config.js).",
+                "shared/ cannot depend on features/ except @/features/auth and @/features/scanner (WS-layer / Call-type debt — see comment in eslint.config.js).",
             },
             {
               group: ["@/pages/*"],

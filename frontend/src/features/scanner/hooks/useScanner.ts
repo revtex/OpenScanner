@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { useWebSocket } from "@/shared/hooks/useWebSocket";
-import { useAudioPlayer } from "@/hooks/scanner/useAudioPlayer";
+import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import {
   togglePause,
   toggleLive,
@@ -13,7 +13,7 @@ import {
   toggleTG,
   setAllTGs,
   setTGsBySystem,
-} from "@/app/slices/scanner/scannerSlice";
+} from "../scannerSlice";
 import type { AvoidEntry } from "@/types";
 
 export function useScanner() {

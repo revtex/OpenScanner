@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { BookmarkButton } from "@/components/scanner/BookmarkButton";
+import { BookmarkButton } from "../components/BookmarkButton";
 
 describe("BookmarkButton", () => {
   it('shows "Add bookmark" aria-label when not bookmarked', () => {

@@ -3,13 +3,14 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
-import { LEDPanel } from "@/components/scanner/LEDPanel";
-import { scannerSlice } from "@/app/slices/scanner/scannerSlice";
+import { LEDPanel } from "../components/LEDPanel";
+import { scannerSlice } from "../scannerSlice";
 import { authSlice } from "@/features/auth";
-import { callsSlice } from "@/app/slices/scanner/callsSlice";
+import { callsSlice } from "../callsSlice";
 import { api } from "@/app/api";
 import type { RootState } from "@/app/store";
-import type { Call, ScannerConfig } from "@/types";
+import type { ScannerConfig } from "@/types";
+import type { Call } from "../types";
 
 // Mock useTheme since it reads localStorage / sets DOM attributes
 const mockToggle = vi.fn();

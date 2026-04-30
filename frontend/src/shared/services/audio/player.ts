@@ -1,4 +1,4 @@
-import type { Call } from "@/types";
+import type { Call } from "@/features/scanner";
 import { bootstrapBeepContext } from "@/shared/services/audio/beep";
 
 interface QueueItem {

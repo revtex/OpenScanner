@@ -6,7 +6,7 @@ import {
   restoreFromDisabledTGs,
   restoreAvoidList,
   resetTGSelection,
-} from "@/app/slices/scanner/scannerSlice";
+} from "../scannerSlice";
 import {
   selectToken,
   useGetTGSelectionQuery,

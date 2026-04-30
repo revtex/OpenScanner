@@ -4,9 +4,9 @@ import { useAppSelector } from "@/app/store";
 import { selectToken } from "@/features/auth";
 import { audioPlayer } from "@/shared/services/audio/player";
 import { sanitizeDownloadFilename } from "@/shared/services/download/filename";
-import { ShareCallButton } from "@/components/scanner/ShareCallButton";
+import { ShareCallButton } from "../components/ShareCallButton";
 import { X, Play, Download, Star, ChevronDown } from "lucide-react";
-import type { Call } from "@/types";
+import type { Call } from "../types";
 
 interface BookmarksPanelProps {
   isOpen: boolean;

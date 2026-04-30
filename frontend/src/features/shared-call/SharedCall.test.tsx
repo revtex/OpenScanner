@@ -11,12 +11,12 @@ vi.mock("react-router-dom", async () => {
 });
 
 const mockUseGetSharedCallQuery = vi.fn();
-vi.mock("@/app/slices/scanner/shareSlice", () => ({
+vi.mock("@/features/scanner", () => ({
   useGetSharedCallQuery: (...args: unknown[]) =>
     mockUseGetSharedCallQuery(...args),
 }));
 
-import SharedCall from "@/pages/SharedCall";
+import SharedCall from "./SharedCall";
 
 describe("SharedCall", () => {
   it("shows loading spinner when fetching", () => {

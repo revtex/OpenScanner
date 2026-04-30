@@ -13,7 +13,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { useAppSelector, useAppDispatch } from "@/app/store";
-import { ShareCallButton } from "@/components/scanner/ShareCallButton";
+import { ShareCallButton } from "../components/ShareCallButton";
 import {
   useSearchCallsQuery,
   type CallSearchParams,
@@ -33,12 +33,12 @@ import {
   setBookmarkedOnly,
   setTranscript,
   resetFilters,
-} from "@/app/slices/scanner/callsSlice";
+} from "../callsSlice";
 import { useGetBookmarkIDsQuery, useToggleBookmarkMutation } from "@/app/api";
 import { selectToken } from "@/features/auth";
 import { audioPlayer } from "@/shared/services/audio/player";
 import { sanitizeDownloadFilename } from "@/shared/services/download/filename";
-import type { Call } from "@/types";
+import type { Call } from "../types";
 
 interface SearchPanelProps {
   isOpen: boolean;
