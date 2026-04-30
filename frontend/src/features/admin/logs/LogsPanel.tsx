@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useUpdateConfigMutation } from "@/features/admin/_shell";
-import { useAdminLogs, useAdminLogLevel } from "@/hooks/admin/useAdminLogs";
+import { useAdminLogs, useAdminLogLevel } from "./useAdminLogs";
 import type { AdminLog } from "@/types";
 
 // ─── Constants ──────────────────────────────────────────────

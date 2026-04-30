@@ -38,13 +38,13 @@ import {
 } from "@/features/auth";
 import { useAdminWebSocket } from "./_shell/useAdminWebSocket";
 import UsersPanel from "@/features/admin/users";
-import SystemsPanel from "@/components/admin/SystemsPanel";
+import SystemsPanel from "@/features/admin/systems";
 import GroupsTagsPanel from "@/features/admin/groups-tags";
 import ApiKeysPanel from "@/features/admin/api-keys";
 import DirMonitorPanel from "@/features/admin/dir-monitor";
 import DownstreamsPanel from "@/features/admin/downstreams";
 import OptionsPanel from "@/features/admin/options";
-import LogsPanel from "@/components/admin/LogsPanel";
+import LogsPanel from "@/features/admin/logs";
 import ToolsPanel from "@/features/admin/tools";
 import WebhooksPanel from "@/features/admin/webhooks";
 import ActivityPanel from "@/components/admin/ActivityPanel";
