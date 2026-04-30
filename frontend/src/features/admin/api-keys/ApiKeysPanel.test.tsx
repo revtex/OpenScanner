@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
-import ApiKeysPanel from "@/components/admin/ApiKeysPanel";
+import ApiKeysPanel from "./ApiKeysPanel";
 import { scannerSlice } from "@/features/scanner";
 import { authSlice } from "@/features/auth";
 import { callsSlice } from "@/features/scanner";

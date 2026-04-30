@@ -37,10 +37,10 @@ import {
   usePostLogoutMutation,
 } from "@/features/auth";
 import { useAdminWebSocket } from "./_shell/useAdminWebSocket";
-import UsersPanel from "@/components/admin/UsersPanel";
+import UsersPanel from "@/features/admin/users";
 import SystemsPanel from "@/components/admin/SystemsPanel";
 import GroupsTagsPanel from "@/features/admin/groups-tags";
-import ApiKeysPanel from "@/components/admin/ApiKeysPanel";
+import ApiKeysPanel from "@/features/admin/api-keys";
 import DirMonitorPanel from "@/features/admin/dir-monitor";
 import DownstreamsPanel from "@/features/admin/downstreams";
 import OptionsPanel from "@/features/admin/options";
