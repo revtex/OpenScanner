@@ -39,17 +39,17 @@ import {
 import { useAdminWebSocket } from "./_shell/useAdminWebSocket";
 import UsersPanel from "@/components/admin/UsersPanel";
 import SystemsPanel from "@/components/admin/SystemsPanel";
-import GroupsTagsPanel from "@/components/admin/GroupsTagsPanel";
+import GroupsTagsPanel from "@/features/admin/groups-tags";
 import ApiKeysPanel from "@/components/admin/ApiKeysPanel";
 import DirMonitorPanel from "@/features/admin/dir-monitor";
 import DownstreamsPanel from "@/features/admin/downstreams";
 import OptionsPanel from "@/features/admin/options";
 import LogsPanel from "@/components/admin/LogsPanel";
 import ToolsPanel from "@/features/admin/tools";
-import WebhooksPanel from "@/components/admin/WebhooksPanel";
+import WebhooksPanel from "@/features/admin/webhooks";
 import ActivityPanel from "@/components/admin/ActivityPanel";
-import SharedLinksPanel from "@/components/admin/SharedLinksPanel";
-import TranscriptionPanel from "@/components/admin/TranscriptionPanel";
+import SharedLinksPanel from "@/features/admin/shared-links";
+import TranscriptionPanel from "@/features/admin/transcription";
 import LegacyUsageBanner from "@/features/admin/legacy-usage";
 
 const navItems = [
