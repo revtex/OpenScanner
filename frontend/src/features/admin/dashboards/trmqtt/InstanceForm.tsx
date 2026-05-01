@@ -32,7 +32,7 @@ const DEFAULTS: InstanceFormValues = {
   qos: 0,
   tlsSkipVerify: false,
   enabled: true,
-  passwordMode: "keep",
+  passwordMode: "set",
   password: "",
 };
 
@@ -56,6 +56,7 @@ function fromInstance(inst: TrInstance): InstanceFormValues {
 interface InstanceFormProps {
   editing?: TrInstance;
   submitting: boolean;
+  serverError?: string | null;
   onSubmit: (values: InstanceFormValues) => void;
   onCancel: () => void;
 }
@@ -63,6 +64,7 @@ interface InstanceFormProps {
 export default function InstanceForm({
   editing,
   submitting,
+  serverError,
   onSubmit,
   onCancel,
 }: InstanceFormProps) {
@@ -121,7 +123,7 @@ export default function InstanceForm({
       data-testid="tr-instance-form"
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <label className="form-control">
+        <label className="flex flex-col gap-1">
           <span className="label-text">Label *</span>
           <input
             className="input input-bordered"
@@ -131,7 +133,7 @@ export default function InstanceForm({
             data-testid="tr-form-label"
           />
         </label>
-        <label className="form-control">
+        <label className="flex flex-col gap-1">
           <span className="label-text">Instance ID *</span>
           <input
             className="input input-bordered"
@@ -141,7 +143,7 @@ export default function InstanceForm({
             required
           />
         </label>
-        <label className="form-control md:col-span-2">
+        <label className="flex flex-col gap-1 md:col-span-2">
           <span className="label-text">Broker URL *</span>
           <input
             className="input input-bordered font-mono text-sm"
@@ -151,7 +153,7 @@ export default function InstanceForm({
             required
           />
         </label>
-        <label className="form-control">
+        <label className="flex flex-col gap-1">
           <span className="label-text">Base topic *</span>
           <input
             className="input input-bordered font-mono text-sm"
@@ -160,7 +162,7 @@ export default function InstanceForm({
             required
           />
         </label>
-        <label className="form-control">
+        <label className="flex flex-col gap-1">
           <span className="label-text">Unit topic</span>
           <input
             className="input input-bordered font-mono text-sm"
@@ -169,7 +171,7 @@ export default function InstanceForm({
             placeholder="optional"
           />
         </label>
-        <label className="form-control">
+        <label className="flex flex-col gap-1">
           <span className="label-text">Message topic</span>
           <input
             className="input input-bordered font-mono text-sm"
@@ -178,7 +180,7 @@ export default function InstanceForm({
             placeholder="optional"
           />
         </label>
-        <label className="form-control">
+        <label className="flex flex-col gap-1">
           <span className="label-text">QoS</span>
           <select
             className="select select-bordered"
@@ -190,7 +192,7 @@ export default function InstanceForm({
             <option value={2}>2</option>
           </select>
         </label>
-        <label className="form-control">
+        <label className="flex flex-col gap-1">
           <span className="label-text">Username</span>
           <input
             className="input input-bordered"
@@ -199,7 +201,7 @@ export default function InstanceForm({
             autoComplete="off"
           />
         </label>
-        <div className="form-control md:col-span-2">
+        <div className="flex flex-col gap-1 md:col-span-2">
           <span className="label-text">Password</span>
           <div className="join">
             {passwordModeOptions.map((mode) => (
@@ -251,9 +253,9 @@ export default function InstanceForm({
         </label>
       </div>
 
-      {error && (
+      {(error || serverError) && (
         <div className="alert alert-error text-sm" role="alert">
-          {error}
+          {error ?? serverError}
         </div>
       )}
 

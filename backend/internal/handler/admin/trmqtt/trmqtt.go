@@ -289,20 +289,22 @@ func (h *Handler) CreateInstance(c *gin.Context) {
 		return
 	}
 
-	// Encrypt password if provided.
+	// Encrypt password if provided. When no encryption key is configured we
+	// store plaintext (matches downstream API-key behavior; the startup banner
+	// warns operators about encryption-at-rest being disabled).
 	var passwordEnc sql.NullString
 	if req.Password != "" {
-		if h.encryptionKey == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "encryption key required to store password"})
-			return
+		stored := req.Password
+		if h.encryptionKey != "" {
+			enc, err := auth.EncryptString(req.Password, h.encryptionKey)
+			if err != nil {
+				slog.ErrorContext(ctx, "trmqtt: encrypt password", "error", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+				return
+			}
+			stored = enc
 		}
-		enc, err := auth.EncryptString(req.Password, h.encryptionKey)
-		if err != nil {
-			slog.ErrorContext(ctx, "trmqtt: encrypt password", "error", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
-			return
-		}
-		passwordEnc = sql.NullString{String: enc, Valid: true}
+		passwordEnc = sql.NullString{String: stored, Valid: true}
 	}
 
 	enabled := int64(1)
@@ -463,17 +465,17 @@ func (h *Handler) UpdateInstance(c *gin.Context) {
 		case "":
 			row.PasswordEnc = sql.NullString{}
 		default:
-			if h.encryptionKey == "" {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "encryption key required to store password"})
-				return
+			stored := *req.Password
+			if h.encryptionKey != "" {
+				enc, err := auth.EncryptString(*req.Password, h.encryptionKey)
+				if err != nil {
+					slog.ErrorContext(ctx, "trmqtt: encrypt password", "error", err)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+					return
+				}
+				stored = enc
 			}
-			enc, err := auth.EncryptString(*req.Password, h.encryptionKey)
-			if err != nil {
-				slog.ErrorContext(ctx, "trmqtt: encrypt password", "error", err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
-				return
-			}
-			row.PasswordEnc = sql.NullString{String: enc, Valid: true}
+			row.PasswordEnc = sql.NullString{String: stored, Valid: true}
 		}
 	}
 

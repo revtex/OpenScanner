@@ -14,8 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- Trunk Recorder broker passwords are stored encrypted at rest with the OpenScanner encryption key (`enc::` prefix, AES-256-GCM); the REST API never echoes the plaintext or ciphertext, only a `hasPassword: bool` flag. The PATCH endpoint accepts a tri-state password field — omit to keep, send `""` to clear, send a string to re-encrypt — so passwords can be rotated without ever round-tripping through the browser.
+- Trunk Recorder broker passwords are encrypted at rest when an OpenScanner encryption key is configured (`enc::` prefix, AES-256-GCM); when encryption-at-rest is disabled the password is stored in plaintext alongside the existing JWT secret and downstream API keys (the startup banner already warns about this case). The REST API never echoes either form, only a `hasPassword: bool` flag. The PATCH endpoint accepts a tri-state password field — omit to keep, send `""` to clear, send a string to re-encrypt — so passwords can be rotated without ever round-tripping through the browser.
 - All trunk-recorder admin routes require admin JWT; the kill-switch returns 404 (not 403) when `trMqttEnabled=false`, hiding the surface entirely from disabled deployments. The MQTT subscriber never subscribes to the broker's `audio` topic.
+
+### Fixed
+
+- **Add TR instance** form: fixed broken label/input spacing on DaisyUI 5 (the legacy `form-control` class no longer applies `flex-direction: column`), default the password mode to **Set new** for new instances (was misleadingly defaulting to **Keep existing**), and surface backend validation errors inline in the dialog instead of only logging them to the console.
 
 ## [1.3.2] — 2026-04-29
 

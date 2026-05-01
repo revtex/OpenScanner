@@ -57,6 +57,7 @@ export default function InstancesPanel({
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TrInstance | undefined>();
+  const [serverError, setServerError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{
     id: number;
     ok: boolean;
@@ -65,10 +66,12 @@ export default function InstancesPanel({
 
   function openCreate() {
     setEditing(undefined);
+    setServerError(null);
     setFormOpen(true);
   }
   function openEdit(inst: TrInstance) {
     setEditing(inst);
+    setServerError(null);
     setFormOpen(true);
   }
 
@@ -82,9 +85,15 @@ export default function InstancesPanel({
       } else {
         await createInst(valuesToCreateBody(values)).unwrap();
       }
+      setServerError(null);
       setFormOpen(false);
-    } catch (e) {
-      // RTK Query error surfaces in `error` state; keep form open.
+    } catch (e: unknown) {
+      // Surface the backend error so users can see why a save failed.
+      const err = e as { data?: { error?: string }; status?: number };
+      const msg =
+        err?.data?.error ??
+        (err?.status ? `HTTP ${err.status}` : "Save failed");
+      setServerError(msg);
       console.error("save failed", e);
     }
   }
@@ -235,8 +244,12 @@ export default function InstancesPanel({
             <InstanceForm
               editing={editing}
               submitting={creating || updating}
+              serverError={serverError}
               onSubmit={handleSubmit}
-              onCancel={() => setFormOpen(false)}
+              onCancel={() => {
+                setServerError(null);
+                setFormOpen(false);
+              }}
             />
           </div>
           <button
