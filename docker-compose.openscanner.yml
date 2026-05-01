@@ -59,35 +59,38 @@ services:
     volumes:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
-      - ./mosquitto/log:/mosquitto/log
     entrypoint:
       - sh
       - -c
       - |
         set -e
         CONF=/mosquitto/config/mosquitto.conf
-        PASSWD=/mosquitto/config/passwd
         if [ ! -f "$$CONF" ]; then
           echo "[init] writing default mosquitto.conf"
-          mkdir -p /mosquitto/config /mosquitto/data /mosquitto/log
+          mkdir -p /mosquitto/config /mosquitto/data
           cat > "$$CONF" <<'EOF'
         # Default OpenScanner-bundled mosquitto config.
-        # Loopback-only; auth required. Edit and `docker compose restart`
-        # after adding users with `mosquitto_passwd`.
+        # Ships with anonymous access so the broker boots cleanly on a
+        # fresh checkout. Lock it down after creating a user with
+        # `mosquitto_passwd` (see docs/tr-mqtt-guide.md).
         listener 1883 0.0.0.0
-        allow_anonymous false
-        password_file /mosquitto/config/passwd
+        allow_anonymous true
+        #allow_anonymous false
+        #password_file /mosquitto/config/passwd
         persistence true
         persistence_location /mosquitto/data/
-        log_dest file /mosquitto/log/mosquitto.log
+        log_dest stdout
         EOF
         fi
-        if [ ! -f "$$PASSWD" ]; then
-          echo "[init] creating empty passwd file (add users via mosquitto_passwd)"
-          touch "$$PASSWD"
-          chmod 600 "$$PASSWD"
-        fi
-        exec /usr/sbin/mosquitto -c "$$CONF"
+        # The passwd file is NOT auto-created. Run mosquitto_passwd inside
+        # the container after first boot. `--user mosquitto` is required
+        # so the file is owned by UID 1883 with 0700 perms (mosquitto 2.x
+        # refuses files with looser perms or wrong ownership):
+        #
+        #   docker compose exec --user mosquitto mosquitto \
+        #     mosquitto_passwd -c -b /mosquitto/config/passwd <user> <password>
+        #   docker compose restart mosquitto
+        exec /docker-entrypoint.sh /usr/sbin/mosquitto -c "$$CONF"
 
 # secrets:
 #   encryption_key:

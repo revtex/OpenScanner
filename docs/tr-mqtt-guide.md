@@ -97,41 +97,76 @@ The repository ships two opt-in ways to run a local MQTT broker. Pick whichever 
 docker compose --profile mqtt up -d
 ```
 
-On first start the container's entrypoint generates `./mosquitto/config/mosquitto.conf` (and an empty `passwd` file) with:
+On first start the container's entrypoint generates `./mosquitto/config/mosquitto.conf` with:
 
 - listener on port `1883`,
 - `allow_anonymous false`,
 - `password_file /mosquitto/config/passwd`,
 - persistence enabled at `./mosquitto/data/`.
 
-After the first boot the files are yours to edit — the entrypoint only writes them when they don't already exist.
+After the first boot the files are yours to edit — the entrypoint only writes them when they don't already exist. The `passwd` file is **not** auto-created; you must run `mosquitto_passwd` inside the container before mosquitto will accept clients (see [Adding users](#adding-users-both-options) below).
 
 ### Option B — committed static config (explicit)
 
-`docker-compose.mosquitto.yml` is a separate compose file that runs the upstream `eclipse-mosquitto:2` image with its default entrypoint and bind-mounts the **committed** files under [`mosquitto/config/`](../mosquitto/config/). Use it when you'd rather track the broker config in git than rely on container-side bootstrap.
+The [`mosquitto/`](../mosquitto/) folder ships a self-contained compose project that runs the upstream `eclipse-mosquitto:2` image with its default entrypoint and bind-mounts the **committed** files under [`mosquitto/config/`](../mosquitto/config/). Use it when you'd rather track the broker config in git than rely on container-side bootstrap.
 
 ```sh
-# alongside the main stack
-docker compose \
-  -f docker-compose.openscanner.yml \
-  -f docker-compose.mosquitto.yml \
-  up -d
-
-# or standalone
-docker compose -f docker-compose.mosquitto.yml up -d
+cd mosquitto
+docker compose up -d
 ```
 
-Edit `mosquitto/config/mosquitto.conf` directly and `docker compose restart mosquitto` to apply changes. The committed `passwd` file ships empty — add users before exposing the listener.
+The broker listens on `127.0.0.1:1883` by default. Logs stream to stdout — view them with:
+
+```sh
+docker compose logs -f mosquitto
+```
+
+Edit [`mosquitto/config/mosquitto.conf`](../mosquitto/config/mosquitto.conf) directly and `docker compose restart mosquitto` to apply changes. The `passwd` file is **not** committed — create it inside the container (see [Adding users](#adding-users-both-options) below) so it has the correct UID 1883 ownership and `0700` perms that mosquitto 2.x requires.
+
+#### Files and folders
+
+| Path                              | Purpose                                                                                                                            |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `mosquitto/docker-compose.yml`    | The standalone compose project. Run from inside `mosquitto/`.                                                                      |
+| `mosquitto/config/mosquitto.conf` | Listener, auth, persistence, log destination. Logs to stdout by default so no log bind-mount is needed.                            |
+| `mosquitto/config/passwd`         | Mosquitto password file. **Not committed** — created inside the container by `mosquitto_passwd` and gitignored.                    |
+| `mosquitto/data/`                 | Persistent broker state (retained messages, subscriptions). Auto-created on first run — owned by container UID `1883`. Gitignored. |
 
 ### Adding users (both options)
 
+The shipped `mosquitto.conf` boots with `allow_anonymous true` so the broker comes up cleanly on a fresh checkout (avoiding the chicken-and-egg where it would refuse to start because the `passwd` file doesn't exist yet). Lock it down once on first deployment:
+
+1. **Hand the runtime folders to the in-container `mosquitto` user (UID 1883).** On a fresh host checkout `config/` and `data/` are owned by your shell user, but the broker runs as UID 1883 inside the container, so it can't create the password file or write persistence:
+
+   ```sh
+   cd mosquitto                         # Option B only; skip for Option A
+   sudo chown -R 1883:1883 config data
+   ```
+
+   Under Option A the auto-bootstrap creates `data/` with the right owner already, but `config/` may still be host-owned if you've edited `mosquitto.conf` from the host. You'll need `sudo` (or a shared group) to edit `mosquitto.conf` from the host afterwards.
+
+2. **Start the broker** — `docker compose up -d` (or, for Option A, `docker compose --profile mqtt up -d`).
+
+3. **Create the first user from inside the container.** The `-c` flag creates the file. `--user mosquitto` drops the exec session to UID 1883 so the file is owned by the in-container `mosquitto` user with `0700` perms (which mosquitto 2.x requires) — without it `docker compose exec` runs as root and the broker can't read the file it just made:
+
+   ```sh
+   docker compose exec --user mosquitto mosquitto \
+     mosquitto_passwd -c -b /mosquitto/config/passwd tr '<password>'
+   ```
+
+4. **Lock the broker down.** Edit `mosquitto/config/mosquitto.conf` (with `sudo` after the chown): comment out `allow_anonymous true`, uncomment `allow_anonymous false` and `password_file /mosquitto/config/passwd`.
+
+5. **Restart**: `docker compose restart mosquitto`.
+
+For **additional users** (with the broker already running and `passwd` already present), drop the `-c` flag so you don't overwrite the file. Keep `--user mosquitto` so the modified file stays owned by UID 1883:
+
 ```sh
-docker compose exec mosquitto \
-  mosquitto_passwd -b /mosquitto/config/passwd tr <password>
+docker compose exec --user mosquitto mosquitto \
+  mosquitto_passwd -b /mosquitto/config/passwd <user> '<password>'
 docker compose restart mosquitto
 ```
 
-Drop the `-b` flag if you want to be prompted instead of passing the password on the command line. Use `-c` only when recreating the file from scratch.
+Drop the `-b` flag if you want to be prompted instead of passing the password on the command line.
 
 ### Exposing the broker beyond loopback
 
@@ -153,7 +188,7 @@ Pick whichever matches your operational style. Always set `instance_id` — it c
 **"Test connection" returns "auth error"**
 
 - Username or password wrong, or missing entry in `mosquitto/config/passwd`.
-- For mosquitto specifically, check `./mosquitto/log/mosquitto.log` for the rejected client.
+- Check the broker logs with `docker compose logs mosquitto` (Option B) or `docker compose logs mosquitto` from the OpenScanner stack (Option A) — rejected clients are logged at connect time.
 
 **Dashboard says "connected" but no data flows**
 

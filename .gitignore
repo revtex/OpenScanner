@@ -21,9 +21,11 @@
 /audio/
 *.m4a
 
-# mosquitto runtime — keep config/ committed, ignore data/log
+# mosquitto runtime — keep config/ committed, ignore data and the passwd
+# file (created at runtime via `mosquitto_passwd` inside the container so
+# it has the correct UID 1883 ownership and 0700 perms).
 /mosquitto/data/
-/mosquitto/log/
+/mosquitto/config/passwd
 
 # SQLite DB files
 *.db

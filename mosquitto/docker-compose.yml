@@ -1,0 +1,36 @@
+# Standalone bundled MQTT broker for the Trunk Recorder integration.
+#
+# Unlike the `mqtt` profile in ../docker-compose.openscanner.yml — which
+# auto-generates its config on first run — this compose file relies on the
+# committed static files under ./config/ and uses the upstream
+# eclipse-mosquitto image's default entrypoint. Edit the conf directly and
+# `docker compose restart mosquitto` to apply.
+#
+# Bring it up from inside this folder:
+#
+#     cd mosquitto
+#     docker compose up -d
+#
+# Create the password file (first user only — use -c) before pointing
+# trunk-recorder at it. `--user mosquitto` drops the exec session to UID
+# 1883 so the file is owned by the in-container mosquitto user with the
+# 0700 perms mosquitto 2.x expects — without it docker compose exec runs
+# as root and the broker can't read its own passwd file:
+#
+#     docker compose exec --user mosquitto mosquitto \
+#       mosquitto_passwd -c -b /mosquitto/config/passwd <user> <password>
+#     docker compose restart mosquitto
+#
+# Add additional users with the same command minus -c.
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      # Loopback-only by default. Change to "0.0.0.0:1883:1883" to expose
+      # to the LAN (and remember to firewall + add users first).
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - ./config:/mosquitto/config
+      - ./data:/mosquitto/data
