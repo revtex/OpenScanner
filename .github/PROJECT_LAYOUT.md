@@ -1,0 +1,341 @@
+# OpenScanner — Project Layout & Conventions
+
+Reference for human contributors and subagents. Terse on purpose. When in doubt, follow the existing tree; when the existing tree contradicts this doc, this doc wins and the tree is the bug.
+
+Companion to [.github/copilot-instructions.md](copilot-instructions.md). Per-domain detail lives in [.github/agents/](agents/).
+
+---
+
+## 1. Top-level layout
+
+```
+openscanner/
+  backend/         Go binary, sqlc, migrations
+  frontend/        React + TypeScript SPA
+  docs/            Tracked user/design docs (admin-guide, deployment-guide, recorder-guide)
+  docs/plans/      Local-only working notes (gitignored — never reference from tracked files)
+  .github/         Workflows, agents, this doc, copilot-instructions
+  .devcontainer/   Codespaces / dev container
+  scripts/         One-off operator scripts
+  reference/       Vendored upstream reference (rdio-scanner) — read-only
+  systems-config/  Sample TR / SDR configs
+```
+
+Industry analogues: backend follows [golang-standards/project-layout](https://github.com/golang-standards/project-layout) (`cmd/` + `internal/`), frontend follows [Bulletproof React](https://github.com/alan2207/bulletproof-react) (feature-scoped, no shared `utils/` dumping ground).
+
+---
+
+## 2. Backend (`backend/`)
+
+```
+backend/
+  cmd/
+    server/                main package — wires everything, runs the HTTP server
+    migrate/               migration CLI (separate binary)
+  internal/                everything is internal — no public Go API
+    admin/                 transport-agnostic admin business logic
+    audio/                 FFmpeg pipeline + bounded worker pool
+    auth/                  JWT, refresh-token, cookie helpers, bcrypt
+    cli/                   shared flag/env/INI parsing
+    config/                config loading + validation
+    db/                    sqlc-generated code + DB connection
+    dirmonitor/            filesystem watchers for recorder ingest
+    downstream/            forwarding to other rdio-scanner / openscanner instances
+    handler/               HTTP handlers (Gin) — feature-scoped
+      auth/                /api/v1/auth/*
+      bookmarks/           /api/v1/bookmarks/*
+      calls/               /api/v1/calls/*
+      health/              /health
+      setup/               /api/v1/setup/*
+      share/               /api/v1/share/*
+      shared/              DTOs + helpers used across handler subpackages
+      admin/               /api/v1/admin/* — one subpackage per feature
+        imports/
+        legacyusage/
+        radioreference/
+        transcriptions/
+      routes/              wiring: instantiates handlers, calls Register on each
+    logging/               slog setup
+    middleware/            Gin middleware (auth, request-id, recover, ratelimit)
+    radioref/              RadioReference client + cache
+    safehttp/              HTTP client with SSRF-style defaults (no redirects, capped body)
+    seed/                  DB seeding for fresh installs
+    static/                frontend `dist/` embed via go:embed
+    ws/                    WebSocket hub + protocol (listener + admin)
+  migrations/              numbered .sql files, append-only
+  sqlc/
+    sqlc.yaml
+    queries/               one .sql file per table
+    schema/schema.sql      mirror of final-state schema (regenerated)
+  docs/                    swaggo output (swagger.json, swagger.yaml, docs.go)
+  tools.go                 build-tag pinned dev tools (sqlc, migrate, swag)
+```
+
+### 2.1 Package boundaries
+
+- **`cmd/`** is the only place `main.go` is allowed. Wire dependencies, then call into `internal/`.
+- **`internal/`** subpackages are each a single feature or cross-cutting concern. No package re-exports another package's types.
+- **Transport vs business logic split:** HTTP and WS are transports under `handler/` and `ws/`; business logic that admin operations both call lives in `internal/admin/`. Same rule applies to anything else with two transports (e.g. CLI + HTTP).
+- A package owns its own DTOs, its own errors, and its own Swaggo annotations.
+- **No `utils/`, `helpers/`, `common/` packages.** If two packages need the same code, find a real domain name for it (`safehttp`, `radioref`, `logging`).
+
+### 2.2 When to add a package
+
+Add an `internal/<name>/` package when **one** of these is true:
+
+- It owns long-lived state (a hub, a watcher, a worker pool).
+- It encapsulates a third-party integration (RadioReference, FFmpeg, whisper).
+- It has a clearly different lifecycle from its caller (background goroutine, separate context).
+- It is reused by ≥ 2 unrelated transports (HTTP + WS, HTTP + CLI).
+
+Don't add a package for "things that feel related." A 200-line `.go` file inside an existing package is fine.
+
+### 2.3 When to split a `.go` file
+
+Default file size budget: ~500–800 lines. Split when:
+
+- File exceeds ~800 lines **and** has clear seams (one file per resource, one per protocol opcode group).
+- Multiple unrelated tests dominate the file (move tests next to the symbol under test).
+- A single struct's methods grow past one screen — split methods into `<type>_methods.go` only if the file is over budget.
+
+Convention: feature handler subpackages use `handler.go` (or per-route file like `login.go`, `refresh.go`), `dto.go` (request/response types), and `<feature>_test.go` adjacent.
+
+### 2.4 Naming
+
+- Files: lowercase, `_` for word separation: `refresh_token.go`, `replay_cache.go`.
+- Tests: `<file>_test.go`. Table-driven tests: `Test<Func>_<Scenario>` with cases as struct slice.
+- Packages: short, lowercase, no underscores. Match the directory name.
+- Exported symbols: `CamelCase`. Unexported: `camelCase`. Stutter (`auth.AuthHandler`) is wrong — prefer `auth.Handler`.
+
+### 2.5 Errors, logging, security
+
+- Always return errors; never `panic` in HTTP/WS handlers. Recovery middleware is a safety net, not a strategy.
+- Wrap with `fmt.Errorf("doing X: %w", err)`; only sentinel errors are bare `errors.New`.
+- Logging: `log/slog` only. No `log.Println`, no `fmt.Println` in production code paths.
+- Never log secrets — passwords, JWTs, refresh tokens, decrypted `enc::` values, API keys (log a truncated identifier only).
+- All SQL via sqlc; no string concatenation.
+- External processes via `exec.CommandContext` with arg slice; never a shell string.
+- Outbound HTTP via `safehttp.Client`.
+- See [.github/copilot-instructions.md § Security Rules](copilot-instructions.md) for the full OWASP-aligned list.
+
+### 2.6 Database conventions
+
+- One query file per table in `backend/sqlc/queries/<table>.sql`.
+- Migrations in `backend/migrations/NNN_<verb>_<noun>.sql`, zero-padded 3 digits, **append-only** — never rewrite a committed migration.
+- `backend/sqlc/schema/schema.sql` mirrors the final-state schema; regenerate after adding migrations.
+- After editing `.sql` files: `cd backend/sqlc && sqlc generate`.
+- Every index must correspond to a real query path; remove indexes that no query uses.
+
+### 2.7 Swagger / API contract
+
+- Every public `/api/*` (and `/api/v1/*`) endpoint has Swaggo annotations on the handler.
+- Regenerate with `make swag`. Commit the generated [backend/docs/swagger.{json,yaml}](backend/docs/) and [backend/docs/docs.go](backend/docs/docs.go).
+- Response envelopes for v1: `{"error":{"code","message","details"}}` with stable string codes (`validation_failed`, `unauthorized`, `forbidden`, `not_found`, `conflict`, `unprocessable`, `rate_limited`, `internal`).
+
+---
+
+## 3. Frontend (`frontend/`)
+
+```
+frontend/
+  index.html
+  vite.config.ts
+  tsconfig.json
+  eslint.config.js
+  sw.ts                    PWA service worker (push notifications)
+  public/manifest.json     PWA manifest
+  src/
+    main.tsx               entry — wires store, router, lazy-loads pages
+    index.css              Tailwind + DaisyUI imports
+    test-setup.ts          Vitest globals, MSW handlers (if used)
+    app/
+      api.ts               single shared RTK Query api object (one createApi call;
+                           sub-feature endpoints attach via api.injectEndpoints)
+      store.ts             Redux store assembly
+      audioListenerMiddleware.ts
+    features/              feature-first surfaces — each owns its page, components,
+                           hooks, slices, types, and tests
+      auth/                Login page + authSlice + useAuthInit + useTokenRefresh
+      setup/               Setup page + setup wizard
+      scanner/             Scanner page + scanner panels + scanner/calls/share slices
+      shared-call/         SharedCall page (deep-link playback)
+      admin/               Admin page + per-tab admin sub-features
+        Admin.tsx          chrome — header + sidebar + nested <Routes>
+        index.ts           barrel
+        _shell/            admin chrome shared by every sub-feature (adminSlice,
+                           useAdminWebSocket, useNavigationGuard, useWsQuery, …)
+                           — underscore prefix marks "not a feature"
+        users/             one folder per admin tab; each has <Panel>.tsx,
+        systems/           index.ts barrel, optional sub-feature hooks, slice,
+        api-keys/          components, and colocated tests
+        dashboards/        sub-tab chrome (Activity today; TR-MQTT later)
+          DashboardsPanel.tsx
+          activity/        ActivityPanel + activitySlice + useAdminActivity
+        logs/              LogsPanel + useAdminLogs
+        legacy-usage/  radio-reference/  tools/  options/
+        dir-monitor/   downstreams/  webhooks/  shared-links/
+        groups-tags/   transcription/
+    shared/                lowest layer — cross-feature primitives. No imports
+                           from features/ (a few documented exceptions live in
+                           eslint.config.js for the WS / Call-type debt).
+      hooks/               useTheme, useWebSocket, …
+      services/
+        audio/             player + beep
+        download/          authenticated blob download helper
+        ws/                listener + admin WebSocket clients
+      types/               api, config, ui, ws (barrel: index.ts)
+```
+
+Industry analogue: [Bulletproof React](https://github.com/alan2207/bulletproof-react) — feature folders, no shared `utils/`, dependency direction enforced by eslint. Two intentional deviations from strict Bulletproof:
+
+1. **Single shared `api.ts`** instead of one `createApi` per feature — sub-features attach via `api.injectEndpoints`. Tag invalidation across sub-features stays trivial.
+2. **Single `shared/`** instead of sibling `lib/` + `components/` + `hooks/` + `types/` — flat enough at this scale, easy to split later if any of them grows.
+
+### 3.1 Imports
+
+- All imports use the `@/` alias for `src/`. No relative `../../` chains.
+- **Dependency direction:** `pages` (lazy-loaded in `main.tsx`) → `features/` → `shared/` → `app/`. Enforced by eslint `no-restricted-imports` (see [frontend/eslint.config.js](../frontend/eslint.config.js)).
+- **Sibling features are opaque.** Cross-feature imports flow through public barrels only:
+  - `@/features/scanner` ✓
+  - `@/features/admin/users` ✓ (admin sub-features expose their own barrel)
+  - `@/features/scanner/components/SearchPanel` ✗ — reaching past the barrel is forbidden
+  - `@/features/admin/users/UsersTable` ✗ — admin sub-feature internals are opaque to siblings
+- **`_shell/` exception.** `@/features/admin/_shell` (and its files) is explicitly allowed because every admin sub-feature shares the same WS plumbing, navigation guard, and `useWsQuery` helper. The underscore prefix marks it as "not a feature itself."
+- **`shared/` debt.** `shared/services/ws/`, `shared/services/audio/player.ts`, `shared/hooks/useWebSocket.ts`, and `shared/types/ws.ts` are allowed to import the `@/features/auth` and `@/features/scanner` barrels (auth dispatch, `Call` type). Tracked, not expanded.
+
+### 3.2 Pages
+
+- Pages are top-level routed components. They live **inside their feature** (`features/auth/Login.tsx`, `features/admin/Admin.tsx`, …) — there is no separate `pages/` directory.
+- `main.tsx` is the only file that lazy-imports page modules directly; it has its own eslint exception so it can bypass barrels and avoid cycles with `app/store.ts`.
+- A page is a **thin shell**: routing, layout, top-level dispatch. Business logic lives in feature components, hooks, and slices.
+- A page that grows past ~300 lines is a smell — push panels out into the same feature folder.
+
+### 3.3 State
+
+- **Server data:** RTK Query, single shared `api` object in [frontend/src/app/api.ts](../frontend/src/app/api.ts). Feature-specific endpoints attach via `api.injectEndpoints` from inside the feature folder. **No per-feature `createApi`.**
+- **Client state:** Redux Toolkit slices live **next to the feature that owns them** (`features/scanner/scannerSlice.ts`, `features/admin/dashboards/activity/activitySlice.ts`, `features/admin/_shell/adminSlice.ts`). Slices that are genuinely cross-feature are rare; promote to `shared/` only when ≥ 2 features need them.
+- WebSocket events dispatch into Redux via the WS client + middleware — components never parse WS frames.
+- JWT tokens live in **Redux memory only**. No `localStorage`, no `sessionStorage`. Refresh token is an httpOnly cookie scoped to `/api`.
+
+### 3.4 Feature folder layout
+
+A feature folder owns one routed surface (or one admin sub-tab). Typical shape:
+
+```
+features/admin/users/
+  UsersPanel.tsx          named root file, default export
+  UsersPanel.test.tsx     public-surface test (RTL + MSW)
+  index.ts                one-line barrel: export { default } from "./UsersPanel";
+  useUsers.ts             feature-internal hook (only if it needs to exist —
+                          a 1-line wrapper around an RTK Query hook does not)
+  usersSlice.ts           feature-internal Redux slice, if any
+  types.ts                feature-internal types (server DTOs go in shared/types)
+```
+
+Rules:
+
+- **Named root file**, never `index.tsx`. Stack traces, editor tabs, and `git blame` need a real name. The `index.ts` barrel is `.ts`, no JSX.
+- **One default export per file.** Subcomponent files don't bundle multiple components.
+- **Folder-as-component split.** When a panel grows past ~500 lines and has ≥ 2 clear seams (table ↔ editor, filters ↔ list ↔ pagination), split sibling components into the same feature folder (`UsersPanel.tsx`, `UsersTable.tsx`, `UserEditor.tsx`). The barrel still exports only the root.
+- **Don't over-extract.** A subcomponent that needs > 3 props or a callback chain ≥ 2 hops outside its parent has the wrong seam — leave it inline.
+- **Sub-folders inside a feature are an internal concern.** `features/scanner/components/`, `features/scanner/hooks/` are fine when the feature has lots of pieces; small features stay flat. The barrel still hides everything.
+
+### 3.5 Hooks
+
+- Feature-internal hooks live **inside the feature folder** (`features/auth/useTokenRefresh.ts`, `features/admin/logs/useAdminLogs.ts`, `features/admin/_shell/useWsQuery.ts`).
+- Cross-feature hooks live in `shared/hooks/` (`useTheme`, `useWebSocket`).
+- A custom hook that wraps **only** an `api.ts` query/mutation does not need to exist — call the RTK Query hook directly from the component.
+
+### 3.6 Types
+
+- **Cross-feature / server DTOs** live in `shared/types/` (`api`, `config`, `ui`, `ws`). The barrel `shared/types/index.ts` re-exports them.
+- **Feature-internal types** live in the feature folder as `types.ts` (`features/scanner/types.ts`, `features/auth/types.ts`).
+- Mirror server DTO names where practical; document any divergence in the same file.
+- **Transitional `src/types/`.** `@/types` still works as a re-export of `@/shared/types/*` plus a small `admin.ts` module — kept until existing call sites are migrated. New code should import from `@/shared/types` or the feature's `types.ts`.
+
+### 3.7 Strictness
+
+- TypeScript strict mode. **No `any`. No `@ts-ignore`.** Use `unknown` and narrow.
+- No `dangerouslySetInnerHTML`.
+- DaisyUI 5 classes for UI primitives; no hand-rolled equivalents.
+- All async work goes through RTK Query or explicit Redux thunks — never naked `fetch` in components.
+
+### 3.8 Naming
+
+- Components: `PascalCase.tsx` matching the default export name.
+- Hooks: `useCamelCase.ts`.
+- Slices: `<domain>Slice.ts`.
+- Services: lowercase noun (`player.ts`, `beep.ts`, `client.ts`).
+- Tests: colocated, `<file>.test.ts(x)`. Test descriptions present-tense (`it("renders empty state when ...")`).
+
+---
+
+## 4. Cross-cutting
+
+### 4.1 Tests
+
+- **Backend:** table-driven, `httptest.NewServer` for handler tests, `mochi-co/mqtt/v2` (or similar in-process) for transport tests, real sqlite (modernc.org) — never mock the DB.
+- **Frontend:** Vitest + React Testing Library. Test the **component** (queries, user events), not implementation details. RTK Query endpoints are tested by mocking the network (MSW) at the boundary.
+- Tests live next to source: `foo.go` → `foo_test.go`, `Bar.tsx` → `Bar.test.tsx`.
+- No fixture directories named `__mocks__/` or `__fixtures__/` unless absolutely necessary; prefer inline test data.
+
+### 4.2 Tooling expectations
+
+- Search: VS Code `grep_search` first; in the terminal use `rg` (ripgrep), never plain `grep`.
+- Listing: `list_dir` or `file_search`, never shell `find`.
+- Validation after a backend change: `cd backend && go vet ./... && go build ./...`.
+- Validation after a frontend change: `cd frontend && npx tsc --noEmit && pnpm test`.
+- Backend live reload: [air](https://github.com/cosmtrek/air). Frontend dev server: [Vite](https://vitejs.dev/). Single `make dev` runs both.
+- SQL: `sqlc generate` after every `.sql` change. `swag init` (via `make swag`) after every Swaggo change.
+
+### 4.3 Build / release / changelog
+
+- Versioning: [SemVer](https://semver.org/). Tags `vX.Y.Z`.
+- `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/). Bullets describe **what changed in the product**, never reference plan filenames.
+- Any user-visible change ships with a release tag in the same session — never leave a user-visible bullet sitting in `[Unreleased]`.
+- Pure CI / internal-docs / refactor changes can batch under `[Unreleased]` or use the `skip-changelog` PR label.
+- See [docs/plans/release-guide.md](../docs/plans/release-guide.md) for the local checklist (gitignored — operator-side).
+
+### 4.4 Local-only planning docs
+
+- The entire `docs/plans/` directory is **gitignored**. Files there are personal scratchpads.
+- **Never** reference plan files from any tracked file — CHANGELOG, committed docs, commit messages, PR titles, code comments.
+- If you find a tracked file that links into `docs/plans/`, that's a bug — remove the reference.
+
+### 4.5 Subagent delegation
+
+Domain work goes to its expert agent:
+
+| Domain                                      | Agent            |
+| ------------------------------------------- | ---------------- |
+| Backend Go                                  | Go Expert        |
+| React / TypeScript                          | React Expert     |
+| Schema, migrations, sqlc                    | Database Expert  |
+| User-facing docs                            | Docs Expert      |
+| Security / quality review                   | Reviewer         |
+| Writing tests                               | Testing Expert   |
+| Dead code, unused imports, stale files      | Cleanup Expert   |
+| Trunk-recorder log analysis, SDR tuning     | TR Tuning Expert |
+| Read-only investigation across the codebase | Explore          |
+
+The top-level conversation coordinates and reports; agents do the work. Inline handling is acceptable only for trivial one-liners.
+
+---
+
+## 5. Industry references
+
+- [golang-standards/project-layout](https://github.com/golang-standards/project-layout) — `cmd/` + `internal/`.
+- [Bulletproof React](https://github.com/alan2207/bulletproof-react) — feature folders, no shared `utils/`.
+- [Keep a Changelog](https://keepachangelog.com/) — CHANGELOG format.
+- [Semantic Versioning](https://semver.org/) — version numbers.
+- [Conventional Commits](https://www.conventionalcommits.org/) — commit message format (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `test:`).
+- [The Twelve-Factor App](https://12factor.net/) — config via env, logs as event streams, stateless processes.
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/) — the security baseline (see copilot-instructions.md § Security Rules).
+
+---
+
+## 6. When the rules conflict with reality
+
+- If you find code that violates this doc, the code is the bug — fix it in your PR if it's in scope, otherwise note it and move on.
+- If a rule blocks legitimate work, propose an amendment to this doc in the same PR rather than working around it silently.
+- Pragmatism beats dogma. The seam test, the package-boundary test, and the file-size budgets are guidelines — explain in the PR description when you deviate.

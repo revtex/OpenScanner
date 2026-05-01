@@ -1,10 +1,9 @@
-// Barrel re-export for the types tree. Existing `@/types` imports keep
-// working; new code can also import from a specific module
-// (`@/types/call`, `@/types/admin`, etc.).
+// Transitional barrel. During the features/ migration, topic modules are
+// being relocated under `@/shared/types/`. Existing `@/types` imports keep
+// working; new code should import from `@/shared/types` or specific feature
+// type modules.
+export * from "@/shared/types/api";
+export * from "@/shared/types/ws";
+export * from "@/shared/types/ui";
+export * from "@/shared/types/config";
 export * from "./admin";
-export * from "./api";
-export * from "./auth";
-export * from "./call";
-export * from "./config";
-export * from "./ui";
-export * from "./ws";

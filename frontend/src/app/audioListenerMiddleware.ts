@@ -1,7 +1,7 @@
 import { createListenerMiddleware } from "@reduxjs/toolkit";
 import type { RootState } from "@/app/store";
-import { callReceived } from "@/app/slices/scanner/scannerSlice";
-import { audioPlayer } from "@/services/audio/player";
+import { callReceived } from "@/features/scanner";
+import { audioPlayer } from "@/shared/services/audio/player";
 
 /**
  * Listener middleware that bridges incoming Redux call events to the

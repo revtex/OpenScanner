@@ -58,7 +58,7 @@ Do not handle domain work inline when a matching agent exists. Inline handling i
 
 ## Coding Conventions (high level)
 
-Detailed conventions live in the individual agent files. The non-negotiables for every surface of the app:
+Full layout, package boundaries, file-split heuristics, and naming rules live in [PROJECT_LAYOUT.md](PROJECT_LAYOUT.md). Detailed per-domain conventions live in the individual agent files. The non-negotiables for every surface of the app:
 
 ### Go
 
