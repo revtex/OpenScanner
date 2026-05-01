@@ -96,13 +96,80 @@ export interface RateSample {
   rate: number;
 }
 
+/**
+ * Latest decode-rate breakdown per system. The `tr.rates` envelope
+ * carries `rates: [{sys_num, sys_name, decoderate, decoderate_interval,
+ * control_channel}]`; we keep the most recent one per sys_name.
+ */
+export interface SystemRateInfo {
+  sysNum?: number;
+  sysName: string;
+  decoderate: number;
+  decoderateInterval?: number;
+  controlChannel?: number;
+  at: number;
+}
+
+/**
+ * Plugin lifecycle ping (`tr.pluginStatus`). Status is "connected" or
+ * "disconnected" per the upstream plugin's open/close LWT messages.
+ */
+export interface PluginStatusInfo {
+  status: string;
+  clientId?: string;
+  instanceId?: string;
+  at: number;
+}
+
+/**
+ * Recent-calls feed entry. Captures both `tr.callStart` and `tr.callEnd`
+ * frames; `kind` distinguishes them and `endedAt` is set on call_end.
+ */
+export interface RecentCallEntry {
+  at: number;
+  kind: "start" | "end";
+  callId?: string;
+  callNum?: string;
+  sysName?: string;
+  sysNum?: number;
+  freq?: number;
+  unit?: string;
+  unitAlpha?: string;
+  talkgroup?: string;
+  talkgroupAlpha?: string;
+  talkgroupGroup?: string;
+  talkgroupTag?: string;
+  talkgroupDescription?: string;
+  encrypted?: boolean;
+  emergency?: boolean;
+  conventional?: boolean;
+  callState?: string;
+  monState?: string;
+  recState?: string;
+  audioType?: string;
+  length?: number;
+  startTime?: number;
+  stopTime?: number;
+  callFilename?: string;
+  raw: unknown;
+}
+
 export interface UnitEventEntry {
   at: number;
   topic: string;
   kind: string;
   shortname?: string;
   unitId?: string;
+  unitAlpha?: string;
   talkgroupId?: string;
+  talkgroupAlpha?: string;
+  talkgroupGroup?: string;
+  talkgroupTag?: string;
+  talkgroupDescription?: string;
+  talkgroupPatches?: string;
+  freq?: number;
+  callNum?: string;
+  encrypted?: boolean;
   raw: unknown;
 }
 
@@ -110,9 +177,13 @@ export interface MessageEntry {
   at: number;
   topic: string;
   type?: string;
+  trunkMsg?: string;
   opcode?: string;
+  opcodeType?: string;
   opcodeDesc?: string;
   shortname?: string;
+  sysNum?: number;
+  meta?: string;
   raw: unknown;
 }
 

@@ -1,13 +1,18 @@
-// Live dashboard view — sources/recorders + decode-rate sparkline + active calls.
+// Live dashboard overview — connection status, decode-rate sparkline, and
+// per-system rate breakdown. Tables for recorders / calls / systems live in
+// their own views to keep this pane scannable at a glance.
 import { useMemo } from "react";
 import {
   useTrMqttState,
   useTrInstanceConnection,
   useTrLagWarning,
+  useTrSystemRates,
+  useTrPluginStatus,
 } from "./useTrMqtt";
 import { useGetTrSnapshotQuery } from "./trMqttApi";
 import type { TrInstance, RateSample } from "./types";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Plug, Radio, Wifi } from "lucide-react";
+import { asArray, asRecord, fmtDateTime, fmtFreqMHz } from "./format";
 
 function Sparkline({ samples }: { samples: RateSample[] }) {
   const W = 600;
@@ -34,7 +39,7 @@ function Sparkline({ samples }: { samples: RateSample[] }) {
   return (
     <div>
       <div className="flex justify-between text-xs text-base-content/60 mb-1">
-        <span>Decode rate</span>
+        <span>Aggregate decode rate (msgs/sec)</span>
         <span>
           last: <strong>{last.rate.toFixed(1)}</strong> · max:{" "}
           <strong>{maxRate.toFixed(1)}</strong>
@@ -58,12 +63,26 @@ function Sparkline({ samples }: { samples: RateSample[] }) {
   );
 }
 
-function asArray(v: unknown): unknown[] {
-  return Array.isArray(v) ? v : [];
-}
-
-function asRecord(v: unknown): Record<string, unknown> | null {
-  return v && typeof v === "object" ? (v as Record<string, unknown>) : null;
+function StatCard({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className="card bg-base-200 shadow-sm">
+      <div className="card-body p-3">
+        <div className="flex items-center gap-2 text-base-content/60 text-xs uppercase tracking-wide">
+          {icon}
+          {label}
+        </div>
+        <div className="text-2xl font-semibold mt-1">{value}</div>
+      </div>
+    </div>
+  );
 }
 
 export default function DashboardView({ instance }: { instance: TrInstance }) {
@@ -74,24 +93,32 @@ export default function DashboardView({ instance }: { instance: TrInstance }) {
   const lag = useTrLagWarning(instance.id);
   const state = useTrMqttState();
   const rates = state.rates[instance.id] ?? [];
+  const systemRates = useTrSystemRates(instance.id);
+  const pluginStatus = useTrPluginStatus(instance.id);
   const recorders = state.recorders[instance.id];
   const callsActive = state.callsActive[instance.id];
   const systems = state.systems[instance.id];
+  const unitCount = state.unitEvents[instance.id]?.length ?? 0;
+  const messageCount = state.trunkingMessages[instance.id]?.length ?? 0;
 
-  const recorderRows = useMemo(() => {
-    const rec = asRecord(recorders);
-    return asArray(rec?.recorders);
-  }, [recorders]);
+  const counts = useMemo(() => {
+    const recRec = asRecord(recorders);
+    const callRec = asRecord(callsActive);
+    const sysRec = asRecord(systems);
+    return {
+      recorders: asArray(recRec?.recorders).length,
+      activeCalls: asArray(callRec?.calls ?? callRec?.callsActive).length,
+      systems: asArray(sysRec?.systems).length,
+    };
+  }, [recorders, callsActive, systems]);
 
-  const callRows = useMemo(() => {
-    const rec = asRecord(callsActive);
-    return asArray(rec?.calls ?? rec?.callsActive ?? callsActive);
-  }, [callsActive]);
-
-  const systemRows = useMemo(() => {
-    const rec = asRecord(systems);
-    return asArray(rec?.systems ?? systems);
-  }, [systems]);
+  const sysRateRows = useMemo(
+    () =>
+      Object.values(systemRates).sort((a, b) =>
+        a.sysName.localeCompare(b.sysName),
+      ),
+    [systemRates],
+  );
 
   return (
     <div className="space-y-4">
@@ -102,10 +129,31 @@ export default function DashboardView({ instance }: { instance: TrInstance }) {
             conn.connected ? "badge-success" : "badge-warning"
           } badge-sm`}
         >
-          {conn.connected ? "connected" : "disconnected"}
+          {conn.connected ? "broker connected" : "broker disconnected"}
         </span>
+        {pluginStatus && (
+          <span
+            className={`badge badge-sm ${
+              pluginStatus.status === "connected"
+                ? "badge-success"
+                : "badge-error"
+            }`}
+            title={
+              pluginStatus.clientId
+                ? `client_id: ${pluginStatus.clientId}`
+                : undefined
+            }
+          >
+            plugin: {pluginStatus.status}
+          </span>
+        )}
         {conn.lastError && (
           <span className="text-xs text-error">{conn.lastError}</span>
+        )}
+        {conn.lastSeenAt && (
+          <span className="text-xs text-base-content/50">
+            last frame: {fmtDateTime(conn.lastSeenAt)}
+          </span>
         )}
         {lag && (
           <span className="badge badge-warning gap-1">
@@ -114,132 +162,73 @@ export default function DashboardView({ instance }: { instance: TrInstance }) {
         )}
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <StatCard
+          label="Systems"
+          value={counts.systems}
+          icon={<Radio className="w-3 h-3" />}
+        />
+        <StatCard
+          label="Recorders"
+          value={counts.recorders}
+          icon={<Plug className="w-3 h-3" />}
+        />
+        <StatCard
+          label="Active calls"
+          value={counts.activeCalls}
+          icon={<Wifi className="w-3 h-3" />}
+        />
+        <StatCard
+          label="Recent units"
+          value={unitCount}
+          icon={<Radio className="w-3 h-3" />}
+        />
+        <StatCard
+          label="Trunking msgs"
+          value={messageCount}
+          icon={<Radio className="w-3 h-3" />}
+        />
+      </div>
+
       <div className="card bg-base-200">
         <div className="card-body p-4">
           <Sparkline samples={rates} />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="card bg-base-200">
-          <div className="card-body p-4">
-            <h4 className="card-title text-sm">Recorders</h4>
-            {recorderRows.length === 0 ? (
-              <div className="text-xs text-base-content/50">No data.</div>
-            ) : (
-              <div className="overflow-x-auto max-h-64">
-                <table className="table table-xs">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>State</th>
-                      <th>Type</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recorderRows.map((r, i) => {
-                      const rec = asRecord(r);
-                      return (
-                        <tr key={i}>
-                          <td className="font-mono text-xs">
-                            {String(rec?.id ?? rec?.rec_num ?? i)}
-                          </td>
-                          <td>
-                            {String(rec?.rec_state_type ?? rec?.state ?? "")}
-                          </td>
-                          <td className="text-xs">
-                            {String(rec?.type ?? rec?.recorder_type ?? "")}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="card bg-base-200">
-          <div className="card-body p-4">
-            <h4 className="card-title text-sm">Active calls</h4>
-            {callRows.length === 0 ? (
-              <div className="text-xs text-base-content/50">
-                No active calls.
-              </div>
-            ) : (
-              <div className="overflow-x-auto max-h-64">
-                <table className="table table-xs">
-                  <thead>
-                    <tr>
-                      <th>System</th>
-                      <th>TG</th>
-                      <th>Freq</th>
-                      <th>Unit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {callRows.map((c, i) => {
-                      const rec = asRecord(c);
-                      return (
-                        <tr key={i}>
-                          <td>
-                            {String(
-                              rec?.shortname ??
-                                rec?.short_name ??
-                                rec?.sys_name ??
-                                rec?.system ??
-                                rec?.sys_num ??
-                                "",
-                            )}
-                          </td>
-                          <td>{String(rec?.talkgroup ?? "")}</td>
-                          <td className="font-mono text-xs">
-                            {String(rec?.freq ?? rec?.frequency ?? "")}
-                          </td>
-                          <td>{String(rec?.unit ?? rec?.src ?? "")}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
       <div className="card bg-base-200">
         <div className="card-body p-4">
-          <h4 className="card-title text-sm">Systems</h4>
-          {systemRows.length === 0 ? (
+          <h4 className="card-title text-sm">Per-system decode rates</h4>
+          {sysRateRows.length === 0 ? (
             <div className="text-xs text-base-content/50">
-              No systems frame yet.
+              No rates frame yet.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="table table-xs">
                 <thead>
                   <tr>
-                    <th>Shortname</th>
-                    <th>System type</th>
-                    <th>Talkgroups</th>
+                    <th>System</th>
+                    <th className="text-right">Rate (msgs/s)</th>
+                    <th className="text-right">Interval</th>
+                    <th>Control channel</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {systemRows.map((s, i) => {
-                    const rec = asRecord(s);
-                    const tgs = asArray(rec?.talkgroups);
-                    return (
-                      <tr key={i}>
-                        <td>
-                          {String(rec?.shortname ?? rec?.short_name ?? "")}
-                        </td>
-                        <td>{String(rec?.system_type ?? rec?.type ?? "")}</td>
-                        <td>{tgs.length}</td>
-                      </tr>
-                    );
-                  })}
+                  {sysRateRows.map((r) => (
+                    <tr key={r.sysName}>
+                      <td className="font-mono">{r.sysName}</td>
+                      <td className="text-right font-mono">
+                        {r.decoderate.toFixed(2)}
+                      </td>
+                      <td className="text-right text-base-content/60">
+                        {r.decoderateInterval ?? "—"}s
+                      </td>
+                      <td className="font-mono text-xs">
+                        {fmtFreqMHz(r.controlChannel)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

@@ -9,8 +9,11 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type {
   InstanceConnectionState,
   MessageEntry,
+  PluginStatusInfo,
   RateSample,
+  RecentCallEntry,
   SnapshotView,
+  SystemRateInfo,
   TrEventEnvelope,
   UnitEventEntry,
 } from "./types";
@@ -20,16 +23,21 @@ import type {
 const RATE_CAP = 300; // ~5 min at 1 Hz
 const UNIT_EVENT_CAP = 200;
 const MESSAGE_CAP = 500;
+const RECENT_CALL_CAP = 100;
 
 export interface TrMqttState {
   instances: Record<number, InstanceConnectionState>;
   snapshots: Record<number, SnapshotView>;
   rates: Record<number, RateSample[]>;
+  /** Latest decode rate per `sys_name` keyed off the most recent rates frame. */
+  systemRates: Record<number, Record<string, SystemRateInfo>>;
   recorders: Record<number, unknown>;
   callsActive: Record<number, unknown>;
   systems: Record<number, unknown>;
   config: Record<number, unknown>;
+  pluginStatus: Record<number, PluginStatusInfo>;
   unitEvents: Record<number, UnitEventEntry[]>;
+  recentCalls: Record<number, RecentCallEntry[]>;
   trunkingMessages: Record<number, MessageEntry[]>;
   /** Unix millis of the last `tr.warn.lag` event for each instance. */
   lagWarning: Record<number, number>;
@@ -39,11 +47,14 @@ const initialState: TrMqttState = {
   instances: {},
   snapshots: {},
   rates: {},
+  systemRates: {},
   recorders: {},
   callsActive: {},
   systems: {},
   config: {},
+  pluginStatus: {},
   unitEvents: {},
+  recentCalls: {},
   trunkingMessages: {},
   lagWarning: {},
 };
@@ -58,6 +69,25 @@ function pushCapped<T>(arr: T[] | undefined, item: T, cap: number): T[] {
 
 function asRecord(v: unknown): Record<string, unknown> | null {
   return v && typeof v === "object" ? (v as Record<string, unknown>) : null;
+}
+
+function asNumber(v: unknown): number | undefined {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+function asString(v: unknown): string | undefined {
+  if (typeof v === "string" && v !== "") return v;
+  if (typeof v === "number") return String(v);
+  return undefined;
+}
+
+function asBool(v: unknown): boolean | undefined {
+  return typeof v === "boolean" ? v : undefined;
 }
 
 function aggregateRate(payload: unknown): number {
@@ -78,6 +108,66 @@ function aggregateRate(payload: unknown): number {
     if (typeof v === "number") total += v;
   }
   return total;
+}
+
+function extractSystemRates(
+  payload: unknown,
+  at: number,
+): Record<string, SystemRateInfo> {
+  const rec = asRecord(payload);
+  const arr = Array.isArray(rec?.rates) ? rec.rates : [];
+  const out: Record<string, SystemRateInfo> = {};
+  for (const item of arr) {
+    const sub = asRecord(item);
+    if (!sub) continue;
+    const sysName = asString(sub.sys_name) ?? asString(sub.sys_num);
+    if (!sysName) continue;
+    out[sysName] = {
+      sysNum: asNumber(sub.sys_num),
+      sysName,
+      decoderate: asNumber(sub.decoderate) ?? asNumber(sub.rate) ?? 0,
+      decoderateInterval: asNumber(sub.decoderate_interval),
+      controlChannel: asNumber(sub.control_channel),
+      at,
+    };
+  }
+  return out;
+}
+
+function extractCall(
+  rec: Record<string, unknown> | null,
+  at: number,
+  kind: "start" | "end",
+  raw: unknown,
+): RecentCallEntry {
+  return {
+    at,
+    kind,
+    callId: asString(rec?.id),
+    callNum: asString(rec?.call_num),
+    sysName: asString(rec?.sys_name) ?? asString(rec?.short_name),
+    sysNum: asNumber(rec?.sys_num),
+    freq: asNumber(rec?.freq),
+    unit: asString(rec?.unit),
+    unitAlpha: asString(rec?.unit_alpha_tag),
+    talkgroup: asString(rec?.talkgroup),
+    talkgroupAlpha: asString(rec?.talkgroup_alpha_tag),
+    talkgroupGroup: asString(rec?.talkgroup_group),
+    talkgroupTag: asString(rec?.talkgroup_tag),
+    talkgroupDescription: asString(rec?.talkgroup_description),
+    encrypted: asBool(rec?.encrypted),
+    emergency: asBool(rec?.emergency),
+    conventional: asBool(rec?.conventional),
+    callState: asString(rec?.call_state_type),
+    monState: asString(rec?.mon_state_type),
+    recState: asString(rec?.rec_state_type),
+    audioType: asString(rec?.audio_type),
+    length: asNumber(rec?.length),
+    startTime: asNumber(rec?.start_time),
+    stopTime: asNumber(rec?.stop_time),
+    callFilename: asString(rec?.call_filename),
+    raw,
+  };
 }
 
 function unitKindFromTopic(topic: string): string {
@@ -115,11 +205,14 @@ export const trMqttSlice = createSlice({
       delete state.instances[id];
       delete state.snapshots[id];
       delete state.rates[id];
+      delete state.systemRates[id];
       delete state.recorders[id];
       delete state.callsActive[id];
       delete state.systems[id];
       delete state.config[id];
+      delete state.pluginStatus[id];
       delete state.unitEvents[id];
+      delete state.recentCalls[id];
       delete state.trunkingMessages[id];
       delete state.lagWarning[id];
     },
@@ -162,6 +255,7 @@ export const trMqttSlice = createSlice({
             { at: now, rate: aggregateRate(envelope.payload) },
             RATE_CAP,
           );
+          state.systemRates[id] = extractSystemRates(envelope.payload, now);
           state.instances[id] = { ...conn, connected: true, lastSeenAt: now };
           return;
         }
@@ -173,6 +267,24 @@ export const trMqttSlice = createSlice({
           state.callsActive[id] = envelope.payload;
           state.instances[id] = { ...conn, connected: true, lastSeenAt: now };
           return;
+        case "tr.callStart":
+        case "tr.callEnd": {
+          // Plugin envelope: { type, call:{...}, timestamp, instance_id }
+          const env = asRecord(envelope.payload);
+          const call = asRecord(env?.call) ?? env;
+          state.recentCalls[id] = pushCapped(
+            state.recentCalls[id],
+            extractCall(
+              call,
+              now,
+              topic === "tr.callStart" ? "start" : "end",
+              envelope.payload,
+            ),
+            RECENT_CALL_CAP,
+          );
+          state.instances[id] = { ...conn, connected: true, lastSeenAt: now };
+          return;
+        }
         case "tr.systems":
         case "tr.system":
           state.systems[id] = envelope.payload;
@@ -182,6 +294,17 @@ export const trMqttSlice = createSlice({
           state.config[id] = envelope.payload;
           state.instances[id] = { ...conn, connected: true, lastSeenAt: now };
           return;
+        case "tr.pluginStatus": {
+          const env = asRecord(envelope.payload);
+          state.pluginStatus[id] = {
+            status: asString(env?.status) ?? "unknown",
+            clientId: asString(env?.client_id),
+            instanceId: asString(env?.instance_id),
+            at: now,
+          };
+          state.instances[id] = { ...conn, lastSeenAt: now };
+          return;
+        }
         case "tr.message": {
           // TR plugin envelope: { type, message:{ sys_num, sys_name,
           // trunk_msg, trunk_msg_type, opcode, opcode_type, opcode_desc,
@@ -193,14 +316,14 @@ export const trMqttSlice = createSlice({
             {
               at: now,
               topic,
-              type: (msg?.trunk_msg_type ?? msg?.message_type) as
-                | string
-                | undefined,
-              opcode: msg?.opcode != null ? String(msg.opcode) : undefined,
-              opcodeDesc: msg?.opcode_desc as string | undefined,
-              shortname: (msg?.sys_name ?? msg?.shortname) as
-                | string
-                | undefined,
+              type: asString(msg?.trunk_msg_type ?? msg?.message_type),
+              trunkMsg: asString(msg?.trunk_msg),
+              opcode: asString(msg?.opcode),
+              opcodeType: asString(msg?.opcode_type),
+              opcodeDesc: asString(msg?.opcode_desc),
+              shortname: asString(msg?.sys_name ?? msg?.shortname),
+              sysNum: asNumber(msg?.sys_num),
+              meta: asString(msg?.meta),
               raw: envelope.payload,
             },
             MESSAGE_CAP,
@@ -224,15 +347,18 @@ export const trMqttSlice = createSlice({
             at: now,
             topic,
             kind: unitKindFromTopic(topic),
-            shortname: (rec?.sys_name ?? rec?.shortname) as string | undefined,
-            unitId:
-              rec?.unit != null
-                ? String(rec.unit)
-                : rec?.unit_id != null
-                  ? String(rec.unit_id)
-                  : undefined,
-            talkgroupId:
-              rec?.talkgroup != null ? String(rec.talkgroup) : undefined,
+            shortname: asString(rec?.sys_name ?? rec?.shortname),
+            unitId: asString(rec?.unit ?? rec?.unit_id),
+            unitAlpha: asString(rec?.unit_alpha_tag ?? rec?.unit_alpha),
+            talkgroupId: asString(rec?.talkgroup),
+            talkgroupAlpha: asString(rec?.talkgroup_alpha_tag),
+            talkgroupGroup: asString(rec?.talkgroup_group),
+            talkgroupTag: asString(rec?.talkgroup_tag),
+            talkgroupDescription: asString(rec?.talkgroup_description),
+            talkgroupPatches: asString(rec?.talkgroup_patches),
+            freq: asNumber(rec?.freq),
+            callNum: asString(rec?.call_num),
+            encrypted: asBool(rec?.encrypted),
             raw: envelope.payload,
           },
           UNIT_EVENT_CAP,

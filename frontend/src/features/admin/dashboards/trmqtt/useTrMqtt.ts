@@ -21,8 +21,36 @@ export function useTrRates(id: number) {
   return useAppSelector((s: TrMqttRoot) => s.trMqtt.rates[id] ?? []);
 }
 
+export function useTrSystemRates(id: number) {
+  return useAppSelector((s: TrMqttRoot) => s.trMqtt.systemRates[id] ?? {});
+}
+
+export function useTrRecorders(id: number) {
+  return useAppSelector((s: TrMqttRoot) => s.trMqtt.recorders[id]);
+}
+
+export function useTrCallsActive(id: number) {
+  return useAppSelector((s: TrMqttRoot) => s.trMqtt.callsActive[id]);
+}
+
+export function useTrSystems(id: number) {
+  return useAppSelector((s: TrMqttRoot) => s.trMqtt.systems[id]);
+}
+
+export function useTrConfig(id: number) {
+  return useAppSelector((s: TrMqttRoot) => s.trMqtt.config[id]);
+}
+
+export function useTrPluginStatus(id: number) {
+  return useAppSelector((s: TrMqttRoot) => s.trMqtt.pluginStatus[id]);
+}
+
 export function useTrUnitEvents(id: number) {
   return useAppSelector((s: TrMqttRoot) => s.trMqtt.unitEvents[id] ?? []);
+}
+
+export function useTrRecentCalls(id: number) {
+  return useAppSelector((s: TrMqttRoot) => s.trMqtt.recentCalls[id] ?? []);
 }
 
 export function useTrMessages(id: number) {

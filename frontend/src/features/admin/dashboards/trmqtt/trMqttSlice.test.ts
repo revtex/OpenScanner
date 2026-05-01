@@ -216,4 +216,192 @@ describe("trMqttSlice", () => {
     );
     expect(next).toEqual(emptyState());
   });
+
+  it("tr.rates also stores per-system breakdown by sys_name", () => {
+    const next = reducer(
+      emptyState(),
+      applyTrEvent({
+        topic: "tr.rates",
+        envelope: envelope({
+          rates: [
+            {
+              sys_num: 0,
+              sys_name: "sys1",
+              decoderate: 12.5,
+              decoderate_interval: 3,
+              control_channel: 851000000,
+            },
+            { sys_num: 1, sys_name: "sys2", decoderate: 4.0 },
+          ],
+        }),
+        at: 50,
+      }),
+    );
+    expect(next.systemRates[ID].sys1).toEqual({
+      sysNum: 0,
+      sysName: "sys1",
+      decoderate: 12.5,
+      decoderateInterval: 3,
+      controlChannel: 851000000,
+      at: 50,
+    });
+    expect(next.systemRates[ID].sys2.decoderate).toBe(4.0);
+  });
+
+  it("tr.callStart and tr.callEnd push to recentCalls with kind", () => {
+    let s = emptyState();
+    s = reducer(
+      s,
+      applyTrEvent({
+        topic: "tr.callStart",
+        envelope: envelope({
+          call: {
+            id: "abc",
+            call_num: "42",
+            sys_name: "sys1",
+            sys_num: 0,
+            freq: 851012500,
+            unit: "1234",
+            unit_alpha_tag: "DISP1",
+            talkgroup: "100",
+            talkgroup_alpha_tag: "FIRE OPS",
+            talkgroup_group: "Fire",
+            encrypted: false,
+            emergency: true,
+          },
+        }),
+        at: 200,
+      }),
+    );
+    s = reducer(
+      s,
+      applyTrEvent({
+        topic: "tr.callEnd",
+        envelope: envelope({
+          call: {
+            id: "abc",
+            call_num: "42",
+            sys_name: "sys1",
+            length: 7.5,
+            stop_time: 1700000007,
+          },
+        }),
+        at: 210,
+      }),
+    );
+    expect(s.recentCalls[ID]).toHaveLength(2);
+    expect(s.recentCalls[ID][0].kind).toBe("start");
+    expect(s.recentCalls[ID][0].talkgroupAlpha).toBe("FIRE OPS");
+    expect(s.recentCalls[ID][0].emergency).toBe(true);
+    expect(s.recentCalls[ID][1].kind).toBe("end");
+    expect(s.recentCalls[ID][1].length).toBe(7.5);
+  });
+
+  it("tr.pluginStatus stores connected/disconnected with client id", () => {
+    const next = reducer(
+      emptyState(),
+      applyTrEvent({
+        topic: "tr.pluginStatus",
+        envelope: envelope({
+          status: "connected",
+          client_id: "tr-1234",
+          instance_id: "trunk-recorder",
+        }),
+        at: 33,
+      }),
+    );
+    expect(next.pluginStatus[ID]).toEqual({
+      status: "connected",
+      clientId: "tr-1234",
+      instanceId: "trunk-recorder",
+      at: 33,
+    });
+  });
+
+  it("tr.unit.* captures alpha tags and talkgroup metadata when present", () => {
+    const next = reducer(
+      emptyState(),
+      applyTrEvent({
+        topic: "tr.unit.call",
+        envelope: envelope({
+          sys_name: "sys1",
+          unit: 5555,
+          unit_alpha_tag: "PD-15",
+          talkgroup: 200,
+          talkgroup_alpha_tag: "PATROL 2",
+          talkgroup_group: "Police",
+          talkgroup_tag: "Law Dispatch",
+          freq: 851000000,
+          encrypted: true,
+        }),
+        at: 7,
+      }),
+    );
+    const e = next.unitEvents[ID][0];
+    expect(e.unitAlpha).toBe("PD-15");
+    expect(e.talkgroupAlpha).toBe("PATROL 2");
+    expect(e.talkgroupGroup).toBe("Police");
+    expect(e.freq).toBe(851000000);
+    expect(e.encrypted).toBe(true);
+  });
+
+  it("tr.message captures opcode_type and meta lines", () => {
+    const next = reducer(
+      emptyState(),
+      applyTrEvent({
+        topic: "tr.message",
+        envelope: envelope({
+          message: {
+            sys_name: "sys1",
+            sys_num: 0,
+            trunk_msg: "0x39 GRP_V_CH_GRANT tg=100 src=1234",
+            trunk_msg_type: "GRANT",
+            opcode: 0x39,
+            opcode_type: "voice_grant",
+            opcode_desc: "GRP_V_CH_GRANT",
+            meta: "Granting tg 100 to 1234",
+          },
+        }),
+        at: 4,
+      }),
+    );
+    const m = next.trunkingMessages[ID][0];
+    expect(m.opcode).toBe("57");
+    expect(m.opcodeType).toBe("voice_grant");
+    expect(m.trunkMsg).toContain("GRP_V_CH_GRANT");
+    expect(m.meta).toBe("Granting tg 100 to 1234");
+    expect(m.sysNum).toBe(0);
+  });
+
+  it("forgetInstance also drops systemRates / pluginStatus / recentCalls", () => {
+    let s = emptyState();
+    s = reducer(
+      s,
+      applyTrEvent({
+        topic: "tr.rates",
+        envelope: envelope({ rates: [{ sys_name: "s", decoderate: 1 }] }),
+        at: 1,
+      }),
+    );
+    s = reducer(
+      s,
+      applyTrEvent({
+        topic: "tr.pluginStatus",
+        envelope: envelope({ status: "connected" }),
+        at: 2,
+      }),
+    );
+    s = reducer(
+      s,
+      applyTrEvent({
+        topic: "tr.callStart",
+        envelope: envelope({ call: { id: "x" } }),
+        at: 3,
+      }),
+    );
+    s = reducer(s, forgetInstance(ID));
+    expect(s.systemRates[ID]).toBeUndefined();
+    expect(s.pluginStatus[ID]).toBeUndefined();
+    expect(s.recentCalls[ID]).toBeUndefined();
+  });
 });
