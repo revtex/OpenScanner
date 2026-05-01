@@ -47,6 +47,7 @@ import (
 	"github.com/openscanner/openscanner/internal/downstream"
 	"github.com/openscanner/openscanner/internal/logging"
 	"github.com/openscanner/openscanner/internal/seed"
+	"github.com/openscanner/openscanner/internal/trmqtt"
 	"github.com/openscanner/openscanner/internal/ws"
 	"golang.org/x/crypto/acme/autocert"
 )
@@ -889,6 +890,29 @@ func (p *program) run() {
 	dwService.Start(ctx)
 	hub.SetDirMonitorReloader(dwService)
 
+	// trunk-recorder MQTT subscriber. One autopaho client per tr_instances row;
+	// supervised reconnect, in-memory snapshot. Admin REST + WS fan-out land in
+	// later steps; for now Subscribe() is drained at debug level.
+	trManager := trmqtt.NewManager(queries, cfg.EncryptionKey, nil)
+	if err := trManager.Start(ctx); err != nil {
+		slog.Error("trmqtt: failed to start manager", "error", err)
+	}
+	trEvents, trUnsubscribe := trManager.Subscribe()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case ev, ok := <-trEvents:
+				if !ok {
+					return
+				}
+				slog.Debug("trmqtt event", "type", ev.Type, "instance_id", ev.InstanceID)
+			}
+		}
+	}()
+	_ = trUnsubscribe // wired by step 4 (admin WS hub)
+
 	// Start transcription result consumer (stores results in DB, broadcasts TRN).
 	go consumeTranscriptionResults(ctx, queries, hub, transcriberMgr)
 
@@ -985,6 +1009,7 @@ func (p *program) run() {
 	}
 
 	dsService.Stop()
+	trManager.Stop()
 	slog.Info("server: shutdown complete")
 }
 
