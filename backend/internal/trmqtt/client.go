@@ -47,9 +47,9 @@ type Client struct {
 	cancel context.CancelFunc
 	done   chan struct{}
 
-	mu         sync.Mutex
-	closed     bool
-	startedAt  time.Time
+	mu        sync.Mutex
+	closed    bool
+	startedAt time.Time
 }
 
 // NewClient builds a Client with snapshot/subscriber wired. The connection is

@@ -37,7 +37,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kardianos/service"
 	"github.com/openscanner/openscanner/internal/admin"
-	"github.com/openscanner/openscanner/internal/handler/routes"
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/cli"
@@ -45,6 +44,7 @@ import (
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/dirmonitor"
 	"github.com/openscanner/openscanner/internal/downstream"
+	"github.com/openscanner/openscanner/internal/handler/routes"
 	"github.com/openscanner/openscanner/internal/logging"
 	"github.com/openscanner/openscanner/internal/seed"
 	"github.com/openscanner/openscanner/internal/trmqtt"
@@ -930,6 +930,8 @@ func (p *program) run() {
 		FFmpegAvailable:    hasFFmpeg,
 		FDKAACAvailable:    hasFDKAAC,
 		WhisperAvailable:   hasWhisper,
+		TRMqttManager:      trManager,
+		EncryptionKey:      cfg.EncryptionKey,
 	})
 
 	// Create HTTP server.

@@ -93,6 +93,7 @@ func seedSettings(ctx context.Context, tx *sql.Tx) (bool, error) {
 		{"email", ""},
 		{"vapidPublicKey", ""},
 		{"vapidPrivateKey", ""},
+		{"trMqttEnabled", "false"},
 	}
 
 	for _, s := range defaults {

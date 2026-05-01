@@ -9,8 +9,8 @@ type Ring[T any] struct {
 	mu    sync.Mutex
 	buf   []T
 	cap   int
-	head  int  // next write index
-	count int  // valid entries
+	head  int // next write index
+	count int // valid entries
 }
 
 // NewRing creates an empty ring with capacity capN. Capacity <= 0 is clamped

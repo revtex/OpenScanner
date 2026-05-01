@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
+	pahopkts "github.com/eclipse/paho.golang/paho"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/hooks/auth"
 	"github.com/mochi-mqtt/server/v2/listeners"
-	pahopkts "github.com/eclipse/paho.golang/paho"
 )
 
 // startBroker spins up an in-process mochi MQTT broker bound to a random port

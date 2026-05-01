@@ -13,8 +13,8 @@ import (
 // the topics owned by its own row, so the subscriber doesn't need a regex
 // engine.
 type subscriber struct {
-	instanceID    int64
-	label         string
+	instanceID     int64
+	label          string
 	expectedPlugin string // matches tr_instances.instance_id; mismatched frames are dropped
 
 	baseTopic    string

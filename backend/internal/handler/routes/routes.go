@@ -26,6 +26,7 @@ import (
 	"github.com/openscanner/openscanner/internal/handler/admin/legacyusage"
 	"github.com/openscanner/openscanner/internal/handler/admin/radioreference"
 	"github.com/openscanner/openscanner/internal/handler/admin/transcriptions"
+	trmqttadmin "github.com/openscanner/openscanner/internal/handler/admin/trmqtt"
 	authhandler "github.com/openscanner/openscanner/internal/handler/auth"
 	"github.com/openscanner/openscanner/internal/handler/bookmarks"
 	"github.com/openscanner/openscanner/internal/handler/calls"
@@ -34,6 +35,7 @@ import (
 	"github.com/openscanner/openscanner/internal/handler/share"
 	"github.com/openscanner/openscanner/internal/middleware"
 	"github.com/openscanner/openscanner/internal/static"
+	"github.com/openscanner/openscanner/internal/trmqtt"
 	"github.com/openscanner/openscanner/internal/ws"
 )
 
@@ -67,6 +69,8 @@ type Deps struct {
 	FFmpegAvailable    bool
 	FDKAACAvailable    bool
 	WhisperAvailable   bool
+	TRMqttManager      *trmqtt.Manager // nil when feature disabled
+	EncryptionKey      string
 }
 
 // RegisterRoutes wires all API routes onto the Gin engine.
@@ -89,6 +93,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	rrHandler := radioreference.New(deps.Queries)
 	transcriptionsHandler := transcriptions.New(deps.Queries, deps.WhisperAvailable)
 	legacyUsageHandler := legacyusage.New(nil, nil)
+	trMqttHandler := trmqttadmin.New(deps.Queries, deps.TRMqttManager, deps.EncryptionKey)
 
 	// Global middleware applied to every request.
 	r.Use(middleware.RequestID())
@@ -177,6 +182,15 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 
 		// Transcription status
 		admin.GET("/transcriptions/status", dep("/api/v1/admin/transcriptions/status"), transcriptionsHandler.GetStatus)
+
+		// Trunk-recorder MQTT instances (gated by trMqttEnabled setting).
+		admin.GET("/tr/instances", dep("/api/v1/admin/tr/instances"), trMqttHandler.ListInstances)
+		admin.POST("/tr/instances", dep("/api/v1/admin/tr/instances"), trMqttHandler.CreateInstance)
+		admin.PATCH("/tr/instances/:id", dep("/api/v1/admin/tr/instances/:id"), trMqttHandler.UpdateInstance)
+		admin.DELETE("/tr/instances/:id", dep("/api/v1/admin/tr/instances/:id"), trMqttHandler.DeleteInstance)
+		admin.POST("/tr/instances/:id/test", dep("/api/v1/admin/tr/instances/:id/test"), trMqttHandler.TestInstance)
+		admin.POST("/tr/instances/:id/reconnect", dep("/api/v1/admin/tr/instances/:id/reconnect"), trMqttHandler.ReconnectInstance)
+		admin.GET("/tr/instances/:id/snapshot", dep("/api/v1/admin/tr/instances/:id/snapshot"), trMqttHandler.GetSnapshot)
 
 		// Swagger: issue a short-lived HTTP-only cookie so Swagger UI
 		// can be opened in a new browser tab without exposing the JWT.
@@ -269,6 +283,15 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 		v1Admin.GET("/transcriptions/status", transcriptionsHandler.GetStatus)
 		v1Admin.GET("/legacy-usage", legacyUsageHandler.GetUsage)
 		v1Admin.POST("/docs/session", authhandler.PostDocsSession)
+
+		// Trunk-recorder MQTT instances (gated by trMqttEnabled setting).
+		v1Admin.GET("/tr/instances", trMqttHandler.ListInstances)
+		v1Admin.POST("/tr/instances", trMqttHandler.CreateInstance)
+		v1Admin.PATCH("/tr/instances/:id", trMqttHandler.UpdateInstance)
+		v1Admin.DELETE("/tr/instances/:id", trMqttHandler.DeleteInstance)
+		v1Admin.POST("/tr/instances/:id/test", trMqttHandler.TestInstance)
+		v1Admin.POST("/tr/instances/:id/reconnect", trMqttHandler.ReconnectInstance)
+		v1Admin.GET("/tr/instances/:id/snapshot", trMqttHandler.GetSnapshot)
 	}
 	v1SwaggerDocs := v1.Group("/admin/docs")
 	v1SwaggerDocs.Use(middleware.SwaggerCookieAuth())
