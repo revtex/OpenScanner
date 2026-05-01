@@ -104,11 +104,7 @@ function normalizeEventAt(at: number | undefined): number {
  * can leave us with a stale "disconnected" badge. Any data frame proves
  * the plugin is alive — refresh the badge accordingly.
  */
-function refreshPluginAlive(
-  state: TrMqttState,
-  id: number,
-  now: number,
-): void {
+function refreshPluginAlive(state: TrMqttState, id: number, now: number): void {
   const cur = state.pluginStatus[id];
   if (cur && cur.status === "connected") return;
   state.pluginStatus[id] = {
