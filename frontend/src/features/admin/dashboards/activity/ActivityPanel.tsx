@@ -1,5 +1,5 @@
-import { useAdminActivity } from "@/hooks/admin/useAdminActivity";
-import type { ChartBucket } from "@/app/slices/admin/activitySlice";
+import { useAdminActivity } from "./useAdminActivity";
+import type { ChartBucket } from "./activitySlice";
 import {
   Activity,
   Clock3,

@@ -47,7 +47,7 @@ import OptionsPanel from "@/features/admin/options";
 import LogsPanel from "@/features/admin/logs";
 import ToolsPanel from "@/features/admin/tools";
 import WebhooksPanel from "@/features/admin/webhooks";
-import ActivityPanel from "@/components/admin/ActivityPanel";
+import DashboardsPanel from "@/features/admin/dashboards";
 import SharedLinksPanel from "@/features/admin/shared-links";
 import TranscriptionPanel from "@/features/admin/transcription";
 import LegacyUsageBanner from "@/features/admin/legacy-usage";
@@ -203,7 +203,7 @@ export default function Admin() {
           <main className="flex-1 p-6 max-w-300 w-full mx-auto">
             <LegacyUsageBanner />
             <Routes>
-              <Route path="activity" element={<ActivityPanel />} />
+              <Route path="activity" element={<DashboardsPanel />} />
               <Route path="users" element={<UsersPanel />} />
               <Route path="systems" element={<SystemsPanel />} />
               <Route path="groups" element={<GroupsTagsPanel />} />

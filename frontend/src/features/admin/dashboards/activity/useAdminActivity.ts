@@ -4,7 +4,7 @@ import type {
   ActivityStats,
   ActivityChartResponse,
   TopTalkgroupsResponse,
-} from "@/app/slices/admin/activitySlice";
+} from "./activitySlice";
 
 const REFRESH_INTERVAL = 30_000;
 const DEBOUNCE_MS = 3_000; // debounce rapid call bursts
