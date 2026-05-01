@@ -2,7 +2,7 @@
 
 OpenScanner can subscribe to a [trunk-recorder MQTT status plugin](https://github.com/taclane/trunk-recorder-mqtt-status) feed to power a live admin dashboard covering control-channel decode rates, recorders, active calls, system tables, unit affiliation, and trunking-message debugging.
 
-> **What this is *not*** — this integration does **not** replace call ingestion. Recorded audio still flows through `dirmonitor` (or direct `/api/v1/calls` upload) the way it always has. MQTT only adds the live operational view.
+> **What this is _not_** — this integration does **not** replace call ingestion. Recorded audio still flows through `dirmonitor` (or direct `/api/v1/calls` upload) the way it always has. MQTT only adds the live operational view.
 
 ## Contents
 
@@ -35,29 +35,29 @@ Build trunk-recorder with the MQTT status plugin enabled (see the [upstream READ
       "name": "MQTT Status",
       "library": "libmqtt_status_plugin.so",
       "broker": "tcp://mosquitto:1883",
-      "topic":         "trunk-recorder",
-      "unit_topic":    "trunk-recorder/units",
+      "topic": "trunk-recorder",
+      "unit_topic": "trunk-recorder/units",
       "message_topic": "trunk-recorder/messages",
-      "instance_id":   "tr-headend-1",
-      "client_id":     "tr-headend-1",
+      "instance_id": "tr-headend-1",
+      "client_id": "tr-headend-1",
       "username": "tr",
       "password": "redacted",
-      "qos": 0
-    }
-  ]
+      "qos": 0,
+    },
+  ],
 }
 ```
 
 Recommended fields:
 
-| Field           | Notes                                                                                                                                           |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `broker`        | `tcp://host:1883` for plaintext, `tls://host:8883` for TLS. Hostname must be reachable from the trunk-recorder host.                            |
-| `topic`         | Base topic for status frames (`<topic>/rates`, `<topic>/recorders`, `<topic>/calls_active`, `<topic>/system`, `<topic>/config`, …).             |
-| `unit_topic`    | Optional. Per-unit affiliation events publish under `<unit_topic>/<shortname>/(on\|off\|join\|location\|call\|end\|data\|ackresp\|ans_req)`.    |
-| `message_topic` | Optional. Trunking control-channel messages publish under `<message_topic>/<shortname>/messages` — useful for debugging.                        |
-| `instance_id`   | Stable identifier. OpenScanner uses it to drop misrouted frames when several trunk-recorders share one broker. **Set this for every TR.**       |
-| `qos`           | `0` is the right answer for a live dashboard. `1` adds broker-side retransmits; `2` is rarely worth the latency.                                |
+| Field           | Notes                                                                                                                                        |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `broker`        | `tcp://host:1883` for plaintext, `tls://host:8883` for TLS. Hostname must be reachable from the trunk-recorder host.                         |
+| `topic`         | Base topic for status frames (`<topic>/rates`, `<topic>/recorders`, `<topic>/calls_active`, `<topic>/system`, `<topic>/config`, …).          |
+| `unit_topic`    | Optional. Per-unit affiliation events publish under `<unit_topic>/<shortname>/(on\|off\|join\|location\|call\|end\|data\|ackresp\|ans_req)`. |
+| `message_topic` | Optional. Trunking control-channel messages publish under `<message_topic>/<shortname>/messages` — useful for debugging.                     |
+| `instance_id`   | Stable identifier. OpenScanner uses it to drop misrouted frames when several trunk-recorders share one broker. **Set this for every TR.**    |
+| `qos`           | `0` is the right answer for a live dashboard. `1` adds broker-side retransmits; `2` is rarely worth the latency.                             |
 
 > ⚠️ The `audio` topic is **never** subscribed by OpenScanner. Audio still travels via `dirmonitor` or `/api/v1/calls`.
 
@@ -67,18 +67,18 @@ Recommended fields:
 2. Open **Admin → Options** and confirm the **Trunk Recorder MQTT** integration is enabled (`trMqttEnabled = true`). It is off by default; flip it on once and save.
 3. Open **Admin → Dashboards → Trunk Recorder → Instances** and click **Add instance**. Fill in:
 
-| Field            | Notes                                                                                                       |
-| ---------------- | ----------------------------------------------------------------------------------------------------------- |
-| Label            | Free-text display name (e.g. `Headend Site 1`).                                                             |
-| Instance ID      | Must match the TR plugin's `instance_id`. Frames from other instances on the same broker are ignored.       |
-| Broker URL       | `tcp://…`, `tls://…`, `ws://…`, or `wss://…`. The OpenScanner side reuses the supervised reconnect loop.    |
-| Base topic       | The plugin's `topic` value.                                                                                 |
-| Unit topic       | Optional — must match `unit_topic` if set.                                                                  |
-| Message topic    | Optional — must match `message_topic` if set.                                                               |
-| Username / Pwd   | Broker credentials. Passwords are encrypted at rest with the OpenScanner encryption key (`enc::` prefix).   |
-| QoS              | `0`–`2`. Match the plugin.                                                                                  |
-| TLS skip verify  | Only check this for self-signed brokers in lab setups.                                                      |
-| Enabled          | Toggle without deleting.                                                                                    |
+| Field           | Notes                                                                                                     |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| Label           | Free-text display name (e.g. `Headend Site 1`).                                                           |
+| Instance ID     | Must match the TR plugin's `instance_id`. Frames from other instances on the same broker are ignored.     |
+| Broker URL      | `tcp://…`, `tls://…`, `ws://…`, or `wss://…`. The OpenScanner side reuses the supervised reconnect loop.  |
+| Base topic      | The plugin's `topic` value.                                                                               |
+| Unit topic      | Optional — must match `unit_topic` if set.                                                                |
+| Message topic   | Optional — must match `message_topic` if set.                                                             |
+| Username / Pwd  | Broker credentials. Passwords are encrypted at rest with the OpenScanner encryption key (`enc::` prefix). |
+| QoS             | `0`–`2`. Match the plugin.                                                                                |
+| TLS skip verify | Only check this for self-signed brokers in lab setups.                                                    |
+| Enabled         | Toggle without deleting.                                                                                  |
 
 4. Click **Test** to verify OpenScanner can reach the broker (CONNECT only, no subscriptions). Save once it succeeds.
 5. Switch to the **Dashboard** sub-tab. Within a few seconds you should see decode rate, recorders, and any active calls. **Units** and **Messages** populate as trunking traffic arrives.
@@ -87,32 +87,57 @@ The instance row's status badge reflects the live MQTT connection: `connected` (
 
 ## Bundled mosquitto broker
 
-The repository's `docker-compose.openscanner.yml` ships with an opt-in `mosquitto` service behind the `mqtt` Compose profile. It is **not** started by default.
+The repository ships two opt-in ways to run a local MQTT broker. Pick whichever fits your operational style — they produce an equivalent broker, just with different config-management ergonomics.
+
+### Option A — auto-bootstrapping profile (zero-touch)
+
+`docker-compose.openscanner.yml` includes a `mosquitto` service behind the `mqtt` Compose profile. It is **not** started by default.
 
 ```sh
 docker compose --profile mqtt up -d
 ```
 
-On first start the entrypoint generates `./mosquitto/config/mosquitto.conf` with:
+On first start the container's entrypoint generates `./mosquitto/config/mosquitto.conf` (and an empty `passwd` file) with:
 
 - listener on port `1883`,
 - `allow_anonymous false`,
-- `password_file /mosquitto/config/passwd` (initially empty),
+- `password_file /mosquitto/config/passwd`,
 - persistence enabled at `./mosquitto/data/`.
 
-The published port mapping defaults to `127.0.0.1:1883:1883` — the broker is loopback-only until you change it. To expose it to your LAN, edit the `ports:` block in `docker-compose.openscanner.yml` to `"0.0.0.0:1883:1883"` (and update firewall rules accordingly).
+After the first boot the files are yours to edit — the entrypoint only writes them when they don't already exist.
 
-Add a user:
+### Option B — committed static config (explicit)
+
+`docker-compose.mosquitto.yml` is a separate compose file that runs the upstream `eclipse-mosquitto:2` image with its default entrypoint and bind-mounts the **committed** files under [`mosquitto/config/`](../mosquitto/config/). Use it when you'd rather track the broker config in git than rely on container-side bootstrap.
+
+```sh
+# alongside the main stack
+docker compose \
+  -f docker-compose.openscanner.yml \
+  -f docker-compose.mosquitto.yml \
+  up -d
+
+# or standalone
+docker compose -f docker-compose.mosquitto.yml up -d
+```
+
+Edit `mosquitto/config/mosquitto.conf` directly and `docker compose restart mosquitto` to apply changes. The committed `passwd` file ships empty — add users before exposing the listener.
+
+### Adding users (both options)
 
 ```sh
 docker compose exec mosquitto \
-  mosquitto_passwd /mosquitto/config/passwd tr
+  mosquitto_passwd -b /mosquitto/config/passwd tr <password>
 docker compose restart mosquitto
 ```
 
-(The first `mosquitto_passwd` invocation against an empty file may need the `-c` flag — `mosquitto_passwd -c /mosquitto/config/passwd tr` — to create it.)
+Drop the `-b` flag if you want to be prompted instead of passing the password on the command line. Use `-c` only when recreating the file from scratch.
 
-Use that username/password in both the trunk-recorder plugin config and the OpenScanner instance form.
+### Exposing the broker beyond loopback
+
+Both compose files publish `127.0.0.1:1883:1883` by default — the broker is loopback-only until you change it. To expose it to your LAN, edit the `ports:` block to `"0.0.0.0:1883:1883"` (and update firewall rules accordingly). Make sure you've added users first.
+
+Use the configured username/password in both the trunk-recorder plugin config and the OpenScanner instance form.
 
 ## Multiple trunk-recorders on one broker
 

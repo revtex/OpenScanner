@@ -19,8 +19,11 @@
 # Data & audio (dev)
 /data/
 /audio/
-/mosquitto/
 *.m4a
+
+# mosquitto runtime — keep config/ committed, ignore data/log
+/mosquitto/data/
+/mosquitto/log/
 
 # SQLite DB files
 *.db
