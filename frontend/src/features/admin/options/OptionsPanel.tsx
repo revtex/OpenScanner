@@ -6,6 +6,7 @@ import {
   Monitor,
   Share2,
   Webhook,
+  Activity,
 } from "lucide-react";
 import {
   useGetConfigQuery,
@@ -28,6 +29,7 @@ const BOOLEAN_KEYS = [
   "playbackGoesLive",
   "searchPatchedTalkgroups",
   "showListenersCount",
+  "trMqttEnabled",
 ] as const;
 
 const AUDIO_CONVERSION_MODES: Record<string, string> = {
@@ -115,6 +117,11 @@ const SECTIONS: SettingSection[] = [
     icon: <Webhook className="w-4 h-4" />,
     keys: ["webhooksEnabled"],
   },
+  {
+    title: "Trunk Recorder MQTT",
+    icon: <Activity className="w-4 h-4" />,
+    keys: ["trMqttEnabled"],
+  },
 ];
 
 // Only keys that appear in SECTIONS should be sent to the backend.
@@ -144,6 +151,7 @@ const LABELS: Record<string, string> = {
   playbackGoesLive: "Playback Mode Goes Live",
   searchPatchedTalkgroups: "Search Patched Talkgroups",
   showListenersCount: "Show Listeners Count",
+  trMqttEnabled: "Enable Trunk Recorder MQTT",
 };
 
 const DESCRIPTIONS: Record<string, string> = {
@@ -178,6 +186,8 @@ const DESCRIPTIONS: Record<string, string> = {
     "Audio feedback style when pressing buttons. Disabled turns off beeps.",
   sharedLinkExpiry:
     "Number of days before shared links expire. Set to 0 to disable (links never expire).",
+  trMqttEnabled:
+    "Subscribe to one or more trunk-recorder MQTT status feeds and surface a live admin dashboard. Configure brokers under Dashboards → Trunk Recorder → Instances. See docs/tr-mqtt-guide.md for details.",
 };
 
 function isBooleanKey(key: string): boolean {

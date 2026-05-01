@@ -253,6 +253,7 @@ var allowedSettingKeys = map[string]bool{
 	"liveTranscriptDisplay":       true,
 	"transcriptionModel":          true,
 	"transcriptionUrl":            true,
+	"trMqttEnabled":               true,
 	"vapidPrivateKey":             true,
 	"vapidPublicKey":              true,
 	"webhooksEnabled":             true,

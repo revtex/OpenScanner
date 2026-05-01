@@ -53,7 +53,7 @@ import TranscriptionPanel from "@/features/admin/transcription";
 import LegacyUsageBanner from "@/features/admin/legacy-usage";
 
 const navItems = [
-  { to: "/admin/activity", label: "Activity", icon: Activity },
+  { to: "/admin/activity", label: "Dashboards", icon: Activity },
   { to: "/admin/users", label: "Users", icon: Users },
   { to: "/admin/systems", label: "Systems", icon: Radio },
   { to: "/admin/groups", label: "Groups & Tags", icon: FolderTree },

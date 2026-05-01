@@ -23,7 +23,7 @@ export default function DashboardsPanel() {
 
   return (
     <div className="space-y-4">
-      <div role="tablist" className="tabs tabs-bordered">
+      <div role="tablist" className="tabs tabs-lift">
         <button
           role="tab"
           className={`tab ${active === "activity" ? "tab-active" : ""}`}
@@ -40,7 +40,9 @@ export default function DashboardsPanel() {
         </button>
       </div>
 
-      {active === "activity" ? <ActivityPanel /> : <TrMqttPanel />}
+      <div className="pt-2">
+        {active === "activity" ? <ActivityPanel /> : <TrMqttPanel />}
+      </div>
     </div>
   );
 }
