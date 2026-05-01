@@ -23,7 +23,7 @@ const baseInstance: TrInstance = {
 };
 
 describe("InstanceForm", () => {
-  it("create mode submits with no password field when mode=keep", async () => {
+  it("create mode defaults to 'set' password mode and submits empty password as ''", async () => {
     const onSubmit = vi.fn();
     render(
       <InstanceForm
@@ -41,10 +41,34 @@ describe("InstanceForm", () => {
     );
     fireEvent.click(screen.getByTestId("tr-form-submit"));
     expect(onSubmit).toHaveBeenCalledOnce();
-    const body = valuesToCreateBody(onSubmit.mock.calls[0][0]);
-    expect(body.password).toBeUndefined();
+    const values = onSubmit.mock.calls[0][0];
+    expect(values.passwordMode).toBe("set");
+    const body = valuesToCreateBody(values);
+    expect(body.password).toBe("");
     expect(body.label).toBe("lab");
     expect(body.instanceId).toBe("tr-x");
+  });
+
+  it("create mode with passwordMode='keep' omits password from create body", async () => {
+    const onSubmit = vi.fn();
+    render(
+      <InstanceForm
+        submitting={false}
+        onSubmit={onSubmit}
+        onCancel={() => {}}
+      />,
+    );
+    fireEvent.change(screen.getByTestId("tr-form-label"), {
+      target: { value: "lab" },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText("config.instance_id from trunk-recorder"),
+      { target: { value: "tr-x" } },
+    );
+    fireEvent.click(screen.getByTestId("tr-form-pwmode-keep"));
+    fireEvent.click(screen.getByTestId("tr-form-submit"));
+    const body = valuesToCreateBody(onSubmit.mock.calls[0][0]);
+    expect(body.password).toBeUndefined();
   });
 
   it("edit mode 'clear' password results in empty string in update body", async () => {
