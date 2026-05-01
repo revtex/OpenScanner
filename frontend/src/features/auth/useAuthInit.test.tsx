@@ -9,6 +9,7 @@ import { callsSlice } from "@/features/scanner";
 import { api } from "@/app/api";
 import type { RootState } from "@/app/store";
 import { useAuthInit } from "./useAuthInit";
+import { trMqttReducer } from "@/app/store";
 
 // ── Mock the refresh mutation ─────────────────────────────────────────────
 
@@ -29,6 +30,7 @@ function makeStore() {
   return configureStore({
     reducer: {
       scanner: scannerSlice.reducer,
+      trMqtt: trMqttReducer,
       auth: authSlice.reducer,
       calls: callsSlice.reducer,
       [api.reducerPath]: api.reducer,

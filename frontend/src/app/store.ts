@@ -5,6 +5,7 @@ import { scannerSlice } from "@/features/scanner";
 import { authSlice } from "@/features/auth";
 import { callsSlice } from "@/features/scanner";
 import { audioListenerMiddleware } from "@/app/audioListenerMiddleware";
+import { trMqttReducer } from "@/features/admin/dashboards";
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     scanner: scannerSlice.reducer,
     auth: authSlice.reducer,
     calls: callsSlice.reducer,
+    trMqtt: trMqttReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -24,3 +26,7 @@ export type AppDispatch = typeof store.dispatch;
 
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 export const useAppSelector = useSelector.withTypes<RootState>();
+
+// Re-export so test stores can mount the reducer without crossing the
+// sibling-feature ESLint boundary on @/features/admin/dashboards/trmqtt.
+export { trMqttReducer };

@@ -3,6 +3,8 @@ import { useAppDispatch, useAppSelector } from "@/app/store";
 import { adminWsClient } from "@/shared/services/ws/adminClient";
 import { setCredentials, usePostRefreshMutation } from "@/features/auth";
 import { api } from "@/app/api";
+import { applyTrEvent } from "@/features/admin/dashboards";
+import type { TrEventEnvelope } from "@/features/admin/dashboards";
 
 export function useAdminWebSocket(): void {
   const dispatch = useAppDispatch();
@@ -44,29 +46,45 @@ export function useAdminWebSocket(): void {
 
   // Listen for admin events and invalidate RTK Query caches
   useEffect(() => {
-    const unsubscribe = adminWsClient.onAny((topic: string) => {
-      const tagMap: Record<string, string[]> = {
-        "systems.updated": ["Systems"],
-        "talkgroups.updated": ["Talkgroups"],
-        "units.updated": ["Units"],
-        "users.updated": ["Users"],
-        "groups.updated": ["Groups"],
-        "tags.updated": ["Tags"],
-        "apikeys.updated": ["ApiKeys"],
-        "dirmonitors.updated": ["DirMonitors"],
-        "downstreams.updated": ["Downstreams"],
-        "webhooks.updated": ["Webhooks"],
-        "config.updated": ["Config"],
-        "shared-links.updated": ["SharedLinks"],
-      };
+    const unsubscribe = adminWsClient.onAny(
+      (topic: string, data: unknown, at: number) => {
+        // tr.* events feed the Trunk Recorder slice (no RTK invalidation).
+        if (topic.startsWith("tr.")) {
+          dispatch(
+            applyTrEvent({
+              topic,
+              envelope: data as TrEventEnvelope,
+              at,
+            }),
+          );
+          return;
+        }
 
-      const tags = tagMap[topic];
-      if (tags) {
-        dispatch(
-          api.util.invalidateTags(tags.map((tag) => ({ type: tag as never }))),
-        );
-      }
-    });
+        const tagMap: Record<string, string[]> = {
+          "systems.updated": ["Systems"],
+          "talkgroups.updated": ["Talkgroups"],
+          "units.updated": ["Units"],
+          "users.updated": ["Users"],
+          "groups.updated": ["Groups"],
+          "tags.updated": ["Tags"],
+          "apikeys.updated": ["ApiKeys"],
+          "dirmonitors.updated": ["DirMonitors"],
+          "downstreams.updated": ["Downstreams"],
+          "webhooks.updated": ["Webhooks"],
+          "config.updated": ["Config"],
+          "shared-links.updated": ["SharedLinks"],
+        };
+
+        const tags = tagMap[topic];
+        if (tags) {
+          dispatch(
+            api.util.invalidateTags(
+              tags.map((tag) => ({ type: tag as never })),
+            ),
+          );
+        }
+      },
+    );
 
     return unsubscribe;
   }, [dispatch]);

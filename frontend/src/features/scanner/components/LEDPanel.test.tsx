@@ -11,6 +11,7 @@ import { api } from "@/app/api";
 import type { RootState } from "@/app/store";
 import type { ScannerConfig } from "@/types";
 import type { Call } from "../types";
+import { trMqttReducer } from "@/app/store";
 
 // Mock useTheme since it reads localStorage / sets DOM attributes
 const mockToggle = vi.fn();
@@ -28,6 +29,7 @@ function makeStore(preloadedState?: Partial<RootState>) {
   return configureStore({
     reducer: {
       scanner: scannerSlice.reducer,
+      trMqtt: trMqttReducer,
       auth: authSlice.reducer,
       calls: callsSlice.reducer,
       [api.reducerPath]: api.reducer,

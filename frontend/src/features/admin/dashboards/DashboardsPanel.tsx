@@ -1,11 +1,46 @@
-// Dashboards panel — currently a thin wrapper around ActivityPanel.
-// When the TR-MQTT integration lands (see docs/plans/tr-mqtt-plan.md),
-// this becomes a sub-tab chrome (DaisyUI 5 tabs) hosting ActivityPanel
-// and the new TrMqttPanel side-by-side. Keeping the wrapper now means
-// that future change is purely additive — no route rename, no folder
-// regroup.
+// Dashboards panel — sub-tab chrome hosting ActivityPanel and TrMqttPanel.
+// Active sub-tab is persisted in `?dashTab=…` to mirror Admin.tsx URL state.
+import { useSearchParams } from "react-router-dom";
 import ActivityPanel from "./activity/ActivityPanel";
+import { TrMqttPanel } from "./trmqtt";
+
+type DashTab = "activity" | "trmqtt";
+
+const VALID: readonly DashTab[] = ["activity", "trmqtt"] as const;
 
 export default function DashboardsPanel() {
-  return <ActivityPanel />;
+  const [params, setParams] = useSearchParams();
+  const raw = params.get("dashTab");
+  const active: DashTab = (VALID as readonly string[]).includes(raw ?? "")
+    ? (raw as DashTab)
+    : "activity";
+
+  function switchTab(tab: DashTab) {
+    const next = new URLSearchParams(params);
+    next.set("dashTab", tab);
+    setParams(next, { replace: true });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div role="tablist" className="tabs tabs-bordered">
+        <button
+          role="tab"
+          className={`tab ${active === "activity" ? "tab-active" : ""}`}
+          onClick={() => switchTab("activity")}
+        >
+          Activity
+        </button>
+        <button
+          role="tab"
+          className={`tab ${active === "trmqtt" ? "tab-active" : ""}`}
+          onClick={() => switchTab("trmqtt")}
+        >
+          Trunk Recorder
+        </button>
+      </div>
+
+      {active === "activity" ? <ActivityPanel /> : <TrMqttPanel />}
+    </div>
+  );
 }

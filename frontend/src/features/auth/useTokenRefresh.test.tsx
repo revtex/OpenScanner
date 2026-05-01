@@ -7,6 +7,7 @@ import { authSlice, setCredentials } from "./authSlice";
 import { callsSlice } from "@/features/scanner";
 import { api } from "@/app/api";
 import { useTokenRefresh } from "./useTokenRefresh";
+import { trMqttReducer } from "@/app/store";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,7 @@ function makeStore() {
   return configureStore({
     reducer: {
       scanner: scannerSlice.reducer,
+      trMqtt: trMqttReducer,
       auth: authSlice.reducer,
       calls: callsSlice.reducer,
       [api.reducerPath]: api.reducer,

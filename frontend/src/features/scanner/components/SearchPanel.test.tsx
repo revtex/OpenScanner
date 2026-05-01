@@ -9,6 +9,7 @@ import { callsSlice } from "../callsSlice";
 import { api } from "@/app/api";
 import type { RootState } from "@/app/store";
 import type { ScannerConfig } from "@/types";
+import { trMqttReducer } from "@/app/store";
 
 // --- Mocks ---
 
@@ -44,6 +45,7 @@ function makeStore(preloadedState?: Partial<RootState>) {
   return configureStore({
     reducer: {
       scanner: scannerSlice.reducer,
+      trMqtt: trMqttReducer,
       auth: authSlice.reducer,
       calls: callsSlice.reducer,
       [api.reducerPath]: api.reducer,
