@@ -19,6 +19,7 @@
 # Data & audio (dev)
 /data/
 /audio/
+/mosquitto/
 *.m4a
 
 # SQLite DB files

@@ -41,6 +41,54 @@ services:
       retries: 3
     restart: unless-stopped
 
+  ## Optional bundled MQTT broker for the Trunk Recorder integration.
+  ## Activate with:  docker compose --profile mqtt up -d
+  ##
+  ## On first start, ./mosquitto/config/mosquitto.conf is generated bound
+  ## to 127.0.0.1:1883 with password authentication required. Add users
+  ## with:
+  ##   docker compose exec mosquitto mosquitto_passwd /mosquitto/config/passwd <user>
+  ## To expose the broker to the LAN, change the published port mapping
+  ## below to "0.0.0.0:1883:1883" and set listener 0.0.0.0 in the conf.
+  mosquitto:
+    image: eclipse-mosquitto:2
+    profiles: ["mqtt"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -e
+        CONF=/mosquitto/config/mosquitto.conf
+        PASSWD=/mosquitto/config/passwd
+        if [ ! -f "$$CONF" ]; then
+          echo "[init] writing default mosquitto.conf"
+          mkdir -p /mosquitto/config /mosquitto/data /mosquitto/log
+          cat > "$$CONF" <<'EOF'
+        # Default OpenScanner-bundled mosquitto config.
+        # Loopback-only; auth required. Edit and `docker compose restart`
+        # after adding users with `mosquitto_passwd`.
+        listener 1883 0.0.0.0
+        allow_anonymous false
+        password_file /mosquitto/config/passwd
+        persistence true
+        persistence_location /mosquitto/data/
+        log_dest file /mosquitto/log/mosquitto.log
+        EOF
+        fi
+        if [ ! -f "$$PASSWD" ]; then
+          echo "[init] creating empty passwd file (add users via mosquitto_passwd)"
+          touch "$$PASSWD"
+          chmod 600 "$$PASSWD"
+        fi
+        exec /usr/sbin/mosquitto -c "$$CONF"
+
 # secrets:
 #   encryption_key:
 #     file: ./encryption_key.txt
