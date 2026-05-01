@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Trunk Recorder MQTT integration.** OpenScanner can now subscribe to one or more [trunk-recorder MQTT status plugin](https://github.com/taclane/trunk-recorder-mqtt-status) feeds and surface a live admin dashboard covering control-channel decode rates, recorder states, active calls, system tables, unit affiliation, and trunking-message debugging. The integration is opt-in (`trMqttEnabled` setting) and ships with multi-instance support out of the box — one OpenScanner can consume many trunk-recorders, optionally on the same broker. New REST surface under `/api/v1/admin/tr/*` (legacy mirror under `/api/admin/tr/*` with the standard deprecation headers), new admin WebSocket events under the `tr.*` topic namespace, and a new **Dashboards → Trunk Recorder** sub-panel with Instances / Dashboard / Units / Messages views. Audio is **not** consumed via MQTT — calls keep flowing through `dirmonitor` / `/api/v1/calls`. See [Trunk Recorder MQTT guide](docs/tr-mqtt-guide.md).
+- Bundled `eclipse-mosquitto:2` broker as an opt-in Docker Compose profile (`docker compose --profile mqtt up -d`). On first start the entrypoint generates a default `mosquitto.conf` bound to `127.0.0.1:1883` with anonymous access disabled and an empty `passwd` file ready for `mosquitto_passwd`.
+
+### Security
+
+- Trunk Recorder broker passwords are stored encrypted at rest with the OpenScanner encryption key (`enc::` prefix, AES-256-GCM); the REST API never echoes the plaintext or ciphertext, only a `hasPassword: bool` flag. The PATCH endpoint accepts a tri-state password field — omit to keep, send `""` to clear, send a string to re-encrypt — so passwords can be rotated without ever round-tripping through the browser.
+- All trunk-recorder admin routes require admin JWT; the kill-switch returns 404 (not 403) when `trMqttEnabled=false`, hiding the surface entirely from disabled deployments. The MQTT subscriber never subscribes to the broker's `audio` topic.
+
 ## [1.3.2] — 2026-04-29
 
 ### Fixed
