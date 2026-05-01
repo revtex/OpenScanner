@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Add TR instance** form: fixed broken label/input spacing on DaisyUI 5 (the legacy `form-control` class no longer applies `flex-direction: column`), default the password mode to **Set new** for new instances (was misleadingly defaulting to **Keep existing**), and surface backend validation errors inline in the dialog instead of only logging them to the console.
+- **Add TR instance** form auto-fills the **Unit topic** and **Message topic** with `<base>/units` and `<base>/messages` while typing the base topic, so unit affiliation and trunking-message panes light up without extra setup. Existing values are never overwritten.
+- Trunk Recorder dashboard **Active calls** table now falls back to `sys_name`/`sys_num`/`system` when the plugin's `calls_active` payload omits `shortname`, so the System column populates with the legacy taclane plugin field set.
+- Trunk Recorder **Test connection** button now uses a 10-second deadline (was 5 s) so the one-shot connect+CONNACK round-trip has time to complete on slower brokers and fresh DNS lookups; stable instances were reporting `connection timed out` despite the persistent client being healthy.
 
 ## [1.3.2] — 2026-04-29
 

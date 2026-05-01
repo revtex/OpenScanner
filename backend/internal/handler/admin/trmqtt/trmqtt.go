@@ -618,10 +618,10 @@ func (h *Handler) TestInstance(c *gin.Context) {
 		Password:         password,
 		TLSSkipVerify:    row.TlsSkipVerify == 1,
 		QoS:              byte(row.Qos),
-		ConnectTimeout:   5 * time.Second,
+		ConnectTimeout:   10 * time.Second,
 	}
 
-	testCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	testCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	if err := trmqttsvc.TestConnect(testCtx, cfg); err != nil {
 		c.JSON(http.StatusOK, testResponse{OK: false, Error: redactErr(err)})

@@ -91,7 +91,20 @@ export default function InstanceForm({
     key: K,
     value: InstanceFormValues[K],
   ) {
-    setValues((v) => ({ ...v, [key]: value }));
+    setValues((v) => {
+      const next = { ...v, [key]: value };
+      // When the user types/edits the base topic on a fresh row, mirror the
+      // common TR plugin convention of <base>/units and <base>/messages so
+      // unit affiliation and trunking-message panes work without extra setup.
+      if (key === "baseTopic" && typeof value === "string") {
+        const base = value.trim();
+        if (base !== "") {
+          if (!v.unitTopic.trim()) next.unitTopic = `${base}/units`;
+          if (!v.messageTopic.trim()) next.messageTopic = `${base}/messages`;
+        }
+      }
+      return next;
+    });
   }
 
   function handleSubmit(e: FormEvent) {
@@ -168,7 +181,7 @@ export default function InstanceForm({
             className="input input-bordered font-mono text-sm"
             value={values.unitTopic}
             onChange={(e) => handleChange("unitTopic", e.target.value)}
-            placeholder="optional"
+            placeholder="trunk-recorder/units"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -177,7 +190,7 @@ export default function InstanceForm({
             className="input input-bordered font-mono text-sm"
             value={values.messageTopic}
             onChange={(e) => handleChange("messageTopic", e.target.value)}
-            placeholder="optional"
+            placeholder="trunk-recorder/messages"
           />
         </label>
         <label className="flex flex-col gap-1">

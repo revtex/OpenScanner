@@ -184,7 +184,14 @@ export default function DashboardView({ instance }: { instance: TrInstance }) {
                       return (
                         <tr key={i}>
                           <td>
-                            {String(rec?.shortname ?? rec?.short_name ?? "")}
+                            {String(
+                              rec?.shortname ??
+                                rec?.short_name ??
+                                rec?.sys_name ??
+                                rec?.system ??
+                                rec?.sys_num ??
+                                "",
+                            )}
                           </td>
                           <td>{String(rec?.talkgroup ?? "")}</td>
                           <td className="font-mono text-xs">
