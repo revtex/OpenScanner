@@ -51,6 +51,18 @@ describe("trMqttSlice", () => {
     expect(next.instances[ID].lastError).toBe("broker down");
   });
 
+  it("normalizes admin ws epoch-second timestamps to milliseconds", () => {
+    const next = reducer(
+      emptyState(),
+      applyTrEvent({
+        topic: "tr.instance.connected",
+        envelope: envelope({}),
+        at: 1_777_675_411,
+      }),
+    );
+    expect(next.instances[ID].lastSeenAt).toBe(1_777_675_411_000);
+  });
+
   it("tr.rates pushes a sample with aggregated decoderate", () => {
     const next = reducer(
       emptyState(),

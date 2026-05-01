@@ -2,7 +2,9 @@
 // Centralised so column formatting stays consistent and locale-friendly.
 
 export function fmtTime(ms: number): string {
-  return new Date(ms).toLocaleTimeString();
+  const d = new Date(ms);
+  const base = d.toLocaleTimeString();
+  return `${base}.${String(d.getMilliseconds()).padStart(3, "0")}`;
 }
 
 export function fmtDateTime(ms: number): string {

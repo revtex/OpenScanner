@@ -90,6 +90,14 @@ function asBool(v: unknown): boolean | undefined {
   return typeof v === "boolean" ? v : undefined;
 }
 
+function normalizeEventAt(at: number | undefined): number {
+  if (typeof at !== "number" || !Number.isFinite(at)) return Date.now();
+  // Admin WS `at` is emitted as Unix seconds. Convert plausible epoch-second
+  // values to milliseconds; leave small synthetic test numbers untouched.
+  if (at >= 100_000_000 && at < 10_000_000_000) return at * 1000;
+  return at;
+}
+
 function aggregateRate(payload: unknown): number {
   // TR `rates` payload is `{rates: [{...}]}` or similar — sum any numeric
   // `decoderate` / `rate` field present, gracefully fall back to 0.
@@ -220,7 +228,7 @@ export const trMqttSlice = createSlice({
     applyTrEvent: (state, action: PayloadAction<ApplyTrEventArgs>) => {
       const { topic, envelope, at: ts } = action.payload;
       const id = envelope.instanceId;
-      const now = ts ?? Date.now();
+      const now = normalizeEventAt(ts);
       const conn: InstanceConnectionState = state.instances[id] ?? {
         connected: false,
       };
