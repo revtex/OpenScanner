@@ -145,95 +145,113 @@ frontend/
   sw.ts                    PWA service worker (push notifications)
   public/manifest.json     PWA manifest
   src/
-    main.tsx               entry — wires store, router, providers
+    main.tsx               entry — wires store, router, lazy-loads pages
     index.css              Tailwind + DaisyUI imports
     test-setup.ts          Vitest globals, MSW handlers (if used)
     app/
-      api.ts               single shared RTK Query api object (one createApi call)
+      api.ts               single shared RTK Query api object (one createApi call;
+                           sub-feature endpoints attach via api.injectEndpoints)
       store.ts             Redux store assembly
       audioListenerMiddleware.ts
-      slices/
-        admin/             feature slices for the admin surface
-        scanner/           feature slices for the scanner surface
-        shared/            slices used by both
-    pages/
-      Login.tsx            top-level routed pages — thin shells, no business logic
-      Setup.tsx
-      Scanner.tsx
-      Admin.tsx
-      SharedCall.tsx
-    components/
-      admin/               panels rendered inside Admin.tsx
-      scanner/             panels rendered inside Scanner.tsx
-    hooks/
-      admin/               admin-only hooks
-      scanner/             scanner-only hooks
-      shared/              hooks usable by either surface
-    services/
-      audio/               player + beep
-      ws/                  listener + admin WebSocket clients
-      util/                (avoid growing this — promote to a real service when patterns emerge)
-    types/
-      index.ts             barrel — re-exports the others
-      api.ts  auth.ts  call.ts  config.ts  admin.ts  ws.ts  ui.ts
+    features/              feature-first surfaces — each owns its page, components,
+                           hooks, slices, types, and tests
+      auth/                Login page + authSlice + useAuthInit + useTokenRefresh
+      setup/               Setup page + setup wizard
+      scanner/             Scanner page + scanner panels + scanner/calls/share slices
+      shared-call/         SharedCall page (deep-link playback)
+      admin/               Admin page + per-tab admin sub-features
+        Admin.tsx          chrome — header + sidebar + nested <Routes>
+        index.ts           barrel
+        _shell/            admin chrome shared by every sub-feature (adminSlice,
+                           useAdminWebSocket, useNavigationGuard, useWsQuery, …)
+                           — underscore prefix marks "not a feature"
+        users/             one folder per admin tab; each has <Panel>.tsx,
+        systems/           index.ts barrel, optional sub-feature hooks, slice,
+        api-keys/          components, and colocated tests
+        dashboards/        sub-tab chrome (Activity today; TR-MQTT later)
+          DashboardsPanel.tsx
+          activity/        ActivityPanel + activitySlice + useAdminActivity
+        logs/              LogsPanel + useAdminLogs
+        legacy-usage/  radio-reference/  tools/  options/
+        dir-monitor/   downstreams/  webhooks/  shared-links/
+        groups-tags/   transcription/
+    shared/                lowest layer — cross-feature primitives. No imports
+                           from features/ (a few documented exceptions live in
+                           eslint.config.js for the WS / Call-type debt).
+      hooks/               useTheme, useWebSocket, …
+      services/
+        audio/             player + beep
+        download/          authenticated blob download helper
+        ws/                listener + admin WebSocket clients
+      types/               api, config, ui, ws (barrel: index.ts)
 ```
 
-Industry analogues: feature folders + page shells follow [Bulletproof React](https://github.com/alan2207/bulletproof-react). Folder-as-component pattern for panels is documented below.
+Industry analogue: [Bulletproof React](https://github.com/alan2207/bulletproof-react) — feature folders, no shared `utils/`, dependency direction enforced by eslint. Two intentional deviations from strict Bulletproof:
+
+1. **Single shared `api.ts`** instead of one `createApi` per feature — sub-features attach via `api.injectEndpoints`. Tag invalidation across sub-features stays trivial.
+2. **Single `shared/`** instead of sibling `lib/` + `components/` + `hooks/` + `types/` — flat enough at this scale, easy to split later if any of them grows.
 
 ### 3.1 Imports
 
 - All imports use the `@/` alias for `src/`. No relative `../../` chains.
-- Cross-feature imports flow through public barrels (`@/components/admin/UsersPanel`), never reach into siblings (`@/components/admin/UsersPanel/UsersTable` — forbidden, see § 3.4).
+- **Dependency direction:** `pages` (lazy-loaded in `main.tsx`) → `features/` → `shared/` → `app/`. Enforced by eslint `no-restricted-imports` (see [frontend/eslint.config.js](../frontend/eslint.config.js)).
+- **Sibling features are opaque.** Cross-feature imports flow through public barrels only:
+  - `@/features/scanner` ✓
+  - `@/features/admin/users` ✓ (admin sub-features expose their own barrel)
+  - `@/features/scanner/components/SearchPanel` ✗ — reaching past the barrel is forbidden
+  - `@/features/admin/users/UsersTable` ✗ — admin sub-feature internals are opaque to siblings
+- **`_shell/` exception.** `@/features/admin/_shell` (and its files) is explicitly allowed because every admin sub-feature shares the same WS plumbing, navigation guard, and `useWsQuery` helper. The underscore prefix marks it as "not a feature itself."
+- **`shared/` debt.** `shared/services/ws/`, `shared/services/audio/player.ts`, `shared/hooks/useWebSocket.ts`, and `shared/types/ws.ts` are allowed to import the `@/features/auth` and `@/features/scanner` barrels (auth dispatch, `Call` type). Tracked, not expanded.
 
-### 3.2 Pages vs components
+### 3.2 Pages
 
-- `pages/*` are **thin shells**. They handle routing, top-level layout, and dispatch — not business logic.
-- Page-specific UI lives under `components/<surface>/`. A page imports panels; a panel never imports a page.
-- A page that grows past ~300 lines is a smell — push panels out.
+- Pages are top-level routed components. They live **inside their feature** (`features/auth/Login.tsx`, `features/admin/Admin.tsx`, …) — there is no separate `pages/` directory.
+- `main.tsx` is the only file that lazy-imports page modules directly; it has its own eslint exception so it can bypass barrels and avoid cycles with `app/store.ts`.
+- A page is a **thin shell**: routing, layout, top-level dispatch. Business logic lives in feature components, hooks, and slices.
+- A page that grows past ~300 lines is a smell — push panels out into the same feature folder.
 
 ### 3.3 State
 
-- Server data: RTK Query, single shared `api` object in [frontend/src/app/api.ts](frontend/src/app/api.ts). No per-feature `createApi` calls.
-- Client state: Redux Toolkit slices under `app/slices/<surface>/`. One slice per coherent state domain (e.g. `scannerSlice`, `callsSlice`, `shareSlice`).
+- **Server data:** RTK Query, single shared `api` object in [frontend/src/app/api.ts](../frontend/src/app/api.ts). Feature-specific endpoints attach via `api.injectEndpoints` from inside the feature folder. **No per-feature `createApi`.**
+- **Client state:** Redux Toolkit slices live **next to the feature that owns them** (`features/scanner/scannerSlice.ts`, `features/admin/dashboards/activity/activitySlice.ts`, `features/admin/_shell/adminSlice.ts`). Slices that are genuinely cross-feature are rare; promote to `shared/` only when ≥ 2 features need them.
 - WebSocket events dispatch into Redux via the WS client + middleware — components never parse WS frames.
 - JWT tokens live in **Redux memory only**. No `localStorage`, no `sessionStorage`. Refresh token is an httpOnly cookie scoped to `/api`.
 
-### 3.4 Folder-as-component panel convention
+### 3.4 Feature folder layout
 
-Panels under `components/admin/` and `components/scanner/` use the **folder-as-component** layout when they have ≥ 2 clear seams:
+A feature folder owns one routed surface (or one admin sub-tab). Typical shape:
 
 ```
-components/admin/UsersPanel/
-  UsersPanel.tsx          named root file (default export)
-  UsersTable.tsx          private subcomponent
-  UserEditor.tsx          private subcomponent
-  helpers.ts              local-only helpers (only when ≥ 2 sibling files use them)
-  UsersPanel.test.tsx     public-surface test
+features/admin/users/
+  UsersPanel.tsx          named root file, default export
+  UsersPanel.test.tsx     public-surface test (RTL + MSW)
   index.ts                one-line barrel: export { default } from "./UsersPanel";
+  useUsers.ts             feature-internal hook (only if it needs to exist —
+                          a 1-line wrapper around an RTK Query hook does not)
+  usersSlice.ts           feature-internal Redux slice, if any
+  types.ts                feature-internal types (server DTOs go in shared/types)
 ```
 
 Rules:
 
-- **Named root file**, never `index.tsx`. Stack traces, editor tabs, and `git blame` need a real name.
-- **Tiny `index.ts` barrel** (`.ts`, not `.tsx`) — re-export only, no JSX, no logic.
-- **Sibling folders are opaque.** Enforced by eslint `no-restricted-imports` against `@/components/{admin,scanner}/*/!(index)`.
+- **Named root file**, never `index.tsx`. Stack traces, editor tabs, and `git blame` need a real name. The `index.ts` barrel is `.ts`, no JSX.
 - **One default export per file.** Subcomponent files don't bundle multiple components.
-- **Seam test:** split into a folder when the panel has ≥ 2 obvious seams (e.g. table ↔ editor, filters ↔ list ↔ pagination). A 600-line panel with no seams stays single-file.
-- **Don't over-extract.** A subcomponent that needs > 3 props or a callback chain ≥ 2 hops to live outside its parent has the wrong seam — leave it inline.
-
-Pages and small components (banners, buttons, < ~250 lines, no seams) stay as single files.
+- **Folder-as-component split.** When a panel grows past ~500 lines and has ≥ 2 clear seams (table ↔ editor, filters ↔ list ↔ pagination), split sibling components into the same feature folder (`UsersPanel.tsx`, `UsersTable.tsx`, `UserEditor.tsx`). The barrel still exports only the root.
+- **Don't over-extract.** A subcomponent that needs > 3 props or a callback chain ≥ 2 hops outside its parent has the wrong seam — leave it inline.
+- **Sub-folders inside a feature are an internal concern.** `features/scanner/components/`, `features/scanner/hooks/` are fine when the feature has lots of pieces; small features stay flat. The barrel still hides everything.
 
 ### 3.5 Hooks
 
-- Topical sub-folders: `hooks/{admin,scanner,shared}/`. Each has a barrel `index.ts`.
-- Prefer specific imports (`@/hooks/shared/useTheme`) over the root barrel.
+- Feature-internal hooks live **inside the feature folder** (`features/auth/useTokenRefresh.ts`, `features/admin/logs/useAdminLogs.ts`, `features/admin/_shell/useWsQuery.ts`).
+- Cross-feature hooks live in `shared/hooks/` (`useTheme`, `useWebSocket`).
 - A custom hook that wraps **only** an `api.ts` query/mutation does not need to exist — call the RTK Query hook directly from the component.
 
 ### 3.6 Types
 
-- Topic-scoped modules under `types/`: `api`, `auth`, `call`, `config`, `admin`, `ws`, `ui`.
-- `types/index.ts` is an exhaustive barrel so `@/types` continues to work.
+- **Cross-feature / server DTOs** live in `shared/types/` (`api`, `config`, `ui`, `ws`). The barrel `shared/types/index.ts` re-exports them.
+- **Feature-internal types** live in the feature folder as `types.ts` (`features/scanner/types.ts`, `features/auth/types.ts`).
 - Mirror server DTO names where practical; document any divergence in the same file.
+- **Transitional `src/types/`.** `@/types` still works as a re-export of `@/shared/types/*` plus a small `admin.ts` module — kept until existing call sites are migrated. New code should import from `@/shared/types` or the feature's `types.ts`.
 
 ### 3.7 Strictness
 
