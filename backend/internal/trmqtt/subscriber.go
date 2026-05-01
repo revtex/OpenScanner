@@ -52,7 +52,12 @@ func (s *subscriber) topicSpecs(qos byte) []topicSpec {
 		}
 	}
 	if s.messageTopic != "" {
-		specs = append(specs, topicSpec{filter: s.messageTopic + "/+/messages", qos: qos})
+		// The MQTT plugin publishes trunking messages to
+		// `<message_topic>/<shortname>/message` (singular). The plugin's
+		// README incorrectly documents the suffix as `messages`; the
+		// canonical source is the `type` argument passed to send_json() in
+		// mqtt_status_plugin.cc, which is `"message"`.
+		specs = append(specs, topicSpec{filter: s.messageTopic + "/+/message", qos: qos})
 	}
 	return specs
 }
@@ -145,10 +150,19 @@ func (s *subscriber) handle(ctx context.Context, topic string, payload []byte) {
 				return
 			}
 			var f UnitFrame
-			if !s.decodeAndCheck(topic, payload, &f, &f.frameCommon) {
+			if err := decodeUnit(payload, kind, &f); err != nil {
+				pkgMetrics.parseErrors.Add(1)
+				slog.Warn("trmqtt: decode failed",
+					"instance_id", s.instanceID, "topic", topic, "size", len(payload), "error", err)
 				return
 			}
-			f.Kind = kind
+			if s.expectedPlugin != "" && f.InstanceID != "" && f.InstanceID != s.expectedPlugin {
+				pkgMetrics.dropMismatch.Add(1)
+				slog.Warn("trmqtt: dropped frame with mismatched instance_id",
+					"instance_id", s.instanceID, "topic", topic,
+					"expected", s.expectedPlugin, "got", f.InstanceID)
+				return
+			}
 			s.snapshot.appendUnit(topic, f)
 			ev := unitKindToEvent(kind)
 			if ev == "" {
@@ -157,7 +171,7 @@ func (s *subscriber) handle(ctx context.Context, topic string, payload []byte) {
 			s.out.emit(Event{Type: ev, InstanceID: s.instanceID, Label: s.label, Payload: f})
 			return
 		}
-		if s.messageTopic != "" && strings.HasPrefix(topic, s.messageTopic+"/") && strings.HasSuffix(topic, "/messages") {
+		if s.messageTopic != "" && strings.HasPrefix(topic, s.messageTopic+"/") && strings.HasSuffix(topic, "/message") {
 			var f MessageFrame
 			if !s.decodeAndCheck(topic, payload, &f, &f.frameCommon) {
 				return

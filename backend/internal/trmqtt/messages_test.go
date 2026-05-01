@@ -45,27 +45,16 @@ func TestDecode_RoundTrip(t *testing.T) {
 			check:   func(t *testing.T, v any) {},
 		},
 		{
-			name:    "unit_call",
-			payload: `{"type":"call","instance_id":"site-a","shortname":"hcrcs","unit_id":12345,"unit_alpha":"OFFICER12","talkgroup":500,"talkgroup_alpha_tag":"DISPATCH"}`,
-			into:    func() any { return new(UnitFrame) },
-			check: func(t *testing.T, v any) {
-				f := v.(*UnitFrame)
-				if f.UnitAlpha != "OFFICER12" {
-					t.Fatalf("unit_alpha: %q", f.UnitAlpha)
-				}
-				if got := string(f.UnitID); got != "12345" {
-					t.Fatalf("unit_id: %q", got)
-				}
-			},
-		},
-		{
 			name:    "message",
-			payload: `{"type":"message","instance_id":"site-a","sys_num":0,"shortname":"hcrcs","message_type":"GRP_V_CH_GRANT","opcode":48}`,
+			payload: `{"type":"message","instance_id":"site-a","message":{"sys_num":0,"sys_name":"hcrcs","trunk_msg":0,"trunk_msg_type":"GRANT","opcode":"30","opcode_type":"SYNC_BCST","opcode_desc":"Sync Broadcast / Patch"},"timestamp":1700000000}`,
 			into:    func() any { return new(MessageFrame) },
 			check: func(t *testing.T, v any) {
 				f := v.(*MessageFrame)
-				if f.MessageType != "GRP_V_CH_GRANT" {
-					t.Fatalf("message_type: %q", f.MessageType)
+				if f.InstanceID != "site-a" {
+					t.Fatalf("instance_id: %q", f.InstanceID)
+				}
+				if !bytes.Contains(f.Message, []byte(`"trunk_msg_type":"GRANT"`)) {
+					t.Fatalf("message body: %s", string(f.Message))
 				}
 			},
 		},

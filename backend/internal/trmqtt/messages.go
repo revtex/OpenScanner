@@ -81,15 +81,15 @@ type PluginStatusFrame struct {
 	Status string `json:"status,omitempty"`
 }
 
-// MessageFrame — trunking-control-channel message (debug pane).
+// MessageFrame — trunking-control-channel message (debug pane). The TR
+// plugin nests the message body under a "message" key alongside the standard
+// frameCommon fields (`{type, message:{...}, timestamp, instance_id}`), so the
+// inner blob is captured as a RawMessage and forwarded to the frontend
+// untouched. Frontend extracts trunk_msg_type/opcode/opcode_desc/sys_name from
+// the nested object.
 type MessageFrame struct {
 	frameCommon
-	System      json.Number     `json:"sys_num,omitempty"`
-	Shortname   string          `json:"shortname,omitempty"`
-	MessageType string          `json:"message_type,omitempty"`
-	Opcode      json.Number     `json:"opcode,omitempty"`
-	OpcodeDesc  string          `json:"opcode_desc,omitempty"`
-	Meta        json.RawMessage `json:"meta,omitempty"`
+	Message json.RawMessage `json:"message,omitempty"`
 }
 
 // UnitEventKind enumerates the per-unit-topic event kinds.
@@ -108,18 +108,65 @@ const (
 )
 
 // UnitFrame is the canonical decoded form of any unit-topic frame. The Kind
-// field carries which unit topic delivered it. Unknown fields are preserved
-// in Extra.
+// field carries which unit topic delivered it.
+//
+// The TR plugin envelopes unit payloads as `{type, <kind>:{body}, timestamp,
+// instance_id}` where <kind> is the unit event name ("on", "off", "call",
+// "join", "data", "location", "end", "ackresp", "ans_req"). Use
+// decodeUnit() to flatten that envelope into UnitFrame.
+//
+// Field names mirror the plugin's get_unit_json / get_unit_tg_json output:
+// `unit` (not `unit_id`), `unit_alpha_tag` (not `unit_alpha`), `sys_name`
+// (not `shortname`). The full nested body is preserved in Body for any
+// extra fields the frontend wants to surface.
 type UnitFrame struct {
 	frameCommon
-	Kind        UnitEventKind   `json:"-"`
-	Shortname   string          `json:"shortname,omitempty"`
-	UnitID      json.Number     `json:"unit_id,omitempty"`
-	UnitAlpha   string          `json:"unit_alpha,omitempty"`
+	Kind        UnitEventKind   `json:"kind,omitempty"`
+	SysNum      json.Number     `json:"sys_num,omitempty"`
+	Shortname   string          `json:"sys_name,omitempty"`
+	UnitID      json.Number     `json:"unit,omitempty"`
+	UnitAlpha   string          `json:"unit_alpha_tag,omitempty"`
 	TalkgroupID json.Number     `json:"talkgroup,omitempty"`
 	TGAlpha     string          `json:"talkgroup_alpha_tag,omitempty"`
-	Patches     json.RawMessage `json:"patches,omitempty"`
-	Extra       json.RawMessage `json:"extra,omitempty"`
+	TGGroup     string          `json:"talkgroup_group,omitempty"`
+	TGTag       string          `json:"talkgroup_tag,omitempty"`
+	TGPatches   string          `json:"talkgroup_patches,omitempty"`
+	Body        json.RawMessage `json:"body,omitempty"`
+}
+
+// decodeUnit flattens a nested unit payload `{type, <kind>:{body}, ...}`
+// into a UnitFrame, copying frameCommon fields and decoding the kind body
+// into the inner fields. Returns false on size/decode error.
+func decodeUnit(payload []byte, kind UnitEventKind, f *UnitFrame) error {
+	if len(payload) > MaxPayloadBytes {
+		return ErrOversize
+	}
+	var env map[string]json.RawMessage
+	dec := json.NewDecoder(bytes.NewReader(payload))
+	dec.UseNumber()
+	if err := dec.Decode(&env); err != nil {
+		return fmt.Errorf("trmqtt decode unit: %w", err)
+	}
+	if raw, ok := env["type"]; ok {
+		_ = json.Unmarshal(raw, &f.Type)
+	}
+	if raw, ok := env["instance_id"]; ok {
+		_ = json.Unmarshal(raw, &f.InstanceID)
+	}
+	if raw, ok := env["timestamp"]; ok {
+		f.Timestamp = json.Number(bytes.TrimSpace(raw))
+	}
+	body, ok := env[string(kind)]
+	if ok && len(body) > 0 {
+		bodyDec := json.NewDecoder(bytes.NewReader(body))
+		bodyDec.UseNumber()
+		if err := bodyDec.Decode(f); err != nil {
+			return fmt.Errorf("trmqtt decode unit body: %w", err)
+		}
+		f.Body = append(f.Body[:0], body...)
+	}
+	f.Kind = kind
+	return nil
 }
 
 // decode unmarshals payload into v using a json.Decoder configured with

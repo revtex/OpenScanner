@@ -183,16 +183,24 @@ export const trMqttSlice = createSlice({
           state.instances[id] = { ...conn, connected: true, lastSeenAt: now };
           return;
         case "tr.message": {
-          const rec = asRecord(envelope.payload);
+          // TR plugin envelope: { type, message:{ sys_num, sys_name,
+          // trunk_msg, trunk_msg_type, opcode, opcode_type, opcode_desc,
+          // meta }, timestamp, instance_id }
+          const env = asRecord(envelope.payload);
+          const msg = asRecord(env?.message) ?? env;
           state.trunkingMessages[id] = pushCapped(
             state.trunkingMessages[id],
             {
               at: now,
               topic,
-              type: rec?.message_type as string | undefined,
-              opcode: rec?.opcode != null ? String(rec.opcode) : undefined,
-              opcodeDesc: rec?.opcode_desc as string | undefined,
-              shortname: rec?.shortname as string | undefined,
+              type: (msg?.trunk_msg_type ?? msg?.message_type) as
+                | string
+                | undefined,
+              opcode: msg?.opcode != null ? String(msg.opcode) : undefined,
+              opcodeDesc: msg?.opcode_desc as string | undefined,
+              shortname: (msg?.sys_name ?? msg?.shortname) as
+                | string
+                | undefined,
               raw: envelope.payload,
             },
             MESSAGE_CAP,
@@ -206,14 +214,23 @@ export const trMqttSlice = createSlice({
 
       if (topic.startsWith("tr.unit.")) {
         const rec = asRecord(envelope.payload);
+        // Backend flattens TR plugin's nested `{type, <kind>:{body}, ...}`
+        // envelope into UnitFrame top-level fields with the plugin's own
+        // names (sys_name, unit, unit_alpha_tag, talkgroup). Older shorthand
+        // names (shortname, unit_id) are accepted as fallbacks.
         state.unitEvents[id] = pushCapped(
           state.unitEvents[id],
           {
             at: now,
             topic,
             kind: unitKindFromTopic(topic),
-            shortname: rec?.shortname as string | undefined,
-            unitId: rec?.unit_id != null ? String(rec.unit_id) : undefined,
+            shortname: (rec?.sys_name ?? rec?.shortname) as string | undefined,
+            unitId:
+              rec?.unit != null
+                ? String(rec.unit)
+                : rec?.unit_id != null
+                  ? String(rec.unit_id)
+                  : undefined,
             talkgroupId:
               rec?.talkgroup != null ? String(rec.talkgroup) : undefined,
             raw: envelope.payload,

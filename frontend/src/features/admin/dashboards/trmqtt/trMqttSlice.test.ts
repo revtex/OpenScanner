@@ -89,9 +89,12 @@ describe("trMqttSlice", () => {
       applyTrEvent({
         topic: "tr.message",
         envelope: envelope({
-          opcode: 0x39,
-          opcode_desc: "GRP_V_CH_GRANT",
-          shortname: "sys1",
+          message: {
+            opcode: 0x39,
+            opcode_desc: "GRP_V_CH_GRANT",
+            sys_name: "sys1",
+            trunk_msg_type: "GRANT",
+          },
         }),
         at: 1,
       }),
@@ -101,13 +104,14 @@ describe("trMqttSlice", () => {
     expect(e.opcode).toBe("57");
     expect(e.opcodeDesc).toBe("GRP_V_CH_GRANT");
     expect(e.shortname).toBe("sys1");
+    expect(e.type).toBe("GRANT");
 
     for (let i = 0; i < 510; i++) {
       s = reducer(
         s,
         applyTrEvent({
           topic: "tr.message",
-          envelope: envelope({ opcode: i }),
+          envelope: envelope({ message: { opcode: i } }),
           at: i,
         }),
       );

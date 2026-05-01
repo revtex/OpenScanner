@@ -55,7 +55,7 @@ Recommended fields:
 | `broker`        | `tcp://host:1883` for plaintext, `tls://host:8883` for TLS. Hostname must be reachable from the trunk-recorder host.                         |
 | `topic`         | Base topic for status frames (`<topic>/rates`, `<topic>/recorders`, `<topic>/calls_active`, `<topic>/system`, `<topic>/config`, …).          |
 | `unit_topic`    | Optional. Per-unit affiliation events publish under `<unit_topic>/<shortname>/(on\|off\|join\|location\|call\|end\|data\|ackresp\|ans_req)`. |
-| `message_topic` | Optional. Trunking control-channel messages publish under `<message_topic>/<shortname>/messages` — useful for debugging.                     |
+| `message_topic` | Optional. Trunking control-channel messages publish under `<message_topic>/<shortname>/message` — useful for debugging.                      |
 | `instance_id`   | Stable identifier. OpenScanner uses it to drop misrouted frames when several trunk-recorders share one broker. **Set this for every TR.**    |
 | `qos`           | `0` is the right answer for a live dashboard. `1` adds broker-side retransmits; `2` is rarely worth the latency.                             |
 
