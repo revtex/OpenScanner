@@ -131,6 +131,9 @@ type UnitFrame struct {
 	TGGroup     string          `json:"talkgroup_group,omitempty"`
 	TGTag       string          `json:"talkgroup_tag,omitempty"`
 	TGPatches   string          `json:"talkgroup_patches,omitempty"`
+	Freq        json.Number     `json:"freq,omitempty"`
+	CallNum     json.Number     `json:"call_num,omitempty"`
+	Encrypted   bool            `json:"encrypted,omitempty"`
 	Body        json.RawMessage `json:"body,omitempty"`
 }
 

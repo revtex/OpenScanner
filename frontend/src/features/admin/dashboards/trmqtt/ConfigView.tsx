@@ -21,8 +21,15 @@ interface SourceRow {
   silence_threshold?: string;
 }
 
+/** The TR plugin wraps everything under a `config` key: `{type, config:{sources, systems, ...}}` */
+function unwrapConfig(payload: unknown): Record<string, unknown> {
+  const top = asRecord(payload);
+  return asRecord(top?.config) ?? top ?? {};
+}
+
 function toSourceRows(payload: unknown): SourceRow[] {
-  const items = asArray(asRecord(payload)?.sources);
+  const cfg = unwrapConfig(payload);
+  const items = asArray(cfg.sources);
   return items.map((it, idx) => {
     const r = asRecord(it) ?? {};
     return {
@@ -69,7 +76,7 @@ const SETTING_KEYS: { key: string; label: string }[] = [
 ];
 
 function toSettingItems(payload: unknown): SettingItem[] {
-  const rec = asRecord(payload);
+  const rec = unwrapConfig(payload);
   if (!rec) return [];
   const items: SettingItem[] = [];
   for (const { key, label } of SETTING_KEYS) {
@@ -107,9 +114,7 @@ export default function ConfigView({ instance }: { instance: TrInstance }) {
             <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-xs">
               {settings.map((s) => (
                 <div key={s.label} className="flex gap-2">
-                  <dt className="text-base-content/60 min-w-[140px]">
-                    {s.label}
-                  </dt>
+                  <dt className="text-base-content/60 min-w-35">{s.label}</dt>
                   <dd className="font-mono break-all">{s.value}</dd>
                 </div>
               ))}
@@ -145,12 +150,12 @@ export default function ConfigView({ instance }: { instance: TrInstance }) {
                   {sources.map((s) => (
                     <tr key={s.key}>
                       <td>{s.driver ?? "—"}</td>
-                      <td className="font-mono break-all">
-                        {s.device ?? "—"}
-                      </td>
+                      <td className="font-mono break-all">{s.device ?? "—"}</td>
                       <td className="font-mono">{fmtFreqMHz(s.center)}</td>
                       <td className="text-right font-mono">
-                        {s.rate != null ? `${(s.rate / 1e6).toFixed(3)} Msps` : "—"}
+                        {s.rate != null
+                          ? `${(s.rate / 1e6).toFixed(3)} Msps`
+                          : "—"}
                       </td>
                       <td>{s.gain ?? "—"}</td>
                       <td>{s.ppm ?? "—"}</td>

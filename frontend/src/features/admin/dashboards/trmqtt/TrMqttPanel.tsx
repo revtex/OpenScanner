@@ -83,9 +83,7 @@ export default function TrMqttPanel() {
       {tab === "instances" && <InstancesPanel onSelect={selectAndOpen} />}
       {tab === "dashboard" && selected && <DashboardView instance={selected} />}
       {tab === "calls" && selected && <CallsView instance={selected} />}
-      {tab === "recorders" && selected && (
-        <RecordersView instance={selected} />
-      )}
+      {tab === "recorders" && selected && <RecordersView instance={selected} />}
       {tab === "systems" && selected && <SystemsView instance={selected} />}
       {tab === "units" && selected && <UnitsView instance={selected} />}
       {tab === "messages" && selected && (

@@ -6,13 +6,7 @@
 import { useMemo, useState } from "react";
 import { useTrCallsActive, useTrRecentCalls } from "./useTrMqtt";
 import type { TrInstance, RecentCallEntry } from "./types";
-import {
-  asArray,
-  asRecord,
-  fmtDuration,
-  fmtFreqMHz,
-  fmtTime,
-} from "./format";
+import { asArray, asRecord, fmtDuration, fmtFreqMHz, fmtTime } from "./format";
 
 interface ActiveCallRow {
   key: string;
@@ -60,8 +54,7 @@ function toActiveRows(payload: unknown): ActiveCallRow[] {
         typeof c.call_state_type === "string" ? c.call_state_type : undefined,
       rec_state_type:
         typeof c.rec_state_type === "string" ? c.rec_state_type : undefined,
-      start_time:
-        typeof c.start_time === "number" ? c.start_time : undefined,
+      start_time: typeof c.start_time === "number" ? c.start_time : undefined,
     };
   });
 }
@@ -155,7 +148,9 @@ function RecentTable({ rows }: { rows: RecentCallEntry[] }) {
         <tbody>
           {rows.map((r, i) => (
             <tr key={`${r.callId ?? r.callNum ?? i}-${r.kind}-${r.at}`}>
-              <td className="font-mono text-base-content/60">{fmtTime(r.at)}</td>
+              <td className="font-mono text-base-content/60">
+                {fmtTime(r.at)}
+              </td>
               <td>
                 <span
                   className={`badge badge-xs ${
@@ -170,9 +165,7 @@ function RecentTable({ rows }: { rows: RecentCallEntry[] }) {
               <td className="font-mono">{fmtFreqMHz(r.freq)}</td>
               <td>{r.talkgroupAlpha ?? r.talkgroup ?? "—"}</td>
               <td>{r.talkgroupGroup ?? "—"}</td>
-              <td className="font-mono">
-                {r.unitAlpha ?? r.unit ?? "—"}
-              </td>
+              <td className="font-mono">{r.unitAlpha ?? r.unit ?? "—"}</td>
               <td className="text-right">{fmtDuration(r.length)}</td>
               <td className="text-xs space-x-1">
                 {r.encrypted && (
@@ -198,7 +191,10 @@ export default function CallsView({ instance }: { instance: TrInstance }) {
   const recentRaw = useTrRecentCalls(instance.id);
   const [tab, setTab] = useState<"active" | "recent">("active");
 
-  const activeRows = useMemo(() => toActiveRows(activePayload), [activePayload]);
+  const activeRows = useMemo(
+    () => toActiveRows(activePayload),
+    [activePayload],
+  );
   const recent = useMemo(() => recentRaw.slice().reverse(), [recentRaw]);
 
   return (

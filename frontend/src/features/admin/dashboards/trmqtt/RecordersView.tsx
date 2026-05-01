@@ -50,9 +50,7 @@ export default function RecordersView({ instance }: { instance: TrInstance }) {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-semibold">
-        Recorders ({rows.length})
-      </h3>
+      <h3 className="text-lg font-semibold">Recorders ({rows.length})</h3>
       {rows.length === 0 ? (
         <div className="text-xs text-base-content/50">
           No `tr.recorders` frame received yet.

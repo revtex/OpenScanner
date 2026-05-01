@@ -43,9 +43,7 @@ export default function UnitsView({ instance }: { instance: TrInstance }) {
         (e) =>
           !filterUnit ||
           (e.unitId ?? "").includes(filterUnit) ||
-          (e.unitAlpha ?? "")
-            .toLowerCase()
-            .includes(filterUnit.toLowerCase()),
+          (e.unitAlpha ?? "").toLowerCase().includes(filterUnit.toLowerCase()),
       )
       .slice()
       .reverse();
@@ -128,7 +126,8 @@ export default function UnitsView({ instance }: { instance: TrInstance }) {
               if (ev.encrypted) notes.push("ENC");
               if (ev.callNum) notes.push(`call#${ev.callNum}`);
               if (ev.talkgroupTag) notes.push(ev.talkgroupTag);
-              if (ev.talkgroupPatches) notes.push(`patches:${ev.talkgroupPatches}`);
+              if (ev.talkgroupPatches)
+                notes.push(`patches:${ev.talkgroupPatches}`);
               return (
                 <div
                   key={vi.key}
