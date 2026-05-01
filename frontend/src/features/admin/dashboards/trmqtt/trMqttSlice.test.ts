@@ -416,4 +416,47 @@ describe("trMqttSlice", () => {
     expect(s.pluginStatus[ID]).toBeUndefined();
     expect(s.recentCalls[ID]).toBeUndefined();
   });
+
+  it("tr.instance.disconnected clears stale plugin status", () => {
+    let s = reducer(
+      emptyState(),
+      applyTrEvent({
+        topic: "tr.pluginStatus",
+        envelope: envelope({ status: "connected", client_id: "c1" }),
+        at: 10,
+      }),
+    );
+    expect(s.pluginStatus[ID]?.status).toBe("connected");
+    s = reducer(
+      s,
+      applyTrEvent({
+        topic: "tr.instance.disconnected",
+        envelope: envelope({}, "broker down"),
+        at: 20,
+      }),
+    );
+    expect(s.pluginStatus[ID]).toBeUndefined();
+  });
+
+  it("data frames refresh a stale 'disconnected' plugin badge to connected", () => {
+    let s = reducer(
+      emptyState(),
+      applyTrEvent({
+        topic: "tr.pluginStatus",
+        envelope: envelope({ status: "disconnected", client_id: "c1" }),
+        at: 10,
+      }),
+    );
+    expect(s.pluginStatus[ID]?.status).toBe("disconnected");
+    s = reducer(
+      s,
+      applyTrEvent({
+        topic: "tr.rates",
+        envelope: envelope({ rates: [{ decoderate: 1 }] }),
+        at: 50,
+      }),
+    );
+    expect(s.pluginStatus[ID]?.status).toBe("connected");
+    expect(s.pluginStatus[ID]?.clientId).toBe("c1");
+  });
 });

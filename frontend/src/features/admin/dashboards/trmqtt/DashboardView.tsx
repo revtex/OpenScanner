@@ -98,15 +98,24 @@ export default function DashboardView({ instance }: { instance: TrInstance }) {
   const recorders = state.recorders[instance.id];
   const callsActive = state.callsActive[instance.id];
   const systems = state.systems[instance.id];
-  const unitCount = state.unitEvents[instance.id]?.length ?? 0;
-  const messageCount = state.trunkingMessages[instance.id]?.length ?? 0;
 
   const counts = useMemo(() => {
     const recRec = asRecord(recorders);
     const callRec = asRecord(callsActive);
     const sysRec = asRecord(systems);
+    const recItems = asArray(recRec?.recorders);
+    // Plugin recorder states: AVAILABLE / IDLE / ACTIVE / RECORDING /
+    // STOPPED / IGNORE. Treat anything actively recording (or any
+    // post-IDLE state) as "active" to mirror trunk-recorder's own UI.
+    const activeRecorders = recItems.filter((it) => {
+      const s = asRecord(it)?.rec_state_type;
+      if (typeof s !== "string") return false;
+      const up = s.toUpperCase();
+      return up === "ACTIVE" || up === "RECORDING";
+    }).length;
     return {
-      recorders: asArray(recRec?.recorders).length,
+      recordersTotal: recItems.length,
+      recordersActive: activeRecorders,
       activeCalls: asArray(callRec?.calls ?? callRec?.callsActive).length,
       systems: asArray(sysRec?.systems).length,
     };
@@ -162,15 +171,15 @@ export default function DashboardView({ instance }: { instance: TrInstance }) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <StatCard
           label="Systems"
           value={counts.systems}
           icon={<Radio className="w-3 h-3" />}
         />
         <StatCard
-          label="Recorders"
-          value={counts.recorders}
+          label="Recorders (active / total)"
+          value={`${counts.recordersActive} / ${counts.recordersTotal}`}
           icon={<Plug className="w-3 h-3" />}
         />
         <StatCard
@@ -179,13 +188,10 @@ export default function DashboardView({ instance }: { instance: TrInstance }) {
           icon={<Wifi className="w-3 h-3" />}
         />
         <StatCard
-          label="Recent units"
-          value={unitCount}
-          icon={<Radio className="w-3 h-3" />}
-        />
-        <StatCard
-          label="Trunking msgs"
-          value={messageCount}
+          label="Decode rate (msgs/s)"
+          value={
+            rates.length > 0 ? rates[rates.length - 1].rate.toFixed(1) : "—"
+          }
           icon={<Radio className="w-3 h-3" />}
         />
       </div>

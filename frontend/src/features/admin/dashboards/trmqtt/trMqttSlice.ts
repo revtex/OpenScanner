@@ -98,6 +98,27 @@ function normalizeEventAt(at: number | undefined): number {
   return at;
 }
 
+/**
+ * Plugin LWT delivers a one-shot `disconnected` frame and the explicit
+ * `connected` is only published on plugin start, so a reconnected plugin
+ * can leave us with a stale "disconnected" badge. Any data frame proves
+ * the plugin is alive — refresh the badge accordingly.
+ */
+function refreshPluginAlive(
+  state: TrMqttState,
+  id: number,
+  now: number,
+): void {
+  const cur = state.pluginStatus[id];
+  if (cur && cur.status === "connected") return;
+  state.pluginStatus[id] = {
+    status: "connected",
+    clientId: cur?.clientId,
+    instanceId: cur?.instanceId,
+    at: now,
+  };
+}
+
 function aggregateRate(payload: unknown): number {
   // TR `rates` payload is `{rates: [{...}]}` or similar — sum any numeric
   // `decoderate` / `rate` field present, gracefully fall back to 0.
@@ -233,6 +254,24 @@ export const trMqttSlice = createSlice({
         connected: false,
       };
 
+      // Any *known* data-bearing frame is proof the plugin is publishing.
+      // Use it to keep the plugin badge honest when the explicit
+      // `tr.pluginStatus` LWT goes stale (the LWT only re-publishes on
+      // plugin restart, so a flapping broker can leave us showing
+      // "disconnected" forever otherwise).
+      const isDataTopic =
+        topic === "tr.rates" ||
+        topic === "tr.recorders" ||
+        topic === "tr.callsActive" ||
+        topic === "tr.callStart" ||
+        topic === "tr.callEnd" ||
+        topic === "tr.systems" ||
+        topic === "tr.system" ||
+        topic === "tr.config" ||
+        topic === "tr.message" ||
+        topic.startsWith("tr.unit.");
+      if (isDataTopic) refreshPluginAlive(state, id, now);
+
       switch (topic) {
         case "tr.instance.connected":
           state.instances[id] = {
@@ -240,6 +279,10 @@ export const trMqttSlice = createSlice({
             lastError: undefined,
             lastSeenAt: now,
           };
+          // Clear stale plugin status — the broker will re-deliver the
+          // retained `tr.pluginStatus` topic after re-subscription, so any
+          // value we held is no longer trustworthy.
+          delete state.pluginStatus[id];
           return;
         case "tr.instance.disconnected":
           state.instances[id] = {
@@ -247,6 +290,9 @@ export const trMqttSlice = createSlice({
             lastError: envelope.error || conn.lastError,
             lastSeenAt: conn.lastSeenAt,
           };
+          // We can't observe the plugin while disconnected from the broker;
+          // hide stale status until the next pluginStatus frame arrives.
+          delete state.pluginStatus[id];
           return;
         case "tr.warn.lag":
           state.lagWarning[id] = now;
