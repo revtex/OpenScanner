@@ -891,14 +891,17 @@ func (p *program) run() {
 	hub.SetDirMonitorReloader(dwService)
 
 	// trunk-recorder MQTT subscriber. One autopaho client per tr_instances row;
-	// supervised reconnect, in-memory snapshot. Admin REST + WS fan-out land in
-	// later steps; for now Subscribe() is drained at debug level.
+	// supervised reconnect, in-memory snapshot. Events fan out to admin
+	// clients via hub.BroadcastAdminEvent under tr.* topic names defined on
+	// trmqtt.Event.Type. The payload is the typed frame struct from the
+	// trmqtt package — admin WS handlers JSON-encode it as-is.
 	trManager := trmqtt.NewManager(queries, cfg.EncryptionKey, nil)
 	if err := trManager.Start(ctx); err != nil {
 		slog.Error("trmqtt: failed to start manager", "error", err)
 	}
 	trEvents, trUnsubscribe := trManager.Subscribe()
 	go func() {
+		defer trUnsubscribe()
 		for {
 			select {
 			case <-ctx.Done():
@@ -907,11 +910,18 @@ func (p *program) run() {
 				if !ok {
 					return
 				}
-				slog.Debug("trmqtt event", "type", ev.Type, "instance_id", ev.InstanceID)
+				// Admin event topic is exactly the trmqtt EventType value.
+				// Payload includes instance_id/label so the frontend can
+				// route to the right per-instance view.
+				hub.BroadcastAdminEvent(string(ev.Type), map[string]any{
+					"instanceId": ev.InstanceID,
+					"label":      ev.Label,
+					"payload":    ev.Payload,
+					"error":      formatTRMqttErr(ev.Err),
+				})
 			}
 		}
 	}()
-	_ = trUnsubscribe // wired by step 4 (admin WS hub)
 
 	// Start transcription result consumer (stores results in DB, broadcasts TRN).
 	go consumeTranscriptionResults(ctx, queries, hub, transcriberMgr)
@@ -1168,6 +1178,16 @@ func printStartupBanner(d startupBannerData) {
 				"    Fix: set OPENSCANNER_ENCRYPTION_KEY (or --encryption-key) to a 32-byte\n"+
 				"    random value. See docs/deployment-guide.md#secrets-encryption.\n\n")
 	}
+}
+
+// formatTRMqttErr renders a trmqtt event error as a string suitable for
+// inclusion in admin events. Returns "" for a nil error so the admin event
+// payload omits the field cleanly when JSON-encoded by the hub.
+func formatTRMqttErr(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }
 
 // consumeTranscriptionResults reads completed transcription jobs, stores them
