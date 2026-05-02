@@ -3,7 +3,6 @@ package trmqtt
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"log/slog"
 	"net"
 	"strings"
@@ -216,6 +215,3 @@ func TestClient_PasswordNeverLogged(t *testing.T) {
 
 // guard against accidental use of the unused import.
 var _ = pahopkts.Publish{}
-
-// brokerError surfaces a recognisable error for use in test reports.
-func brokerError(addr string, err error) error { return fmt.Errorf("broker %s: %w", addr, err) }
