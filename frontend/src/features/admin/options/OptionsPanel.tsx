@@ -1,12 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import {
-  Globe,
-  Radio,
-  AudioLines,
-  Monitor,
-  Share2,
-  Plug,
-} from "lucide-react";
+import { Globe, Radio, AudioLines, Monitor, Share2, Plug } from "lucide-react";
 import {
   useGetConfigQuery,
   useUpdateConfigMutation,
@@ -19,14 +12,8 @@ import type { AdminSetting } from "@/types";
 const BOOLEAN_KEYS = [
   "publicAccess",
   "shareableLinks",
-  "pushNotifications",
-  "webhooksEnabled",
   "time12hFormat",
   "disableDuplicateDetection",
-  "sortTalkgroups",
-  "tagsToggle",
-  "playbackGoesLive",
-  "searchPatchedTalkgroups",
   "showListenersCount",
   "trMqttEnabled",
 ] as const;
@@ -59,17 +46,6 @@ interface SettingSection {
   keys: string[];
 }
 
-// Keys listed here are persisted but currently not wired to runtime behavior.
-const PLANNED_ONLY_KEYS = [
-  "pushNotifications",
-  "webhooksEnabled",
-  "sortTalkgroups",
-  "tagsToggle",
-  "playbackGoesLive",
-  "searchPatchedTalkgroups",
-  "afsSystems",
-] as const;
-
 const SECTIONS: SettingSection[] = [
   {
     title: "General",
@@ -79,15 +55,7 @@ const SECTIONS: SettingSection[] = [
   {
     title: "Scanner Behavior",
     icon: <Radio className="w-4 h-4" />,
-    keys: [
-      "sortTalkgroups",
-      "tagsToggle",
-      "time12hFormat",
-      "showListenersCount",
-      "playbackGoesLive",
-      "afsSystems",
-      "maxClients",
-    ],
+    keys: ["time12hFormat", "showListenersCount", "maxClients"],
   },
   {
     title: "Call Processing",
@@ -98,7 +66,6 @@ const SECTIONS: SettingSection[] = [
       "disableDuplicateDetection",
       "duplicateDetectionTimeFrame",
       "pruneDays",
-      "searchPatchedTalkgroups",
     ],
   },
   {
@@ -114,7 +81,7 @@ const SECTIONS: SettingSection[] = [
   {
     title: "Integrations",
     icon: <Plug className="w-4 h-4" />,
-    keys: ["trMqttEnabled", "webhooksEnabled", "pushNotifications"],
+    keys: ["trMqttEnabled"],
   },
 ];
 
@@ -127,23 +94,16 @@ const LABELS: Record<string, string> = {
   publicAccess: "Public Access",
   shareableLinks: "Shareable Links",
   sharedLinkExpiry: "Shared Link Expiry (days)",
-  pushNotifications: "Push Notifications",
-  webhooksEnabled: "Webhooks Enabled",
   audioConversion: "Audio Conversion (FFmpeg)",
   audioEncodingPreset: "Audio Encoding Preset",
   branding: "Branding Label",
   email: "Support Email",
   time12hFormat: "12-Hour Time Format",
-  afsSystems: "AFS Systems",
   maxClients: "Max Simultaneous Clients",
   keypadBeeps: "Keypad Beep Style",
   disableDuplicateDetection: "Disable Duplicate Call Detection",
   duplicateDetectionTimeFrame: "Duplicate Detection Time Frame (ms)",
   pruneDays: "Prune Database After (days)",
-  sortTalkgroups: "Sort Talkgroups by ID",
-  tagsToggle: "Allow Toggle by Tag",
-  playbackGoesLive: "Playback Mode Goes Live",
-  searchPatchedTalkgroups: "Search Patched Talkgroups",
   showListenersCount: "Show Listeners Count",
   trMqttEnabled: "Enable Trunk Recorder MQTT",
 };
@@ -154,16 +114,7 @@ const DESCRIPTIONS: Record<string, string> = {
     "Short label shown above the scanner display to identify this instance.",
   email: "Support contact email shown to users.",
   time12hFormat: "Display timestamps in 12-hour (AM/PM) format.",
-  afsSystems:
-    "Comma-separated system IDs whose talkgroup IDs should be shown in AFS (agency-fleet-subfleet) format.",
   maxClients: "Maximum number of simultaneous WebSocket listeners.",
-  sortTalkgroups:
-    "Sort talkgroups by their numeric ID instead of display order.",
-  tagsToggle: "Allow toggling entire groups of talkgroups by tag.",
-  playbackGoesLive:
-    "Automatically switch from playback to live mode when the search list is exhausted.",
-  searchPatchedTalkgroups:
-    "Include patched talkgroups in search results (may slow search).",
   showListenersCount:
     "Display the active listener count on the main scanner screen.",
   audioConversion:
@@ -186,10 +137,6 @@ const DESCRIPTIONS: Record<string, string> = {
 
 function isBooleanKey(key: string): boolean {
   return (BOOLEAN_KEYS as readonly string[]).includes(key);
-}
-
-function isPlannedKey(key: string): boolean {
-  return (PLANNED_ONLY_KEYS as readonly string[]).includes(key);
 }
 
 export default function OptionsPanel() {
@@ -308,13 +255,6 @@ export default function OptionsPanel() {
 
   const renderSettingInput = (key: string) => {
     const value = localSettings[key] ?? "";
-    const plannedOnly = isPlannedKey(key);
-
-    const statusBadge = plannedOnly ? (
-      <span className="badge badge-sm border-warning/30 bg-warning/10 text-warning">
-        Planned
-      </span>
-    ) : null;
 
     if (isBooleanKey(key)) {
       return (
@@ -324,26 +264,15 @@ export default function OptionsPanel() {
               type="checkbox"
               className="toggle toggle-primary"
               checked={value === "true"}
-              disabled={plannedOnly}
               onChange={(e) =>
                 updateSetting(key, e.target.checked ? "true" : "false")
               }
             />
             <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">
-                  {LABELS[key] ?? key}
-                </span>
-                {statusBadge}
-              </div>
+              <span className="text-sm font-medium">{LABELS[key] ?? key}</span>
               {DESCRIPTIONS[key] && (
                 <p className="text-xs text-base-content/60 mt-0.5">
                   {DESCRIPTIONS[key]}
-                </p>
-              )}
-              {plannedOnly && (
-                <p className="text-xs text-warning/80 mt-1">
-                  Saved to config, but not wired to runtime behavior yet.
                 </p>
               )}
             </div>
@@ -353,9 +282,8 @@ export default function OptionsPanel() {
     }
 
     const label = (
-      <div className="pb-0 flex items-center gap-2">
+      <div className="pb-0">
         <span className="text-sm font-medium">{LABELS[key] ?? key}</span>
-        {statusBadge}
       </div>
     );
     const description = DESCRIPTIONS[key] ? (
@@ -380,11 +308,6 @@ export default function OptionsPanel() {
               </option>
             ))}
           </select>
-          {plannedOnly && (
-            <p className="text-xs text-warning/80 mt-1">
-              Saved to config, but not wired to runtime behavior yet.
-            </p>
-          )}
           {ffmpegMissing && (
             <p className="text-xs text-warning mt-1">
               FFmpeg is not installed. Install it and restart the service to
@@ -445,7 +368,6 @@ export default function OptionsPanel() {
           <select
             className="select w-full"
             value={value}
-            disabled={plannedOnly}
             onChange={(e) => updateSetting(key, e.target.value)}
           >
             {KEYPAD_BEEPS.map((style) => (
@@ -454,11 +376,6 @@ export default function OptionsPanel() {
               </option>
             ))}
           </select>
-          {plannedOnly && (
-            <p className="text-xs text-warning/80 mt-1">
-              Saved to config, but not wired to runtime behavior yet.
-            </p>
-          )}
         </div>
       );
     }
@@ -478,36 +395,8 @@ export default function OptionsPanel() {
             className="input w-full"
             value={value}
             min={0}
-            disabled={plannedOnly}
             onChange={(e) => updateSetting(key, e.target.value)}
           />
-          {plannedOnly && (
-            <p className="text-xs text-warning/80 mt-1">
-              Saved to config, but not wired to runtime behavior yet.
-            </p>
-          )}
-        </div>
-      );
-    }
-
-    if (key === "afsSystems") {
-      return (
-        <div className="flex flex-col">
-          {label}
-          {description}
-          <textarea
-            className="textarea w-full"
-            value={value}
-            disabled={plannedOnly}
-            placeholder="e.g. 1,2,5"
-            rows={2}
-            onChange={(e) => updateSetting(key, e.target.value)}
-          />
-          {plannedOnly && (
-            <p className="text-xs text-warning/80 mt-1">
-              Saved to config, but not wired to runtime behavior yet.
-            </p>
-          )}
         </div>
       );
     }
@@ -521,14 +410,8 @@ export default function OptionsPanel() {
           type="text"
           className="input w-full"
           value={value}
-          disabled={plannedOnly}
           onChange={(e) => updateSetting(key, e.target.value)}
         />
-        {plannedOnly && (
-          <p className="text-xs text-warning/80 mt-1">
-            Saved to config, but not wired to runtime behavior yet.
-          </p>
-        )}
       </div>
     );
   };
@@ -547,11 +430,7 @@ export default function OptionsPanel() {
         <h1 className="text-xl font-semibold mb-1">Options</h1>
         <p className="text-sm text-base-content/70">
           Global settings for the scanner. Changes take effect immediately for
-          all connected clients. A{" "}
-          <span className="badge badge-sm border-warning/30 bg-warning/10 text-warning">
-            Planned
-          </span>{" "}
-          badge marks options that are saved but not yet wired up.
+          all connected clients.
         </p>
       </div>
 
@@ -572,7 +451,7 @@ export default function OptionsPanel() {
                     key in localSettings ? (
                       <div
                         key={key}
-                        className={`relative rounded-lg border border-base-300 bg-base-100/60 p-3 ${isPlannedKey(key) ? "opacity-60" : ""}`}
+                        className="relative rounded-lg border border-base-300 bg-base-100/60 p-3"
                       >
                         {localSettings[key] !== serverSettings[key] && (
                           <span

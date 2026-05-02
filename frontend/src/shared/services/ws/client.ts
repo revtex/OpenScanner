@@ -178,8 +178,6 @@ class WsClient {
             showListenersCount:
               cfg.showListenersCount === true ||
               cfg.showListenersCount === "true",
-            playbackGoesLive:
-              cfg.playbackGoesLive === true || cfg.playbackGoesLive === "true",
             shareableLinks:
               cfg.shareableLinks === true || cfg.shareableLinks === "true",
             keypadBeeps: cfg.keypadBeeps ?? "",

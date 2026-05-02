@@ -86,9 +86,7 @@ export default function TrMqttPanel() {
         ))}
       </div>
 
-      {activeTab === "instances" && (
-        <InstancesPanel onSelect={selectAndOpen} />
-      )}
+      {activeTab === "instances" && <InstancesPanel onSelect={selectAndOpen} />}
       {activeTab === "dashboard" && selected && (
         <DashboardView instance={selected} />
       )}

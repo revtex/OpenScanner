@@ -26,7 +26,6 @@ export interface ScannerConfig {
   version?: string;
   time12hFormat: boolean;
   showListenersCount: boolean;
-  playbackGoesLive: boolean;
   shareableLinks: boolean;
   keypadBeeps: string;
   transcriptionEnabled: boolean;

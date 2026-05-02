@@ -772,16 +772,6 @@ func (p *program) run() {
 		os.Exit(1)
 	}
 
-	// Warn at startup if webhook/push-notification features exist in the DB
-	// but have no dispatcher wired. CRUD remains available through the admin
-	// WebSocket (admin-only); no HTTP attack surface exists for these.
-	if setting, err := queries.GetSetting(context.Background(), "webhooksEnabled"); err == nil && setting.Value == "true" {
-		slog.Warn("webhooksEnabled=true but no webhook dispatcher is wired — webhooks will NOT fire")
-	}
-	if setting, err := queries.GetSetting(context.Background(), "pushNotifications"); err == nil && setting.Value == "true" {
-		slog.Warn("pushNotifications=true but no push dispatcher is wired — push notifications will NOT fire")
-	}
-
 	// Set up Gin router with registered routes.
 	router := gin.New()
 	router.MaxMultipartMemory = 50 << 20 // 50 MiB limit for multipart uploads

@@ -32,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Activity dashboard now honors the **12-Hour Time Format** option for chart axis labels and Peak Hour, instead of always rendering 24-hour clock times. The setting is read from the admin config (always available on the admin route) so it works even before the scanner WebSocket has delivered `scanner.config`.
 - **Trunk Recorder** panel now lands on the **Dashboard** tab when at least one instance is configured — first-time visitors with no instances still land on **Instances** so setup is the obvious next step. Previously every visit defaulted to Instances even after setup.
 
+### Removed
+
+- Removed seven planned-but-unwired settings that had no runtime consumers: `pushNotifications`, `webhooksEnabled`, `sortTalkgroups`, `tagsToggle`, `playbackGoesLive`, `searchPatchedTalkgroups`, and `afsSystems`. The Options panel no longer shows the "Planned" badge machinery, and migration `021_remove_planned_settings.sql` deletes the rows from existing databases. Future features will reintroduce these (or replacements) with proper plans.
+
 ### Changed
 
 - **Options** panel uses a content-fit grid (`auto-fit, minmax(320px, 1fr)`) instead of CSS columns. Sections sit at their natural height with no masonry voids on wide screens, and the layout stays mobile-friendly. Single-toggle "Webhooks", "Trunk Recorder MQTT", and "Push Notifications" sections were merged into a unified **Integrations** group so the bottom of the page is no longer dominated by mostly-empty cards.

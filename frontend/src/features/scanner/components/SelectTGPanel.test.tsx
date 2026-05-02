@@ -62,7 +62,6 @@ const testConfig: ScannerConfig = {
   version: "1.0",
   time12hFormat: false,
   showListenersCount: false,
-  playbackGoesLive: false,
   keypadBeeps: "uniden",
   shareableLinks: false,
   transcriptionEnabled: false,

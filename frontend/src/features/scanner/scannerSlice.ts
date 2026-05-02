@@ -220,7 +220,6 @@ export const scannerSlice = createSlice({
           systems: [],
           time12hFormat: false,
           showListenersCount: false,
-          playbackGoesLive: false,
           shareableLinks: false,
           transcriptionEnabled: false,
           liveTranscriptDisplay: false,

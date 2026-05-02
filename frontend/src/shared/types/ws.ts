@@ -25,7 +25,6 @@ export interface WsScannerConfig {
     version?: string;
     time12hFormat?: boolean | string;
     showListenersCount?: boolean | string;
-    playbackGoesLive?: boolean | string;
     shareableLinks?: boolean | string;
     keypadBeeps?: string;
     transcriptionEnabled?: boolean | string;

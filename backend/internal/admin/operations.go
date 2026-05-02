@@ -224,7 +224,6 @@ var SensitiveSettingKeys = map[string]bool{
 // allowedSettingKeys mirrors the allowed setting keys from config.go.
 var allowedSettingKeys = map[string]bool{
 	"activityDashboard":           true,
-	"afsSystems":                  true,
 	"apiKeyCallRate":              true,
 	"audioConversion":             true,
 	"audioEncodingPreset":         true,
@@ -236,16 +235,11 @@ var allowedSettingKeys = map[string]bool{
 	"keypadBeeps":                 true,
 	"logLevel":                    true,
 	"maxClients":                  true,
-	"playbackGoesLive":            true,
 	"pruneDays":                   true,
 	"publicAccess":                true,
-	"pushNotifications":           true,
-	"searchPatchedTalkgroups":     true,
 	"shareableLinks":              true,
 	"sharedLinkExpiry":            true,
 	"showListenersCount":          true,
-	"sortTalkgroups":              true,
-	"tagsToggle":                  true,
 	"time12hFormat":               true,
 	"transcriptionDiarize":        true,
 	"transcriptionEnabled":        true,
@@ -256,7 +250,6 @@ var allowedSettingKeys = map[string]bool{
 	"trMqttEnabled":               true,
 	"vapidPrivateKey":             true,
 	"vapidPublicKey":              true,
-	"webhooksEnabled":             true,
 }
 
 // AllowedSettingKeys reports whether a settings key is allowed to be mutated

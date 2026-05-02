@@ -205,13 +205,13 @@ export default function ActivityPanel() {
   // setting is missing for any reason.
   const { data: adminConfig } = useGetConfigQuery();
   const adminHour12 = useMemo(() => {
-    const setting = adminConfig?.settings.find((s) => s.key === "time12hFormat");
+    const setting = adminConfig?.settings.find(
+      (s) => s.key === "time12hFormat",
+    );
     if (!setting) return undefined;
     return setting.value === "true";
   }, [adminConfig]);
-  const scannerHour12 = useAppSelector(
-    (s) => s.scanner.config?.time12hFormat,
-  );
+  const scannerHour12 = useAppSelector((s) => s.scanner.config?.time12hFormat);
   const hour12 = adminHour12 ?? scannerHour12 ?? false;
   const { stats, chart, topTG, isLoading } = useAdminActivity();
   const statsLoading = isLoading;

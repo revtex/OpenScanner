@@ -947,9 +947,6 @@ func buildCFGPayload(ctx context.Context, queries *db.Queries) (map[string]any, 
 	if s, err := queries.GetSetting(ctx, "showListenersCount"); err == nil {
 		cfgPayload["showListenersCount"] = s.Value == "true"
 	}
-	if s, err := queries.GetSetting(ctx, "playbackGoesLive"); err == nil {
-		cfgPayload["playbackGoesLive"] = s.Value == "true"
-	}
 	if s, err := queries.GetSetting(ctx, "keypadBeeps"); err == nil {
 		cfgPayload["keypadBeeps"] = s.Value
 	}
