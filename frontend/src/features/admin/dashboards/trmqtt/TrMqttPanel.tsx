@@ -36,8 +36,14 @@ const TABS: { key: SubTab; label: string }[] = [
 
 export default function TrMqttPanel() {
   const { data: instances = [], error } = useListTrInstancesQuery();
-  const [tab, setTab] = useState<SubTab>("instances");
+  // `tab === null` means "no explicit selection yet" — derive a sensible
+  // default from the live instance list. Once the user clicks a tab we
+  // honor their choice and stop auto-defaulting.
+  const [tab, setTab] = useState<SubTab | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  const activeTab: SubTab =
+    tab ?? (instances.length > 0 ? "dashboard" : "instances");
 
   const selected =
     instances.find((i) => i.id === selectedId) ??
@@ -71,7 +77,7 @@ export default function TrMqttPanel() {
           <button
             key={key}
             role="tab"
-            className={`tab ${tab === key ? "tab-active" : ""}`}
+            className={`tab ${activeTab === key ? "tab-active" : ""}`}
             onClick={() => setTab(key)}
             disabled={key !== "instances" && !selected}
           >
@@ -80,17 +86,25 @@ export default function TrMqttPanel() {
         ))}
       </div>
 
-      {tab === "instances" && <InstancesPanel onSelect={selectAndOpen} />}
-      {tab === "dashboard" && selected && <DashboardView instance={selected} />}
-      {tab === "calls" && selected && <CallsView instance={selected} />}
-      {tab === "recorders" && selected && <RecordersView instance={selected} />}
-      {tab === "systems" && selected && <SystemsView instance={selected} />}
-      {tab === "units" && selected && <UnitsView instance={selected} />}
-      {tab === "messages" && selected && (
+      {activeTab === "instances" && (
+        <InstancesPanel onSelect={selectAndOpen} />
+      )}
+      {activeTab === "dashboard" && selected && (
+        <DashboardView instance={selected} />
+      )}
+      {activeTab === "calls" && selected && <CallsView instance={selected} />}
+      {activeTab === "recorders" && selected && (
+        <RecordersView instance={selected} />
+      )}
+      {activeTab === "systems" && selected && (
+        <SystemsView instance={selected} />
+      )}
+      {activeTab === "units" && selected && <UnitsView instance={selected} />}
+      {activeTab === "messages" && selected && (
         <TrunkingMessagesView instance={selected} />
       )}
-      {tab === "config" && selected && <ConfigView instance={selected} />}
-      {tab !== "instances" && !selected && (
+      {activeTab === "config" && selected && <ConfigView instance={selected} />}
+      {activeTab !== "instances" && !selected && (
         <div className="text-base-content/60">No instance selected.</div>
       )}
     </div>

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useAppSelector } from "@/app/store";
+import { useGetConfigQuery } from "@/features/admin/_shell";
 
 function formatUptime(totalSeconds: number): string {
   const days = Math.floor(totalSeconds / 86400);
@@ -198,9 +199,20 @@ function Sparkline({
 }
 
 export default function ActivityPanel() {
-  const hour12 = useAppSelector(
-    (s) => s.scanner.config?.time12hFormat ?? false,
+  // Prefer the admin config (always available on admin pages) over the
+  // scanner config (which requires a scanner WS handshake the admin route
+  // may not have completed yet). Fall back to scanner.config if the admin
+  // setting is missing for any reason.
+  const { data: adminConfig } = useGetConfigQuery();
+  const adminHour12 = useMemo(() => {
+    const setting = adminConfig?.settings.find((s) => s.key === "time12hFormat");
+    if (!setting) return undefined;
+    return setting.value === "true";
+  }, [adminConfig]);
+  const scannerHour12 = useAppSelector(
+    (s) => s.scanner.config?.time12hFormat,
   );
+  const hour12 = adminHour12 ?? scannerHour12 ?? false;
   const { stats, chart, topTG, isLoading } = useAdminActivity();
   const statsLoading = isLoading;
   const chartLoading = isLoading;

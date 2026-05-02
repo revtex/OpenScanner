@@ -29,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Trunk Recorder dashboard **plugin badge** no longer gets stuck on `plugin: disconnected` after a broker reconnect. The MQTT plugin's `pluginStatus` topic only re-publishes `connected` on plugin start, so a flapping broker would leave the badge wrongly red forever; now any incoming data frame (rates / recorders / calls / units / messages) refreshes the badge to "connected", and a broker disconnect clears the stale value entirely so the next retained `pluginStatus` becomes the source of truth on reconnect.
 - Trunk Recorder dashboard **Recorders** stat now shows `active / total` (e.g. `3 / 16`) so you can tell at a glance how many recorders are actually recording vs. how many are configured. Previously it only showed the configured count.
 - Trunk Recorder dashboard dropped the **Recent units** and **Trunking msgs** stat cards — both saturated at their internal cap (200 / 500) within seconds on a busy P25 system and conveyed no useful information. The Units and Messages tabs already surface live counts and the actual feeds.
+- Activity dashboard now honors the **12-Hour Time Format** option for chart axis labels and Peak Hour, instead of always rendering 24-hour clock times. The setting is read from the admin config (always available on the admin route) so it works even before the scanner WebSocket has delivered `scanner.config`.
+- **Trunk Recorder** panel now lands on the **Dashboard** tab when at least one instance is configured — first-time visitors with no instances still land on **Instances** so setup is the obvious next step. Previously every visit defaulted to Instances even after setup.
+
+### Changed
+
+- **Options** panel uses a content-fit grid (`auto-fit, minmax(320px, 1fr)`) instead of CSS columns. Sections sit at their natural height with no masonry voids on wide screens, and the layout stays mobile-friendly. Single-toggle "Webhooks", "Trunk Recorder MQTT", and "Push Notifications" sections were merged into a unified **Integrations** group so the bottom of the page is no longer dominated by mostly-empty cards.
 
 ## [1.3.2] — 2026-04-29
 

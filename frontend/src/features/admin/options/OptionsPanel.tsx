@@ -5,8 +5,7 @@ import {
   AudioLines,
   Monitor,
   Share2,
-  Webhook,
-  Activity,
+  Plug,
 } from "lucide-react";
 import {
   useGetConfigQuery,
@@ -108,19 +107,14 @@ const SECTIONS: SettingSection[] = [
     keys: ["keypadBeeps"],
   },
   {
-    title: "Sharing & Notifications",
+    title: "Sharing",
     icon: <Share2 className="w-4 h-4" />,
-    keys: ["shareableLinks", "sharedLinkExpiry", "pushNotifications"],
+    keys: ["shareableLinks", "sharedLinkExpiry"],
   },
   {
-    title: "Webhooks",
-    icon: <Webhook className="w-4 h-4" />,
-    keys: ["webhooksEnabled"],
-  },
-  {
-    title: "Trunk Recorder MQTT",
-    icon: <Activity className="w-4 h-4" />,
-    keys: ["trMqttEnabled"],
+    title: "Integrations",
+    icon: <Plug className="w-4 h-4" />,
+    keys: ["trMqttEnabled", "webhooksEnabled", "pushNotifications"],
   },
 ];
 
@@ -561,14 +555,14 @@ export default function OptionsPanel() {
         </p>
       </div>
 
-      <div className="columns-1 lg:columns-2 gap-6 space-y-6">
+      <div className="grid gap-6 grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-start">
         {SECTIONS.map((section) => {
           const keys = section.keys;
           const hasSettings = keys.some((k) => k in localSettings);
           if (!hasSettings) return null;
 
           return (
-            <section key={section.title} className="break-inside-avoid">
+            <section key={section.title}>
               <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
                 {section.icon} {section.title}
               </h2>
