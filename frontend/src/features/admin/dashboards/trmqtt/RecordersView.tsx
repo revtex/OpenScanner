@@ -66,7 +66,7 @@ export default function RecordersView({ instance }: { instance: TrInstance }) {
                 <th>Type</th>
                 <th>State</th>
                 <th>Freq</th>
-                <th className="text-right">Duration</th>
+                <th className="text-right">Duration (s)</th>
                 <th className="text-right">Calls</th>
                 <th>Squelched</th>
               </tr>
