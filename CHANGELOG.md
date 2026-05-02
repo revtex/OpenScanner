@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Options** panel uses a content-fit grid (`auto-fit, minmax(320px, 1fr)`) instead of CSS columns. Sections sit at their natural height with no masonry voids on wide screens, and the layout stays mobile-friendly. Single-toggle "Webhooks", "Trunk Recorder MQTT", and "Push Notifications" sections were merged into a unified **Integrations** group so the bottom of the page is no longer dominated by mostly-empty cards.
+- **Options** panel switched to a CSS-columns masonry layout (`columns-1 md:columns-2 xl:columns-3`) so the variable-height sections pack tightly with no large blank voids on wide screens. Sections use `break-inside-avoid` so each card stays whole. Single-toggle "Webhooks", "Trunk Recorder MQTT", and "Push Notifications" sections were merged into a unified **Integrations** group so the bottom of the page is no longer dominated by mostly-empty cards.
 
 ## [1.3.2] — 2026-04-29
 

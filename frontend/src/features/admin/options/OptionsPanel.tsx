@@ -434,14 +434,17 @@ export default function OptionsPanel() {
         </p>
       </div>
 
-      <div className="grid gap-6 grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-start">
+      <div className="columns-1 md:columns-2 xl:columns-3 gap-6">
         {SECTIONS.map((section) => {
           const keys = section.keys;
           const hasSettings = keys.some((k) => k in localSettings);
           if (!hasSettings) return null;
 
           return (
-            <section key={section.title}>
+            <section
+              key={section.title}
+              className="mb-6 break-inside-avoid inline-block w-full"
+            >
               <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
                 {section.icon} {section.title}
               </h2>
