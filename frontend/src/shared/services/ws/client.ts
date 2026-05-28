@@ -30,11 +30,13 @@ class WsClient {
   private tokenExpiredCallback: TokenExpiredCallback | null = null;
   private intentionalClose = false;
   private recentCallIds: number[] = [];
+  private wakeHandlersBound = false;
 
   connect(dispatch: AppDispatch, auth: WsAuth = {}): void {
     this.dispatch = dispatch;
     this.auth = auth;
     this.intentionalClose = false;
+    this.bindWakeHandlers();
     this.doConnect();
   }
 
@@ -263,6 +265,39 @@ class WsClient {
       this.reconnectTimeout = null;
       this.doConnect();
     }, delay);
+  }
+
+  /**
+   * Force an immediate reconnect, bypassing any pending backoff timer.
+   * Used by visibility/online handlers — iOS Safari throttles setTimeout
+   * on backgrounded pages and silently kills WebSockets when the page is
+   * suspended, so when the page returns to focus we want to reconnect
+   * right away rather than waiting out the (possibly maxed-out) backoff.
+   */
+  private wake = (): void => {
+    if (this.intentionalClose) return;
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+      return;
+    }
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    this.backoff = 1000;
+    this.doConnect();
+  };
+
+  private bindWakeHandlers(): void {
+    if (this.wakeHandlersBound) return;
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", this.wake);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", this.wake);
+      window.addEventListener("focus", this.wake);
+    }
+    this.wakeHandlersBound = true;
   }
 }
 
