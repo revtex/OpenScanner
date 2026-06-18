@@ -16,9 +16,7 @@ openscanner/
   docs/plans/      Local-only working notes (gitignored — never reference from tracked files)
   .github/         Workflows, agents, this doc, copilot-instructions
   .devcontainer/   Codespaces / dev container
-  scripts/         One-off operator scripts
-  reference/       Vendored upstream reference (rdio-scanner) — read-only
-  systems-config/  Sample TR / SDR configs
+  systems-config/  Sample TR / SDR configs (gitignored — operator-side)
 ```
 
 Industry analogues: backend follows [golang-standards/project-layout](https://github.com/golang-standards/project-layout) (`cmd/` + `internal/`), frontend follows [Bulletproof React](https://github.com/alan2207/bulletproof-react) (feature-scoped, no shared `utils/` dumping ground).
@@ -54,10 +52,10 @@ backend/
         legacyusage/
         radioreference/
         transcriptions/
+        trmqtt/
       routes/              wiring: instantiates handlers, calls Register on each
     logging/               slog setup
     middleware/            Gin middleware (auth, request-id, recover, ratelimit)
-    radioref/              RadioReference client + cache
     safehttp/              HTTP client with SSRF-style defaults (no redirects, capped body)
     seed/                  DB seeding for fresh installs
     static/                frontend `dist/` embed via go:embed
@@ -294,7 +292,6 @@ Rules:
 - `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/). Bullets describe **what changed in the product**, never reference plan filenames.
 - Any user-visible change ships with a release tag in the same session — never leave a user-visible bullet sitting in `[Unreleased]`.
 - Pure CI / internal-docs / refactor changes can batch under `[Unreleased]` or use the `skip-changelog` PR label.
-- See [docs/plans/release-guide.md](../docs/plans/release-guide.md) for the local checklist (gitignored — operator-side).
 
 ### 4.4 Local-only planning docs
 
