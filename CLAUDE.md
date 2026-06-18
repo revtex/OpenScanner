@@ -92,6 +92,6 @@ The entire `docs/plans/` directory is **gitignored** — personal scratchpads. N
 ## This environment (WSL)
 
 - Prefer Claude Code's built-in **Grep/Glob/Read** tools over shell `grep`/`find` (the canonical docs say "use `rg`, avoid plain `grep`" — the dedicated tools are the better equivalent here).
-- **Go is installed at `/usr/local/go/bin`** (Go 1.26.4) but is **not on PATH in non-login shells** — prefix commands with `export PATH=$PATH:/usr/local/go/bin`. Then `go build ./...`, `go vet ./...`, `go mod tidy` work locally. Node/pnpm are available too, so frontend `tsc`/`vitest` validation works as well. (The module targets `go 1.25.0`; the newer toolchain builds it fine and won't bump the directive.)
+- **Go 1.26.4** is installed (`/usr/local/go/bin`) and now on PATH, so `go build ./...`, `go vet ./...`, and `go mod tidy` run locally. Node/pnpm are available too, so frontend `tsc`/`vitest` validation works as well.
 - Browser automation runs through the **Playwright MCP** (`mcp__playwright__*`), headless in WSL2. The `chrome-devtools` MCP also works (perf/Lighthouse) but only against a native Linux Chrome. Full setup lives in Claude's memory (`wsl-mcp-browser-setup`).
 - Minor doc drift to not trust blindly: `PROJECT_LAYOUT.md` lists `scripts/`, `reference/`, and `internal/radioref/` which don't currently exist — RadioReference code actually lives at `backend/internal/handler/admin/radioreference/`.

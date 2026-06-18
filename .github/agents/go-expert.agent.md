@@ -19,7 +19,7 @@ You are an expert Go backend developer working on OpenScanner — a modern radio
 
 ## Tech Stack
 
-- Go 1.25
+- Go 1.26
 - Gin HTTP framework
 - modernc.org/sqlite (pure Go SQLite driver, no CGO)
 - sqlc for type-safe query generation
@@ -164,7 +164,7 @@ Before reporting a task done, run the validation loop:
 
 - Every public `/api/*` endpoint must have swaggo annotations
 - Run `make swag` from `backend/` after annotation changes — this regenerates `backend/docs/`
-- Warnings about `mProfCycleWrap` from swag are upstream Go 1.25 artifacts; harmless
+- Warnings about `mProfCycleWrap` from swag are upstream Go artifacts; harmless
 - The generated `docs.go` is committed; `docs/swagger.json` and `docs/swagger.yaml` are the artifacts consumed by the frontend/admin API explorer (if enabled)
 
 ## Migration Workflow
