@@ -148,6 +148,7 @@ export function ControlToolbar({
             value={volume}
             onChange={(e) => onSetVolume(Number(e.target.value))}
             className="range range-xs range-primary w-28"
+            aria-label="Volume"
           />
         </div>
 
@@ -176,6 +177,7 @@ export function ControlToolbar({
               value={volume}
               onChange={(e) => onSetVolume(Number(e.target.value))}
               className="range range-xs range-primary w-28"
+              aria-label="Volume"
             />
           </div>
         </div>
@@ -220,6 +222,7 @@ export function ControlToolbar({
           <div
             tabIndex={0}
             role="button"
+            aria-label="Hold"
             className={`btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 ${
               isHolding ? "btn-secondary" : "btn-ghost"
             }`}
@@ -259,6 +262,7 @@ export function ControlToolbar({
           <div
             tabIndex={0}
             role="button"
+            aria-label="Avoid"
             className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-ghost"
           >
             <Ban className="hidden sm:inline w-3.5 h-3.5" />
