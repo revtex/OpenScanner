@@ -12,8 +12,11 @@ Two existing files are the source of truth for structure and rules — read them
 
 - **`.github/PROJECT_LAYOUT.md`** — full directory layout, package boundaries, file-split heuristics, naming, and per-domain conventions. When it contradicts the tree, the doc wins and the tree is the bug.
 - **`.github/copilot-instructions.md`** — tech stack, the numbered Security Rules (OWASP-aligned, always enforced), changelog/release policy, and the subagent assignment table.
+- **`.github/agents/*.agent.md`** — eight per-domain convention files (go, react, db, docs, reviewer, testing, cleanup, tr-tuning). Useful as **domain cheat-sheets**; read the relevant one before non-trivial work in that area.
 
 Do not duplicate those rules from memory — defer to them.
+
+> **Subagents in Claude Code:** the docs above were authored for VS Code Copilot's `runSubagent` and assume work is *always* delegated to a matching expert agent. That does **not** apply to Claude Code — do the work inline with your own tools, and only launch an Agent when the user explicitly asks. The `.agent.md` files remain valuable as reference material; read them, don't dispatch to them by default.
 
 ## Commands
 
@@ -68,12 +71,15 @@ cd frontend && npx tsc --noEmit
 
 **Two WebSocket channels:** `/ws` for listener call streaming, `/api/admin/ws` for live admin operations.
 
+**Two HTTP API surfaces.** The canonical surface is **`/api/v1/*`** (what the frontend uses — see `src/app/api.ts`). A **deprecated legacy `/api/*`** surface is kept only for rdio-scanner upload compatibility; it emits RFC 8594 `Deprecation`/`Sunset` headers via `middleware.Deprecated` (see `backend/internal/middleware/deprecation.go` + `v1.go`). New endpoints go on v1 only. The v1 error envelope is `{"error":{"code","message","details"}}` with stable string codes; legacy `{"error":"<string>"}` bodies are auto-rewritten by `middleware.V1ErrorEnvelope`. Silent token refresh is single-flighted through `refreshSession()` in `src/app/api.ts` — don't add a second refresh path.
+
 ## Non-negotiables (the ones easy to get wrong)
 
 - **Go:** errors returned not panicked; `log/slog` only (no `log.Println`/`fmt.Println`); external processes via `exec.CommandContext` with an arg slice, never a shell string; outbound HTTP via `safehttp.Client`; every public `/api/*` endpoint carries Swaggo annotations.
 - **TypeScript:** no `any`, no `@ts-ignore` (use `unknown` + narrow); no `dangerouslySetInnerHTML`; `@/` alias for all `src/` imports (no `../../` chains); DaisyUI classes over hand-rolled UI.
 - **DB:** edit `.sql` → `make generate` (sqlc) → update `schema/schema.sql`; every index must back a real query.
 - **Security:** see `copilot-instructions.md § Security Rules` — secrets-at-rest use the `enc::` AES-256-GCM scheme, refresh tokens are SHA-256 hashed with family rotation, admin routes always require an admin JWT.
+- **Accessibility:** interactive controls need accessible names. Watch two patterns that don't expose a label automatically: DaisyUI dropdown triggers (`div[role="button"]`) and bare `<input type="range">` — add `aria-label` (see `features/scanner/components/ControlToolbar.tsx`).
 
 ## Changelog & releases
 
@@ -82,3 +88,10 @@ User-visible changes must add a bullet under `[Unreleased]` in `CHANGELOG.md` (K
 ## Local-only planning docs
 
 The entire `docs/plans/` directory is **gitignored** — personal scratchpads. Never reference plan filenames or contents from any tracked file (CHANGELOG, committed docs, commit messages, PR titles/descriptions, code comments). If a tracked file links into `docs/plans/`, that link is a bug; remove it.
+
+## This environment (WSL)
+
+- Prefer Claude Code's built-in **Grep/Glob/Read** tools over shell `grep`/`find` (the canonical docs say "use `rg`, avoid plain `grep`" — the dedicated tools are the better equivalent here).
+- **Go is not installed in WSL** — `go build`/`go vet`/`go mod tidy` can't run locally; rely on CI to verify backend changes. Node/pnpm are available, so frontend `tsc`/`vitest` validation works locally.
+- Browser automation runs through the **Playwright MCP** (`mcp__playwright__*`), headless in WSL2. The `chrome-devtools` MCP also works (perf/Lighthouse) but only against a native Linux Chrome. Full setup lives in Claude's memory (`wsl-mcp-browser-setup`).
+- Minor doc drift to not trust blindly: `PROJECT_LAYOUT.md` lists `scripts/`, `reference/`, and `internal/radioref/` which don't currently exist — RadioReference code actually lives at `backend/internal/handler/admin/radioreference/`.
