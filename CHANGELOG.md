@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Docker image build no longer fails at the frontend `pnpm install --frozen-lockfile` step. Corepack was provisioning the latest pnpm (11.x), which stopped reading the `pnpm` field (`overrides`, `onlyBuiltDependencies`) from `package.json`, so the empty override set no longer matched the lockfile and the frozen install aborted with `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`. Pinned pnpm to 10.33.0 via the `packageManager` field so Corepack provisions a pnpm that still honors those settings.
+
 ### Security
 
 - Updated frontend dependencies to clear all known npm advisories reported by Dependabot. `react-router` is bumped past 7.15.1 (fixes the vendored `turbo-stream` RCE, the `__manifest` DoS, the protocol-relative open redirect, and the PUT/PATCH/DELETE CSRF), and pinned overrides force patched `vite` (≥6.4.3, `server.fs.deny` bypass + `launch-editor` NTLM hash disclosure), `vitest` (≥3.2.6, UI-server arbitrary file read), `@babel/core` (≥7.29.6), `js-yaml` (≥4.2.0), and `brace-expansion` (≥5.0.6). No runtime behavior changes; `vite`/`vitest` stay on their existing majors.
