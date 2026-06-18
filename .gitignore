@@ -58,3 +58,9 @@ Thumbs.db
 /systems-config/
 # Local preview (not meant to be committed)
 /tmp-pdf-preview/
+
+# AI assistant / MCP session artifacts (machine-specific, not shared)
+/.claude/
+/.mcp.json
+/.playwright-mcp/
+/test-playwright.png
