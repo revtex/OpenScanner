@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Trunk Recorder broker passwords are encrypted at rest when an OpenScanner encryption key is configured (`enc::` prefix, AES-256-GCM); when encryption-at-rest is disabled the password is stored in plaintext alongside the existing JWT secret and downstream API keys (the startup banner already warns about this case). The REST API never echoes either form, only a `hasPassword: bool` flag. The PATCH endpoint accepts a tri-state password field — omit to keep, send `""` to clear, send a string to re-encrypt — so passwords can be rotated without ever round-tripping through the browser.
 - All trunk-recorder admin routes require admin JWT; the kill-switch returns 404 (not 403) when `trMqttEnabled=false`, hiding the surface entirely from disabled deployments. The MQTT subscriber never subscribes to the broker's `audio` topic.
+- Bumped the `undici` transitive dependency (pulled in by `jsdom` for the Vitest test environment) to ≥ 7.28.0 via a pinned pnpm override, clearing the Dependabot TLS-certificate-validation-bypass (high) and shared-cache cross-user information-disclosure (moderate) advisories. Dev/test-only — `undici` is not part of the shipped binary.
 
 ### Fixed
 
