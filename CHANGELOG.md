@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Updated frontend dependencies to clear all known npm advisories reported by Dependabot. `react-router` is bumped past 7.15.1 (fixes the vendored `turbo-stream` RCE, the `__manifest` DoS, the protocol-relative open redirect, and the PUT/PATCH/DELETE CSRF), and pinned overrides force patched `vite` (≥6.4.3, `server.fs.deny` bypass + `launch-editor` NTLM hash disclosure), `vitest` (≥3.2.6, UI-server arbitrary file read), `@babel/core` (≥7.29.6), `js-yaml` (≥4.2.0), and `brace-expansion` (≥5.0.6). No runtime behavior changes; `vite`/`vitest` stay on their existing majors.
+
 ## [1.3.2] — 2026-04-29
 
 ### Fixed
