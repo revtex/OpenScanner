@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.3] — 2026-06-18
+
 ### Fixed
 
 - Docker image build no longer fails at the frontend `pnpm install --frozen-lockfile` step. Corepack was provisioning the latest pnpm (11.x), which stopped reading the `pnpm` field (`overrides`, `onlyBuiltDependencies`) from `package.json`, so the empty override set no longer matched the lockfile and the frozen install aborted with `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`. Pinned pnpm to 10.33.0 via the `packageManager` field so Corepack provisions a pnpm that still honors those settings.
