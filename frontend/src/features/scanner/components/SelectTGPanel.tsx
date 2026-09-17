@@ -4,10 +4,9 @@ import { useAppSelector, useAppDispatch } from "@/app/store";
 import {
   toggleTG,
   setAllTGs,
-  setTGsBySystem,
-  setTGsByGroup,
-  setTGsByTag,
+  setTGsByIds,
   removeAvoid,
+  clearAvoids,
 } from "../scannerSlice";
 import type { TalkgroupConfig, AvoidEntry } from "@/types";
 
@@ -53,7 +52,7 @@ interface SectionProps {
   now: number;
   expanded: boolean;
   onToggleExpand: () => void;
-  onToggleAll: (enabled: boolean) => void;
+  onToggleAll: (ids: number[], enabled: boolean) => void;
   onToggleTG: (id: number) => void;
   secondaryLabels?: Record<number, string>;
 }
@@ -91,7 +90,10 @@ function Section({
           className="shrink-0"
           onClick={(e) => {
             e.stopPropagation();
-            onToggleAll(!allOn);
+            onToggleAll(
+              talkgroups.map((tg) => tg.id),
+              !allOn,
+            );
           }}
           aria-label={allOn ? "Turn all off" : "Turn all on"}
         >
@@ -276,6 +278,17 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
     [dispatch, tgSelection, avoidMap],
   );
 
+  // Bulk toggle for a section header LED. The section passes the exact
+  // talkgroups it rendered, so the toggle always matches the count badge —
+  // including placeholder sections like "(No Group)" and filtered results.
+  const handleToggleAll = useCallback(
+    (ids: number[], enabled: boolean) => {
+      if (ids.length === 0) return;
+      dispatch(setTGsByIds({ ids, enabled }));
+    },
+    [dispatch],
+  );
+
   // Build lookups for secondary labels
   const tgSystemLabel = useMemo(() => {
     const map: Record<number, string> = {};
@@ -290,7 +303,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
   const tgGroupLabel = useMemo(() => {
     const map: Record<number, string> = {};
     for (const tg of allTalkgroups) {
-      map[tg.id] = tg.group;
+      map[tg.id] = tg.group ?? "";
     }
     return map;
   }, [allTalkgroups]);
@@ -298,7 +311,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
   const tgTagLabel = useMemo(() => {
     const map: Record<number, string> = {};
     for (const tg of allTalkgroups) {
-      map[tg.id] = tg.tag;
+      map[tg.id] = tg.tag ?? "";
     }
     return map;
   }, [allTalkgroups]);
@@ -399,6 +412,26 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
     return true;
   }).length;
 
+  // "All Talkgroups" LED. Turning everything back on throws away a whole
+  // filtering session in one click, so confirm that direction; turning
+  // everything off is trivially undone by the same button.
+  const handleToggleAllTGs = () => {
+    const enable = effectiveActiveCount < totalCount;
+    if (enable) {
+      const off = totalCount - activeCount;
+      if (
+        off > 0 &&
+        !window.confirm(
+          `Re-enable all ${totalCount} talkgroups? This clears the ${off} you have turned off.`,
+        )
+      ) {
+        return;
+      }
+      dispatch(clearAvoids());
+    }
+    dispatch(setAllTGs(enable));
+  };
+
   // Reset search when closing
   useEffect(() => {
     if (!isOpen) {
@@ -494,9 +527,11 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
         <div className="flex items-center gap-2 px-4 py-2 border-b border-base-300 bg-base-200/60">
           <button
             className="shrink-0"
-            onClick={() => dispatch(setAllTGs(activeCount < totalCount))}
+            onClick={handleToggleAllTGs}
             aria-label={
-              activeCount === totalCount ? "Turn all off" : "Turn all on"
+              effectiveActiveCount === totalCount
+                ? "Turn all off"
+                : "Turn all on"
             }
           >
             <span
@@ -531,9 +566,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
                   now={now}
                   expanded={!!expandedSections[key]}
                   onToggleExpand={() => toggleExpand(key)}
-                  onToggleAll={(enabled) =>
-                    dispatch(setTGsByGroup({ group, enabled }))
-                  }
+                  onToggleAll={handleToggleAll}
                   onToggleTG={handleToggleTG}
                   secondaryLabels={tgSystemLabel}
                 />
@@ -556,9 +589,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
                   now={now}
                   expanded={!!expandedSections[key]}
                   onToggleExpand={() => toggleExpand(key)}
-                  onToggleAll={(enabled) =>
-                    dispatch(setTGsByTag({ tag, enabled }))
-                  }
+                  onToggleAll={handleToggleAll}
                   onToggleTG={handleToggleTG}
                   secondaryLabels={tgGroupLabel}
                 />
@@ -581,9 +612,7 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
                   now={now}
                   expanded={!!expandedSections[key]}
                   onToggleExpand={() => toggleExpand(key)}
-                  onToggleAll={(enabled) =>
-                    dispatch(setTGsBySystem({ systemId: sys.id, enabled }))
-                  }
+                  onToggleAll={handleToggleAll}
                   onToggleTG={handleToggleTG}
                   secondaryLabels={tgTagLabel}
                 />

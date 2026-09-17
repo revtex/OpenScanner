@@ -12,7 +12,6 @@ import {
   clearAvoids,
   toggleTG,
   setAllTGs,
-  setTGsBySystem,
 } from "../scannerSlice";
 import type { AvoidEntry } from "@/types";
 
@@ -66,11 +65,6 @@ export function useScanner() {
     (enabled: boolean) => dispatch(setAllTGs(enabled)),
     [dispatch],
   );
-  const doSetTGsBySystem = useCallback(
-    (systemId: number, enabled: boolean) =>
-      dispatch(setTGsBySystem({ systemId, enabled })),
-    [dispatch],
-  );
 
   return {
     // Connection
@@ -98,7 +92,6 @@ export function useScanner() {
     clearAvoids: doClearAvoids,
     toggleTG: doToggleTG,
     setAllTGs: doSetAllTGs,
-    setTGsBySystem: doSetTGsBySystem,
 
     // Audio controls
     ...audio,

@@ -19,6 +19,20 @@ function storageKey(instanceId: string): string {
 }
 
 /**
+ * Order-insensitive fingerprint of what is stored server-side, used to skip
+ * no-op PUTs. Sorted so the server's stored order and our config iteration
+ * order compare equal.
+ */
+function snapshotOf(disabledTGs: number[], avoidList: AvoidEntry[]): string {
+  return JSON.stringify({
+    d: [...disabledTGs].sort((a, b) => a - b),
+    a: [...avoidList]
+      .map((e) => [e.talkgroupId, e.expiresAt])
+      .sort((x, y) => x[0] - y[0]),
+  });
+}
+
+/**
  * Keeps tgSelection and avoidList in sync with the backend (authenticated)
  * or localStorage (anonymous). Must be mounted at the Scanner page level
  * so it runs regardless of whether SelectTGPanel is open.
@@ -34,7 +48,7 @@ export function useTGSelectionSync() {
   const tgSelection = useAppSelector((s) => s.scanner.tgSelection);
   const avoidList = useAppSelector((s) => s.scanner.avoidList);
 
-  const { data: tgSelectionData } = useGetTGSelectionQuery(undefined, {
+  const { data: tgSelectionData, refetch } = useGetTGSelectionQuery(undefined, {
     skip: !isAuthenticated || !config,
   });
   const [saveTGSelection] = useUpdateTGSelectionMutation();
@@ -43,6 +57,9 @@ export function useTGSelectionSync() {
   const configRef = useRef(config);
   // Track what was last saved/fetched so we skip no-op PUTs.
   const lastSavedRef = useRef<string>("");
+  // Fingerprint of the server-side selection this tab last read. Sent with
+  // every PUT so the server can reject a stale overwrite.
+  const versionRef = useRef<string | undefined>(undefined);
 
   // Reset restored flag when auth state changes
   useEffect(() => {
@@ -60,10 +77,11 @@ export function useTGSelectionSync() {
     if (isAuthenticated) {
       if (!tgSelectionData) return;
       // Seed the last-saved snapshot so the persist effect skips the initial no-op PUT.
-      lastSavedRef.current = JSON.stringify({
-        d: tgSelectionData.disabledTGs,
-        a: tgSelectionData.avoidList ?? [],
-      });
+      lastSavedRef.current = snapshotOf(
+        tgSelectionData.disabledTGs,
+        tgSelectionData.avoidList ?? [],
+      );
+      versionRef.current = tgSelectionData.version;
       dispatch(restoreFromDisabledTGs(tgSelectionData.disabledTGs));
       dispatch(restoreAvoidList(tgSelectionData.avoidList ?? []));
       restoredRef.current = true;
@@ -117,15 +135,44 @@ export function useTGSelectionSync() {
             }
           }
         }
+        disabledTGs.sort((a, b) => a - b);
         const now = Date.now();
         const activeAvoids: AvoidEntry[] = avoidList.filter(
           (a) => a.expiresAt === 0 || a.expiresAt > now,
         );
         // Skip PUT if nothing actually changed.
-        const snapshot = JSON.stringify({ d: disabledTGs, a: activeAvoids });
+        const snapshot = snapshotOf(disabledTGs, activeAvoids);
         if (snapshot === lastSavedRef.current) return;
         lastSavedRef.current = snapshot;
-        saveTGSelection({ disabledTGs, avoidList: activeAvoids });
+        void (async () => {
+          try {
+            const res = await saveTGSelection({
+              disabledTGs,
+              avoidList: activeAvoids,
+              version: versionRef.current,
+            }).unwrap();
+            if (res.version) versionRef.current = res.version;
+          } catch (err) {
+            // Allow a retry on the next change.
+            lastSavedRef.current = "";
+            const status = (err as { status?: number }).status;
+            if (status !== 409) return;
+            // Another session (second tab, phone, other browser) saved a
+            // newer selection. Adopt it instead of overwriting their work.
+            try {
+              const fresh = await refetch().unwrap();
+              versionRef.current = fresh.version;
+              lastSavedRef.current = snapshotOf(
+                fresh.disabledTGs,
+                fresh.avoidList ?? [],
+              );
+              dispatch(restoreFromDisabledTGs(fresh.disabledTGs));
+              dispatch(restoreAvoidList(fresh.avoidList ?? []));
+            } catch {
+              // Leave local state alone; the next change retries.
+            }
+          }
+        })();
       }, 500);
       return () => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -134,5 +181,13 @@ export function useTGSelectionSync() {
       localStorage.setItem(storageKey(instanceId), JSON.stringify(tgSelection));
       return undefined;
     }
-  }, [tgSelection, avoidList, instanceId, isAuthenticated, saveTGSelection]);
+  }, [
+    tgSelection,
+    avoidList,
+    instanceId,
+    isAuthenticated,
+    saveTGSelection,
+    refetch,
+    dispatch,
+  ]);
 }

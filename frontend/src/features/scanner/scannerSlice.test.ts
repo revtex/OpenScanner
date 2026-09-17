@@ -15,6 +15,7 @@ import {
   expireAvoids,
   toggleTG,
   setAllTGs,
+  setTGsByIds,
   setConfig,
   transcriptReceived,
 } from "./scannerSlice";
@@ -180,15 +181,38 @@ describe("scannerSlice", () => {
   });
 
   describe("toggleTG", () => {
-    it("flips talkgroup selection from undefined to true", () => {
+    it("disables an unkeyed talkgroup (missing key means enabled)", () => {
       const state = reducer(undefined, toggleTG(5));
-      expect(state.tgSelection[5]).toBe(true);
+      expect(state.tgSelection[5]).toBe(false);
     });
 
-    it("flips talkgroup selection from true to false", () => {
+    it("flips talkgroup selection from false to true", () => {
       let state = reducer(undefined, toggleTG(5));
       state = reducer(state, toggleTG(5));
-      expect(state.tgSelection[5]).toBe(false);
+      expect(state.tgSelection[5]).toBe(true);
+    });
+  });
+
+  describe("setTGsByIds", () => {
+    it("disables exactly the given ids", () => {
+      const state = reducer(
+        undefined,
+        setTGsByIds({ ids: [10, 11], enabled: false }),
+      );
+      expect(state.tgSelection).toEqual({ 10: false, 11: false });
+    });
+
+    it("enables the given ids and clears their avoids", () => {
+      let state = reducer(undefined, addAvoid({ talkgroupId: 10, expiresAt: 0 }));
+      state = reducer(state, addAvoid({ talkgroupId: 99, expiresAt: 0 }));
+      state = reducer(state, setTGsByIds({ ids: [10], enabled: true }));
+      expect(state.tgSelection[10]).toBe(true);
+      expect(state.avoidList.map((a) => a.talkgroupId)).toEqual([99]);
+    });
+
+    it("ignores an empty id list", () => {
+      const state = reducer(undefined, setTGsByIds({ ids: [], enabled: false }));
+      expect(state.tgSelection).toEqual({});
     });
   });
 

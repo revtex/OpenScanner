@@ -230,7 +230,10 @@ export const scannerSlice = createSlice({
     },
     toggleTG(state, action: PayloadAction<number>) {
       const id = action.payload;
-      state.tgSelection[id] = !state.tgSelection[id];
+      // A missing key means "enabled" everywhere else in the app (see
+      // `tgSelection[id] !== false`), so an unkeyed talkgroup must flip to
+      // false — `!undefined` would have made the first click a visible no-op.
+      state.tgSelection[id] = state.tgSelection[id] === false;
     },
     restoreTGSelection(state, action: PayloadAction<Record<number, boolean>>) {
       state.tgSelection = action.payload;
@@ -269,44 +272,27 @@ export const scannerSlice = createSlice({
         }
       }
     },
-    setTGsBySystem(
+    // Bulk toggle by explicit talkgroup id. Callers (the Select Talkgroups
+    // panel) pass the exact list they rendered, so the section bucketing rule
+    // lives in exactly one place and the toggle always matches the badge the
+    // user is looking at — including sections keyed by a placeholder label
+    // such as "(No Group)"/"(No Tag)", which match no talkgroup field.
+    setTGsByIds(
       state,
-      action: PayloadAction<{ systemId: number; enabled: boolean }>,
+      action: PayloadAction<{ ids: number[]; enabled: boolean }>,
     ) {
-      const { systemId, enabled } = action.payload;
-      const sys = state.config?.systems.find((s) => s.id === systemId);
-      if (sys) {
-        for (const tg of sys.talkgroups) {
-          state.tgSelection[tg.id] = enabled;
-        }
+      const { ids, enabled } = action.payload;
+      for (const id of ids) {
+        state.tgSelection[id] = enabled;
       }
-    },
-    setTGsByGroup(
-      state,
-      action: PayloadAction<{ group: string; enabled: boolean }>,
-    ) {
-      const { group, enabled } = action.payload;
-      if (!state.config) return;
-      for (const sys of state.config.systems) {
-        for (const tg of sys.talkgroups) {
-          if (tg.group === group) {
-            state.tgSelection[tg.id] = enabled;
-          }
-        }
-      }
-    },
-    setTGsByTag(
-      state,
-      action: PayloadAction<{ tag: string; enabled: boolean }>,
-    ) {
-      const { tag, enabled } = action.payload;
-      if (!state.config) return;
-      for (const sys of state.config.systems) {
-        for (const tg of sys.talkgroups) {
-          if (tg.tag === tag) {
-            state.tgSelection[tg.id] = enabled;
-          }
-        }
+      if (enabled && state.avoidList.length > 0) {
+        // Avoids also read as "off", so a bulk enable must clear them or the
+        // section LED could never reach green (and the next click would try
+        // to enable again, forever).
+        const wanted = new Set(ids);
+        state.avoidList = state.avoidList.filter(
+          (a) => !wanted.has(a.talkgroupId),
+        );
       }
     },
     expireAvoids(state) {
@@ -380,8 +366,6 @@ export const {
   restoreFromDisabledTGs,
   restoreAvoidList,
   setAllTGs,
-  setTGsBySystem,
-  setTGsByGroup,
-  setTGsByTag,
+  setTGsByIds,
   transcriptReceived,
 } = scannerSlice.actions;

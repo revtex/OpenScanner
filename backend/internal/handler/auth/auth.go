@@ -4,7 +4,9 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -14,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/db"
+	"github.com/openscanner/openscanner/internal/handler/shared"
 )
 
 // WSDisconnecter is the subset of ws.Hub used by Handler for session eviction.
@@ -528,12 +531,43 @@ func (h *Handler) GetMe(c *gin.Context) {
 type tgSelectionResponse struct {
 	DisabledTGs []int64        `json:"disabledTGs"`
 	AvoidList   []avoidTGEntry `json:"avoidList"`
+	// Version fingerprints the stored selection. Clients echo it back on
+	// PUT so a stale tab or a second device cannot silently overwrite a
+	// newer selection (see PutTGSelection).
+	Version string `json:"version"`
 } // @name TGSelectionResponse
 
 type tgSelectionRequest struct {
 	DisabledTGs []int64        `json:"disabledTGs"`
 	AvoidList   []avoidTGEntry `json:"avoidList"`
+	// Version is the fingerprint the client last read. Omitted (legacy
+	// clients) means "overwrite unconditionally".
+	Version *string `json:"version,omitempty"`
 } // @name TGSelectionRequest
+
+// tgSelectionStored is the on-disk shape of tg_selection_json. It deliberately
+// omits Version so the fingerprint covers only the selection itself.
+type tgSelectionStored struct {
+	DisabledTGs []int64        `json:"disabledTGs"`
+	AvoidList   []avoidTGEntry `json:"avoidList"`
+}
+
+// tgSelectionVersion fingerprints the stored tg_selection_json so a PUT can
+// detect that someone else wrote in between. Content-addressed rather than
+// timestamp-based, so unrelated user edits (role, password) don't spuriously
+// conflict.
+func tgSelectionVersion(raw string) string {
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:8])
+}
+
+// storedTGSelection returns the user's raw tg_selection_json ("" when unset).
+func storedTGSelection(user db.User) string {
+	if user.TgSelectionJson.Valid {
+		return user.TgSelectionJson.String
+	}
+	return ""
+}
 
 type avoidTGEntry struct {
 	TalkgroupID int64 `json:"talkgroupId"`
@@ -563,12 +597,18 @@ func (h *Handler) GetTGSelection(c *gin.Context) {
 		return
 	}
 
-	resp := tgSelectionResponse{DisabledTGs: []int64{}, AvoidList: []avoidTGEntry{}}
-	if user.TgSelectionJson.Valid && user.TgSelectionJson.String != "" {
-		raw := []byte(user.TgSelectionJson.String)
+	stored := storedTGSelection(user)
+	resp := tgSelectionResponse{
+		DisabledTGs: []int64{},
+		AvoidList:   []avoidTGEntry{},
+		Version:     tgSelectionVersion(stored),
+	}
+	if stored != "" {
+		raw := []byte(stored)
 
 		// Current format: { disabledTGs: number[], avoidList: [{talkgroupId, expiresAt}] }
-		if err := json.Unmarshal(raw, &resp); err != nil {
+		var cur tgSelectionStored
+		if err := json.Unmarshal(raw, &cur); err != nil {
 			// Backward compatibility: legacy format was a bare number[]
 			var legacyDisabled []int64
 			if legacyErr := json.Unmarshal(raw, &legacyDisabled); legacyErr != nil {
@@ -577,13 +617,13 @@ func (h *Handler) GetTGSelection(c *gin.Context) {
 			} else {
 				resp.DisabledTGs = legacyDisabled
 			}
-		}
-
-		if resp.DisabledTGs == nil {
-			resp.DisabledTGs = []int64{}
-		}
-		if resp.AvoidList == nil {
-			resp.AvoidList = []avoidTGEntry{}
+		} else {
+			if cur.DisabledTGs != nil {
+				resp.DisabledTGs = cur.DisabledTGs
+			}
+			if cur.AvoidList != nil {
+				resp.AvoidList = cur.AvoidList
+			}
 		}
 	}
 
@@ -594,15 +634,18 @@ func (h *Handler) GetTGSelection(c *gin.Context) {
 // Saves the list of talkgroup IDs the user wants disabled.
 //
 // @Summary      Update talkgroup selection
-// @Description  Save the authenticated user's disabled talkgroup IDs.
+// @Description  Save the authenticated user's disabled talkgroup IDs. When the
+// @Description  request carries the `version` returned by GET, a mismatch means
+// @Description  another session saved first and the write is rejected with 409.
 // @Tags         Auth,v1-Listener
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
 // @Param        body  body      tgSelectionRequest  true  "Disabled talkgroup IDs"
-// @Success      200   {object}  object{ok=bool}
+// @Success      200   {object}  object{ok=bool,version=string}
 // @Failure      400   {object}  ErrorResponse
 // @Failure      401   {object}  ErrorResponse
+// @Failure      409   {object}  ErrorResponse
 // @Failure      500   {object}  ErrorResponse
 // @Router       /auth/tg-selection [put]
 // @Router       /v1/listener/tg-selection [put]
@@ -616,14 +659,37 @@ func (h *Handler) PutTGSelection(c *gin.Context) {
 		return
 	}
 
-	if req.DisabledTGs == nil {
-		req.DisabledTGs = []int64{}
+	next := tgSelectionStored{DisabledTGs: req.DisabledTGs, AvoidList: req.AvoidList}
+	if next.DisabledTGs == nil {
+		next.DisabledTGs = []int64{}
 	}
-	if req.AvoidList == nil {
-		req.AvoidList = []avoidTGEntry{}
+	if next.AvoidList == nil {
+		next.AvoidList = []avoidTGEntry{}
 	}
 
-	jsonBytes, err := json.Marshal(req)
+	// Optimistic concurrency: a client that read version X may only replace
+	// version X. Without this, a tab left open from before a filtering
+	// session would blind-overwrite it (re-enabling every talkgroup) the
+	// next time anything in that tab changed.
+	current := ""
+	if user, err := h.queries.GetUser(c.Request.Context(), userID); err == nil {
+		current = tgSelectionVersion(storedTGSelection(user))
+	} else {
+		slog.Warn("tg_selection: version precheck failed", "user_id", userID, "error", err)
+	}
+	if req.Version != nil && current != "" && *req.Version != current {
+		slog.Info("tg_selection: rejected stale write",
+			"user_id", userID,
+			"client_version", *req.Version,
+			"current_version", current,
+			"disabled_count", len(next.DisabledTGs))
+		shared.WriteAPIError(c, http.StatusConflict, shared.CodeConflict,
+			"talkgroup selection was modified elsewhere",
+			map[string]any{"currentVersion": current})
+		return
+	}
+
+	jsonBytes, err := json.Marshal(next)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encode selection"})
 		return
@@ -638,7 +704,12 @@ func (h *Handler) PutTGSelection(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	slog.Info("tg_selection: saved",
+		"user_id", userID,
+		"disabled_count", len(next.DisabledTGs),
+		"avoid_count", len(next.AvoidList))
+
+	c.JSON(http.StatusOK, gin.H{"ok": true, "version": tgSelectionVersion(string(jsonBytes))})
 }
 
 // PostDocsSession handles POST /api/admin/docs/session.

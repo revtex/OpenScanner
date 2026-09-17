@@ -106,14 +106,17 @@ const authApi = api.injectEndpoints({
       }),
     }),
     getTGSelection: builder.query<
-      { disabledTGs: number[]; avoidList?: AvoidEntry[] },
+      { disabledTGs: number[]; avoidList?: AvoidEntry[]; version?: string },
       void
     >({
       query: () => "/listener/tg-selection",
     }),
+    // `version` is the fingerprint read by the last GET/PUT. The server
+    // rejects a write carrying a stale one with 409 instead of letting a
+    // second tab or device silently overwrite a newer selection.
     updateTGSelection: builder.mutation<
-      { ok: boolean },
-      { disabledTGs: number[]; avoidList: AvoidEntry[] }
+      { ok: boolean; version?: string },
+      { disabledTGs: number[]; avoidList: AvoidEntry[]; version?: string }
     >({
       query: (body) => ({
         url: "/listener/tg-selection",

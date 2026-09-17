@@ -13,8 +13,11 @@ export interface TalkgroupConfig {
   talkgroupId: number;
   label: string;
   name: string;
-  tag: string;
-  group: string;
+  // The server omits empty group/tag (`json:",omitempty"`), so these are
+  // genuinely absent for ungrouped/untagged talkgroups — never assume a
+  // string is there, and never compare against a placeholder label.
+  tag?: string;
+  group?: string;
   ledColor: string; // CSS color string
   frequency?: number;
 }

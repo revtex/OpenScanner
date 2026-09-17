@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  within,
+  act,
+} from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import SelectTGPanel from "../components/SelectTGPanel";
@@ -53,6 +59,15 @@ const testConfig: ScannerConfig = {
           tag: "Law",
           group: "Police",
           ledColor: "#0000ff",
+        },
+        // Ungrouped/untagged: the server omits both fields, so these land in
+        // the "(No Group)"/"(No Tag)" placeholder sections.
+        {
+          id: 21,
+          talkgroupId: 301,
+          label: "TG-B2",
+          name: "Beta Two",
+          ledColor: "",
         },
       ],
     },
@@ -194,7 +209,8 @@ describe("SelectTGPanel", () => {
     expect(tgLabel).toBeTruthy();
     const checkbox = within(tgLabel!).getByRole("checkbox");
     fireEvent.click(checkbox);
-    expect(store.getState().scanner.tgSelection[10]).toBe(true);
+    // Unkeyed means enabled, so the first click must turn it off.
+    expect(store.getState().scanner.tgSelection[10]).toBe(false);
   });
 
   it("avoided talkgroup shows avoid badge", () => {
@@ -206,6 +222,58 @@ describe("SelectTGPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /System Alpha/i }));
 
     expect(screen.getByText("AVOID")).toBeInTheDocument();
+  });
+
+  it("(No Group) toggle turns its talkgroups off", () => {
+    const { store } = renderPanel({ scanner: scannerState() });
+    clickGroupToggle("\\(No Group\\)", "Turn all off");
+    expect(store.getState().scanner.tgSelection[21]).toBe(false);
+  });
+
+  it("(No Tag) toggle turns its talkgroups off", () => {
+    const { store } = renderPanel({ scanner: scannerState() });
+    fireEvent.click(screen.getByRole("button", { name: /^tags$/i }));
+    clickGroupToggle("\\(No Tag\\)", "Turn all off");
+    expect(store.getState().scanner.tgSelection[21]).toBe(false);
+  });
+
+  it("section toggle only touches the talkgroups it rendered", () => {
+    const { store } = renderPanel({ scanner: scannerState() });
+    // The search box auto-expands matching sections in a microtask.
+    act(() => {
+      fireEvent.change(screen.getByPlaceholderText("Search talkgroups..."), {
+        target: { value: "Beta One" },
+      });
+    });
+    clickGroupToggle("Police", "Turn all off");
+    const state = store.getState().scanner;
+    expect(state.tgSelection[20]).toBe(false);
+    // TG 10 is in the Police group but was filtered out of the section.
+    expect(state.tgSelection[10]).toBeUndefined();
+  });
+
+  it("global toggle asks before re-enabling everything", () => {
+    const { store } = renderPanel({
+      scanner: scannerState({ tgSelection: { 10: false, 11: false } }),
+    });
+    const confirmSpy = vi
+      .spyOn(window, "confirm")
+      .mockReturnValue(false);
+
+    const allRow = screen.getByText("All Talkgroups").closest("div");
+    const globalToggle = allRow?.querySelector(
+      'button[aria-label="Turn all on"]',
+    ) as HTMLButtonElement | null;
+    expect(globalToggle).toBeTruthy();
+    fireEvent.click(globalToggle!);
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(store.getState().scanner.tgSelection[10]).toBe(false);
+
+    confirmSpy.mockReturnValue(true);
+    fireEvent.click(globalToggle!);
+    expect(store.getState().scanner.tgSelection[10]).toBe(true);
+    confirmSpy.mockRestore();
   });
 
   it("global toggle sets all talkgroups off", () => {
@@ -222,5 +290,6 @@ describe("SelectTGPanel", () => {
     expect(state.tgSelection[10]).toBe(false);
     expect(state.tgSelection[11]).toBe(false);
     expect(state.tgSelection[20]).toBe(false);
+    expect(state.tgSelection[21]).toBe(false);
   });
 });
