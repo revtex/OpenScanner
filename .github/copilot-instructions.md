@@ -46,7 +46,6 @@ Do not handle domain work inline when a matching agent exists. Inline handling i
 | Security / quality review (OWASP, concurrency, performance)        | **Reviewer**         |
 | Writing new tests (Go httptest or Vitest + RTL)                    | **Testing Expert**   |
 | Dead code removal, unused imports, stale files                     | **Cleanup Expert**   |
-| Trunk-recorder log analysis, SDR tuning, config recommendations    | **TR Tuning Expert** |
 | Read-only investigation across the codebase                        | **Explore**          |
 
 ### Cross-cutting changes

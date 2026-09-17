@@ -12,7 +12,7 @@ Two existing files are the source of truth for structure and rules — read them
 
 - **`.github/PROJECT_LAYOUT.md`** — full directory layout, package boundaries, file-split heuristics, naming, and per-domain conventions. When it contradicts the tree, the doc wins and the tree is the bug.
 - **`.github/copilot-instructions.md`** — tech stack, the numbered Security Rules (OWASP-aligned, always enforced), changelog/release policy, and the subagent assignment table.
-- **`.github/agents/*.agent.md`** — eight per-domain convention files (go, react, db, docs, reviewer, testing, cleanup, tr-tuning). Useful as **domain cheat-sheets**; read the relevant one before non-trivial work in that area.
+- **`.github/agents/*.agent.md`** — seven per-domain convention files (go, react, db, docs, reviewer, testing, cleanup). Useful as **domain cheat-sheets**; read the relevant one before non-trivial work in that area.
 
 Do not duplicate those rules from memory — defer to them.
 

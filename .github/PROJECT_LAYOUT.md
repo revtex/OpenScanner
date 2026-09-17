@@ -16,7 +16,6 @@ openscanner/
   docs/plans/      Local-only working notes (gitignored — never reference from tracked files)
   .github/         Workflows, agents, this doc, copilot-instructions
   .devcontainer/   Codespaces / dev container
-  systems-config/  Sample TR / SDR configs (gitignored — operator-side)
 ```
 
 Industry analogues: backend follows [golang-standards/project-layout](https://github.com/golang-standards/project-layout) (`cmd/` + `internal/`), frontend follows [Bulletproof React](https://github.com/alan2207/bulletproof-react) (feature-scoped, no shared `utils/` dumping ground).
@@ -312,7 +311,6 @@ Domain work goes to its expert agent:
 | Security / quality review                   | Reviewer         |
 | Writing tests                               | Testing Expert   |
 | Dead code, unused imports, stale files      | Cleanup Expert   |
-| Trunk-recorder log analysis, SDR tuning     | TR Tuning Expert |
 | Read-only investigation across the codebase | Explore          |
 
 The top-level conversation coordinates and reports; agents do the work. Inline handling is acceptable only for trivial one-liners.
