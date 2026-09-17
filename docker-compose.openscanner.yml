@@ -34,7 +34,7 @@ services:
     # secrets:
     #   - encryption_key
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3022/api/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3022/api/v1/health"]
       interval: 30s
       timeout: 5s
       start_period: 10s

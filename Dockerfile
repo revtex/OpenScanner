@@ -37,5 +37,5 @@ ENV OPENSCANNER_DB_FILE=/data/openscanner.db
 ENV OPENSCANNER_RECORDINGS_DIR=/data/recordings
 EXPOSE 3022
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3022/api/health || exit 1
+  CMD wget -qO- http://localhost:3022/api/v1/health || exit 1
 ENTRYPOINT ["./entrypoint.sh"]

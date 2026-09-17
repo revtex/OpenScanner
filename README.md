@@ -190,7 +190,7 @@ OpenScanner is designed as a drop-in replacement for [rdio-scanner](https://gith
 - **REST API** — `/api/*` with JSON request/response; Swagger UI available at `/api/admin/docs` for authenticated admins
 - **Listener WebSocket** — `/ws` for real-time call streaming, configuration updates, and listener count
 - **Admin WebSocket** — `/api/admin/ws` for live admin dashboard operations (CRUD, events, settings)
-- **Health check** — `GET /api/health` returns server status and version
+- **Health check** — `GET /api/v1/health` returns server status and version (the legacy `/api/health` alias still works but emits deprecation headers)
 
 ---
 

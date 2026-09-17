@@ -126,7 +126,7 @@ backend/
     bookmarks.go             ← per-user call bookmarks
     import.go                ← config import/export
     radioreference.go        ← optional RadioReference.com lookups for talkgroup/system metadata
-    health.go                ← /api/health
+    health.go                ← /api/v1/health (+ legacy /api/health alias)
     swagger_models.go        ← shared request/response types for swaggo
   internal/ws/               ← WebSocket hub + listener client + admin client + protocol messages
     hub.go                   ← broadcast, client registry
@@ -197,7 +197,7 @@ Before reporting a task done, run the validation loop:
 - Public access mode: when `publicAccess` setting is `true`, WS listeners connect without auth and receive all systems/TGs; admin routes are never public
 - Admin WS protocol: `ADM_REQ` (client→server) / `ADM_RES` (server→client, keyed by request id) / `ADM_EVT` (server-initiated); ops dispatched from `admin_ops.go`
 - LSC broadcasts are debounced (max once per 3 seconds)
-- Health check: `GET /api/health` returns `{status: "ok", version: "..."}` — no auth required
+- Health check: `GET /api/v1/health` returns `{status: "ok", version: "..."}` — no auth required (legacy `/api/health` alias still served, with deprecation headers)
 - Graceful shutdown: `context.WithCancel` root context; `srv.Shutdown(ctx)` drains HTTP; hub drains WS connections; audio and transcription workers drain in-flight jobs
 - Per-API-key rate limiting on call upload (default 60/min)
 - RadioReference integration (`api/radioreference.go`): optional lookups to populate system/talkgroup metadata; requires operator-supplied RR credentials in settings
