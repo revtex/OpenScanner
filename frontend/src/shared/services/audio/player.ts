@@ -13,6 +13,10 @@ interface QueueItem {
   recoveryTried?: boolean;
 }
 
+/** HTMLMediaElement.readyState values used by the stall recovery. */
+const HAVE_NOTHING = 0;
+const HAVE_FUTURE_DATA = 3;
+
 // Extend window for Safari's prefixed AudioContext.
 declare global {
   interface Window {
@@ -53,6 +57,12 @@ class AudioPlayer {
 
   constructor() {
     this.bootstrapAudio();
+    if (typeof document !== "undefined") {
+      document.addEventListener(
+        "visibilitychange",
+        this.handleVisibilityChange,
+      );
+    }
   }
 
   /**
@@ -82,20 +92,26 @@ class AudioPlayer {
         }
       }
 
+      // Beep context first: it must be created inside the gesture, and the
+      // element unlock below cannot be awaited (see next comment), so
+      // anything sequenced after it would never run.
+      await bootstrapBeepContext();
+
       // Unlock the <audio> element on the same gesture so later
       // programmatic play() succeeds on Mobile Edge / Mobile Safari.
-      if (this.audio) {
-        try {
-          await this.audio.play();
-          this.audio.pause();
-        } catch {
-          // ignore — the element will still be considered
-          // user-activated on most browsers once a gesture-scoped
-          // play() has been attempted.
-        }
+      // Deliberately not awaited: play() on an element with no source
+      // never settles, so `await` here hung the rest of this handler
+      // until a real call replaced the src (AbortError, ~30s later).
+      if (this.audio && !this.currentItem) {
+        const el = this.audio;
+        void el
+          .play()
+          .then(() => el.pause())
+          .catch(() => {
+            // ignore — the element still counts as user-activated on
+            // most browsers once a gesture-scoped play() was attempted.
+          });
       }
-
-      await bootstrapBeepContext();
 
       if (this.ctx?.state === "running" && this.audio) {
         for (const e of events) {
@@ -167,7 +183,7 @@ class AudioPlayer {
     } catch {
       // ignore — element may not be ready
     }
-    this.audio.play().catch(() => this.handleError());
+    void this.playElement(this.audio, this.currentItem);
   }
 
   pause(): void {
@@ -182,7 +198,7 @@ class AudioPlayer {
     this.ctx?.resume().catch(() => {});
     if (this.currentItem && this.audio && !this._playing) {
       this._playing = true;
-      this.audio.play().catch(() => this.handleError());
+      void this.playElement(this.audio, this.currentItem);
     } else if (!this.currentItem && this.queue.length > 0) {
       this.playNext();
     }
@@ -328,19 +344,73 @@ class AudioPlayer {
     }
 
     const audio = this.audio;
-    const onCanPlay = () => {
-      audio.removeEventListener("canplay", onCanPlay);
-      if (this.currentItem !== item) return;
-      this._playing = true;
-      audio.play().catch(() => this.handleError());
-    };
-    audio.addEventListener("canplay", onCanPlay);
+    // Set src and play immediately — do NOT wait for `canplay`. A hidden
+    // tab can defer buffering indefinitely, so that event may never fire;
+    // the item then stayed "current" forever and every later call piled up
+    // in the queue until the tab was foregrounded. play() drives the load
+    // itself, and asking to play is also what keeps a background tab
+    // loading. Setting src already starts the fetch, so no load() call
+    // (the extra load() also aborted the in-flight gesture unlock).
     audio.src = audioUrlFor(item.call);
-    // preload="auto" + setting src starts the network fetch.
-    try {
-      audio.load();
-    } catch {
-      // ignore
+    this._playing = true;
+    void this.playElement(audio, item);
+  }
+
+  /**
+   * Ask the element to play, tolerating the two rejections that are not
+   * playback failures:
+   *
+   * - NotAllowedError — autoplay policy (no user activation yet). The item
+   *   stays current and paused so the next gesture or visibility change
+   *   resumes it. Skipping would silently drop the whole queue.
+   * - AbortError — a newer load superseded this play(); whoever started
+   *   that load owns the element now.
+   */
+  private playElement(audio: HTMLAudioElement, item: QueueItem): Promise<void> {
+    return audio.play().catch((err: unknown) => {
+      if (this.currentItem !== item) return;
+      const name = (err as { name?: string } | null)?.name;
+      if (name === "NotAllowedError" || name === "AbortError") {
+        this._playing = false;
+        return;
+      }
+      this.handleError();
+    });
+  }
+
+  /**
+   * Kick playback when the page comes back to the foreground. Mirrors the
+   * wake handling in the WebSocket clients (see ws/client.ts): a tab that
+   * was backgrounded before audio ever started can have a stalled load or
+   * a policy-blocked play(), and without this the queue just grows.
+   */
+  private handleVisibilityChange = (): void => {
+    if (typeof document === "undefined") return;
+    if (document.visibilityState !== "visible") return;
+    if (this._paused) return;
+
+    if (this.ctx?.state === "suspended") {
+      this.ctx.resume().catch(() => {});
+    }
+    const audio = this.audio;
+    if (this.currentItem && audio) {
+      // `paused` alone is not enough: a load that was deferred while
+      // hidden leaves the element unpaused but with nothing buffered, so
+      // it looks like it is playing while sitting at readyState 0.
+      const stalled = audio.paused || audio.readyState < HAVE_FUTURE_DATA;
+      if (stalled) {
+        if (audio.readyState === HAVE_NOTHING) {
+          try {
+            audio.load();
+          } catch {
+            // ignore
+          }
+        }
+        this._playing = true;
+        void this.playElement(audio, this.currentItem);
+      }
+    } else if (!this.currentItem && this.queue.length > 0) {
+      this.playNext();
     }
   }
 
