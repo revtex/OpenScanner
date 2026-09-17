@@ -6,7 +6,12 @@ import { MemoryRouter } from "react-router-dom";
 import { authSlice, setCredentials } from "@/features/auth";
 import { api } from "@/app/api";
 import { trMqttReducer } from "@/app/store";
-import { scannerSlice, setConfig, toggleTG } from "../scannerSlice";
+import {
+  scannerSlice,
+  setBranding,
+  setConfig,
+  toggleTG,
+} from "../scannerSlice";
 import { callsSlice } from "../callsSlice";
 import { useTGSelectionSync } from "./useTGSelectionSync";
 import type { ScannerConfig } from "@/types";
@@ -97,8 +102,12 @@ function Harness() {
   return null;
 }
 
-/** Mounts the hook with an authenticated user and config already delivered. */
-function mount() {
+/**
+ * Mounts the hook with an authenticated user. `deliverConfig: false` stops
+ * before the scanner.config frame, leaving only the talkgroup-less
+ * placeholder that connection.welcome creates.
+ */
+function mount(deliverConfig = true) {
   const store = makeStore();
   store.dispatch(
     setCredentials({
@@ -108,7 +117,14 @@ function mount() {
       passwordNeedChange: false,
     }),
   );
-  store.dispatch(setConfig(testConfig));
+  if (deliverConfig) {
+    store.dispatch(setConfig(testConfig));
+  } else {
+    // connection.welcome lands first and fabricates config.systems = [].
+    store.dispatch(
+      setBranding({ branding: "TEST", email: "", version: "1.0" }),
+    );
+  }
   render(
     <MemoryRouter>
       <Provider store={store}>
@@ -162,6 +178,31 @@ describe("useTGSelectionSync", () => {
 
     expect(mockSave).not.toHaveBeenCalled();
     expect(store.getState().scanner.tgSelection[2]).not.toBe(false);
+  });
+
+  it("does not save before the real config arrives", async () => {
+    // Regression: connection.welcome fabricates a config with no talkgroups.
+    // Restoring against it mapped every saved id onto nothing and then
+    // persisted that back as "nothing disabled", wiping the selection.
+    selectionData = { disabledTGs: [1, 5], avoidList: [], version: "v0" };
+    const store = mount(false);
+    await flushDebounce();
+
+    expect(mockSave).not.toHaveBeenCalled();
+    expect(store.getState().scanner.tgSelectionReady).toBe(false);
+
+    // The real config lands: now the saved selection is applied, still no PUT.
+    await act(async () => {
+      store.dispatch(setConfig(testConfig));
+    });
+    await flushDebounce();
+
+    const sel = store.getState().scanner.tgSelection;
+    expect(sel[1]).toBe(false);
+    expect(sel[5]).toBe(false);
+    expect(sel[2]).toBe(true);
+    expect(store.getState().scanner.tgSelectionReady).toBe(true);
+    expect(mockSave).not.toHaveBeenCalled();
   });
 
   it("saves a change with the version it last read", async () => {

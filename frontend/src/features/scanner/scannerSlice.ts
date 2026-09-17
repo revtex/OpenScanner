@@ -21,6 +21,11 @@ interface ScannerState {
   listenerCount: number;
   connectionStatus: ConnectionStatus;
   config: ScannerConfig | null;
+  // True only once a real scanner.config/CFG frame has been applied.
+  // `config` alone is not a safe signal: connection.welcome arrives first and
+  // setBranding fabricates a config with an empty `systems` array, which made
+  // the selection logic treat "no talkgroups yet" as "nothing is disabled".
+  configReceived: boolean;
   tgSelection: Record<number, boolean>;
   tgSelectionReady: boolean;
   pendingTranscripts: Record<number, PendingTranscript>;
@@ -40,6 +45,7 @@ const initialState: ScannerState = {
   listenerCount: 0,
   connectionStatus: "disconnected",
   config: null,
+  configReceived: false,
   tgSelection: {},
   tgSelectionReady: false,
   pendingTranscripts: {},
@@ -185,6 +191,7 @@ export const scannerSlice = createSlice({
     },
     setConfig(state, action: PayloadAction<ScannerConfig>) {
       const incoming = action.payload;
+      state.configReceived = true;
       state.config = {
         ...incoming,
         branding: incoming.branding ?? state.config?.branding ?? "",
@@ -217,6 +224,8 @@ export const scannerSlice = createSlice({
         state.config.email = action.payload.email;
         state.config.version = action.payload.version;
       } else {
+        // NOTE: this placeholder carries no systems. Anything that reads
+        // talkgroups must gate on `configReceived`, not on `config != null`.
         state.config = {
           systems: [],
           time12hFormat: false,
@@ -237,10 +246,15 @@ export const scannerSlice = createSlice({
       state.tgSelection[id] = state.tgSelection[id] === false;
     },
     restoreTGSelection(state, action: PayloadAction<Record<number, boolean>>) {
+      // Restoring before the real config would mark an empty selection
+      // "ready" and let the persist effect save it back as "nothing
+      // disabled". Callers gate on this too; this is the backstop.
+      if (!state.configReceived) return;
       state.tgSelection = action.payload;
       state.tgSelectionReady = true;
     },
     restoreFromDisabledTGs(state, action: PayloadAction<number[]>) {
+      if (!state.configReceived) return;
       const disabled = new Set(action.payload);
       const selection: Record<number, boolean> = {};
       if (state.config) {

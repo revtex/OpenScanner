@@ -128,6 +128,7 @@ function scannerState(
     connectionStatus: "disconnected",
     config: testConfig,
     tgSelection: {},
+    configReceived: true,
     tgSelectionReady: true,
     pendingTranscripts: {},
     ...overrides,

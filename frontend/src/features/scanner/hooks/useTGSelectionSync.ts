@@ -70,11 +70,16 @@ export function useTGSelectionSync() {
   const token = useAppSelector(selectToken);
   const isAuthenticated = !!token;
   const config = useAppSelector((s) => s.scanner.config);
+  // Gate on the real config, not on `config != null`: connection.welcome
+  // fabricates a talkgroup-less placeholder (see setBranding), and restoring
+  // against that mapped every saved id onto nothing — which then persisted
+  // as "nothing disabled" and wiped the user's selection server-side.
+  const configReceived = useAppSelector((s) => s.scanner.configReceived);
   const tgSelection = useAppSelector((s) => s.scanner.tgSelection);
   const avoidList = useAppSelector((s) => s.scanner.avoidList);
 
   const { data: tgSelectionData, refetch } = useGetTGSelectionQuery(undefined, {
-    skip: !isAuthenticated || !config,
+    skip: !isAuthenticated || !configReceived,
   });
   const [saveTGSelection] = useUpdateTGSelectionMutation();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -101,7 +106,7 @@ export function useTGSelectionSync() {
   // overwrite user selections. New talkgroups default to enabled (missing key = true).
   useEffect(() => {
     if (restoredRef.current) return;
-    if (!config) return;
+    if (!configReceived || !config) return;
 
     if (isAuthenticated) {
       if (!tgSelectionData) return;
@@ -140,7 +145,14 @@ export function useTGSelectionSync() {
       dispatch(restoreTGSelection(restored));
       restoredRef.current = true;
     }
-  }, [config, instanceId, dispatch, isAuthenticated, tgSelectionData]);
+  }, [
+    config,
+    configReceived,
+    instanceId,
+    dispatch,
+    isAuthenticated,
+    tgSelectionData,
+  ]);
 
   // Keep configRef fresh without triggering the persist effect.
   useEffect(() => {
@@ -228,7 +240,9 @@ export function useTGSelectionSync() {
 
   // Persist tgSelection: API (authenticated) or localStorage (anonymous)
   useEffect(() => {
-    if (!configRef.current || !restoredRef.current) return undefined;
+    if (!configReceived || !configRef.current || !restoredRef.current) {
+      return undefined;
+    }
 
     if (!isAuthenticated) {
       localStorage.setItem(storageKey(instanceId), JSON.stringify(tgSelection));
@@ -269,5 +283,12 @@ export function useTGSelectionSync() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [tgSelection, avoidList, instanceId, isAuthenticated, flush]);
+  }, [
+    tgSelection,
+    avoidList,
+    instanceId,
+    isAuthenticated,
+    configReceived,
+    flush,
+  ]);
 }
