@@ -141,6 +141,16 @@ describe("scannerSlice", () => {
   });
 
   describe("addAvoid / removeAvoid / clearAvoids", () => {
+    it("does not write the avoid into tgSelection", () => {
+      // Avoids are tracked separately (and persisted separately); folding
+      // them into tgSelection turned a timed avoid into a permanent disable.
+      const state = reducer(
+        undefined,
+        addAvoid({ talkgroupId: 10, expiresAt: Date.now() + 60_000 }),
+      );
+      expect(state.tgSelection[10]).toBeUndefined();
+    });
+
     it("adds an avoid entry", () => {
       const state = reducer(
         undefined,
@@ -335,6 +345,17 @@ describe("scannerSlice", () => {
       state = reducer(state, expireAvoids());
       expect(state.avoidList).toHaveLength(1);
       expect(state.avoidList[0].talkgroupId).toBe(10);
+    });
+
+    it("leaves the user's own on/off choice alone when an avoid expires", () => {
+      const pastTime = Date.now() - 60_000;
+      // TG 10 was deliberately switched off; avoiding it and letting the
+      // avoid lapse must not silently switch it back on.
+      let state = reducer(undefined, setTGsByIds({ ids: [10], enabled: false }));
+      state = reducer(state, addAvoid({ talkgroupId: 10, expiresAt: pastTime }));
+      state = reducer(state, expireAvoids());
+      expect(state.avoidList).toHaveLength(0);
+      expect(state.tgSelection[10]).toBe(false);
     });
 
     it("filters mixed avoids correctly", () => {

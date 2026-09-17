@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAppSelector, useAppDispatch } from "@/app/store";
 import {
@@ -16,6 +16,27 @@ import type { AvoidEntry } from "@/types";
 
 function storageKey(instanceId: string): string {
   return `openscanner-tg-selection-${instanceId}`;
+}
+
+/** How many times a rejected write is re-sent with a refreshed version. */
+const MAX_CONFLICT_RETRIES = 2;
+
+interface PendingSave {
+  disabledTGs: number[];
+  avoidList: AvoidEntry[];
+  snapshot: string;
+}
+
+/** Pulls `details.currentVersion` out of a 409 error envelope. */
+function conflictVersion(err: unknown): string | undefined {
+  const data = (err as { data?: unknown }).data;
+  if (typeof data !== "object" || data === null) return undefined;
+  const error = (data as { error?: unknown }).error;
+  if (typeof error !== "object" || error === null) return undefined;
+  const details = (error as { details?: unknown }).details;
+  if (typeof details !== "object" || details === null) return undefined;
+  const version = (details as { currentVersion?: unknown }).currentVersion;
+  return typeof version === "string" ? version : undefined;
 }
 
 /**
@@ -60,6 +81,8 @@ export function useTGSelectionSync() {
   // Fingerprint of the server-side selection this tab last read. Sent with
   // every PUT so the server can reject a stale overwrite.
   const versionRef = useRef<string | undefined>(undefined);
+  // Latest selection the user has locally, recomputed on every change.
+  const pendingRef = useRef<PendingSave | null>(null);
 
   // Reset restored flag when auth state changes
   useEffect(() => {
@@ -118,76 +141,102 @@ export function useTGSelectionSync() {
     configRef.current = config;
   }, [config]);
 
+  // Flush the latest pending selection to the server.
+  //
+  // Reads `pendingRef` at call time rather than closing over a snapshot, so a
+  // retry always sends what the user currently has. A 409 means someone else
+  // saved first; which side is stale is decided by whether local state moved
+  // on after the rejected write was issued.
+  const flush = useCallback(async () => {
+    // Retries loop rather than recurse: each pass re-reads `pendingRef`, so a
+    // rejected write is re-sent with whatever the user has now.
+    for (let attempt = 0; attempt <= MAX_CONFLICT_RETRIES; attempt++) {
+      const pending = pendingRef.current;
+      if (!pending || pending.snapshot === lastSavedRef.current) return;
+      lastSavedRef.current = pending.snapshot;
+
+      try {
+        const res = await saveTGSelection({
+          disabledTGs: pending.disabledTGs,
+          avoidList: pending.avoidList,
+          version: versionRef.current,
+        }).unwrap();
+        if (res.version) versionRef.current = res.version;
+        return;
+      } catch (err) {
+        // Allow a retry on the next change.
+        lastSavedRef.current = "";
+        if ((err as { status?: number }).status !== 409) return;
+
+        const serverVersion = conflictVersion(err);
+        if (pendingRef.current?.snapshot !== pending.snapshot) {
+          // The user kept editing while this write was in flight, so their
+          // work is the newest thing there is: re-send it with the version
+          // the server just handed us rather than throwing it away.
+          if (serverVersion) versionRef.current = serverVersion;
+          continue;
+        }
+
+        // Nothing changed here since the rejected write — this session is the
+        // stale one (an old tab, another device). Adopt the newer selection
+        // instead of overwriting whoever saved it.
+        try {
+          const fresh = await refetch().unwrap();
+          versionRef.current = fresh.version;
+          lastSavedRef.current = snapshotOf(
+            fresh.disabledTGs,
+            fresh.avoidList ?? [],
+          );
+          dispatch(restoreFromDisabledTGs(fresh.disabledTGs));
+          dispatch(restoreAvoidList(fresh.avoidList ?? []));
+        } catch {
+          // Leave local state alone; the next change retries.
+        }
+        return;
+      }
+    }
+  }, [saveTGSelection, refetch, dispatch]);
+
   // Persist tgSelection: API (authenticated) or localStorage (anonymous)
   useEffect(() => {
     if (!configRef.current || !restoredRef.current) return undefined;
 
-    if (isAuthenticated) {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        const cfg = configRef.current;
-        if (!cfg) return;
-        const disabledTGs: number[] = [];
-        for (const sys of cfg.systems) {
-          for (const tg of sys.talkgroups ?? []) {
-            if (tgSelection[tg.id] === false) {
-              disabledTGs.push(tg.id);
-            }
-          }
-        }
-        disabledTGs.sort((a, b) => a - b);
-        const now = Date.now();
-        const activeAvoids: AvoidEntry[] = avoidList.filter(
-          (a) => a.expiresAt === 0 || a.expiresAt > now,
-        );
-        // Skip PUT if nothing actually changed.
-        const snapshot = snapshotOf(disabledTGs, activeAvoids);
-        if (snapshot === lastSavedRef.current) return;
-        lastSavedRef.current = snapshot;
-        void (async () => {
-          try {
-            const res = await saveTGSelection({
-              disabledTGs,
-              avoidList: activeAvoids,
-              version: versionRef.current,
-            }).unwrap();
-            if (res.version) versionRef.current = res.version;
-          } catch (err) {
-            // Allow a retry on the next change.
-            lastSavedRef.current = "";
-            const status = (err as { status?: number }).status;
-            if (status !== 409) return;
-            // Another session (second tab, phone, other browser) saved a
-            // newer selection. Adopt it instead of overwriting their work.
-            try {
-              const fresh = await refetch().unwrap();
-              versionRef.current = fresh.version;
-              lastSavedRef.current = snapshotOf(
-                fresh.disabledTGs,
-                fresh.avoidList ?? [],
-              );
-              dispatch(restoreFromDisabledTGs(fresh.disabledTGs));
-              dispatch(restoreAvoidList(fresh.avoidList ?? []));
-            } catch {
-              // Leave local state alone; the next change retries.
-            }
-          }
-        })();
-      }, 500);
-      return () => {
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-      };
-    } else {
+    if (!isAuthenticated) {
       localStorage.setItem(storageKey(instanceId), JSON.stringify(tgSelection));
       return undefined;
     }
-  }, [
-    tgSelection,
-    avoidList,
-    instanceId,
-    isAuthenticated,
-    saveTGSelection,
-    refetch,
-    dispatch,
-  ]);
+
+    const cfg = configRef.current;
+    const disabledTGs: number[] = [];
+    for (const sys of cfg.systems) {
+      for (const tg of sys.talkgroups ?? []) {
+        if (tgSelection[tg.id] === false) {
+          disabledTGs.push(tg.id);
+        }
+      }
+    }
+    disabledTGs.sort((a, b) => a - b);
+    const now = Date.now();
+    const activeAvoids: AvoidEntry[] = avoidList.filter(
+      (a) => a.expiresAt === 0 || a.expiresAt > now,
+    );
+    // Recomputed on every change so `flush` can tell "the user is still
+    // editing" from "this tab is stale" when a write is rejected.
+    pendingRef.current = {
+      disabledTGs,
+      avoidList: activeAvoids,
+      snapshot: snapshotOf(disabledTGs, activeAvoids),
+    };
+
+    // Skip the PUT if nothing actually changed.
+    if (pendingRef.current.snapshot === lastSavedRef.current) return undefined;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      void flush();
+    }, 500);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [tgSelection, avoidList, instanceId, isAuthenticated, flush]);
 }

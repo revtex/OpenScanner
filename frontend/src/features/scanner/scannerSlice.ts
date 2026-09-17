@@ -162,8 +162,10 @@ export const scannerSlice = createSlice({
         (a) => a.talkgroupId !== action.payload.talkgroupId,
       );
       state.avoidList.push(action.payload);
-      // Avoided talkgroups are filtered talkgroups: mark unchecked.
-      state.tgSelection[action.payload.talkgroupId] = false;
+      // Deliberately does NOT touch tgSelection. An avoid is a separate,
+      // often time-boxed mute (see audioListenerMiddleware, which checks
+      // both lists); folding it into tgSelection persisted it as a
+      // permanent disable the moment anything else was saved.
     },
     removeAvoid(state, action: PayloadAction<number>) {
       state.avoidList = state.avoidList.filter(
@@ -257,10 +259,6 @@ export const scannerSlice = createSlice({
       state.avoidList = action.payload.filter(
         (a) => a.expiresAt === 0 || a.expiresAt > now,
       );
-      // Ensure active avoids are reflected as unchecked.
-      for (const entry of state.avoidList) {
-        state.tgSelection[entry.talkgroupId] = false;
-      }
     },
     setAllTGs(state, action: PayloadAction<boolean>) {
       const enabled = action.payload;
@@ -301,10 +299,9 @@ export const scannerSlice = createSlice({
       for (const entry of state.avoidList) {
         if (entry.expiresAt === 0 || entry.expiresAt > now) {
           kept.push(entry);
-        } else {
-          // Timed avoid expired: auto re-enable the talkgroup.
-          state.tgSelection[entry.talkgroupId] = true;
         }
+        // An expired avoid just drops out of the list — tgSelection is the
+        // user's own on/off choice and is left exactly as they set it.
       }
       state.avoidList = kept;
     },

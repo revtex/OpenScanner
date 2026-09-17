@@ -153,7 +153,7 @@ function Section({
                   <input
                     type="checkbox"
                     className="checkbox checkbox-xs checkbox-primary"
-                    checked={enabled}
+                    checked={enabled && !isAvoided}
                     onChange={() => onToggleTG(tg.id)}
                   />
                   {tg.ledColor && (
@@ -267,7 +267,8 @@ export default function SelectTGPanel({ isOpen, onClose }: SelectTGPanelProps) {
       if (isAvoided) {
         // Clear the avoid entry
         dispatch(removeAvoid(id));
-        // If permanent avoid also turned off tgSelection, re-enable it
+        // Clicking an avoided row means "I want this back": make sure it is
+        // not also switched off in the user's own selection.
         if (tgSelection[id] === false) {
           dispatch(toggleTG(id));
         }
