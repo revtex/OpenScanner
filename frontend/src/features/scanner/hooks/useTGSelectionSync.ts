@@ -20,6 +20,10 @@ function storageKey(instanceId: string): string {
 
 /** How many times a rejected write is re-sent with a refreshed version. */
 const MAX_CONFLICT_RETRIES = 2;
+/** Delay before re-attempting a save that never landed. */
+const RETRY_DELAY_MS = 2000;
+/** Cap on consecutive delayed re-attempts, so a broken server isn't hammered. */
+const MAX_DELAYED_RETRIES = 5;
 
 interface PendingSave {
   disabledTGs: number[];
@@ -83,6 +87,8 @@ export function useTGSelectionSync() {
   const versionRef = useRef<string | undefined>(undefined);
   // Latest selection the user has locally, recomputed on every change.
   const pendingRef = useRef<PendingSave | null>(null);
+  const flushRef = useRef<(() => Promise<void>) | null>(null);
+  const delayedRetriesRef = useRef(0);
 
   // Reset restored flag when auth state changes
   useEffect(() => {
@@ -147,6 +153,18 @@ export function useTGSelectionSync() {
   // retry always sends what the user currently has. A 409 means someone else
   // saved first; which side is stale is decided by whether local state moved
   // on after the rejected write was issued.
+  // Re-attempt a save that never landed. Without this, a failed or
+  // retry-exhausted write would sit unsaved until the user happened to click
+  // something else — the effect below only fires on state changes.
+  const retryLater = useCallback(() => {
+    if (delayedRetriesRef.current >= MAX_DELAYED_RETRIES) return;
+    delayedRetriesRef.current += 1;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      void flushRef.current?.();
+    }, RETRY_DELAY_MS);
+  }, []);
+
   const flush = useCallback(async () => {
     // Retries loop rather than recurse: each pass re-reads `pendingRef`, so a
     // rejected write is re-sent with whatever the user has now.
@@ -162,11 +180,15 @@ export function useTGSelectionSync() {
           version: versionRef.current,
         }).unwrap();
         if (res.version) versionRef.current = res.version;
+        delayedRetriesRef.current = 0;
         return;
       } catch (err) {
         // Allow a retry on the next change.
         lastSavedRef.current = "";
-        if ((err as { status?: number }).status !== 409) return;
+        if ((err as { status?: number }).status !== 409) {
+          retryLater();
+          return;
+        }
 
         const serverVersion = conflictVersion(err);
         if (pendingRef.current?.snapshot !== pending.snapshot) {
@@ -195,7 +217,14 @@ export function useTGSelectionSync() {
         return;
       }
     }
-  }, [saveTGSelection, refetch, dispatch]);
+    // Retries exhausted against a session that keeps winning the race: try
+    // again shortly rather than dropping the user's selection.
+    retryLater();
+  }, [saveTGSelection, refetch, dispatch, retryLater]);
+
+  useEffect(() => {
+    flushRef.current = flush;
+  }, [flush]);
 
   // Persist tgSelection: API (authenticated) or localStorage (anonymous)
   useEffect(() => {
@@ -222,14 +251,16 @@ export function useTGSelectionSync() {
     );
     // Recomputed on every change so `flush` can tell "the user is still
     // editing" from "this tab is stale" when a write is rejected.
-    pendingRef.current = {
-      disabledTGs,
-      avoidList: activeAvoids,
-      snapshot: snapshotOf(disabledTGs, activeAvoids),
-    };
+    const snapshot = snapshotOf(disabledTGs, activeAvoids);
+    if (snapshot !== pendingRef.current?.snapshot) {
+      // A genuine change (not the 10-second avoid sweep re-creating the same
+      // list) resets the delayed-retry budget.
+      delayedRetriesRef.current = 0;
+    }
+    pendingRef.current = { disabledTGs, avoidList: activeAvoids, snapshot };
 
     // Skip the PUT if nothing actually changed.
-    if (pendingRef.current.snapshot === lastSavedRef.current) return undefined;
+    if (snapshot === lastSavedRef.current) return undefined;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {

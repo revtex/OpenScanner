@@ -173,9 +173,8 @@ export const scannerSlice = createSlice({
       );
     },
     clearAvoids(state) {
-      for (const entry of state.avoidList) {
-        state.tgSelection[entry.talkgroupId] = true;
-      }
+      // Only the avoids are cleared — a talkgroup the user switched off
+      // stays off (see addAvoid on why the two are kept separate).
       state.avoidList = [];
     },
     setListenerCount(state, action: PayloadAction<number>) {

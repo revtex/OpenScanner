@@ -188,6 +188,13 @@ describe("scannerSlice", () => {
       state = reducer(state, clearAvoids());
       expect(state.avoidList).toHaveLength(0);
     });
+
+    it("clearAvoids leaves tgSelection untouched", () => {
+      let state = reducer(undefined, setTGsByIds({ ids: [10], enabled: false }));
+      state = reducer(state, addAvoid({ talkgroupId: 10, expiresAt: 0 }));
+      state = reducer(state, clearAvoids());
+      expect(state.tgSelection[10]).toBe(false);
+    });
   });
 
   describe("toggleTG", () => {
