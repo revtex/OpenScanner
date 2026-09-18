@@ -128,16 +128,27 @@ class AudioPlayer {
       this.ensureAudioElement();
 
       // Unlock the <audio> element first: it is the one call playback needs.
-      // Deliberately not awaited: play() on an element with no source never
-      // settles, so `await` here hung the rest of this handler until a real
-      // call replaced the src (AbortError, ~30s later).
+      // Deliberately not awaited: play() on an element with no source does
+      // not settle until a source arrives, so `await` here hung the rest of
+      // this handler until a real call replaced the src (AbortError, ~30s
+      // later).
       if (this.audio && !this.currentItem) {
         const el = this.audio;
         // Wrapped rather than chained directly: play() is specified to
         // return a promise, but jsdom returns undefined, and this handler
         // runs on every stray interaction in component tests.
         void Promise.resolve(el.play())
-          .then(() => el.pause())
+          .then(() => {
+            // Only undo *our own* unlock. A source-less play() does not
+            // reject — it stays pending until a source arrives — so by the
+            // time this settles a real call has usually taken the element
+            // over. Pausing then stopped that call dead, and because
+            // `ended` never fires on a paused element the queue stalled
+            // for the rest of the session: every later call piled up
+            // silently until something else (playing a call from search)
+            // replaced the stuck item.
+            if (!this.currentItem && !el.src) el.pause();
+          })
           .catch(() => {
             // ignore — the element still counts as user-activated on
             // most browsers once a gesture-scoped play() was attempted.

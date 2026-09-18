@@ -8,7 +8,7 @@ class FakeAudio {
   static instances: FakeAudio[] = [];
 
   preload = "";
-  src = "";
+  private srcValue = "";
   volume = 1;
   currentTime = 0;
   paused = true;
@@ -21,6 +21,24 @@ class FakeAudio {
   static rejectFirstPlayWith: string | null = null;
 
   private listeners = new Map<string, Set<() => void>>();
+  /** Resolvers for play() calls made while the element had no source. */
+  private pendingPlays: Array<() => void> = [];
+
+  get src(): string {
+    return this.srcValue;
+  }
+
+  /**
+   * Assigning a source settles any play() that was left pending on the
+   * source-less element, which is what real browsers do.
+   */
+  set src(value: string) {
+    this.srcValue = value;
+    if (!value) return;
+    const pending = this.pendingPlays;
+    this.pendingPlays = [];
+    for (const resolve of pending) resolve();
+  }
 
   constructor() {
     FakeAudio.instances.push(this);
@@ -53,6 +71,13 @@ class FakeAudio {
       return Promise.reject(err);
     }
     this.paused = false;
+    if (!this.srcValue) {
+      // No source: the promise cannot settle yet. Real browsers keep it
+      // pending rather than rejecting.
+      return new Promise<void>((resolve) => {
+        this.pendingPlays.push(resolve);
+      });
+    }
     return Promise.resolve();
   }
 
@@ -65,7 +90,7 @@ class FakeAudio {
   }
 
   removeAttribute(): void {
-    this.src = "";
+    this.srcValue = "";
   }
 }
 
@@ -203,6 +228,26 @@ describe("audioPlayer", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     Reflect.deleteProperty(navigator, "mediaSession");
+  });
+
+  it("does not pause a live call when the gesture unlock finally settles", async () => {
+    const player = await loadPlayer();
+
+    // A gesture before any call: the unlock plays the still-source-less
+    // element, and that play() cannot settle yet.
+    document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    await Promise.resolve();
+
+    // Now a live call arrives and takes the same element. Assigning a source
+    // is what settles the unlock's play() — and its `.then` used to pause
+    // the call that had just started, stalling the queue for good because
+    // `ended` never fires on a paused element.
+    player.enqueue(makeCall(1));
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+
+    const el = lastElement();
+    expect(el.src).toContain("/api/v1/calls/1/audio");
+    expect(el.paused).toBe(false);
   });
 
   it("plays without waiting for canplay", async () => {
