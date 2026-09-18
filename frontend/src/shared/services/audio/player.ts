@@ -465,9 +465,12 @@ class AudioPlayer {
       }
       if (typeof MediaMetadata !== "undefined") {
         session.metadata = new MediaMetadata({
+          // Name before label: the label is the terse radio alias
+          // ("43-ME PD"), the name is the readable one ("Mentor Police"),
+          // and the lock screen has room for the readable one.
           title:
-            call.talkgroupLabel ||
             call.talkgroupName ||
+            call.talkgroupLabel ||
             `Talkgroup ${call.talkgroupId}`,
           artist: call.systemLabel || "OpenScanner",
           album: call.talkgroupGroup || call.talkgroupTag || "",

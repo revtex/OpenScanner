@@ -385,6 +385,37 @@ describe("audioPlayer", () => {
     expect(session.handlers.has("pause")).toBe(true);
   });
 
+  it("prefers the talkgroup name over the terse label on the lock screen", async () => {
+    const session = stubMediaSession();
+    const player = await loadPlayer();
+
+    player.enqueue({
+      ...makeCall(1),
+      talkgroupLabel: "43-ME PD",
+      talkgroupName: "Mentor Police",
+      systemLabel: "MARCS",
+    });
+    await Promise.resolve();
+
+    // The label is the radio alias; the name is the readable one, and the
+    // lock screen has room for it.
+    expect(session.metadata?.title).toBe("Mentor Police");
+  });
+
+  it("falls back to the label when a talkgroup has no name", async () => {
+    const session = stubMediaSession();
+    const player = await loadPlayer();
+
+    player.enqueue({
+      ...makeCall(1),
+      talkgroupLabel: "43-ME PD",
+      systemLabel: "MARCS",
+    });
+    await Promise.resolve();
+
+    expect(session.metadata?.title).toBe("43-ME PD");
+  });
+
   it("works when the media session API is absent", async () => {
     const player = await loadPlayer();
     player.enqueue(makeCall(1));
