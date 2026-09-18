@@ -85,13 +85,22 @@ export function ControlToolbar({
     <div className="mt-4 space-y-2">
       {/* Row 1 — Playback + Quick Actions */}
       <div className="flex items-center justify-center gap-2 flex-wrap">
-        {/* Play/Pause */}
+        {/* Play/Pause. Inert while the server stream owns playback: these
+            three act on the local player, which is released in that mode,
+            so they would look available while doing nothing. */}
         <div
           className="tooltip tooltip-bottom"
-          data-tip={isPaused ? "Resume" : "Pause"}
+          data-tip={
+            backgroundAudio
+              ? "Not available while background audio is on"
+              : isPaused
+                ? "Resume"
+                : "Pause"
+          }
         >
           <button
             className="btn btn-circle btn-ghost w-11 h-11"
+            disabled={backgroundAudio === true}
             onClick={() => {
               beep();
               onTogglePause();
@@ -107,9 +116,17 @@ export function ControlToolbar({
         </div>
 
         {/* Skip */}
-        <div className="tooltip tooltip-bottom" data-tip="Skip">
+        <div
+          className="tooltip tooltip-bottom"
+          data-tip={
+            backgroundAudio
+              ? "Not available while background audio is on"
+              : "Skip"
+          }
+        >
           <button
             className="btn btn-circle btn-ghost w-9 h-9"
+            disabled={backgroundAudio === true}
             onClick={() => {
               beep();
               onSkip();
@@ -121,9 +138,17 @@ export function ControlToolbar({
         </div>
 
         {/* Replay */}
-        <div className="tooltip tooltip-bottom" data-tip="Replay">
+        <div
+          className="tooltip tooltip-bottom"
+          data-tip={
+            backgroundAudio
+              ? "Not available while background audio is on"
+              : "Replay"
+          }
+        >
           <button
             className="btn btn-circle btn-ghost w-9 h-9"
+            disabled={backgroundAudio === true}
             onClick={() => {
               beep();
               onReplay();

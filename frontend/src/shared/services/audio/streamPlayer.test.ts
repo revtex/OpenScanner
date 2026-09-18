@@ -169,6 +169,21 @@ describe("streamPlayer", () => {
     expect(player.streamState()).toBe("blocked");
   });
 
+  it("records when an armed gesture started the stream", async () => {
+    const player = await loadPlayer();
+    expect(player.startedFromGestureAt()).toBe(0);
+
+    player.startOnGesture();
+    document.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    await vi.advanceTimersByTimeAsync(0);
+
+    // The control's own click lands after this document-level mousedown,
+    // and needs to know the stream it is about to "toggle" was started by
+    // the very same gesture — otherwise resuming switches it off instead.
+    expect(player.startedFromGestureAt()).toBeGreaterThan(0);
+    expect(player.streamState()).toBe("playing");
+  });
+
   it("reports idle on stop", async () => {
     const player = await loadPlayer();
     player.start();

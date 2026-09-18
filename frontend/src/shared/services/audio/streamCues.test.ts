@@ -80,6 +80,32 @@ describe("StreamCueScheduler", () => {
     expect(published).toEqual([]);
   });
 
+  it("does not label the next call while a long call is still playing", async () => {
+    // Call 1 is long: cued at 10s, runs for a minute.
+    sched.hold(makeCall(1));
+    sched.cue(1, 10);
+    clock = 10;
+    await vi.advanceTimersByTimeAsync(300);
+    expect(published).toEqual([1]);
+
+    // Call 2 arrives while 1 is still playing. The server queues its audio
+    // behind call 1, so its cue legitimately will not fire for another
+    // minute.
+    sched.hold(makeCall(2));
+    clock = 40;
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    // Regression: a 10s fallback published call 2 here, so the display and
+    // lock screen jumped to the next call while call 1 was still audible.
+    expect(published).toEqual([1]);
+
+    // It appears when the stream actually reaches it.
+    sched.cue(2, 70);
+    clock = 70;
+    await vi.advanceTimersByTimeAsync(300);
+    expect(published).toEqual([1, 2]);
+  });
+
   it("labels anyway when no cue ever arrives", async () => {
     sched.hold(makeCall(4));
 

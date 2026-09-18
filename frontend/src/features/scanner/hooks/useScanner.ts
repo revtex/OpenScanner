@@ -23,6 +23,13 @@ import { streamCues } from "@/shared/services/audio/streamCues";
 import { audioPlayer } from "@/shared/services/audio/player";
 import type { AvoidEntry } from "@/types";
 
+/**
+ * How long after an armed-gesture start a click still counts as part of
+ * that same gesture. Generous enough for a slow tap-to-click, far short of
+ * a deliberate second press.
+ */
+const GESTURE_GRACE_MS = 600;
+
 export function useScanner() {
   const dispatch = useAppDispatch();
   const { connectionStatus } = useWebSocket();
@@ -87,7 +94,15 @@ export function useScanner() {
     // what made the control feel broken after a refresh.
     // Only "blocked" means the user has to act. A stream that is merely
     // connecting is already on its way.
-    if (backgroundAudio && streamState === "blocked") {
+    //
+    // The second case is this control's own press: startOnGesture listens
+    // for mousedown on the document, which fires before this click, so by
+    // now the stream has already started and the state no longer reads
+    // "blocked". Without this the press meant to resume would be taken as
+    // a press to switch off.
+    const fromSameGesture =
+      Date.now() - streamPlayer.startedFromGestureAt() < GESTURE_GRACE_MS;
+    if (backgroundAudio && (streamState === "blocked" || fromSameGesture)) {
       audioPlayer.setSuspended(true);
       streamPlayer.start();
       return;

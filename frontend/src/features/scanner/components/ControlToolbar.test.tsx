@@ -164,4 +164,48 @@ describe("ControlToolbar", () => {
       expiresAt: 0,
     });
   });
+
+  it("disables the transport controls while background audio is on", () => {
+    const props = defaultProps();
+    render(
+      <ControlToolbar
+        {...props}
+        backgroundAudio
+        streamState="playing"
+        onToggleBackgroundAudio={vi.fn()}
+      />,
+    );
+
+    // These act on the local player, which is released while the server
+    // stream owns playback — leaving them live would offer controls that
+    // silently do nothing.
+    expect(screen.getByRole("button", { name: "Pause" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Skip" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Replay" })).toBeDisabled();
+  });
+
+  it("leaves the transport controls usable when background audio is off", () => {
+    const props = defaultProps();
+    render(<ControlToolbar {...props} />);
+
+    expect(screen.getByRole("button", { name: "Pause" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Skip" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Replay" })).toBeEnabled();
+  });
+
+  it("only offers the background-audio control when the page provides it", () => {
+    const props = defaultProps();
+    const { rerender } = render(<ControlToolbar {...props} />);
+    // Desktop: the page passes no handler, so the control is absent.
+    expect(
+      screen.queryByRole("button", { name: "Background audio" }),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <ControlToolbar {...props} onToggleBackgroundAudio={vi.fn()} />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Background audio" }),
+    ).toBeInTheDocument();
+  });
 });

@@ -47,6 +47,13 @@ class StreamPlayer {
   /** Detaches a pending startOnGesture listener, if one is armed. */
   private pendingGesture: (() => void) | null = null;
   private sid = "";
+  /**
+   * When the armed gesture listener last started the stream. The control's
+   * own click arrives after the document-level mousedown that triggered
+   * it, so without this the press that resumes a stream would immediately
+   * be read as a press to switch it off.
+   */
+  private gestureStartAt = 0;
   /** Called whenever the timeline restarts, so stale cues can be dropped. */
   private onReset: (() => void) | null = null;
   /** Reports what the stream is really doing, not merely what was asked. */
@@ -75,6 +82,7 @@ class StreamPlayer {
     const once = () => {
       this.pendingGesture = null;
       for (const e of events) document.removeEventListener(e, once);
+      this.gestureStartAt = Date.now();
       this.start();
     };
     this.pendingGesture = () => {
@@ -147,6 +155,15 @@ class StreamPlayer {
   setOnStateChange(fn: ((state: StreamState) => void) | null): void {
     this.onStateChange = fn;
     if (fn) fn(this.state);
+  }
+
+  /**
+   * Timestamp of the last start triggered by the armed gesture listener,
+   * so a click arriving from that same gesture can be told apart from a
+   * deliberate press to switch the stream off.
+   */
+  startedFromGestureAt(): number {
+    return this.gestureStartAt;
   }
 
   /** Current state, for callers that need it synchronously. */

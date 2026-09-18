@@ -19,13 +19,23 @@
 import type { Call } from "@/features/scanner";
 
 /**
- * How long a call waits for its cue before being labelled anyway. A cue is
- * emitted when the server starts *sending* the call, so it normally lands
- * within a second. Publishing late is much better than a lock screen that
- * stays blank because a cue was lost, the WebSocket dropped, or the server
- * predates this feature.
+ * How long a call waits for its cue before being labelled anyway, when no
+ * cue has ever been seen on this page. That means the server predates this
+ * feature (or the WebSocket is not delivering them), so falling back
+ * quickly is right — a slightly early label beats none at all.
  */
 const CUE_TIMEOUT_MS = 10_000;
+
+/**
+ * The same deadline once cues are known to work. A cue fires when the
+ * server starts *sending* a call, which is legitimately late when a long
+ * call is still playing and the new one is queued behind it — the server
+ * lets a listener fall up to maxQueueSeconds (120s) behind. A short
+ * deadline here published the *next* call's label while the current one
+ * was still playing, which is exactly the confusion this module exists to
+ * prevent. Only a genuinely lost cue should ever hit this.
+ */
+const CUE_TIMEOUT_WITH_CUES_MS = 150_000;
 
 /** How often the pending list is checked against the stream clock. */
 const TICK_MS = 250;
@@ -44,6 +54,12 @@ interface Pending {
 export class StreamCueScheduler {
   private pending = new Map<number, Pending>();
   private timer: ReturnType<typeof setInterval> | null = null;
+  /**
+   * Whether this page has ever received a cue. Sticky across reconnects:
+   * it says what the server supports, not what the current stream has
+   * delivered.
+   */
+  private cuesSeen = false;
 
   /** Reads the stream's current playback position, in seconds. */
   private clock: () => number | null = () => null;
@@ -73,6 +89,7 @@ export class StreamCueScheduler {
 
   /** Record where a call begins on the stream timeline. */
   cue(callId: number, offset: number): void {
+    this.cuesSeen = true;
     const entry = this.pending.get(callId);
     if (!entry) return;
     entry.offset = offset;
@@ -127,8 +144,12 @@ export class StreamCueScheduler {
     // Oldest first, so a burst of calls is labelled in the order heard.
     const due: Array<[number, Pending]> = [];
     for (const [id, entry] of this.pending) {
-      const reached = entry.offset !== null && now !== null && now >= entry.offset;
-      const timedOut = wallNow - entry.at >= CUE_TIMEOUT_MS;
+      const reached =
+        entry.offset !== null && now !== null && now >= entry.offset;
+      const deadline = this.cuesSeen
+        ? CUE_TIMEOUT_WITH_CUES_MS
+        : CUE_TIMEOUT_MS;
+      const timedOut = entry.offset === null && wallNow - entry.at >= deadline;
       if (reached || timedOut) due.push([id, entry]);
     }
 
