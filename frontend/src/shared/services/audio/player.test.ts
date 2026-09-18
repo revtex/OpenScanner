@@ -121,14 +121,27 @@ async function loadPlayer() {
   return mod.audioPlayer;
 }
 
+interface FakeArtwork {
+  src: string;
+  sizes?: string;
+  type?: string;
+}
+
 class FakeMediaMetadata {
   title: string;
   artist: string;
   album: string;
-  constructor(init: { title?: string; artist?: string; album?: string }) {
+  artwork: FakeArtwork[];
+  constructor(init: {
+    title?: string;
+    artist?: string;
+    album?: string;
+    artwork?: FakeArtwork[];
+  }) {
     this.title = init.title ?? "";
     this.artist = init.artist ?? "";
     this.album = init.album ?? "";
+    this.artwork = init.artwork ?? [];
   }
 }
 
@@ -320,6 +333,8 @@ describe("audioPlayer", () => {
     // Safari is backgrounded.
     expect(session.metadata?.title).toBe("Fire Dispatch");
     expect(session.metadata?.artist).toBe("MARCS");
+    // Without artwork iOS renders a blank grey tile on the lock screen.
+    expect(session.metadata?.artwork?.length).toBeGreaterThan(0);
     expect(session.playbackState).toBe("playing");
     expect(session.handlers.has("play")).toBe(true);
     expect(session.handlers.has("pause")).toBe(true);
@@ -333,6 +348,60 @@ describe("audioPlayer", () => {
     // jsdom and older WebKit have no navigator.mediaSession; playback must
     // not depend on it.
     expect(player.getCurrentCall()?.id).toBe(1);
+  });
+
+  it("touches nothing while suspended for the server stream", async () => {
+    const player = await loadPlayer();
+    player.enqueue(makeCall(1));
+    await Promise.resolve();
+    const before = FakeAudio.instances.length;
+
+    player.setSuspended(true);
+    expect(player.isSuspended()).toBe(true);
+    expect(player.getCurrentCall()).toBeNull();
+
+    // iOS lets one element hold the audio session. A suspended player must
+    // not enqueue, and its gesture unlock must stop re-playing its element
+    // on every tap — either would steal the session from the stream.
+    const el = lastElement();
+    const playsBefore = el.playCalls;
+    player.enqueue(makeCall(2));
+    document.body.dispatchEvent(new Event("touchstart"));
+    setVisibility("visible");
+    await Promise.resolve();
+
+    expect(player.getCurrentCall()).toBeNull();
+    expect(el.playCalls).toBe(playsBefore);
+    expect(FakeAudio.instances.length).toBe(before);
+  });
+
+  it("resumes normal playback when the stream is switched off", async () => {
+    const player = await loadPlayer();
+    player.setSuspended(true);
+    player.setSuspended(false);
+
+    expect(player.isSuspended()).toBe(false);
+    player.enqueue(makeCall(9));
+    await Promise.resolve();
+    expect(player.getCurrentCall()?.id).toBe(9);
+  });
+
+  it("labels the media session for calls it is not playing", async () => {
+    const session = stubMediaSession();
+    const player = await loadPlayer();
+
+    // Stream mode: the server plays the audio, so nothing here starts
+    // playback and the lock screen would otherwise stay blank.
+    player.setSuspended(true);
+    player.setNowPlaying({
+      ...makeCall(3),
+      talkgroupLabel: "EMS North",
+      systemLabel: "MARCS",
+    });
+
+    expect(session.metadata?.title).toBe("EMS North");
+    expect(session.metadata?.artwork?.length).toBeGreaterThan(0);
+    expect(player.getCurrentCall()).toBeNull();
   });
 
   it("advances the queue on ended", async () => {

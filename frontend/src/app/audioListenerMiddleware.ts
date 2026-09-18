@@ -17,20 +17,44 @@ import { audioPlayer } from "@/shared/services/audio/player";
  * - SELECT → talkgroups explicitly disabled in tgSelection are dropped.
  * - Background audio on → the server stream plays instead; drop everything.
  */
+/** True while an AVOID entry for this talkgroup is still in force. */
+function isAvoided(
+  avoidList: RootState["scanner"]["avoidList"],
+  talkgroupId: number,
+): boolean {
+  const now = Date.now();
+  for (const entry of avoidList) {
+    if (entry.talkgroupId === talkgroupId) {
+      if (entry.expiresAt === 0 || entry.expiresAt > now) return true;
+    }
+  }
+  return false;
+}
+
 export const audioListenerMiddleware = createListenerMiddleware();
 
 audioListenerMiddleware.startListening({
   actionCreator: callReceived,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState() as RootState;
-    if (!state.scanner.isLive) return;
-    // Background-audio mode moves playback to the server's continuous
-    // stream, which already applies the selection server-side. Enqueuing
-    // here too would play every call twice.
-    if (state.scanner.backgroundAudio) return;
-
     const call = action.payload;
-    const { heldTG, heldSystem, avoidList, tgSelection } = state.scanner;
+    const { heldTG, heldSystem, avoidList, tgSelection, backgroundAudio } =
+      state.scanner;
+
+    // Background-audio mode moves playback to the server's continuous
+    // stream, which applies the selection itself — enqueuing here too would
+    // play every call twice. The lock screen still needs labelling though,
+    // and nothing else does it in that mode, so mirror the server's filter
+    // (selection + AVOID, but not HOLD, which the server cannot see) and
+    // hand the call to the media session.
+    if (backgroundAudio) {
+      if (isAvoided(avoidList, call.talkgroup)) return;
+      if (tgSelection[call.talkgroup] === false) return;
+      audioPlayer.setNowPlaying(call);
+      return;
+    }
+
+    if (!state.scanner.isLive) return;
 
     if (heldTG !== null) {
       if (call.talkgroup !== heldTG) return;
@@ -38,12 +62,7 @@ audioListenerMiddleware.startListening({
       if (call.system !== heldSystem) return;
     }
 
-    const now = Date.now();
-    for (const entry of avoidList) {
-      if (entry.talkgroupId === call.talkgroup) {
-        if (entry.expiresAt === 0 || entry.expiresAt > now) return;
-      }
-    }
+    if (isAvoided(avoidList, call.talkgroup)) return;
 
     if (tgSelection[call.talkgroup] === false) return;
 

@@ -23,6 +23,8 @@ class StreamPlayer {
   private audio: HTMLAudioElement | null = null;
   private active = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Detaches a pending startOnGesture listener, if one is armed. */
+  private pendingGesture: (() => void) | null = null;
 
   /**
    * Open the stream. Must be called from inside a user gesture — the
@@ -35,10 +37,50 @@ class StreamPlayer {
     this.open();
   }
 
+  /**
+   * Start on the next user gesture. Used when the page loads with the
+   * toggle already on: autoplay policy will refuse a stream opened without
+   * one, so we wait for the first interaction rather than failing silently.
+   */
+  startOnGesture(): void {
+    if (this.active || this.pendingGesture) return;
+    const events = ["mousedown", "touchstart", "keydown"] as const;
+    const once = () => {
+      this.pendingGesture = null;
+      for (const e of events) document.removeEventListener(e, once);
+      this.start();
+    };
+    this.pendingGesture = () => {
+      for (const e of events) document.removeEventListener(e, once);
+    };
+    for (const e of events) document.addEventListener(e, once);
+  }
+
   stop(): void {
+    this.pendingGesture?.();
+    this.pendingGesture = null;
     this.active = false;
     this.clearTimer();
     this.teardown();
+  }
+
+  /** Pause playback without closing the request (lock-screen pause). */
+  pause(): void {
+    try {
+      this.audio?.pause();
+    } catch {
+      // Element already disposed.
+    }
+  }
+
+  /**
+   * Resume after a pause by re-opening the stream rather than continuing
+   * from the buffered position — a paused live stream would otherwise
+   * resume minutes behind the actual traffic.
+   */
+  resume(): void {
+    if (!this.active) return;
+    this.open();
   }
 
   isActive(): boolean {

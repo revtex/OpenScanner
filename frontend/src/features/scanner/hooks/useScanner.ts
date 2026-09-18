@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { useWebSocket } from "@/shared/hooks/useWebSocket";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
@@ -76,15 +76,31 @@ export function useScanner() {
   const doToggleBackgroundAudio = useCallback(() => {
     const next = !backgroundAudio;
     if (next) {
-      // Drop anything the local player has queued — the stream is about to
-      // deliver the same traffic, and both playing at once would double it.
-      audioPlayer.clearQueue();
+      // Suspend before opening the stream: on iOS only one element can hold
+      // the audio session, and the local player's gesture unlock re-plays
+      // its element on every tap, which would take the session straight
+      // back off the stream.
+      audioPlayer.setSuspended(true);
       streamPlayer.start();
     } else {
       streamPlayer.stop();
+      audioPlayer.setSuspended(false);
     }
     dispatch(setBackgroundAudio(next));
   }, [backgroundAudio, dispatch]);
+
+  // Keep the players consistent with the stored flag, which also covers a
+  // page that loads with background audio already enabled — the stream then
+  // opens on the first interaction, since autoplay policy refuses one
+  // opened without a gesture.
+  useEffect(() => {
+    audioPlayer.setSuspended(backgroundAudio);
+    if (backgroundAudio) {
+      if (!streamPlayer.isActive()) streamPlayer.startOnGesture();
+    } else {
+      streamPlayer.stop();
+    }
+  }, [backgroundAudio]);
 
   return {
     // Connection

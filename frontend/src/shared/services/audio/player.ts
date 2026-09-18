@@ -1,5 +1,6 @@
 import type { Call } from "@/features/scanner";
 import { bootstrapBeepContext } from "@/shared/services/audio/beep";
+import { streamPlayer } from "@/shared/services/audio/streamPlayer";
 
 interface QueueItem {
   call: Call;
@@ -78,6 +79,16 @@ class AudioPlayer {
   private callEndCb: (() => void) | null = null;
   private queueChangeCb: ((length: number) => void) | null = null;
   private authRecovery: (() => Promise<boolean>) | null = null;
+  /**
+   * True while the server's continuous stream owns playback. iOS lets only
+   * one media element hold the audio session, so anything this player does
+   * to its own element — including the gesture unlock, which fires on every
+   * tap — takes the session away from the stream and silences it. While
+   * suspended this player touches nothing.
+   */
+  private suspended = false;
+  /** Removes the gesture-unlock listeners; retained so they can be detached. */
+  private removeUnlockListeners: (() => void) | null = null;
 
   constructor() {
     this.bootstrapAudio();
@@ -157,10 +168,62 @@ class AudioPlayer {
     for (const e of events) {
       document.body.addEventListener(e, handler);
     }
+    this.removeUnlockListeners = () => {
+      for (const e of events) {
+        document.body.removeEventListener(e, handler);
+      }
+    };
+  }
+
+  /**
+   * Hand playback over to (or take it back from) the server stream.
+   *
+   * Suspending has to do more than stop enqueuing: on iOS the gesture
+   * unlock re-plays this player's element on every tap, which steals the
+   * audio session from the stream element and leaves both silent. So the
+   * unlock listeners come off, the queue is dropped, and the element is
+   * released.
+   */
+  setSuspended(suspended: boolean): void {
+    if (this.suspended === suspended) return;
+    this.suspended = suspended;
+
+    if (suspended) {
+      this.removeUnlockListeners?.();
+      this.removeUnlockListeners = null;
+      this.clearQueue();
+      this.stopAudio();
+      this.updateMediaSession(null);
+      return;
+    }
+
+    // Re-arm the unlock for the next gesture; the element has to be
+    // re-authorised because it was released above.
+    this.bootstrapAudio();
+  }
+
+  /**
+   * Label the OS media session with a call this player is not playing.
+   *
+   * In stream mode the server owns the audio, so nothing here ever calls
+   * startPlayback and the lock screen would sit blank. The WebSocket still
+   * delivers every call, so the caller feeds them through and iOS gets
+   * talkgroup and system names on the lock screen and in Control Center.
+   * The metadata can lead the audio slightly, since the stream delivers a
+   * call only once the frames ahead of it have played out.
+   */
+  setNowPlaying(call: Call | null): void {
+    this.updateMediaSession(call);
+  }
+
+  isSuspended(): boolean {
+    return this.suspended;
   }
 
   /** Enqueue a live (ingested) call for playback. */
   enqueue(call: Call): void {
+    // Stream mode owns playback; never touch the element (see setSuspended).
+    if (this.suspended) return;
     const item: QueueItem = { call };
     if (this._paused) {
       this.queue.push(item);
@@ -397,6 +460,12 @@ class AudioPlayer {
             `Talkgroup ${call.talkgroupId}`,
           artist: call.systemLabel || "OpenScanner",
           album: call.talkgroupGroup || call.talkgroupTag || "",
+          // Without artwork iOS shows a blank grey tile on the lock screen.
+          // Two sizes so the OS can pick; both are served from the SPA root.
+          artwork: [
+            { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+            { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+          ],
         });
       }
       session.playbackState = "playing";
@@ -418,9 +487,29 @@ class AudioPlayer {
       }
     };
 
-    bind("play", () => this.resume());
-    bind("pause", () => this.pause());
-    bind("stop", () => this.pause());
+    // In stream mode the server owns playback, so the lock-screen
+    // transport has to drive the stream rather than this player.
+    bind("play", () => {
+      if (this.suspended) {
+        streamPlayer.resume();
+        return;
+      }
+      this.resume();
+    });
+    bind("pause", () => {
+      if (this.suspended) {
+        streamPlayer.pause();
+        return;
+      }
+      this.pause();
+    });
+    bind("stop", () => {
+      if (this.suspended) {
+        streamPlayer.pause();
+        return;
+      }
+      this.pause();
+    });
     bind("nexttrack", () => this.skip());
     bind("previoustrack", () => this.replay());
   }
@@ -479,6 +568,7 @@ class AudioPlayer {
    * a policy-blocked play(), and without this the queue just grows.
    */
   private handleVisibilityChange = (): void => {
+    if (this.suspended) return;
     if (typeof document === "undefined") return;
     if (document.visibilityState !== "visible") return;
     if (this._paused) return;

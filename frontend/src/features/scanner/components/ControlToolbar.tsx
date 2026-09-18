@@ -231,12 +231,24 @@ export function ControlToolbar({
 
       {/* Row 2 — Mode Toggles */}
       <div className="grid grid-cols-5 gap-1 sm:gap-2 w-full items-center">
-        {/* LIVE */}
-        <div className="tooltip tooltip-bottom" data-tip="Live Mode">
+        {/* LIVE — inert while the server stream owns playback: the local
+            player is released in that mode, so the control would do
+            nothing but still look live. */}
+        <div
+          className="tooltip tooltip-bottom"
+          data-tip={
+            backgroundAudio
+              ? "Background audio is on — the server stream is playing"
+              : "Live Mode"
+          }
+        >
           <button
             className={`btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 ${
-              isLive ? "btn-success" : "btn-ghost text-base-content"
+              isLive && !backgroundAudio
+                ? "btn-success"
+                : "btn-ghost text-base-content"
             }`}
+            disabled={backgroundAudio === true}
             onClick={() => {
               beep();
               onToggleLive();
