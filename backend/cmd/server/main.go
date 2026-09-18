@@ -45,6 +45,7 @@ import (
 	"github.com/openscanner/openscanner/internal/dirmonitor"
 	"github.com/openscanner/openscanner/internal/downstream"
 	"github.com/openscanner/openscanner/internal/handler/routes"
+	streamhandler "github.com/openscanner/openscanner/internal/handler/stream"
 	"github.com/openscanner/openscanner/internal/logging"
 	"github.com/openscanner/openscanner/internal/seed"
 	"github.com/openscanner/openscanner/internal/trmqtt"
@@ -876,6 +877,16 @@ func (p *program) run() {
 	})
 	go hub.Run(ctx)
 
+	// Continuous listener audio stream. Startup shells out to FFmpeg to
+	// build the silence filler, so a host without a usable encoder simply
+	// leaves the endpoint answering 503 instead of failing to boot.
+	streamMgr := streamhandler.NewManager(queries, cfg.RecordingsDir)
+	if err := streamMgr.Start(ctx); err != nil {
+		slog.Warn("stream: continuous audio stream disabled", "error", err)
+	} else {
+		hub.SetCallNotifier(streamMgr.Notify)
+	}
+
 	dwService := dirmonitor.NewService(queries, processor, hub, dsService, transcriberMgr)
 	dwService.Start(ctx)
 	hub.SetDirMonitorReloader(dwService)
@@ -932,6 +943,7 @@ func (p *program) run() {
 		WhisperAvailable:   hasWhisper,
 		TRMqttManager:      trManager,
 		EncryptionKey:      cfg.EncryptionKey,
+		StreamManager:      streamMgr,
 	})
 
 	// Create HTTP server.

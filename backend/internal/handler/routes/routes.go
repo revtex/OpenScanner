@@ -33,8 +33,10 @@ import (
 	"github.com/openscanner/openscanner/internal/handler/health"
 	"github.com/openscanner/openscanner/internal/handler/setup"
 	"github.com/openscanner/openscanner/internal/handler/share"
+	streamhandler "github.com/openscanner/openscanner/internal/handler/stream"
 	"github.com/openscanner/openscanner/internal/middleware"
 	"github.com/openscanner/openscanner/internal/static"
+	streamsvc "github.com/openscanner/openscanner/internal/stream"
 	"github.com/openscanner/openscanner/internal/trmqtt"
 	"github.com/openscanner/openscanner/internal/ws"
 )
@@ -71,6 +73,10 @@ type Deps struct {
 	WhisperAvailable   bool
 	TRMqttManager      *trmqtt.Manager // nil when feature disabled
 	EncryptionKey      string
+	// StreamManager backs the continuous listener audio stream. Nil (or
+	// not started) leaves the endpoint responding 503 rather than absent,
+	// so clients get a clear answer instead of a 404.
+	StreamManager *streamsvc.Manager
 }
 
 // RegisterRoutes wires all API routes onto the Gin engine.
@@ -237,6 +243,10 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	// Public call surfaces (optional auth, share links).
 	v1.GET("/calls", middleware.OptionalJWTAuth(), callHandler.GetCalls)
 	v1.GET("/calls/:id/audio", middleware.OptionalJWTOrSessionAuth(), callHandler.GetCallAudio)
+	// Same auth as call audio: a media element cannot send an
+	// Authorization header, so the session cookie has to be accepted.
+	v1.GET("/listener/stream", middleware.OptionalJWTOrSessionAuth(),
+		streamhandler.New(deps.StreamManager, deps.Queries).GetStream)
 	v1.GET("/calls/:id/transcript", middleware.OptionalJWTAuth(), callHandler.GetCallTranscript)
 	v1SharedRateLimit := middleware.RateLimitByIP(30)
 	v1.GET("/shared/:token", v1SharedRateLimit, shareHandler.GetSharedCallByToken)

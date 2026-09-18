@@ -15,6 +15,7 @@ import { audioPlayer } from "@/shared/services/audio/player";
  * - HOLD SYSTEM → only that system plays.
  * - AVOID → active avoid entries block their talkgroup.
  * - SELECT → talkgroups explicitly disabled in tgSelection are dropped.
+ * - Background audio on → the server stream plays instead; drop everything.
  */
 export const audioListenerMiddleware = createListenerMiddleware();
 
@@ -23,6 +24,10 @@ audioListenerMiddleware.startListening({
   effect: (action, listenerApi) => {
     const state = listenerApi.getState() as RootState;
     if (!state.scanner.isLive) return;
+    // Background-audio mode moves playback to the server's continuous
+    // stream, which already applies the selection server-side. Enqueuing
+    // here too would play every call twice.
+    if (state.scanner.backgroundAudio) return;
 
     const call = action.payload;
     const { heldTG, heldSystem, avoidList, tgSelection } = state.scanner;

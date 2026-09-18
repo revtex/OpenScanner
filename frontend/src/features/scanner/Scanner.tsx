@@ -135,6 +135,10 @@ export default function Scanner() {
         onToggleBookmarks={
           token ? () => setBookmarksOpen((prev) => !prev) : undefined
         }
+        backgroundAudio={scanner.backgroundAudio}
+        onToggleBackgroundAudio={
+          token ? scanner.toggleBackgroundAudio : undefined
+        }
         keypadBeeps={scanner.config?.keypadBeeps}
       />
       <SelectTGPanel

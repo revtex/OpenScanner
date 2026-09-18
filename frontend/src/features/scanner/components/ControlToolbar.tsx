@@ -11,6 +11,7 @@ import {
   Ban,
   List,
   Search,
+  Smartphone,
 } from "lucide-react";
 import { useCallback } from "react";
 import { playBeep } from "@/shared/services/audio/beep";
@@ -35,6 +36,8 @@ interface ControlToolbarProps {
   onToggleSelectTG: () => void;
   onToggleSearch: () => void;
   onToggleBookmarks?: () => void;
+  backgroundAudio?: boolean;
+  onToggleBackgroundAudio?: () => void;
   keypadBeeps?: string;
 }
 
@@ -57,6 +60,8 @@ export function ControlToolbar({
   onToggleSelectTG,
   onToggleSearch,
   onToggleBookmarks,
+  backgroundAudio,
+  onToggleBackgroundAudio,
   keypadBeeps,
 }: ControlToolbarProps) {
   const beep = useCallback(() => {
@@ -181,6 +186,31 @@ export function ControlToolbar({
             />
           </div>
         </div>
+
+        {/* Background audio: hands playback to the server's continuous
+            stream so it survives a phone locking its screen. */}
+        {onToggleBackgroundAudio && (
+          <div
+            className="tooltip tooltip-bottom"
+            data-tip={
+              backgroundAudio ? "Background audio: on" : "Background audio: off"
+            }
+          >
+            <button
+              className={`btn btn-circle w-9 h-9 ${
+                backgroundAudio ? "btn-primary" : "btn-ghost"
+              }`}
+              onClick={() => {
+                beep();
+                onToggleBackgroundAudio();
+              }}
+              aria-label="Background audio"
+              aria-pressed={backgroundAudio === true}
+            >
+              <Smartphone className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Bookmarks panel toggle */}
         {onToggleBookmarks && (

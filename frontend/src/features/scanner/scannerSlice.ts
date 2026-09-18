@@ -28,11 +28,19 @@ interface ScannerState {
   configReceived: boolean;
   tgSelection: Record<number, boolean>;
   tgSelectionReady: boolean;
+  // When true the server sends one continuous audio stream instead of the
+  // client playing each call itself. Opt-in, because it trades the local
+  // queue controls (skip/replay/hold) for playback that survives an iOS
+  // screen lock. See shared/services/audio/streamPlayer.
+  backgroundAudio: boolean;
   pendingTranscripts: Record<number, PendingTranscript>;
 }
 
 const initialState: ScannerState = {
   isLive: false,
+  backgroundAudio:
+    typeof localStorage !== "undefined" &&
+    localStorage.getItem("openscanner-background-audio") === "true",
   isPaused:
     typeof sessionStorage !== "undefined" &&
     sessionStorage.getItem("openscanner-paused") === "true",
@@ -238,6 +246,18 @@ export const scannerSlice = createSlice({
         };
       }
     },
+    setBackgroundAudio(state, action: PayloadAction<boolean>) {
+      state.backgroundAudio = action.payload;
+      try {
+        localStorage.setItem(
+          "openscanner-background-audio",
+          action.payload ? "true" : "false",
+        );
+      } catch {
+        // Private mode or blocked storage — the toggle still works for
+        // this session.
+      }
+    },
     toggleTG(state, action: PayloadAction<number>) {
       const id = action.payload;
       // A missing key means "enabled" everywhere else in the app (see
@@ -352,6 +372,7 @@ export const scannerSlice = createSlice({
 
 export const {
   callReceived,
+  setBackgroundAudio,
   setCurrentCall,
   clearCurrentCall,
   resetDisplay,

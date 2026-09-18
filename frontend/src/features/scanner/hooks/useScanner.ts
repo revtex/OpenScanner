@@ -12,7 +12,10 @@ import {
   clearAvoids,
   toggleTG,
   setAllTGs,
+  setBackgroundAudio,
 } from "../scannerSlice";
+import { streamPlayer } from "@/shared/services/audio/streamPlayer";
+import { audioPlayer } from "@/shared/services/audio/player";
 import type { AvoidEntry } from "@/types";
 
 export function useScanner() {
@@ -28,6 +31,7 @@ export function useScanner() {
   const heldTG = useAppSelector((s) => s.scanner.heldTG);
   const avoidList = useAppSelector((s) => s.scanner.avoidList);
   const listenerCount = useAppSelector((s) => s.scanner.listenerCount);
+  const backgroundAudio = useAppSelector((s) => s.scanner.backgroundAudio);
   const config = useAppSelector((s) => s.scanner.config);
   const tgSelection = useAppSelector((s) => s.scanner.tgSelection);
 
@@ -66,6 +70,22 @@ export function useScanner() {
     [dispatch],
   );
 
+  // Runs straight off the button press: opening the stream is subject to
+  // autoplay policy, and on iOS the user activation does not survive an
+  // await, so start() has to happen inside the gesture.
+  const doToggleBackgroundAudio = useCallback(() => {
+    const next = !backgroundAudio;
+    if (next) {
+      // Drop anything the local player has queued — the stream is about to
+      // deliver the same traffic, and both playing at once would double it.
+      audioPlayer.clearQueue();
+      streamPlayer.start();
+    } else {
+      streamPlayer.stop();
+    }
+    dispatch(setBackgroundAudio(next));
+  }, [backgroundAudio, dispatch]);
+
   return {
     // Connection
     connectionStatus,
@@ -79,6 +99,7 @@ export function useScanner() {
     heldTG,
     avoidList,
     listenerCount,
+    backgroundAudio,
     config,
     tgSelection,
 
@@ -92,6 +113,7 @@ export function useScanner() {
     clearAvoids: doClearAvoids,
     toggleTG: doToggleTG,
     setAllTGs: doSetAllTGs,
+    toggleBackgroundAudio: doToggleBackgroundAudio,
 
     // Audio controls
     ...audio,

@@ -44,6 +44,13 @@ type Hub struct {
 	// lscTimer is the debounce timer for LSC broadcasts (max once per 3s).
 	lscTimer *time.Timer
 	lscMu    sync.Mutex
+
+	// callNotifier, when set, is handed the id of every newly ingested
+	// call. It exists so the continuous audio stream can pick calls up from
+	// the same fan-out the WebSocket clients use, rather than each upload
+	// path having to know about it. Never nil-checked by callers; see
+	// notifyCall.
+	callNotifier func(context.Context, int64)
 }
 
 const lscDebounceDuration = 3 * time.Second
@@ -170,7 +177,38 @@ func (h *Hub) BroadcastCAL(payload map[string]any, filter func(*Client) bool) {
 		return
 	}
 	h.broadcastBoth(legacy, v1, filter)
+	h.notifyCall(payload)
 	h.BroadcastAdminEvent("activity.updated", nil)
+}
+
+// SetCallNotifier registers a sink for newly ingested calls. Safe to leave
+// unset, in which case new calls are only fanned out over WebSocket.
+func (h *Hub) SetCallNotifier(fn func(context.Context, int64)) {
+	h.callNotifier = fn
+}
+
+// notifyCall hands the call id to the registered sink, if any. Runs in its
+// own goroutine because the sink transcodes audio, which must never block
+// the WebSocket fan-out.
+func (h *Hub) notifyCall(payload map[string]any) {
+	if h.callNotifier == nil {
+		return
+	}
+	var id int64
+	switch v := payload["id"].(type) {
+	case int64:
+		id = v
+	case int:
+		id = int64(v)
+	case float64:
+		id = int64(v)
+	default:
+		return
+	}
+	if id <= 0 {
+		return
+	}
+	go h.callNotifier(context.Background(), id)
 }
 
 // BroadcastCFG rebuilds the CFG message from the database and sends it to

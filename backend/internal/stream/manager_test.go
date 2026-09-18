@@ -1,0 +1,241 @@
+package stream
+
+import (
+	"bytes"
+	"context"
+	"sync"
+	"testing"
+	"time"
+)
+
+// makeFrame builds a valid MPEG-2 Layer III frame header for the canonical
+// stream format (22050 Hz, mono, 32 kbps) followed by filler, so tests can
+// exercise the splitter and the queue without invoking FFmpeg.
+//
+// byte1 = 1111 0011: sync, version 10 (MPEG2), layer 01 (III), no CRC.
+// byte2 = 0100 0000: bitrate index 4 (32 kbps), rate index 0 (22050), no pad.
+// byte3 = 1100 0000: channel mode 11 (single channel).
+func makeFrame(marker byte) []byte {
+	const frameLen = 104 // 72 * 32000 / 22050
+	f := make([]byte, frameLen)
+	f[0], f[1], f[2], f[3] = 0xFF, 0xF3, 0x40, 0xC0
+	for i := 4; i < frameLen; i++ {
+		f[i] = marker
+	}
+	return f
+}
+
+func TestParseFrameHeader_CanonicalFormat(t *testing.T) {
+	f, ok := parseFrameHeader(makeFrame(0x01))
+	if !ok {
+		t.Fatal("canonical frame header did not parse")
+	}
+	if f.length != 104 {
+		t.Errorf("length = %d, want 104", f.length)
+	}
+	if f.sampleRate != streamSampleRate {
+		t.Errorf("sampleRate = %d, want %d", f.sampleRate, streamSampleRate)
+	}
+	if f.samples != 576 {
+		t.Errorf("samples = %d, want 576 (MPEG-2 Layer III)", f.samples)
+	}
+	if f.channels != streamChannels {
+		t.Errorf("channels = %d, want %d", f.channels, streamChannels)
+	}
+}
+
+func TestParseFrameHeader_RejectsNonFrames(t *testing.T) {
+	cases := map[string][]byte{
+		"too short": {0xFF, 0xF3},
+		"no sync":   {0x00, 0x00, 0x40, 0xC0},
+		// 0xEB sets the version bits to 01, which is reserved.
+		"reserved ver": {0xFF, 0xEB, 0x40, 0xC0},
+		"free bitrate": {0xFF, 0xF3, 0x00, 0xC0},
+		"bad bitrate":  {0xFF, 0xF3, 0xF0, 0xC0},
+		"bad rate":     {0xFF, 0xF3, 0x4C, 0xC0},
+	}
+	for name, b := range cases {
+		if _, ok := parseFrameHeader(b); ok {
+			t.Errorf("%s: parsed as a valid frame", name)
+		}
+	}
+}
+
+func TestSplitFrames_SkipsID3AndTrailingPartial(t *testing.T) {
+	a, b := makeFrame(0xAA), makeFrame(0xBB)
+
+	// ID3v2 header declaring a 3-byte body, then two whole frames, then a
+	// truncated one that must not be emitted.
+	var buf bytes.Buffer
+	buf.WriteString("ID3")
+	buf.Write([]byte{0x04, 0x00, 0x00, 0, 0, 0, 3})
+	buf.Write([]byte{0x11, 0x22, 0x33})
+	buf.Write(a)
+	buf.Write(b)
+	buf.Write(a[:20])
+
+	frames := splitFrames(buf.Bytes())
+	if len(frames) != 2 {
+		t.Fatalf("got %d frames, want 2", len(frames))
+	}
+	if !bytes.Equal(frames[0], a) || !bytes.Equal(frames[1], b) {
+		t.Error("frames did not round-trip intact")
+	}
+}
+
+func newTestManager(t *testing.T, source CallSource, filter Filter) *Manager {
+	t.Helper()
+	m := New(source, filter)
+	// Stand in for Start() so the tests do not require FFmpeg.
+	m.silence = [][]byte{makeFrame(0x00)}
+	m.period = 576 * time.Second / streamSampleRate
+	return m
+}
+
+func TestListenerEnqueue_DropsOldestOverCap(t *testing.T) {
+	l := &listener{userID: 7}
+	older := makeFrame(0x01)
+	newer := makeFrame(0x02)
+
+	l.enqueue([][]byte{older, older, older}, 0) // 0 = uncapped
+	l.enqueue([][]byte{newer, newer}, 2)
+
+	if got := l.queued(); got != 2 {
+		t.Fatalf("queued = %d, want 2 after the cap trimmed the backlog", got)
+	}
+	// A scanner backlog is stale, so the cap must discard the oldest audio
+	// and keep the newest — not the other way round.
+	for i := 0; i < 2; i++ {
+		if !bytes.Equal(l.next(nil), newer) {
+			t.Fatalf("frame %d is not the newest audio", i)
+		}
+	}
+}
+
+func TestListenerNext_CyclesSilenceWhenIdle(t *testing.T) {
+	l := &listener{}
+	s0, s1 := makeFrame(0xE0), makeFrame(0xE1)
+	silence := [][]byte{s0, s1}
+
+	got := [][]byte{l.next(silence), l.next(silence), l.next(silence)}
+	if !bytes.Equal(got[0], s0) || !bytes.Equal(got[1], s1) || !bytes.Equal(got[2], s0) {
+		t.Error("silence did not cycle")
+	}
+}
+
+func TestNotify_ConsultsFilterPerListener(t *testing.T) {
+	call := Call{ID: 42, SystemID: 1, TalkgroupID: 27501, AudioPath: "/tmp/call.m4a"}
+	source := func(_ context.Context, id int64) (Call, error) {
+		if id != 42 {
+			t.Errorf("source got call id %d, want 42", id)
+		}
+		return call, nil
+	}
+	// Only user 1 has this talkgroup enabled.
+	filter := func(_ context.Context, userID int64, c Call) bool {
+		if c.TalkgroupID != 27501 {
+			t.Errorf("filter got talkgroup %d", c.TalkgroupID)
+		}
+		return userID == 1
+	}
+
+	m := newTestManager(t, source, filter)
+	var encodes int
+	m.encode = func(context.Context, string) ([][]byte, error) {
+		encodes++
+		return [][]byte{makeFrame(0x77), makeFrame(0x78)}, nil
+	}
+
+	allowed := &listener{userID: 1}
+	denied := &listener{userID: 2}
+	m.add(allowed)
+	m.add(denied)
+
+	m.Notify(context.Background(), 42)
+
+	if allowed.queued() != 2 {
+		t.Errorf("allowed listener queued %d frames, want 2", allowed.queued())
+	}
+	if denied.queued() != 0 {
+		t.Errorf("denied listener queued %d frames, want 0", denied.queued())
+	}
+	// The call is transcoded once and the frames shared, so cost does not
+	// scale with the number of listeners.
+	if encodes != 1 {
+		t.Errorf("encoded %d times, want exactly 1", encodes)
+	}
+}
+
+func TestNotify_NoListenersDoesNoWork(t *testing.T) {
+	m := newTestManager(t,
+		func(context.Context, int64) (Call, error) {
+			t.Fatal("resolved a call with nobody listening")
+			return Call{}, nil
+		},
+		nil,
+	)
+	m.Notify(context.Background(), 1)
+}
+
+// syncBuffer is an io.Writer safe to read from while Serve writes.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (s *syncBuffer) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buf.Write(p)
+}
+
+func (s *syncBuffer) Len() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buf.Len()
+}
+
+func TestServe_PrimesBufferThenStopsOnCancel(t *testing.T) {
+	m := newTestManager(t, nil, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var out syncBuffer
+	done := make(chan error, 1)
+	go func() { done <- m.Serve(ctx, 5, &out, nil) }()
+
+	// The prime is written before pacing starts, so it lands immediately.
+	deadline := time.After(2 * time.Second)
+	wantPrime := int(primeSeconds*time.Second/m.period) * 104
+	for out.Len() < wantPrime {
+		select {
+		case <-deadline:
+			t.Fatalf("primed only %d bytes, want %d", out.Len(), wantPrime)
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
+
+	if m.ListenerCount() != 1 {
+		t.Errorf("ListenerCount = %d, want 1", m.ListenerCount())
+	}
+
+	cancel()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Error("Serve returned nil; a cancelled stream should report why it ended")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Serve did not return after cancel")
+	}
+
+	if m.ListenerCount() != 0 {
+		t.Errorf("ListenerCount = %d after disconnect, want 0", m.ListenerCount())
+	}
+}
+
+func TestServe_RequiresStart(t *testing.T) {
+	m := New(nil, nil)
+	if err := m.Serve(context.Background(), 1, &syncBuffer{}, nil); err == nil {
+		t.Error("Serve succeeded before Start; it must refuse to stream without silence")
+	}
+}
