@@ -37,6 +37,8 @@ interface ControlToolbarProps {
   onToggleSearch: () => void;
   onToggleBookmarks?: () => void;
   backgroundAudio?: boolean;
+  /** Whether the stream is really playing, not merely enabled. */
+  streamActive?: boolean;
   onToggleBackgroundAudio?: () => void;
   keypadBeeps?: string;
 }
@@ -61,6 +63,7 @@ export function ControlToolbar({
   onToggleSearch,
   onToggleBookmarks,
   backgroundAudio,
+  streamActive,
   onToggleBackgroundAudio,
   keypadBeeps,
 }: ControlToolbarProps) {
@@ -187,31 +190,6 @@ export function ControlToolbar({
           </div>
         </div>
 
-        {/* Background audio: hands playback to the server's continuous
-            stream so it survives a phone locking its screen. */}
-        {onToggleBackgroundAudio && (
-          <div
-            className="tooltip tooltip-bottom"
-            data-tip={
-              backgroundAudio ? "Background audio: on" : "Background audio: off"
-            }
-          >
-            <button
-              className={`btn btn-circle w-9 h-9 ${
-                backgroundAudio ? "btn-primary" : "btn-ghost"
-              }`}
-              onClick={() => {
-                beep();
-                onToggleBackgroundAudio();
-              }}
-              aria-label="Background audio"
-              aria-pressed={backgroundAudio === true}
-            >
-              <Smartphone className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
         {/* Bookmarks panel toggle */}
         {onToggleBookmarks && (
           <div className="tooltip tooltip-bottom" data-tip="Bookmarks">
@@ -229,8 +207,13 @@ export function ControlToolbar({
         )}
       </div>
 
-      {/* Row 2 — Mode Toggles */}
-      <div className="grid grid-cols-5 gap-1 sm:gap-2 w-full items-center">
+      {/* Row 2 — Mode Toggles. Six columns when the background-audio
+          control is present (mobile only); five otherwise. */}
+      <div
+        className={`grid ${
+          onToggleBackgroundAudio ? "grid-cols-6" : "grid-cols-5"
+        } gap-1 sm:gap-2 w-full items-center`}
+      >
         {/* LIVE — inert while the server stream owns playback: the local
             player is released in that mode, so the control would do
             nothing but still look live. */}
@@ -342,6 +325,45 @@ export function ControlToolbar({
             SELECT
           </button>
         </div>
+
+        {/* BKGND — hands playback to the server's continuous stream so it
+            survives the screen locking. Mobile only: a desktop browser
+            keeps a background tab running and plays each call normally, so
+            the control would be pure clutter there. Three states, because
+            "enabled" and "playing" are not the same thing — after a reload
+            autoplay policy refuses a stream opened without a gesture, and
+            the control has to say so rather than look active. */}
+        {onToggleBackgroundAudio && (
+          <div
+            className="tooltip tooltip-bottom"
+            data-tip={
+              !backgroundAudio
+                ? "Background audio: keeps playing when the screen locks"
+                : streamActive
+                  ? "Background audio on — streaming"
+                  : "Background audio paused — tap to resume"
+            }
+          >
+            <button
+              className={`btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 ${
+                backgroundAudio
+                  ? streamActive
+                    ? "btn-primary"
+                    : "btn-warning"
+                  : "btn-ghost text-base-content"
+              }`}
+              onClick={() => {
+                beep();
+                onToggleBackgroundAudio();
+              }}
+              aria-label="Background audio"
+              aria-pressed={backgroundAudio === true}
+            >
+              <Smartphone className="hidden sm:inline w-3.5 h-3.5" />
+              BKGND
+            </button>
+          </div>
+        )}
 
         {/* SEARCH */}
         <div className="tooltip tooltip-bottom" data-tip="Search Calls">

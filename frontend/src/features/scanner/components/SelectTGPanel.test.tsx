@@ -91,6 +91,7 @@ function scannerState(
     isPaused: false,
     isAudioActive: false,
     backgroundAudio: false,
+      streamActive: false,
     heldSystem: null,
     heldTG: null,
     avoidList: [],

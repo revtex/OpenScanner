@@ -13,8 +13,13 @@ import {
   toggleTG,
   setAllTGs,
   setBackgroundAudio,
+  setStreamActive,
+  setCurrentCall,
+  clearCurrentCall,
+  setAudioActive,
 } from "../scannerSlice";
 import { streamPlayer } from "@/shared/services/audio/streamPlayer";
+import { streamCues } from "@/shared/services/audio/streamCues";
 import { audioPlayer } from "@/shared/services/audio/player";
 import type { AvoidEntry } from "@/types";
 
@@ -32,6 +37,7 @@ export function useScanner() {
   const avoidList = useAppSelector((s) => s.scanner.avoidList);
   const listenerCount = useAppSelector((s) => s.scanner.listenerCount);
   const backgroundAudio = useAppSelector((s) => s.scanner.backgroundAudio);
+  const streamActive = useAppSelector((s) => s.scanner.streamActive);
   const config = useAppSelector((s) => s.scanner.config);
   const tgSelection = useAppSelector((s) => s.scanner.tgSelection);
 
@@ -74,6 +80,17 @@ export function useScanner() {
   // autoplay policy, and on iOS the user activation does not survive an
   // await, so start() has to happen inside the gesture.
   const doToggleBackgroundAudio = useCallback(() => {
+    // The preference can be on while nothing is playing: after a reload the
+    // stream cannot open without a user gesture, so it sits armed. This
+    // press *is* that gesture, so resume rather than switching the
+    // preference off — otherwise the only way out is off-then-on, which is
+    // what made the control feel broken after a refresh.
+    if (backgroundAudio && !streamActive) {
+      audioPlayer.setSuspended(true);
+      streamPlayer.start();
+      return;
+    }
+
     const next = !backgroundAudio;
     if (next) {
       // Suspend before opening the stream: on iOS only one element can hold
@@ -87,7 +104,57 @@ export function useScanner() {
       audioPlayer.setSuspended(false);
     }
     dispatch(setBackgroundAudio(next));
-  }, [backgroundAudio, dispatch]);
+  }, [backgroundAudio, streamActive, dispatch]);
+
+  // In stream mode the server owns playback, so none of the local player's
+  // callbacks fire and the display panel would stay empty for the whole
+  // session — as if nothing were happening. Drive it from the same cue that
+  // drives the lock screen, so what is on screen matches what is audible.
+  useEffect(() => {
+    let clearTimer: ReturnType<typeof setTimeout> | null = null;
+
+    streamCues.configure(
+      () => streamPlayer.currentTime(),
+      (call) => {
+        audioPlayer.setNowPlaying(call);
+        dispatch(setCurrentCall(call));
+        dispatch(setAudioActive(true));
+
+        // Nothing tells us when the audio stops, so fall back to the call's
+        // own duration. A later call simply replaces this one.
+        if (clearTimer) clearTimeout(clearTimer);
+        const ms = typeof call.duration === "number" ? call.duration : 0;
+        clearTimer = setTimeout(
+          () => {
+            dispatch(setAudioActive(false));
+          },
+          ms > 0 ? ms : 5000,
+        );
+      },
+    );
+    streamPlayer.setOnReset(() => {
+      streamCues.reset();
+      if (clearTimer) clearTimeout(clearTimer);
+      dispatch(clearCurrentCall());
+      dispatch(setAudioActive(false));
+    });
+
+    return () => {
+      if (clearTimer) clearTimeout(clearTimer);
+      streamPlayer.setOnReset(null);
+    };
+  }, [dispatch]);
+
+  // Mirror the player's real state into the store so the control can show
+  // "armed but not playing" instead of claiming to be streaming.
+  useEffect(() => {
+    streamPlayer.setOnActiveChange((active) => {
+      dispatch(setStreamActive(active));
+    });
+    return () => {
+      streamPlayer.setOnActiveChange(null);
+    };
+  }, [dispatch]);
 
   // Keep the players consistent with the stored flag, which also covers a
   // page that loads with background audio already enabled — the stream then
@@ -116,6 +183,7 @@ export function useScanner() {
     avoidList,
     listenerCount,
     backgroundAudio,
+    streamActive,
     config,
     tgSelection,
 

@@ -41,6 +41,8 @@ class StreamPlayer {
   private sid = "";
   /** Called whenever the timeline restarts, so stale cues can be dropped. */
   private onReset: (() => void) | null = null;
+  /** Reports whether audio is actually flowing, not merely requested. */
+  private onActiveChange: ((active: boolean) => void) | null = null;
 
   /**
    * Open the stream. Must be called from inside a user gesture — the
@@ -77,6 +79,7 @@ class StreamPlayer {
     this.pendingGesture = null;
     this.active = false;
     this.onReset?.();
+    this.onActiveChange?.(false);
     this.clearTimer();
     this.teardown();
   }
@@ -122,6 +125,17 @@ class StreamPlayer {
     this.onReset = fn;
   }
 
+  /**
+   * Register a callback for whether the stream is really playing. The
+   * setting being on is not the same thing: after a reload autoplay policy
+   * refuses a stream opened without a gesture, so the player sits armed
+   * and silent until the next interaction. The UI has to show that state
+   * rather than claim to be streaming.
+   */
+  setOnActiveChange(fn: ((active: boolean) => void) | null): void {
+    this.onActiveChange = fn;
+  }
+
   private open(): void {
     this.teardown();
 
@@ -139,10 +153,17 @@ class StreamPlayer {
     el.addEventListener("ended", this.handleDrop);
     this.audio = el;
 
-    void el.play().catch(() => {
-      // Autoplay policy refused it, or the element was replaced. Leave the
-      // toggle on so the next gesture or reconnect can retry.
-    });
+    void el.play().then(
+      () => {
+        if (this.audio === el) this.onActiveChange?.(true);
+      },
+      () => {
+        // Autoplay policy refused it, or the element was replaced. Leave
+        // the setting on so the next gesture or reconnect can retry, but
+        // do not pretend audio is playing.
+        if (this.audio === el) this.onActiveChange?.(false);
+      },
+    );
   }
 
   /**
@@ -150,6 +171,7 @@ class StreamPlayer {
    * was cut — by a proxy, a network change, or the server restarting.
    */
   private handleDrop = (): void => {
+    this.onActiveChange?.(false);
     if (!this.active || this.reconnectTimer) return;
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;

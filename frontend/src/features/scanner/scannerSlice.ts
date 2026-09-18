@@ -33,6 +33,13 @@ interface ScannerState {
   // queue controls (skip/replay/hold) for playback that survives an iOS
   // screen lock. See shared/services/audio/streamPlayer.
   backgroundAudio: boolean;
+  /**
+   * Whether the server stream is actually playing. Distinct from
+   * backgroundAudio, which is only the saved preference: after a reload
+   * autoplay policy refuses a stream opened without a user gesture, so the
+   * preference can be on while nothing is playing.
+   */
+  streamActive: boolean;
   pendingTranscripts: Record<number, PendingTranscript>;
 }
 
@@ -41,6 +48,9 @@ const initialState: ScannerState = {
   backgroundAudio:
     typeof localStorage !== "undefined" &&
     localStorage.getItem("openscanner-background-audio") === "true",
+  // Never restored: a stream can only be opened from a user gesture, so a
+  // freshly loaded page is never streaming yet however the preference reads.
+  streamActive: false,
   isPaused:
     typeof sessionStorage !== "undefined" &&
     sessionStorage.getItem("openscanner-paused") === "true",
@@ -246,6 +256,9 @@ export const scannerSlice = createSlice({
         };
       }
     },
+    setStreamActive(state, action: PayloadAction<boolean>) {
+      state.streamActive = action.payload;
+    },
     setBackgroundAudio(state, action: PayloadAction<boolean>) {
       state.backgroundAudio = action.payload;
       try {
@@ -373,6 +386,7 @@ export const scannerSlice = createSlice({
 export const {
   callReceived,
   setBackgroundAudio,
+  setStreamActive,
   setCurrentCall,
   clearCurrentCall,
   resetDisplay,

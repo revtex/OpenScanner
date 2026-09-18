@@ -3,7 +3,6 @@ import type { RootState } from "@/app/store";
 import { callReceived } from "@/features/scanner";
 import { audioPlayer } from "@/shared/services/audio/player";
 import { streamCues } from "@/shared/services/audio/streamCues";
-import { streamPlayer } from "@/shared/services/audio/streamPlayer";
 
 /**
  * Listener middleware that bridges incoming Redux call events to the
@@ -32,19 +31,6 @@ function isAvoided(
   }
   return false;
 }
-
-// Composition root for stream labelling: the scheduler reads the stream's
-// playback clock and publishes to the media session, and a stream that
-// re-opens drops whatever was still waiting (its timeline restarts at 0).
-streamCues.configure(
-  () => streamPlayer.currentTime(),
-  (call) => {
-    audioPlayer.setNowPlaying(call);
-  },
-);
-streamPlayer.setOnReset(() => {
-  streamCues.reset();
-});
 
 export const audioListenerMiddleware = createListenerMiddleware();
 

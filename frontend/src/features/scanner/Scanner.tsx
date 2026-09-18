@@ -17,6 +17,7 @@ import { ControlToolbar } from "./components/ControlToolbar";
 import SelectTGPanel from "./components/SelectTGPanel";
 import SearchPanel from "./components/SearchPanel";
 import BookmarksPanel from "./components/BookmarksPanel";
+import { isMobilePlatform } from "@/shared/utils/platform";
 
 export default function Scanner() {
   const navigate = useNavigate();
@@ -96,6 +97,7 @@ export default function Scanner() {
       <LEDPanel />
       <DisplayPanel
         currentCall={scanner.currentCall}
+        backgroundAudio={scanner.backgroundAudio}
         history={scanner.history}
         heldSystem={scanner.heldSystem}
         heldTG={scanner.heldTG}
@@ -136,8 +138,11 @@ export default function Scanner() {
           token ? () => setBookmarksOpen((prev) => !prev) : undefined
         }
         backgroundAudio={scanner.backgroundAudio}
+        streamActive={scanner.streamActive}
         onToggleBackgroundAudio={
-          token ? scanner.toggleBackgroundAudio : undefined
+          // Mobile only: a desktop browser keeps a background tab running
+          // and plays each call normally, so the stream buys nothing there.
+          token && isMobilePlatform() ? scanner.toggleBackgroundAudio : undefined
         }
         keypadBeeps={scanner.config?.keypadBeeps}
       />
