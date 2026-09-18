@@ -14,6 +14,14 @@
  * exactly the situation this player exists to survive.
  */
 
+/**
+ * What the stream is actually doing. "starting" and "blocked" are
+ * deliberately distinct: a stream that is connecting is on its way and
+ * must not be shown as paused, while one refused by autoplay policy needs
+ * a user gesture and must say so.
+ */
+export type StreamState = "idle" | "starting" | "playing" | "blocked";
+
 const STREAM_PATH = "/api/v1/listener/stream";
 
 /**
@@ -41,8 +49,9 @@ class StreamPlayer {
   private sid = "";
   /** Called whenever the timeline restarts, so stale cues can be dropped. */
   private onReset: (() => void) | null = null;
-  /** Reports whether audio is actually flowing, not merely requested. */
-  private onActiveChange: ((active: boolean) => void) | null = null;
+  /** Reports what the stream is really doing, not merely what was asked. */
+  private onStateChange: ((state: StreamState) => void) | null = null;
+  private state: StreamState = "idle";
 
   /**
    * Open the stream. Must be called from inside a user gesture — the
@@ -71,6 +80,9 @@ class StreamPlayer {
     this.pendingGesture = () => {
       for (const e of events) document.removeEventListener(e, once);
     };
+    // Armed but silent until the user touches something — this is the
+    // state a reloaded page lands in, and the control has to show it.
+    this.setState("blocked");
     for (const e of events) document.addEventListener(e, once);
   }
 
@@ -79,7 +91,7 @@ class StreamPlayer {
     this.pendingGesture = null;
     this.active = false;
     this.onReset?.();
-    this.onActiveChange?.(false);
+    this.setState("idle");
     this.clearTimer();
     this.teardown();
   }
@@ -126,14 +138,26 @@ class StreamPlayer {
   }
 
   /**
-   * Register a callback for whether the stream is really playing. The
-   * setting being on is not the same thing: after a reload autoplay policy
-   * refuses a stream opened without a gesture, so the player sits armed
-   * and silent until the next interaction. The UI has to show that state
-   * rather than claim to be streaming.
+   * Register a callback for what the stream is really doing. The setting
+   * being on is not the same thing: after a reload autoplay policy refuses
+   * a stream opened without a gesture, so the player sits armed and silent
+   * until the next interaction. The UI has to show that ("blocked")
+   * without mistaking an ordinary connect ("starting") for it.
    */
-  setOnActiveChange(fn: ((active: boolean) => void) | null): void {
-    this.onActiveChange = fn;
+  setOnStateChange(fn: ((state: StreamState) => void) | null): void {
+    this.onStateChange = fn;
+    if (fn) fn(this.state);
+  }
+
+  /** Current state, for callers that need it synchronously. */
+  streamState(): StreamState {
+    return this.state;
+  }
+
+  private setState(next: StreamState): void {
+    if (this.state === next) return;
+    this.state = next;
+    this.onStateChange?.(next);
   }
 
   private open(): void {
@@ -153,15 +177,18 @@ class StreamPlayer {
     el.addEventListener("ended", this.handleDrop);
     this.audio = el;
 
+    // Connecting, not paused: the UI must not show a warning for the
+    // ~100ms it takes play() to resolve.
+    this.setState("starting");
     void el.play().then(
       () => {
-        if (this.audio === el) this.onActiveChange?.(true);
+        if (this.audio === el) this.setState("playing");
       },
       () => {
         // Autoplay policy refused it, or the element was replaced. Leave
         // the setting on so the next gesture or reconnect can retry, but
         // do not pretend audio is playing.
-        if (this.audio === el) this.onActiveChange?.(false);
+        if (this.audio === el) this.setState("blocked");
       },
     );
   }
@@ -171,7 +198,8 @@ class StreamPlayer {
    * was cut — by a proxy, a network change, or the server restarting.
    */
   private handleDrop = (): void => {
-    this.onActiveChange?.(false);
+    // A dropped stream is reconnecting, not waiting on the user.
+    if (this.active) this.setState("starting");
     if (!this.active || this.reconnectTimer) return;
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;

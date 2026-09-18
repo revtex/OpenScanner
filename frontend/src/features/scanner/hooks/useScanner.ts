@@ -13,7 +13,7 @@ import {
   toggleTG,
   setAllTGs,
   setBackgroundAudio,
-  setStreamActive,
+  setStreamState,
   setCurrentCall,
   clearCurrentCall,
   setAudioActive,
@@ -37,7 +37,7 @@ export function useScanner() {
   const avoidList = useAppSelector((s) => s.scanner.avoidList);
   const listenerCount = useAppSelector((s) => s.scanner.listenerCount);
   const backgroundAudio = useAppSelector((s) => s.scanner.backgroundAudio);
-  const streamActive = useAppSelector((s) => s.scanner.streamActive);
+  const streamState = useAppSelector((s) => s.scanner.streamState);
   const config = useAppSelector((s) => s.scanner.config);
   const tgSelection = useAppSelector((s) => s.scanner.tgSelection);
 
@@ -85,7 +85,9 @@ export function useScanner() {
     // press *is* that gesture, so resume rather than switching the
     // preference off — otherwise the only way out is off-then-on, which is
     // what made the control feel broken after a refresh.
-    if (backgroundAudio && !streamActive) {
+    // Only "blocked" means the user has to act. A stream that is merely
+    // connecting is already on its way.
+    if (backgroundAudio && streamState === "blocked") {
       audioPlayer.setSuspended(true);
       streamPlayer.start();
       return;
@@ -104,7 +106,7 @@ export function useScanner() {
       audioPlayer.setSuspended(false);
     }
     dispatch(setBackgroundAudio(next));
-  }, [backgroundAudio, streamActive, dispatch]);
+  }, [backgroundAudio, streamState, dispatch]);
 
   // In stream mode the server owns playback, so none of the local player's
   // callbacks fire and the display panel would stay empty for the whole
@@ -148,11 +150,11 @@ export function useScanner() {
   // Mirror the player's real state into the store so the control can show
   // "armed but not playing" instead of claiming to be streaming.
   useEffect(() => {
-    streamPlayer.setOnActiveChange((active) => {
-      dispatch(setStreamActive(active));
+    streamPlayer.setOnStateChange((state) => {
+      dispatch(setStreamState(state));
     });
     return () => {
-      streamPlayer.setOnActiveChange(null);
+      streamPlayer.setOnStateChange(null);
     };
   }, [dispatch]);
 
@@ -183,7 +185,7 @@ export function useScanner() {
     avoidList,
     listenerCount,
     backgroundAudio,
-    streamActive,
+    streamState,
     config,
     tgSelection,
 

@@ -138,7 +138,7 @@ export default function Scanner() {
           token ? () => setBookmarksOpen((prev) => !prev) : undefined
         }
         backgroundAudio={scanner.backgroundAudio}
-        streamActive={scanner.streamActive}
+        streamState={scanner.streamState}
         onToggleBackgroundAudio={
           // Mobile only: a desktop browser keeps a background tab running
           // and plays each call normally, so the stream buys nothing there.

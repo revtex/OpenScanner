@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { AvoidEntry, ConnectionStatus, ScannerConfig } from "@/types";
+import type { StreamState } from "@/shared/services/audio/streamPlayer";
 import type { Call, TranscriptionSegment } from "./types";
 
 const MAX_HISTORY = 5;
@@ -34,12 +35,13 @@ interface ScannerState {
   // screen lock. See shared/services/audio/streamPlayer.
   backgroundAudio: boolean;
   /**
-   * Whether the server stream is actually playing. Distinct from
+   * What the server stream is actually doing. Distinct from
    * backgroundAudio, which is only the saved preference: after a reload
    * autoplay policy refuses a stream opened without a user gesture, so the
-   * preference can be on while nothing is playing.
+   * preference can be on while nothing is playing ("blocked"). "starting"
+   * is an ordinary connect and must not be shown as paused.
    */
-  streamActive: boolean;
+  streamState: StreamState;
   pendingTranscripts: Record<number, PendingTranscript>;
 }
 
@@ -50,7 +52,7 @@ const initialState: ScannerState = {
     localStorage.getItem("openscanner-background-audio") === "true",
   // Never restored: a stream can only be opened from a user gesture, so a
   // freshly loaded page is never streaming yet however the preference reads.
-  streamActive: false,
+  streamState: "idle",
   isPaused:
     typeof sessionStorage !== "undefined" &&
     sessionStorage.getItem("openscanner-paused") === "true",
@@ -256,8 +258,8 @@ export const scannerSlice = createSlice({
         };
       }
     },
-    setStreamActive(state, action: PayloadAction<boolean>) {
-      state.streamActive = action.payload;
+    setStreamState(state, action: PayloadAction<StreamState>) {
+      state.streamState = action.payload;
     },
     setBackgroundAudio(state, action: PayloadAction<boolean>) {
       state.backgroundAudio = action.payload;
@@ -386,7 +388,7 @@ export const scannerSlice = createSlice({
 export const {
   callReceived,
   setBackgroundAudio,
-  setStreamActive,
+  setStreamState,
   setCurrentCall,
   clearCurrentCall,
   resetDisplay,

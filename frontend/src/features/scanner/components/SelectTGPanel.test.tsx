@@ -91,7 +91,7 @@ function scannerState(
     isPaused: false,
     isAudioActive: false,
     backgroundAudio: false,
-      streamActive: false,
+      streamState: "idle" as const,
     heldSystem: null,
     heldTG: null,
     avoidList: [],

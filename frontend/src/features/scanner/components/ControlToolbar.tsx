@@ -16,6 +16,7 @@ import {
 import { useCallback } from "react";
 import { playBeep } from "@/shared/services/audio/beep";
 import type { AvoidEntry } from "@/types";
+import type { StreamState } from "@/shared/services/audio/streamPlayer";
 
 interface ControlToolbarProps {
   isPaused: boolean;
@@ -37,8 +38,8 @@ interface ControlToolbarProps {
   onToggleSearch: () => void;
   onToggleBookmarks?: () => void;
   backgroundAudio?: boolean;
-  /** Whether the stream is really playing, not merely enabled. */
-  streamActive?: boolean;
+  /** What the stream is really doing, not merely what is enabled. */
+  streamState?: StreamState;
   onToggleBackgroundAudio?: () => void;
   keypadBeeps?: string;
 }
@@ -63,7 +64,7 @@ export function ControlToolbar({
   onToggleSearch,
   onToggleBookmarks,
   backgroundAudio,
-  streamActive,
+  streamState,
   onToggleBackgroundAudio,
   keypadBeeps,
 }: ControlToolbarProps) {
@@ -339,17 +340,21 @@ export function ControlToolbar({
             data-tip={
               !backgroundAudio
                 ? "Background audio: keeps playing when the screen locks"
-                : streamActive
-                  ? "Background audio on — streaming"
-                  : "Background audio paused — tap to resume"
+                : streamState === "blocked"
+                  ? "Background audio paused — tap to resume"
+                  : "Background audio on — streaming"
             }
           >
             <button
               className={`btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 ${
                 backgroundAudio
-                  ? streamActive
-                    ? "btn-primary"
-                    : "btn-warning"
+                  ? // "starting" is a normal connect, so it stays on the
+                    // active style — only a stream waiting on a gesture
+                    // warns, or the control flickers "paused" every time
+                    // it is switched on.
+                    streamState === "blocked"
+                    ? "btn-warning"
+                    : "btn-primary"
                   : "btn-ghost text-base-content"
               }`}
               onClick={() => {

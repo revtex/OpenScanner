@@ -130,21 +130,25 @@ describe("streamPlayer", () => {
     expect(last().playCalls).toBe(1);
   });
 
-  it("reports active only once audio is really playing", async () => {
+  it("never reports paused while an ordinary connect is in flight", async () => {
     const player = await loadPlayer();
-    const states: boolean[] = [];
-    player.setOnActiveChange((a) => states.push(a));
+    const states: string[] = [];
+    player.setOnStateChange((st) => states.push(st));
 
     player.start();
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(states).toEqual([true]);
+    // Regression: the control briefly rendered "paused — tap to resume"
+    // for the ~100ms between the press and play() resolving, because
+    // "not playing yet" was treated the same as "needs a gesture".
+    expect(states).not.toContain("blocked");
+    expect(states).toEqual(["idle", "starting", "playing"]);
   });
 
-  it("reports inactive when autoplay policy refuses the stream", async () => {
+  it("reports blocked when autoplay policy refuses the stream", async () => {
     const player = await loadPlayer();
-    const states: boolean[] = [];
-    player.setOnActiveChange((a) => states.push(a));
+    const states: string[] = [];
+    player.setOnStateChange((st) => states.push(st));
 
     // This is the state a reload lands in: the preference is on, but the
     // stream cannot open without a gesture. The UI must not claim to be
@@ -153,21 +157,36 @@ describe("streamPlayer", () => {
     player.start();
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(states).toEqual([false]);
+    expect(player.streamState()).toBe("blocked");
     // The setting stays on so the next gesture can retry.
     expect(player.isActive()).toBe(true);
   });
 
-  it("reports inactive on stop", async () => {
+  it("reports blocked while armed and waiting for a gesture", async () => {
+    const player = await loadPlayer();
+    // What a reloaded page does when the preference is already on.
+    player.startOnGesture();
+    expect(player.streamState()).toBe("blocked");
+  });
+
+  it("reports idle on stop", async () => {
     const player = await loadPlayer();
     player.start();
     await vi.advanceTimersByTimeAsync(0);
 
-    const states: boolean[] = [];
-    player.setOnActiveChange((a) => states.push(a));
     player.stop();
+    expect(player.streamState()).toBe("idle");
+  });
 
-    expect(states).toContain(false);
+  it("treats a dropped stream as reconnecting, not as paused", async () => {
+    const player = await loadPlayer();
+    player.start();
+    await vi.advanceTimersByTimeAsync(0);
+
+    last().emit("ended");
+    // A cut stream reconnects on its own, so it must not ask the user to
+    // do anything.
+    expect(player.streamState()).toBe("starting");
   });
 
   it("gives each connection its own id", async () => {
