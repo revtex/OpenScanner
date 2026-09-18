@@ -209,6 +209,18 @@ describe("audioPlayer", () => {
     expect(el.playCalls).toBe(before);
   });
 
+  it("unlocks the audio element synchronously inside the gesture", async () => {
+    await loadPlayer();
+
+    // No await between the gesture and the assertion: WebKit drops transient
+    // user activation across an await, so an unlock that only runs in a later
+    // microtask never counts as gesture-initiated on iOS and playback stays
+    // blocked for the whole session.
+    document.body.dispatchEvent(new Event("touchstart"));
+
+    expect(lastElement().playCalls).toBe(1);
+  });
+
   it("advances the queue on ended", async () => {
     const player = await loadPlayer();
     player.enqueue(makeCall(1));

@@ -187,8 +187,19 @@ func wsAcceptOptions(r *http.Request) *websocket.AcceptOptions {
 	}
 
 	return &websocket.AcceptOptions{
-		OriginPatterns:  patterns,
-		CompressionMode: websocket.CompressionContextTakeover,
+		OriginPatterns: patterns,
+		// Compression stays off deliberately. With permessage-deflate and
+		// context takeover, every message after the first depends on the
+		// LZ77 window left by the previous one. A client whose inflater
+		// does not carry that window across messages completes the
+		// handshake, decodes the first (self-contained) scanner.config
+		// frame, then fails on the first call.new and drops the TCP
+		// connection with no close frame — reconnecting in a ~4s loop, so
+		// calls and the listener count never appear. iOS Safari hit
+		// exactly this. Context takeover also split one 117 KB config
+		// into 209 continuation frames. See the library's own note: it
+		// defaults to disabled and warns about Safari.
+		CompressionMode: websocket.CompressionDisabled,
 	}
 }
 

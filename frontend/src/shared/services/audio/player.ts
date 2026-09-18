@@ -80,28 +80,21 @@ class AudioPlayer {
       "keydown",
     ];
 
-    const handler = async () => {
+    // Not async, and nothing below is awaited before the unlock calls are
+    // issued. WebKit only treats play()/resume() as gesture-initiated while
+    // the handler still holds transient user activation, and that activation
+    // does not survive an `await` the way Chrome's sticky activation does.
+    // Awaiting the context resume first left the element unlock running in a
+    // microtask that iOS no longer counted as a gesture, so playback stayed
+    // blocked for the whole session — including calls played from history.
+    const handler = () => {
       this.ensureContext();
       this.ensureAudioElement();
 
-      if (this.ctx?.state === "suspended") {
-        try {
-          await this.ctx.resume();
-        } catch {
-          // ignore
-        }
-      }
-
-      // Beep context first: it must be created inside the gesture, and the
-      // element unlock below cannot be awaited (see next comment), so
-      // anything sequenced after it would never run.
-      await bootstrapBeepContext();
-
-      // Unlock the <audio> element on the same gesture so later
-      // programmatic play() succeeds on Mobile Edge / Mobile Safari.
-      // Deliberately not awaited: play() on an element with no source
-      // never settles, so `await` here hung the rest of this handler
-      // until a real call replaced the src (AbortError, ~30s later).
+      // Unlock the <audio> element first: it is the one call playback needs.
+      // Deliberately not awaited: play() on an element with no source never
+      // settles, so `await` here hung the rest of this handler until a real
+      // call replaced the src (AbortError, ~30s later).
       if (this.audio && !this.currentItem) {
         const el = this.audio;
         void el
@@ -113,11 +106,25 @@ class AudioPlayer {
           });
       }
 
-      if (this.ctx?.state === "running" && this.audio) {
-        for (const e of events) {
-          document.body.removeEventListener(e, handler);
+      // Both contexts are created/resumed by calls made synchronously here;
+      // only the settling is deferred.
+      const ctx = this.ctx;
+      const resumed =
+        ctx && ctx.state === "suspended"
+          ? ctx.resume().catch(() => {
+              // ignore
+            })
+          : Promise.resolve();
+
+      void bootstrapBeepContext();
+
+      void resumed.then(() => {
+        if (this.ctx?.state === "running" && this.audio) {
+          for (const e of events) {
+            document.body.removeEventListener(e, handler);
+          }
         }
-      }
+      });
     };
 
     for (const e of events) {
