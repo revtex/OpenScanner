@@ -97,8 +97,8 @@ func TestListenerEnqueue_DropsOldestOverCap(t *testing.T) {
 	older := makeFrame(0x01)
 	newer := makeFrame(0x02)
 
-	l.enqueue([][]byte{older, older, older}, 0) // 0 = uncapped
-	l.enqueue([][]byte{newer, newer}, 2)
+	l.enqueue(1, [][]byte{older, older, older}, 0) // 0 = uncapped
+	l.enqueue(2, [][]byte{newer, newer}, 2)
 
 	if got := l.queued(); got != 2 {
 		t.Fatalf("queued = %d, want 2 after the cap trimmed the backlog", got)
@@ -106,7 +106,7 @@ func TestListenerEnqueue_DropsOldestOverCap(t *testing.T) {
 	// A scanner backlog is stale, so the cap must discard the oldest audio
 	// and keep the newest — not the other way round.
 	for i := 0; i < 2; i++ {
-		if !bytes.Equal(l.next(nil), newer) {
+		if frame, _, _ := l.next(nil); !bytes.Equal(frame, newer) {
 			t.Fatalf("frame %d is not the newest audio", i)
 		}
 	}
@@ -117,7 +117,11 @@ func TestListenerNext_CyclesSilenceWhenIdle(t *testing.T) {
 	s0, s1 := makeFrame(0xE0), makeFrame(0xE1)
 	silence := [][]byte{s0, s1}
 
-	got := [][]byte{l.next(silence), l.next(silence), l.next(silence)}
+	got := make([][]byte, 0, 3)
+	for i := 0; i < 3; i++ {
+		frame, _, _ := l.next(silence)
+		got = append(got, frame)
+	}
 	if !bytes.Equal(got[0], s0) || !bytes.Equal(got[1], s1) || !bytes.Equal(got[2], s0) {
 		t.Error("silence did not cycle")
 	}
@@ -201,7 +205,7 @@ func TestServe_PrimesBufferThenStopsOnCancel(t *testing.T) {
 
 	var out syncBuffer
 	done := make(chan error, 1)
-	go func() { done <- m.Serve(ctx, 5, &out, nil) }()
+	go func() { done <- m.Serve(ctx, 5, "sid-test", &out, nil) }()
 
 	// The prime is written before pacing starts, so it lands immediately.
 	deadline := time.After(2 * time.Second)
@@ -235,7 +239,108 @@ func TestServe_PrimesBufferThenStopsOnCancel(t *testing.T) {
 
 func TestServe_RequiresStart(t *testing.T) {
 	m := New(nil, nil)
-	if err := m.Serve(context.Background(), 1, &syncBuffer{}, nil); err == nil {
+	if err := m.Serve(context.Background(), 1, "", &syncBuffer{}, nil); err == nil {
 		t.Error("Serve succeeded before Start; it must refuse to stream without silence")
 	}
+}
+
+// cueRecord is one observed stream.cue.
+type cueRecord struct {
+	userID int64
+	sid    string
+	callID int64
+	offset float64
+}
+
+func TestListenerNext_MarksOnlyTheFirstFrameOfACall(t *testing.T) {
+	l := &listener{userID: 7, sid: "s"}
+	silence := [][]byte{makeFrame(0x00)}
+
+	// One silence frame goes out first, then a two-frame call.
+	if _, id, at := l.next(silence); id != 0 || at != 0 {
+		t.Fatalf("silence frame reported callID=%d at=%d, want 0 and 0", id, at)
+	}
+	l.enqueue(42, [][]byte{makeFrame(0x01), makeFrame(0x02)}, 0)
+
+	_, id, at := l.next(silence)
+	if id != 42 {
+		t.Errorf("first call frame reported callID=%d, want 42", id)
+	}
+	if at != 1 {
+		t.Errorf("first call frame at frame %d, want 1 (one silence frame preceded it)", at)
+	}
+	// Only the first frame marks the call; cueing on every frame would
+	// re-label continuously for the whole call.
+	if _, id, _ := l.next(silence); id != 0 {
+		t.Errorf("second call frame reported callID=%d, want 0", id)
+	}
+}
+
+func TestServe_CuesCallAtItsActualStreamOffset(t *testing.T) {
+	call := Call{ID: 99, SystemID: 1, TalkgroupID: 2, AudioPath: "x.wav"}
+	m := newTestManager(t,
+		func(context.Context, int64) (Call, error) { return call, nil },
+		nil)
+	// Two frames of "call audio", no FFmpeg needed.
+	m.encode = func(context.Context, string) ([][]byte, error) {
+		return [][]byte{makeFrame(0x01), makeFrame(0x02)}, nil
+	}
+
+	cues := make(chan cueRecord, 4)
+	m.SetCuePublisher(func(userID int64, sid string, callID int64, offset float64) {
+		cues <- cueRecord{userID, sid, callID, offset}
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var out syncBuffer
+	go func() { _ = m.Serve(ctx, 7, "tab-a", &out, nil) }()
+
+	// Let the prime drain so the call lands during paced streaming.
+	time.Sleep(200 * time.Millisecond)
+	m.Notify(context.Background(), 99)
+
+	select {
+	case c := <-cues:
+		if c.userID != 7 || c.sid != "tab-a" || c.callID != 99 {
+			t.Errorf("cue = %+v, want userID 7 / sid tab-a / callID 99", c)
+		}
+		// The offset must be where the call actually starts on this
+		// listener's timeline: at least the prime, since the prime is
+		// written before the call could possibly be queued. A client
+		// schedules its label against exactly this number.
+		minOffset := float64(primeSeconds)
+		if c.offset < minOffset {
+			t.Errorf("offset = %.3f, want >= %.3f (the prime precedes the call)",
+				c.offset, minOffset)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("no stream.cue was published for a call that was queued")
+	}
+
+	// Exactly one cue per call — not one per frame.
+	select {
+	case c := <-cues:
+		t.Errorf("a second cue was published for the same call: %+v", c)
+	case <-time.After(300 * time.Millisecond):
+	}
+}
+
+func TestServe_NoCuePublisherIsSafe(t *testing.T) {
+	call := Call{ID: 1, AudioPath: "x.wav"}
+	m := newTestManager(t,
+		func(context.Context, int64) (Call, error) { return call, nil }, nil)
+	m.encode = func(context.Context, string) ([][]byte, error) {
+		return [][]byte{makeFrame(0x01)}, nil
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var out syncBuffer
+	go func() { _ = m.Serve(ctx, 1, "", &out, nil) }()
+	time.Sleep(150 * time.Millisecond)
+
+	// Must not panic with no publisher registered.
+	m.Notify(context.Background(), 1)
+	time.Sleep(150 * time.Millisecond)
 }

@@ -133,6 +133,8 @@ export default tseslint.config(
     files: [
       "src/shared/services/audio/player.ts",
       "src/shared/services/audio/player.test.ts",
+      "src/shared/services/audio/streamCues.ts",
+      "src/shared/services/audio/streamCues.test.ts",
       "src/shared/services/ws/client.ts",
       "src/shared/services/ws/client.test.ts",
       "src/shared/services/ws/adminClient.ts",

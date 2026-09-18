@@ -2,6 +2,8 @@ import { createListenerMiddleware } from "@reduxjs/toolkit";
 import type { RootState } from "@/app/store";
 import { callReceived } from "@/features/scanner";
 import { audioPlayer } from "@/shared/services/audio/player";
+import { streamCues } from "@/shared/services/audio/streamCues";
+import { streamPlayer } from "@/shared/services/audio/streamPlayer";
 
 /**
  * Listener middleware that bridges incoming Redux call events to the
@@ -31,6 +33,19 @@ function isAvoided(
   return false;
 }
 
+// Composition root for stream labelling: the scheduler reads the stream's
+// playback clock and publishes to the media session, and a stream that
+// re-opens drops whatever was still waiting (its timeline restarts at 0).
+streamCues.configure(
+  () => streamPlayer.currentTime(),
+  (call) => {
+    audioPlayer.setNowPlaying(call);
+  },
+);
+streamPlayer.setOnReset(() => {
+  streamCues.reset();
+});
+
 export const audioListenerMiddleware = createListenerMiddleware();
 
 audioListenerMiddleware.startListening({
@@ -45,12 +60,16 @@ audioListenerMiddleware.startListening({
     // stream, which applies the selection itself — enqueuing here too would
     // play every call twice. The lock screen still needs labelling though,
     // and nothing else does it in that mode, so mirror the server's filter
-    // (selection + AVOID, but not HOLD, which the server cannot see) and
-    // hand the call to the media session.
+    // (selection + AVOID, but not HOLD, which the server cannot see).
+    //
+    // The label is handed to the cue scheduler rather than published now:
+    // this event arrives the moment the call is ingested, but its audio is
+    // still several seconds down the stream's buffer, and changing the lock
+    // screen that far ahead of the sound is just confusing. See streamCues.
     if (backgroundAudio) {
       if (isAvoided(avoidList, call.talkgroup)) return;
       if (tgSelection[call.talkgroup] === false) return;
-      audioPlayer.setNowPlaying(call);
+      streamCues.hold(call);
       return;
     }
 

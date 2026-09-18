@@ -16,6 +16,19 @@
 
 const STREAM_PATH = "/api/v1/listener/stream";
 
+/**
+ * Identifies this connection to the server so its `stream.cue` events can
+ * be told apart from those of the same account's other tabs, each of which
+ * has its own stream timeline.
+ */
+function newSid(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+}
+
 /** Delay before re-opening a stream that ended or errored. */
 const RECONNECT_MS = 2000;
 
@@ -25,6 +38,9 @@ class StreamPlayer {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   /** Detaches a pending startOnGesture listener, if one is armed. */
   private pendingGesture: (() => void) | null = null;
+  private sid = "";
+  /** Called whenever the timeline restarts, so stale cues can be dropped. */
+  private onReset: (() => void) | null = null;
 
   /**
    * Open the stream. Must be called from inside a user gesture — the
@@ -60,6 +76,7 @@ class StreamPlayer {
     this.pendingGesture?.();
     this.pendingGesture = null;
     this.active = false;
+    this.onReset?.();
     this.clearTimer();
     this.teardown();
   }
@@ -87,14 +104,37 @@ class StreamPlayer {
     return this.active;
   }
 
+  /** This connection's id, as sent to the server. */
+  streamId(): string {
+    return this.sid;
+  }
+
+  /**
+   * Playback position on the stream's own timeline, or null when nothing
+   * is streaming. Scheduling is driven off this rather than the wall clock.
+   */
+  currentTime(): number | null {
+    return this.audio ? this.audio.currentTime : null;
+  }
+
+  /** Register a callback fired each time the stream timeline restarts. */
+  setOnReset(fn: (() => void) | null): void {
+    this.onReset = fn;
+  }
+
   private open(): void {
     this.teardown();
+
+    // A new connection restarts the server-side timeline at zero, so any
+    // cue held from the previous one no longer means anything.
+    this.sid = newSid();
+    this.onReset?.();
 
     const el = new Audio();
     el.preload = "auto";
     // A cache-buster keeps a reconnect from being served a dead response
     // out of the HTTP cache.
-    el.src = `${STREAM_PATH}?t=${Date.now()}`;
+    el.src = `${STREAM_PATH}?t=${Date.now()}&sid=${encodeURIComponent(this.sid)}`;
     el.addEventListener("error", this.handleDrop);
     el.addEventListener("ended", this.handleDrop);
     this.audio = el;

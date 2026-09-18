@@ -25,6 +25,12 @@ import (
 	streamsvc "github.com/openscanner/openscanner/internal/stream"
 )
 
+// maxSidLen caps the client-supplied stream id. It is only ever echoed
+// back to the same user's own WebSocket, but it is client input, so it is
+// bounded.
+const maxSidLen = 64
+
+
 // Handler serves the listener audio stream.
 type Handler struct {
 	mgr     *streamsvc.Manager
@@ -137,6 +143,7 @@ func userFilter(queries *db.Queries) streamsvc.Filter {
 //	@Description	Never-ending audio stream of the caller's selected talkgroups, silence-padded between calls. Intended for background playback on platforms that suspend a page once audio stops — notably iOS with the screen locked. Applies the caller's saved talkgroup selection, AVOID entries and system grants server-side.
 //	@Tags			v1-Listener
 //	@Security		BearerAuth
+//	@Param			sid	query	string	false	"Opaque per-connection id (max 64 chars). Echoed in stream.cue WebSocket events so a client can tell its own stream's cues from those of its other tabs."
 //	@Produce		audio/mpeg
 //	@Success		200	{file}		binary					"Continuous MPEG audio stream"
 //	@Failure		401	{object}	shared.APIErrorResponse	"Authentication required"
@@ -157,6 +164,14 @@ func (h *Handler) GetStream(c *gin.Context) {
 		return
 	}
 
+	// Opaque and client-chosen, so it is length-capped and echoed back
+	// only over that same user's WebSocket — it identifies a connection,
+	// never a user, and grants nothing.
+	sid := c.Query("sid")
+	if len(sid) > maxSidLen {
+		sid = sid[:maxSidLen]
+	}
+
 	// The server sets a 60s WriteTimeout for ordinary requests, which would
 	// cut a live stream off mid-frame. Clear the deadline for this
 	// connection only.
@@ -173,7 +188,7 @@ func (h *Handler) GetStream(c *gin.Context) {
 	c.Writer.WriteHeader(http.StatusOK)
 	c.Writer.Flush()
 
-	err := h.mgr.Serve(c.Request.Context(), userID, c.Writer, c.Writer.Flush)
+	err := h.mgr.Serve(c.Request.Context(), userID, sid, c.Writer, c.Writer.Flush)
 	switch {
 	case err == nil, errors.Is(err, context.Canceled):
 		// Client went away — the normal end of a live stream.

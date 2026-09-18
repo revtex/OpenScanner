@@ -885,6 +885,10 @@ func (p *program) run() {
 		slog.Warn("stream: continuous audio stream disabled", "error", err)
 	} else {
 		hub.SetCallNotifier(streamMgr.Notify)
+		// Lets a stream listener hold a call's now-playing label until its
+		// own playback reaches that call, instead of showing it the moment
+		// the call arrives — clients run several seconds behind the head.
+		streamMgr.SetCuePublisher(hub.SendStreamCue)
 	}
 
 	dwService := dirmonitor.NewService(queries, processor, hub, dsService, transcriberMgr)

@@ -10,6 +10,8 @@ import {
 import { clearCredentials } from "@/features/auth";
 import type { SystemConfig } from "@/types";
 import type { WsListenerInbound, WsListenerOutbound } from "@/shared/types/ws";
+import { streamCues } from "@/shared/services/audio/streamCues";
+import { streamPlayer } from "@/shared/services/audio/streamPlayer";
 
 const MAX_BACKOFF = 30_000;
 const DEDUP_SIZE = 100;
@@ -161,6 +163,13 @@ class WsClient {
         }
 
         this.dispatch?.(callReceived(call));
+        break;
+      }
+      case "stream.cue": {
+        // Only this tab's own stream has a timeline these offsets refer to.
+        if (msg.sid && msg.sid === streamPlayer.streamId()) {
+          streamCues.cue(msg.callId, msg.offset);
+        }
         break;
       }
       case "scanner.config": {

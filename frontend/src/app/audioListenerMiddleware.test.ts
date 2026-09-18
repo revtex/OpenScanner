@@ -3,12 +3,25 @@ import { configureStore } from "@reduxjs/toolkit";
 
 const enqueue = vi.fn();
 const setNowPlaying = vi.fn();
+const hold = vi.fn();
 
 vi.mock("@/shared/services/audio/player", () => ({
   audioPlayer: {
     enqueue: (...a: unknown[]) => enqueue(...a),
     setNowPlaying: (...a: unknown[]) => setNowPlaying(...a),
   },
+}));
+
+vi.mock("@/shared/services/audio/streamCues", () => ({
+  streamCues: {
+    hold: (...a: unknown[]) => hold(...a),
+    configure: () => {},
+    reset: () => {},
+  },
+}));
+
+vi.mock("@/shared/services/audio/streamPlayer", () => ({
+  streamPlayer: { currentTime: () => null, setOnReset: () => {} },
 }));
 
 import {
@@ -57,6 +70,7 @@ describe("audioListenerMiddleware", () => {
   beforeEach(() => {
     enqueue.mockClear();
     setNowPlaying.mockClear();
+    hold.mockClear();
   });
 
   it("enqueues locally when live and not streaming", async () => {
@@ -66,7 +80,7 @@ describe("audioListenerMiddleware", () => {
     await settle();
 
     expect(enqueue).toHaveBeenCalledTimes(1);
-    expect(setNowPlaying).not.toHaveBeenCalled();
+    expect(hold).not.toHaveBeenCalled();
   });
 
   it("labels the media session instead of playing when streaming", async () => {
@@ -75,10 +89,12 @@ describe("audioListenerMiddleware", () => {
     store.dispatch(callReceived(makeCall(165)));
     await settle();
 
-    // The server plays the audio; nothing here should touch the element,
-    // but the lock screen still needs a label.
+    // The server plays the audio; nothing here should touch the element.
+    // The label is handed to the cue scheduler rather than published now,
+    // because the audio is still seconds down the stream's buffer.
     expect(enqueue).not.toHaveBeenCalled();
-    expect(setNowPlaying).toHaveBeenCalledTimes(1);
+    expect(setNowPlaying).not.toHaveBeenCalled();
+    expect(hold).toHaveBeenCalledTimes(1);
   });
 
   it("labels while streaming even with LIVE off", async () => {
@@ -90,7 +106,7 @@ describe("audioListenerMiddleware", () => {
 
     // LIVE is disabled in the UI during streaming, so it must not gate the
     // label — otherwise the lock screen stays blank for the whole session.
-    expect(setNowPlaying).toHaveBeenCalledTimes(1);
+    expect(hold).toHaveBeenCalledTimes(1);
   });
 
   it("does not label a talkgroup the listener has disabled", async () => {
@@ -100,7 +116,7 @@ describe("audioListenerMiddleware", () => {
     store.dispatch(callReceived(makeCall(165)));
     await settle();
 
-    expect(setNowPlaying).not.toHaveBeenCalled();
+    expect(hold).not.toHaveBeenCalled();
   });
 
   it("does not label a talkgroup the listener is avoiding", async () => {
@@ -110,7 +126,7 @@ describe("audioListenerMiddleware", () => {
     store.dispatch(callReceived(makeCall(165)));
     await settle();
 
-    expect(setNowPlaying).not.toHaveBeenCalled();
+    expect(hold).not.toHaveBeenCalled();
   });
 
   it("still labels once an avoid has expired", async () => {
@@ -122,7 +138,7 @@ describe("audioListenerMiddleware", () => {
     store.dispatch(callReceived(makeCall(165)));
     await settle();
 
-    expect(setNowPlaying).toHaveBeenCalledTimes(1);
+    expect(hold).toHaveBeenCalledTimes(1);
   });
 
   it("drops calls entirely when neither live nor streaming", async () => {
@@ -131,6 +147,6 @@ describe("audioListenerMiddleware", () => {
     await settle();
 
     expect(enqueue).not.toHaveBeenCalled();
-    expect(setNowPlaying).not.toHaveBeenCalled();
+    expect(hold).not.toHaveBeenCalled();
   });
 });

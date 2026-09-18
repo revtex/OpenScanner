@@ -181,6 +181,22 @@ func (h *Hub) BroadcastCAL(payload map[string]any, filter func(*Client) bool) {
 	h.BroadcastAdminEvent("activity.updated", nil)
 }
 
+// SendStreamCue delivers a stream-position cue to one user's native (v1)
+// listener clients. The cue carries the sid of the stream it belongs to,
+// so a user with several tabs open can tell which of their streams it
+// describes; other tabs ignore it. Legacy clients are skipped — the cue
+// has no legacy encoding and they have no stream to schedule against.
+func (h *Hub) SendStreamCue(userID int64, sid string, callID int64, offset float64) {
+	data, err := NewStreamCueV1(sid, callID, offset)
+	if err != nil {
+		slog.Error("ws: failed to build stream.cue", "error", err)
+		return
+	}
+	h.Broadcast(data, func(c *Client) bool {
+		return c.isV1() && c.userID == userID
+	})
+}
+
 // SetCallNotifier registers a sink for newly ingested calls. Safe to leave
 // unset, in which case new calls are only fanned out over WebSocket.
 func (h *Hub) SetCallNotifier(fn func(context.Context, int64)) {

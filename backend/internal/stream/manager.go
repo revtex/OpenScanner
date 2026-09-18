@@ -41,6 +41,17 @@ type Call struct {
 // CallSource resolves a call id to its stream-relevant fields.
 type CallSource func(ctx context.Context, callID int64) (Call, error)
 
+// CuePublisher is told, at the moment a call's first frame is actually
+// written to a listener, where that call begins on that listener's stream
+// timeline. Clients are several seconds behind the stream head because of
+// their own buffering, so an event delivered over the WebSocket arrives
+// long before the audio is audible; the offset lets a client hold the
+// label until its own playback position reaches it.
+//
+// sid identifies the individual stream connection (one per browser tab),
+// since a user may have more than one open and each has its own timeline.
+type CuePublisher func(userID int64, sid string, callID int64, offset float64)
+
 // Filter reports whether the given listener should hear a call. It is
 // consulted once per listener per call, deliberately: listeners retune
 // their talkgroup selection constantly, and a cached selection would keep
@@ -54,6 +65,8 @@ type Manager struct {
 	filter Filter
 	// encode is swappable so tests do not need FFmpeg on PATH.
 	encode func(ctx context.Context, path string) ([][]byte, error)
+
+	cue CuePublisher
 
 	mu        sync.Mutex
 	listeners map[*listener]struct{}
@@ -97,6 +110,12 @@ func (m *Manager) Start(ctx context.Context) error {
 	return nil
 }
 
+// SetCuePublisher registers the sink for stream-position cues. Safe to
+// leave unset, in which case clients fall back to labelling on arrival.
+func (m *Manager) SetCuePublisher(fn CuePublisher) {
+	m.cue = fn
+}
+
 // Ready reports whether Start succeeded. Nil-safe: a server built without
 // a stream manager reports "not ready" rather than panicking.
 func (m *Manager) Ready() bool {
@@ -115,36 +134,62 @@ func (m *Manager) ListenerCount() int {
 	return len(m.listeners)
 }
 
+// queuedFrame is one MPEG frame waiting to be sent. callID is set only on
+// the first frame of a call, which is what triggers that call's cue — the
+// cue is emitted on dequeue rather than on enqueue so that a backlog trim
+// (see maxQueueSeconds) cannot invalidate an already-announced offset.
+type queuedFrame struct {
+	callID int64
+	data   []byte
+}
+
 // listener is one connected stream client.
 type listener struct {
 	userID int64
+	// sid identifies this connection; a user may hold several.
+	sid string
 
-	mu         sync.Mutex
-	queue      [][]byte
-	silenceIdx int
+	mu sync.Mutex
+	// framesWritten is this listener's stream position, in frames. The
+	// client's currentTime is this multiplied by the frame period.
+	framesWritten int64
+	queue         []queuedFrame
+	silenceIdx    int
 }
 
 // next pops the next frame to send, falling back to cycled silence when no
-// call audio is pending.
-func (l *listener) next(silence [][]byte) []byte {
+// call audio is pending. The second return is the id of the call starting
+// at this frame, or 0 — and the third is the stream position of the frame
+// being returned, in frames.
+func (l *listener) next(silence [][]byte) ([]byte, int64, int64) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	at := l.framesWritten
+	l.framesWritten++
 	if len(l.queue) > 0 {
 		f := l.queue[0]
 		l.queue = l.queue[1:]
-		return f
+		return f.data, f.callID, at
 	}
 	f := silence[l.silenceIdx%len(silence)]
 	l.silenceIdx++
-	return f
+	return f, 0, at
 }
 
 // enqueue appends a call's frames, dropping the oldest audio if the
 // listener has fallen too far behind. See maxQueueSeconds.
-func (l *listener) enqueue(frames [][]byte, maxFrames int) {
+func (l *listener) enqueue(callID int64, frames [][]byte, maxFrames int) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.queue = append(l.queue, frames...)
+	for i, f := range frames {
+		// Only the first frame carries the id: it marks where the call
+		// starts, which is the point a client needs to label.
+		id := int64(0)
+		if i == 0 {
+			id = callID
+		}
+		l.queue = append(l.queue, queuedFrame{callID: id, data: f})
+	}
 	if maxFrames > 0 && len(l.queue) > maxFrames {
 		dropped := len(l.queue) - maxFrames
 		l.queue = l.queue[dropped:]
@@ -204,7 +249,7 @@ func (m *Manager) Notify(ctx context.Context, callID int64) {
 	}
 
 	for _, l := range wanted {
-		l.enqueue(frames, maxFrames)
+		l.enqueue(callID, frames, maxFrames)
 	}
 	slog.Debug("stream: queued call",
 		"call_id", callID, "listeners", len(wanted), "frames", len(frames))
@@ -220,7 +265,7 @@ func (m *Manager) maxFramesLocked() int {
 // Serve streams to one listener until the context is cancelled or the
 // client disconnects. It never returns normally: a live stream ends only
 // when one side goes away.
-func (m *Manager) Serve(ctx context.Context, userID int64, w io.Writer, flush func()) error {
+func (m *Manager) Serve(ctx context.Context, userID int64, sid string, w io.Writer, flush func()) error {
 	m.mu.Lock()
 	silence := m.silence
 	period := m.period
@@ -229,7 +274,7 @@ func (m *Manager) Serve(ctx context.Context, userID int64, w io.Writer, flush fu
 		return errors.New("stream: manager not started")
 	}
 
-	l := &listener{userID: userID}
+	l := &listener{userID: userID, sid: sid}
 	m.add(l)
 	defer m.remove(l)
 
@@ -241,7 +286,8 @@ func (m *Manager) Serve(ctx context.Context, userID int64, w io.Writer, flush fu
 	// waiting for enough data and the first call arrives late.
 	prime := int(primeSeconds * time.Second / period)
 	for i := 0; i < prime; i++ {
-		if _, err := w.Write(l.next(silence)); err != nil {
+		frame, _, _ := l.next(silence)
+		if _, err := w.Write(frame); err != nil {
 			return err
 		}
 	}
@@ -255,11 +301,18 @@ func (m *Manager) Serve(ctx context.Context, userID int64, w io.Writer, flush fu
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			if _, err := w.Write(l.next(silence)); err != nil {
+			frame, callID, at := l.next(silence)
+			if _, err := w.Write(frame); err != nil {
 				// Client hung up; this is the normal way a stream ends.
 				return err
 			}
 			flush()
+			if callID != 0 && m.cue != nil {
+				// Off the write path: publishing goes out over the
+				// WebSocket and must never stall the frame pacing.
+				offset := float64(at) * period.Seconds()
+				go m.cue(userID, sid, callID, offset)
+			}
 		}
 	}
 }
