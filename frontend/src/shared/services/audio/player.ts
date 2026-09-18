@@ -97,8 +97,10 @@ class AudioPlayer {
       // call replaced the src (AbortError, ~30s later).
       if (this.audio && !this.currentItem) {
         const el = this.audio;
-        void el
-          .play()
+        // Wrapped rather than chained directly: play() is specified to
+        // return a promise, but jsdom returns undefined, and this handler
+        // runs on every stray interaction in component tests.
+        void Promise.resolve(el.play())
           .then(() => el.pause())
           .catch(() => {
             // ignore — the element still counts as user-activated on

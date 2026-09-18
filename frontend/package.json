@@ -19,7 +19,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-redux": "^9.2.0",
-    "react-router-dom": "^7.15.1"
+    "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -40,21 +40,26 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.58.1",
     "vite": "^6.3.5",
-    "vitest": "^3.2.1"
+    "vitest": "^4.1.11"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
     ],
     "overrides": {
-      "postcss@<8.5.10": ">=8.5.10",
-      "react-router@>=7.0.0 <7.15.1": ">=7.15.1 <8",
+      "postcss@<8.5.23": ">=8.5.23",
+      "react-router@>=7.0.0 <7.18.2": ">=7.18.2 <8",
       "vite@<6.4.3": ">=6.4.3 <7",
-      "vitest@<3.2.6": ">=3.2.6 <4",
+      "vitest@<4.1.11": ">=4.1.11 <5",
+      "@vitest/mocker@<4.1.11": ">=4.1.11 <5",
       "@babel/core@<7.29.6": ">=7.29.6 <8",
-      "js-yaml@<4.2.0": ">=4.2.0 <5",
-      "brace-expansion@>=5.0.0 <5.0.6": ">=5.0.6",
-      "undici@<7.28.0": ">=7.28.0 <8"
+      "js-yaml@<4.3.2": ">=4.3.2 <5",
+      "brace-expansion@<1.1.16": ">=1.1.16 <2",
+      "brace-expansion@>=3.0.0 <5.0.7": ">=5.0.7 <6",
+      "undici@<7.29.0": ">=7.29.0 <8",
+      "browserslist@<4.28.7": ">=4.28.7 <5",
+      "baseline-browser-mapping@<2.11.0": ">=2.11.0 <3",
+      "@humanfs/node@<0.16.8": ">=0.16.8"
     }
   }
 }
