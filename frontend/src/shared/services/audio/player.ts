@@ -87,6 +87,14 @@ class AudioPlayer {
    * suspended this player touches nothing.
    */
   private suspended = false;
+  /**
+   * Set while an on-demand call (search / bookmarks) is borrowing playback
+   * from the server stream, so the stream can be re-opened when it ends.
+   * Only one media element may hold the audio session on iOS, so the two
+   * must take turns rather than compete — the same conflict that made LIVE
+   * and the stream fight.
+   */
+  private streamBorrowed = false;
   /** Removes the gesture-unlock listeners; retained so they can be detached. */
   private removeUnlockListeners: (() => void) | null = null;
 
@@ -200,6 +208,7 @@ class AudioPlayer {
     this.suspended = suspended;
 
     if (suspended) {
+      this.releaseStream();
       this.removeUnlockListeners?.();
       this.removeUnlockListeners = null;
       this.clearQueue();
@@ -259,6 +268,14 @@ class AudioPlayer {
    * - Ingested calls in the queue are never touched.
    */
   playNow(call: Call): void {
+    // While the server stream owns playback, hand the audio session over
+    // for the duration of this one call rather than starting a second
+    // element alongside it.
+    if (this.suspended && !this.streamBorrowed) {
+      this.streamBorrowed = true;
+      streamPlayer.pause();
+    }
+
     const item: QueueItem = { call, onDemand: true };
     if (!this.currentItem) {
       this.startPlayback(item);
@@ -632,8 +649,22 @@ class AudioPlayer {
     this.currentItem = null;
     this._playing = false;
     this.playNext();
-    if (!this.currentItem) this.updateMediaSession(null);
+    if (!this.currentItem) {
+      this.updateMediaSession(null);
+      this.releaseStream();
+    }
   };
+
+  /**
+   * Give playback back to the server stream after an on-demand call. The
+   * stream is re-opened rather than un-paused so it resumes at live rather
+   * than minutes behind.
+   */
+  private releaseStream(): void {
+    if (!this.streamBorrowed) return;
+    this.streamBorrowed = false;
+    streamPlayer.resume();
+  }
 
   private handleError = (): void => {
     if (!this.currentItem) return;

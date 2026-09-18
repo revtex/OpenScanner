@@ -240,42 +240,90 @@ export function ControlToolbar({
           onToggleBackgroundAudio ? "grid-cols-6" : "grid-cols-5"
         } gap-1 sm:gap-2 w-full items-center`}
       >
-        {/* LIVE — inert while the server stream owns playback: the local
-            player is released in that mode, so the control would do
-            nothing but still look live. */}
+        {/* Playback mode. LIVE and BACKGROUND are two ways of listening,
+            not a control plus a mystery switch — joining them makes the
+            choice visible and removes the greyed-out LIVE that used to
+            need explaining. BACKGROUND is mobile-only; on desktop this is
+            just the LIVE button it always was. */}
         <div
-          className="tooltip tooltip-bottom"
-          data-tip={
-            backgroundAudio
-              ? "Background audio is on — the server stream is playing"
-              : "Live Mode"
-          }
+          className={`${onToggleBackgroundAudio ? "col-span-2 join w-full" : ""}`}
         >
-          <button
-            className={`btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 ${
-              isLive && !backgroundAudio
-                ? "btn-success"
-                : "btn-ghost text-base-content"
+          <div
+            className={`tooltip tooltip-bottom ${
+              onToggleBackgroundAudio ? "w-1/2" : "w-full"
             }`}
-            disabled={backgroundAudio === true}
-            onClick={() => {
-              beep();
-              onToggleLive();
-            }}
+            data-tip="Play in this tab"
           >
-            <Radio className="hidden sm:inline w-3.5 h-3.5" />
-            LIVE
-          </button>
+            <button
+              className={`btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 ${
+                onToggleBackgroundAudio ? "join-item" : ""
+              } ${
+                isLive && !backgroundAudio
+                  ? "btn-success"
+                  : "btn-ghost text-base-content"
+              }`}
+              onClick={() => {
+                beep();
+                onToggleLive();
+              }}
+            >
+              <Radio className="hidden sm:inline w-3.5 h-3.5" />
+              LIVE
+            </button>
+          </div>
+
+          {onToggleBackgroundAudio && (
+            <div
+              className="tooltip tooltip-bottom w-1/2"
+              data-tip={
+                streamState === "blocked" && backgroundAudio
+                  ? "Paused — tap to resume"
+                  : "Keeps playing when your screen locks"
+              }
+            >
+              <button
+                className={`btn btn-xs sm:btn-sm join-item w-full min-w-0 px-1 sm:px-2 gap-1 ${
+                  backgroundAudio
+                    ? streamState === "blocked"
+                      ? "btn-warning"
+                      : "btn-primary"
+                    : "btn-ghost text-base-content"
+                }`}
+                onClick={() => {
+                  beep();
+                  onToggleBackgroundAudio();
+                }}
+                aria-label="Background audio"
+                aria-pressed={backgroundAudio === true}
+              >
+                <Smartphone className="hidden sm:inline w-3.5 h-3.5" />
+                BKGND
+              </button>
+            </div>
+          )}
         </div>
 
         {/* HOLD */}
         <div className="dropdown dropdown-top w-full">
+          {/* HOLD is transient UI state the server never sees, so it
+              cannot filter the stream — it would look like it worked and
+              silently do nothing. */}
           <div
-            tabIndex={0}
+            tabIndex={backgroundAudio ? -1 : 0}
             role="button"
             aria-label="Hold"
+            aria-disabled={backgroundAudio === true}
+            title={
+              backgroundAudio
+                ? "Not available while background audio is on"
+                : undefined
+            }
             className={`btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 ${
-              isHolding ? "btn-secondary" : "btn-ghost"
+              backgroundAudio
+                ? "btn-disabled"
+                : isHolding
+                  ? "btn-secondary"
+                  : "btn-ghost"
             }`}
           >
             <Lock className="hidden sm:inline w-3.5 h-3.5" />
@@ -351,49 +399,6 @@ export function ControlToolbar({
             SELECT
           </button>
         </div>
-
-        {/* BKGND — hands playback to the server's continuous stream so it
-            survives the screen locking. Mobile only: a desktop browser
-            keeps a background tab running and plays each call normally, so
-            the control would be pure clutter there. Three states, because
-            "enabled" and "playing" are not the same thing — after a reload
-            autoplay policy refuses a stream opened without a gesture, and
-            the control has to say so rather than look active. */}
-        {onToggleBackgroundAudio && (
-          <div
-            className="tooltip tooltip-bottom"
-            data-tip={
-              !backgroundAudio
-                ? "Background audio: keeps playing when the screen locks"
-                : streamState === "blocked"
-                  ? "Background audio paused — tap to resume"
-                  : "Background audio on — streaming"
-            }
-          >
-            <button
-              className={`btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 ${
-                backgroundAudio
-                  ? // "starting" is a normal connect, so it stays on the
-                    // active style — only a stream waiting on a gesture
-                    // warns, or the control flickers "paused" every time
-                    // it is switched on.
-                    streamState === "blocked"
-                    ? "btn-warning"
-                    : "btn-primary"
-                  : "btn-ghost text-base-content"
-              }`}
-              onClick={() => {
-                beep();
-                onToggleBackgroundAudio();
-              }}
-              aria-label="Background audio"
-              aria-pressed={backgroundAudio === true}
-            >
-              <Smartphone className="hidden sm:inline w-3.5 h-3.5" />
-              BKGND
-            </button>
-          </div>
-        )}
 
         {/* SEARCH */}
         <div className="tooltip tooltip-bottom" data-tip="Search Calls">

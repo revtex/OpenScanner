@@ -54,6 +54,7 @@ class StreamPlayer {
    * be read as a press to switch it off.
    */
   private gestureStartAt = 0;
+  private volume = 1;
   /** Called whenever the timeline restarts, so stale cues can be dropped. */
   private onReset: (() => void) | null = null;
   /** Reports what the stream is really doing, not merely what was asked. */
@@ -127,6 +128,17 @@ class StreamPlayer {
     return this.active;
   }
 
+  /**
+   * Mirror the app's volume onto the stream. Without this the slider moved
+   * the local player's gain while the stream — the thing actually making
+   * sound — ignored it. iOS ignores element volume entirely (it is a
+   * hardware-only control there); everywhere else this works.
+   */
+  setVolume(v: number): void {
+    this.volume = Math.max(0, Math.min(1, v));
+    if (this.audio) this.audio.volume = this.volume;
+  }
+
   /** This connection's id, as sent to the server. */
   streamId(): string {
     return this.sid;
@@ -187,6 +199,7 @@ class StreamPlayer {
 
     const el = new Audio();
     el.preload = "auto";
+    el.volume = this.volume;
     // A cache-buster keeps a reconnect from being served a dead response
     // out of the HTTP cache.
     el.src = `${STREAM_PATH}?t=${Date.now()}&sid=${encodeURIComponent(this.sid)}`;

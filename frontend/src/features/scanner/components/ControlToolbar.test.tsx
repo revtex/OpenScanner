@@ -208,4 +208,56 @@ describe("ControlToolbar", () => {
       screen.getByRole("button", { name: "Background audio" }),
     ).toBeInTheDocument();
   });
+
+  it("disables HOLD while background audio is on", () => {
+    const props = defaultProps();
+    render(
+      <ControlToolbar
+        {...props}
+        backgroundAudio
+        streamState="playing"
+        onToggleBackgroundAudio={vi.fn()}
+      />,
+    );
+
+    // The server never sees HOLD, so it cannot filter the stream — an
+    // enabled control here would silently do nothing.
+    const hold = screen.getByRole("button", { name: "Hold" });
+    expect(hold).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("shows LIVE and BKGND as one joined choice on mobile", () => {
+    const props = defaultProps();
+    render(
+      <ControlToolbar
+        {...props}
+        backgroundAudio={false}
+        streamState="idle"
+        onToggleBackgroundAudio={vi.fn()}
+      />,
+    );
+
+    const live = screen.getByRole("button", { name: /LIVE/ });
+    const bg = screen.getByRole("button", { name: "Background audio" });
+    // Joined, and neither is disabled: they are two modes to pick from,
+    // not a control plus a switch that greys the other one out.
+    expect(live.className).toContain("join-item");
+    expect(bg.className).toContain("join-item");
+    expect(live).toBeEnabled();
+    expect(bg).toBeEnabled();
+  });
+
+  it("leaves LIVE enabled while streaming so the mode can be switched back", () => {
+    const props = defaultProps();
+    render(
+      <ControlToolbar
+        {...props}
+        backgroundAudio
+        streamState="playing"
+        onToggleBackgroundAudio={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /LIVE/ })).toBeEnabled();
+  });
 });

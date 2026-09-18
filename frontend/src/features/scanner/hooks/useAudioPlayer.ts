@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { store } from "@/app/store";
 import { audioPlayer } from "@/shared/services/audio/player";
+import { streamPlayer } from "@/shared/services/audio/streamPlayer";
 import {
   setCurrentCall,
   clearCurrentCall,
@@ -105,6 +106,10 @@ export function useAudioPlayer() {
 
   const setVolume = useCallback((v: number) => {
     audioPlayer.setVolume(v);
+    // The stream has its own element, so the slider has to reach it too —
+    // otherwise it does nothing in the mode where the stream is the thing
+    // making sound.
+    streamPlayer.setVolume(v);
     setVolumeState(v);
   }, []);
 

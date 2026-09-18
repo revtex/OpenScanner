@@ -13,6 +13,7 @@ import {
   toggleTG,
   setAllTGs,
   setBackgroundAudio,
+  setLive,
   setStreamState,
   setCurrentCall,
   clearCurrentCall,
@@ -56,7 +57,18 @@ export function useScanner() {
       audio.pause();
     }
   }, [dispatch, isPaused, audio]);
-  const doToggleLive = useCallback(() => dispatch(toggleLive()), [dispatch]);
+  // LIVE and BACKGROUND are two ways of listening, so picking one drops
+  // the other rather than leaving a control that looks active but is not.
+  const doToggleLive = useCallback(() => {
+    if (backgroundAudio) {
+      streamPlayer.stop();
+      audioPlayer.setSuspended(false);
+      dispatch(setBackgroundAudio(false));
+      dispatch(setLive(true));
+      return;
+    }
+    dispatch(toggleLive());
+  }, [backgroundAudio, dispatch]);
   const doHoldSystem = useCallback(
     (id: number | null) => dispatch(holdSystem(id)),
     [dispatch],
@@ -116,6 +128,8 @@ export function useScanner() {
       // back off the stream.
       audioPlayer.setSuspended(true);
       streamPlayer.start();
+      // Selecting this mode leaves the other one.
+      dispatch(setLive(false));
     } else {
       streamPlayer.stop();
       audioPlayer.setSuspended(false);

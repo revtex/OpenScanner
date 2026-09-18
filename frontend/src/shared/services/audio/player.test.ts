@@ -492,4 +492,30 @@ describe("audioPlayer", () => {
     await Promise.resolve();
     expect(player.getCurrentCall()?.id).toBe(2);
   });
+
+  it("hands the audio session to an on-demand call and back to the stream", async () => {
+    // loadPlayer resets the module registry, so the stream player must be
+    // imported after it or the spies land on a different instance than the
+    // one player.ts holds.
+    const player = await loadPlayer();
+    const mod = await import("./streamPlayer");
+    const pause = vi.spyOn(mod.streamPlayer, "pause");
+    const resume = vi.spyOn(mod.streamPlayer, "resume");
+
+    player.setSuspended(true);
+
+    // Playing from search or bookmarks while streaming: on iOS only one
+    // element may hold the audio session, so the two must take turns
+    // rather than compete.
+    player.playNow(makeCall(1));
+    await Promise.resolve();
+    expect(pause).toHaveBeenCalled();
+
+    lastElement().emit("ended");
+    await Promise.resolve();
+    expect(resume).toHaveBeenCalled();
+
+    pause.mockRestore();
+    resume.mockRestore();
+  });
 });
