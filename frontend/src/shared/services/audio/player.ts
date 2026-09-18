@@ -41,9 +41,33 @@ function downloadNameFor(call: Call): string {
   return /\.\w+$/.test(name) ? name : `${name}.mp3`;
 }
 
+/**
+ * True where the call audio must come straight out of the media element
+ * rather than through the Web Audio graph.
+ *
+ * iOS renders Web Audio output on a channel the hardware ring/silent
+ * switch mutes, while plain media-element playback is unaffected by it.
+ * Routing the element through MediaElementAudioSourceNode therefore makes
+ * every call silent on a phone whose side switch is set to silent — the
+ * call arrives, the element plays, its currentTime advances, and nothing
+ * is audible. WebKit has also long produced silence for remote media
+ * routed through an element source. The cost of staying off the graph is
+ * software volume control, which iOS does not offer anyway:
+ * HTMLMediaElement.volume is ignored there and volume is a hardware-only
+ * control.
+ */
+function needsDirectElementOutput(): boolean {
+  if (typeof navigator === "undefined") return false;
+  if (/iP(hone|od|ad)/.test(navigator.userAgent)) return true;
+  // iPadOS 13+ reports a desktop user agent; touch points disambiguate it.
+  return navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+}
+
 class AudioPlayer {
   private ctx: AudioContext | null = null;
   private gainNode: GainNode | null = null;
+  /** Element output is not routed through the Web Audio graph. */
+  private directOutput = false;
   private audio: HTMLAudioElement | null = null;
   private volume = 1;
   private queue: QueueItem[] = [];
@@ -57,6 +81,7 @@ class AudioPlayer {
 
   constructor() {
     this.bootstrapAudio();
+    this.bindMediaSessionActions();
     if (typeof document !== "undefined") {
       document.addEventListener(
         "visibilitychange",
@@ -215,11 +240,12 @@ class AudioPlayer {
 
   setVolume(v: number): void {
     this.volume = Math.max(0, Math.min(1, v));
-    if (this.gainNode) {
+    if (!this.directOutput && this.gainNode) {
       this.gainNode.gain.value = this.volume;
     } else if (this.audio) {
-      // GainNode unavailable — mirror to the element so the slider
-      // still works in degraded environments.
+      // Not on the Web Audio graph — mirror to the element. iOS ignores
+      // this (volume is hardware-only there); everywhere else it keeps
+      // the slider working.
       this.audio.volume = this.volume;
     }
   }
@@ -325,25 +351,84 @@ class AudioPlayer {
     audio.addEventListener("ended", this.handleEnded);
     audio.addEventListener("error", this.handleError);
 
-    if (this.ctx && this.gainNode) {
+    if (this.ctx && this.gainNode && !needsDirectElementOutput()) {
       try {
         const node = this.ctx.createMediaElementSource(audio);
         node.connect(this.gainNode);
       } catch {
         // Element already attached to a source, or feature unavailable —
         // fall back to direct element output.
+        this.directOutput = true;
         audio.volume = this.volume;
       }
     } else {
+      this.directOutput = true;
       audio.volume = this.volume;
     }
 
     this.audio = audio;
   }
 
+  /**
+   * Publish the current call to the OS media session.
+   *
+   * On iOS this is what makes the page look like a media app to the
+   * system: it puts the call on the lock screen and in Control Center, and
+   * it is part of what lets playback continue once Safari is backgrounded
+   * or the screen is locked. Entirely cosmetic where it is unsupported, so
+   * every call is guarded — the API is missing in jsdom and on older
+   * WebKit, and individual actions throw when unsupported.
+   */
+  private updateMediaSession(call: Call | null): void {
+    const session =
+      typeof navigator === "undefined" ? undefined : navigator.mediaSession;
+    if (!session) return;
+
+    try {
+      if (!call) {
+        session.playbackState = "paused";
+        return;
+      }
+      if (typeof MediaMetadata !== "undefined") {
+        session.metadata = new MediaMetadata({
+          title:
+            call.talkgroupLabel ||
+            call.talkgroupName ||
+            `Talkgroup ${call.talkgroupId}`,
+          artist: call.systemLabel || "OpenScanner",
+          album: call.talkgroupGroup || call.talkgroupTag || "",
+        });
+      }
+      session.playbackState = "playing";
+    } catch {
+      // Never let lock-screen metadata break playback.
+    }
+  }
+
+  private bindMediaSessionActions(): void {
+    const session =
+      typeof navigator === "undefined" ? undefined : navigator.mediaSession;
+    if (!session) return;
+
+    const bind = (action: MediaSessionAction, fn: () => void) => {
+      try {
+        session.setActionHandler(action, fn);
+      } catch {
+        // Action unsupported on this platform — ignore.
+      }
+    };
+
+    bind("play", () => this.resume());
+    bind("pause", () => this.pause());
+    bind("stop", () => this.pause());
+    bind("nexttrack", () => this.skip());
+    bind("previoustrack", () => this.replay());
+  }
+
   private startPlayback(item: QueueItem): void {
     this.currentItem = item;
     this.callStartCb?.(item.call);
+    this.updateMediaSession(item.call);
     this.ensureContext();
     this.ensureAudioElement();
     if (!this.audio) return;
@@ -443,6 +528,7 @@ class AudioPlayer {
     this.currentItem = null;
     this._playing = false;
     this.playNext();
+    if (!this.currentItem) this.updateMediaSession(null);
   };
 
   private handleError = (): void => {

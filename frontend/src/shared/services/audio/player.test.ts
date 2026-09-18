@@ -75,7 +75,9 @@ class FakeAudioContext {
   createGain() {
     return { gain: { value: 1 }, connect: () => {} };
   }
+  static mediaSourceCalls = 0;
   createMediaElementSource() {
+    FakeAudioContext.mediaSourceCalls += 1;
     return { connect: () => {} };
   }
   resume() {
@@ -119,6 +121,52 @@ async function loadPlayer() {
   return mod.audioPlayer;
 }
 
+class FakeMediaMetadata {
+  title: string;
+  artist: string;
+  album: string;
+  constructor(init: { title?: string; artist?: string; album?: string }) {
+    this.title = init.title ?? "";
+    this.artist = init.artist ?? "";
+    this.album = init.album ?? "";
+  }
+}
+
+interface FakeMediaSession {
+  metadata: FakeMediaMetadata | null;
+  playbackState: string;
+  handlers: Map<string, () => void>;
+  setActionHandler(action: string, fn: () => void): void;
+}
+
+function stubMediaSession(): FakeMediaSession {
+  const session: FakeMediaSession = {
+    metadata: null,
+    playbackState: "none",
+    handlers: new Map(),
+    setActionHandler(action, fn) {
+      session.handlers.set(action, fn);
+    },
+  };
+  Object.defineProperty(navigator, "mediaSession", {
+    configurable: true,
+    get: () => session,
+  });
+  vi.stubGlobal("MediaMetadata", FakeMediaMetadata);
+  return session;
+}
+
+const IPHONE_UA =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 " +
+  "(KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+
+function setUserAgent(ua: string) {
+  Object.defineProperty(navigator, "userAgent", {
+    configurable: true,
+    get: () => ua,
+  });
+}
+
 function setVisibility(state: "visible" | "hidden") {
   Object.defineProperty(document, "visibilityState", {
     configurable: true,
@@ -128,8 +176,12 @@ function setVisibility(state: "visible" | "hidden") {
 }
 
 describe("audioPlayer", () => {
+  const realUA = navigator.userAgent;
+
   beforeEach(() => {
     FakeAudio.instances = [];
+    FakeAudioContext.mediaSourceCalls = 0;
+    setUserAgent(realUA);
     FakeAudio.rejectFirstPlayWith = null;
     vi.stubGlobal("Audio", FakeAudio);
     vi.stubGlobal("AudioContext", FakeAudioContext);
@@ -137,6 +189,7 @@ describe("audioPlayer", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    Reflect.deleteProperty(navigator, "mediaSession");
   });
 
   it("plays without waiting for canplay", async () => {
@@ -219,6 +272,67 @@ describe("audioPlayer", () => {
     document.body.dispatchEvent(new Event("touchstart"));
 
     expect(lastElement().playCalls).toBe(1);
+  });
+
+  it("keeps call audio off the Web Audio graph on iOS", async () => {
+    setUserAgent(IPHONE_UA);
+    const player = await loadPlayer();
+
+    player.enqueue(makeCall(1));
+    await Promise.resolve();
+
+    // iOS mutes Web Audio output with the hardware ring/silent switch but
+    // not media-element output, so routing the element through a
+    // MediaElementAudioSourceNode makes every call silent on a phone set
+    // to silent.
+    expect(FakeAudioContext.mediaSourceCalls).toBe(0);
+
+    // Volume falls back to the element (iOS ignores it, but nothing else
+    // should regress).
+    player.setVolume(0.5);
+    expect(lastElement().volume).toBe(0.5);
+  });
+
+  it("routes through the Web Audio graph elsewhere", async () => {
+    const player = await loadPlayer();
+
+    player.enqueue(makeCall(1));
+    await Promise.resolve();
+
+    expect(FakeAudioContext.mediaSourceCalls).toBe(1);
+  });
+
+  it("publishes the playing call to the OS media session", async () => {
+    // Bound in the constructor, so the stub has to exist before the module
+    // is instantiated.
+    const session = stubMediaSession();
+    const player = await loadPlayer();
+
+    player.enqueue({
+      ...makeCall(1),
+      talkgroupLabel: "Fire Dispatch",
+      systemLabel: "MARCS",
+    });
+    await Promise.resolve();
+
+    // iOS uses this to show the call on the lock screen and to treat the
+    // page as a media app, which is part of what keeps audio alive once
+    // Safari is backgrounded.
+    expect(session.metadata?.title).toBe("Fire Dispatch");
+    expect(session.metadata?.artist).toBe("MARCS");
+    expect(session.playbackState).toBe("playing");
+    expect(session.handlers.has("play")).toBe(true);
+    expect(session.handlers.has("pause")).toBe(true);
+  });
+
+  it("works when the media session API is absent", async () => {
+    const player = await loadPlayer();
+    player.enqueue(makeCall(1));
+    await Promise.resolve();
+
+    // jsdom and older WebKit have no navigator.mediaSession; playback must
+    // not depend on it.
+    expect(player.getCurrentCall()?.id).toBe(1);
   });
 
   it("advances the queue on ended", async () => {
