@@ -36,10 +36,10 @@ interface ScannerState {
   backgroundAudio: boolean;
   /**
    * What the server stream is actually doing. Distinct from
-   * backgroundAudio, which is only the saved preference: after a reload
-   * autoplay policy refuses a stream opened without a user gesture, so the
-   * preference can be on while nothing is playing ("blocked"). "starting"
-   * is an ordinary connect and must not be shown as paused.
+   * backgroundAudio, which is only what the user asked for: the browser can
+   * refuse a stream (autoplay policy, a failed connect), leaving the
+   * request on while nothing plays ("blocked"). "starting" is an ordinary
+   * connect and must not be shown as paused.
    */
   streamState: StreamState;
   pendingTranscripts: Record<number, PendingTranscript>;
@@ -47,9 +47,13 @@ interface ScannerState {
 
 const initialState: ScannerState = {
   isLive: false,
-  backgroundAudio:
-    typeof localStorage !== "undefined" &&
-    localStorage.getItem("openscanner-background-audio") === "true",
+  // Deliberately not restored. A stream can only be opened from a user
+  // gesture, so a remembered "on" is a preference the page cannot act on:
+  // it suspends the normal per-call player and shows an enabled-looking
+  // control while nothing plays, until some unrelated click happens to
+  // satisfy the gesture. Starting off means the button always describes
+  // what is actually happening.
+  backgroundAudio: false,
   // Never restored: a stream can only be opened from a user gesture, so a
   // freshly loaded page is never streaming yet however the preference reads.
   streamState: "idle",
@@ -263,15 +267,6 @@ export const scannerSlice = createSlice({
     },
     setBackgroundAudio(state, action: PayloadAction<boolean>) {
       state.backgroundAudio = action.payload;
-      try {
-        localStorage.setItem(
-          "openscanner-background-audio",
-          action.payload ? "true" : "false",
-        );
-      } catch {
-        // Private mode or blocked storage — the toggle still works for
-        // this session.
-      }
     },
     toggleTG(state, action: PayloadAction<number>) {
       const id = action.payload;

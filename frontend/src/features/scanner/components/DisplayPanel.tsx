@@ -240,7 +240,19 @@ export function DisplayPanel({
         <span>{formatClock(clock, time12hFormat)}</span>
         <div className="flex items-center gap-4">
           {showListenersCount && <span>L: {listenerCount}</span>}
-          <span>Q: {queueCount}</span>
+          {/* The queue is the local player's. While background audio is on
+              the server does the queueing, so this counter is structurally
+              zero — a dash says "not applicable here" instead of implying
+              nothing is waiting. */}
+          <span
+            title={
+              backgroundAudio
+                ? "The server manages the queue while background audio is on"
+                : undefined
+            }
+          >
+            Q: {backgroundAudio ? "\u2014" : queueCount}
+          </span>
         </div>
       </div>
 

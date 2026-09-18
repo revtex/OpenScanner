@@ -187,10 +187,9 @@ export function useScanner() {
     };
   }, [dispatch]);
 
-  // Keep the players consistent with the stored flag, which also covers a
-  // page that loads with background audio already enabled — the stream then
-  // opens on the first interaction, since autoplay policy refuses one
-  // opened without a gesture.
+  // Keep the players consistent: exactly one of them owns playback. The
+  // flag only ever changes from a tap on BKGND, so the gesture that
+  // autoplay policy requires is already in hand.
   useEffect(() => {
     audioPlayer.setSuspended(backgroundAudio);
     if (backgroundAudio) {

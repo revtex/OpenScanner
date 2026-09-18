@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   scannerSlice,
   callReceived,
@@ -381,5 +381,49 @@ describe("scannerSlice", () => {
       expect(state.avoidList).toHaveLength(2);
       expect(state.avoidList.map((a) => a.talkgroupId)).toEqual([20, 30]);
     });
+  });
+});
+
+describe("backgroundAudio", () => {
+  afterEach(() => {
+    localStorage.clear();
+    vi.resetModules();
+  });
+
+  /**
+   * Re-import the slice so its initialState is recomputed against whatever
+   * storage currently holds. Without the reset the static import at the top
+   * of this file is reused and the assertion would pass vacuously.
+   */
+  async function freshInitialState(seed: string | null) {
+    vi.resetModules();
+    localStorage.clear();
+    if (seed !== null) {
+      localStorage.setItem("openscanner-background-audio", seed);
+    }
+    const mod = await import("./scannerSlice");
+    return mod.scannerSlice.reducer(undefined, { type: "@@INIT" });
+  }
+
+  it("starts off even when an old stored preference says otherwise", async () => {
+    // Regression: this used to be restored from localStorage. A stream can
+    // only be opened from a user gesture, so a restored "on" suspended the
+    // normal player and showed an enabled control while nothing played,
+    // until an unrelated click happened to satisfy the gesture.
+    const state = await freshInitialState("true");
+
+    expect(state.backgroundAudio).toBe(false);
+    expect(state.streamState).toBe("idle");
+  });
+
+  it("does not write the preference back to storage", async () => {
+    const mod = await import("./scannerSlice");
+    const state = mod.scannerSlice.reducer(
+      undefined,
+      mod.setBackgroundAudio(true),
+    );
+
+    expect(state.backgroundAudio).toBe(true);
+    expect(localStorage.getItem("openscanner-background-audio")).toBeNull();
   });
 });
