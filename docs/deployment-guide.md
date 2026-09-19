@@ -123,15 +123,37 @@ finds nothing to do.
 
 ### Docker
 
+The image's entrypoint runs the server, so the tool needs `--entrypoint`.
+`--user 1001` matters too: without it the container runs as root and leaves a
+root-owned backup file in a data directory owned by `appuser`, which the server
+then cannot manage.
+
 ```bash
 docker compose down
-docker compose run --rm --entrypoint ./squelch-rekey squelch \
-  -db /data/squelch.db
-# then, once the report looks right:
-docker compose run --rm --entrypoint ./squelch-rekey squelch \
-  -db /data/squelch.db -apply
+
+# Report only.
+docker compose run --rm --no-deps --user 1001 \
+  --entrypoint ./squelch-rekey squelch -db /data/squelch.db
+
+# Then, once the report looks right:
+docker compose run --rm --no-deps --user 1001 \
+  --entrypoint ./squelch-rekey squelch -db /data/squelch.db -apply
+
 docker compose up -d
 ```
+
+`-db` can be omitted — the image already sets `SQUELCH_DB_FILE=/data/squelch.db`
+— but passing it explicitly is worth the keystrokes when the command rewrites
+every secret you have.
+
+The encryption key is inherited from the service's environment, so if your
+compose file sets `SQUELCH_ENCRYPTION_KEY` the tool picks it up with no extra
+flag. If it is in a `.env` or a secret rather than the service environment, pass
+it with `-key`.
+
+The backup lands in the same volume, beside the database, as
+`squelch.db.pre-rekey-<timestamp>`. Copy it somewhere off the host before you
+start the server again.
 
 ### 3. Rename your environment variables
 

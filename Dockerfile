@@ -24,7 +24,9 @@ RUN go build -ldflags="-s -w -X github.com/revtex/squelch/internal/config.Versio
 # squelch-rekey re-encrypts secrets after the v3.0.0 key-derivation
 # change. It ships in the image because the operators who need it are
 # running the container, and the server refuses to start until it has
-# been run: `docker compose run --rm squelch ./squelch-rekey -db ...`.
+# been run. It needs --entrypoint, because the image's entrypoint execs
+# the server: `docker compose run --rm --no-deps --user 1001 \
+#   --entrypoint ./squelch-rekey squelch -db /data/squelch.db`.
 RUN go build -ldflags="-s -w" -o /squelch-rekey ./cmd/rekey
 
 # Stage 3: Minimal runtime image
