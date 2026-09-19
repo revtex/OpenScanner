@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // DirMonitorsList returns all dirmonitors.

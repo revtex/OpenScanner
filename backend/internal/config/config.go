@@ -14,6 +14,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/revtex/squelch/internal/envcompat"
 )
 
 // Version is set at build time via ldflags (-X ...config.Version=...).
@@ -23,7 +25,7 @@ var Version = "dev"
 // Config holds all server startup configuration.
 type Config struct {
 	Listen            string // HTTP listen address (default ":3022")
-	DBFile            string // SQLite database file path (default "openscanner.db")
+	DBFile            string // SQLite database file path (default "squelch.db")
 	RecordingsDir     string // Directory for call audio recordings (default: executable dir)
 	SSLListen         string // HTTPS listen address
 	SSLCert           string // TLS certificate file (PEM)
@@ -33,7 +35,7 @@ type Config struct {
 	EncryptionKeyFile string // Path to file containing encryption key
 	AdminPassword     string // Reset first admin user's password on startup
 	Timezone          string // IANA timezone for recorder timestamps (default: TZ env or "UTC")
-	ConfigFile        string // Path to JSON config file (default "openscanner.json")
+	ConfigFile        string // Path to JSON config file (default "squelch.json")
 	ConfigSave        bool   // Write current flags to JSON config file and exit
 	ShowVersion       bool   // Print version and exit
 	Service           string // Service command: install, uninstall, start, stop, restart
@@ -41,7 +43,7 @@ type Config struct {
 
 // jsonFileConfig is the on-disk startup config. It MUST NOT contain any
 // secret material. The encryption key is supplied via --encryption-key,
-// --encryption-key-file, or the OPENSCANNER_ENCRYPTION_KEY env var only.
+// --encryption-key-file, or the SQUELCH_ENCRYPTION_KEY env var only.
 type jsonFileConfig struct {
 	Listen        string `json:"listen"`
 	DBFile        string `json:"db_file"`
@@ -70,7 +72,7 @@ func Load() (*Config, error) {
 
 	// Define CLI flags.
 	flag.StringVar(&cfg.Listen, "listen", ":3022", "HTTP listen address")
-	flag.StringVar(&cfg.DBFile, "db-file", "openscanner.db", "SQLite database file path")
+	flag.StringVar(&cfg.DBFile, "db-file", "squelch.db", "SQLite database file path")
 	flag.StringVar(&cfg.RecordingsDir, "recordings-dir", defaultRecordingsDir, "Directory for call audio recordings")
 	flag.StringVar(&cfg.SSLListen, "ssl-listen", "", "HTTPS listen address")
 	flag.StringVar(&cfg.SSLCert, "ssl-cert", "", "TLS certificate file (PEM)")
@@ -80,7 +82,7 @@ func Load() (*Config, error) {
 	flag.StringVar(&cfg.EncryptionKeyFile, "encryption-key-file", "", "Path to file containing encryption key")
 	flag.StringVar(&cfg.AdminPassword, "admin-password", "", "Reset first admin user's password on startup")
 	flag.StringVar(&cfg.Timezone, "timezone", "", "IANA timezone for recorder timestamps (e.g. America/New_York)")
-	flag.StringVar(&cfg.ConfigFile, "config", "openscanner.json", "Path to JSON config file")
+	flag.StringVar(&cfg.ConfigFile, "config", "squelch.json", "Path to JSON config file")
 	flag.BoolVar(&cfg.ConfigSave, "config-save", false, "Write current flags to JSON config file and exit")
 	flag.BoolVar(&cfg.ShowVersion, "version", false, "Print version and exit")
 	flag.StringVar(&cfg.Service, "service", "", "Service command: install, uninstall, start, stop, restart")
@@ -125,9 +127,9 @@ func loadJSON(cfg *Config) {
 	// Refuse to start if the legacy (insecure) encryption_key field is present
 	// in the JSON config. The encryption key must come from env var or CLI flag.
 	if fileCfg.LegacyEncryptionKey != "" {
-		slog.Error("insecure config: 'encryption_key' field found in JSON config file — remove it and supply the key via --encryption-key, --encryption-key-file, or OPENSCANNER_ENCRYPTION_KEY",
+		slog.Error("insecure config: 'encryption_key' field found in JSON config file — remove it and supply the key via --encryption-key, --encryption-key-file, or SQUELCH_ENCRYPTION_KEY",
 			"file", cfg.ConfigFile)
-		fmt.Fprintf(os.Stderr, "openscanner: refusing to start — remove 'encryption_key' from %s; pass the key via --encryption-key, --encryption-key-file, or OPENSCANNER_ENCRYPTION_KEY\n", cfg.ConfigFile)
+		fmt.Fprintf(os.Stderr, "squelch: refusing to start — remove 'encryption_key' from %s; pass the key via --encryption-key, --encryption-key-file, or SQUELCH_ENCRYPTION_KEY\n", cfg.ConfigFile)
 		os.Exit(1)
 	}
 
@@ -159,37 +161,37 @@ func loadJSON(cfg *Config) {
 
 // applyEnv applies environment variable overrides.
 func applyEnv(cfg *Config) {
-	if v := os.Getenv("OPENSCANNER_LISTEN"); v != "" {
+	if v := envcompat.Lookup("LISTEN"); v != "" {
 		cfg.Listen = v
 	}
-	if v := os.Getenv("OPENSCANNER_DB_FILE"); v != "" {
+	if v := envcompat.Lookup("DB_FILE"); v != "" {
 		cfg.DBFile = v
 	}
-	if v := os.Getenv("OPENSCANNER_RECORDINGS_DIR"); v != "" {
+	if v := envcompat.Lookup("RECORDINGS_DIR"); v != "" {
 		cfg.RecordingsDir = v
 	}
-	if v := os.Getenv("OPENSCANNER_SSL_LISTEN"); v != "" {
+	if v := envcompat.Lookup("SSL_LISTEN"); v != "" {
 		cfg.SSLListen = v
 	}
-	if v := os.Getenv("OPENSCANNER_SSL_CERT"); v != "" {
+	if v := envcompat.Lookup("SSL_CERT"); v != "" {
 		cfg.SSLCert = v
 	}
-	if v := os.Getenv("OPENSCANNER_SSL_KEY"); v != "" {
+	if v := envcompat.Lookup("SSL_KEY"); v != "" {
 		cfg.SSLKey = v
 	}
-	if v := os.Getenv("OPENSCANNER_SSL_AUTO_CERT"); v != "" {
+	if v := envcompat.Lookup("SSL_AUTO_CERT"); v != "" {
 		cfg.SSLAutoCert = v
 	}
-	if v := os.Getenv("OPENSCANNER_ENCRYPTION_KEY"); v != "" {
+	if v := envcompat.Lookup("ENCRYPTION_KEY"); v != "" {
 		cfg.EncryptionKey = v
 	}
-	if v := os.Getenv("OPENSCANNER_ENCRYPTION_KEY_FILE"); v != "" {
+	if v := envcompat.Lookup("ENCRYPTION_KEY_FILE"); v != "" {
 		cfg.EncryptionKeyFile = v
 	}
-	if v := os.Getenv("OPENSCANNER_ADMIN_PASSWORD"); v != "" {
+	if v := envcompat.Lookup("ADMIN_PASSWORD"); v != "" {
 		cfg.AdminPassword = v
 	}
-	if v := os.Getenv("OPENSCANNER_TIMEZONE"); v != "" {
+	if v := envcompat.Lookup("TIMEZONE"); v != "" {
 		cfg.Timezone = v
 	} else if v := os.Getenv("TZ"); v != "" {
 		cfg.Timezone = v
@@ -293,7 +295,7 @@ func ValidateJSONFile(path string) error {
 	}
 
 	if fileCfg.LegacyEncryptionKey != "" {
-		return fmt.Errorf("invalid config: the 'encryption_key' field is not allowed in the JSON config — supply the key via --encryption-key, --encryption-key-file, or OPENSCANNER_ENCRYPTION_KEY")
+		return fmt.Errorf("invalid config: the 'encryption_key' field is not allowed in the JSON config — supply the key via --encryption-key, --encryption-key-file, or SQUELCH_ENCRYPTION_KEY")
 	}
 
 	if fileCfg.Listen == "" {
@@ -329,7 +331,7 @@ func ensureDirWritable(path string) error {
 	if err := os.MkdirAll(path, 0o755); err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(path, ".openscanner-writecheck-*")
+	tmp, err := os.CreateTemp(path, ".squelch-writecheck-*")
 	if err != nil {
 		return err
 	}
@@ -342,15 +344,15 @@ func ensureDirWritable(path string) error {
 
 // PrintUsage writes the full CLI help text to w.
 func PrintUsage(w io.Writer) {
-	fmt.Fprintf(w, `OpenScanner — Radio Call Manager (v%s)
+	fmt.Fprintf(w, `Squelch — Radio Call Manager (v%s)
 
 Usage:
-  openscanner [flags]                   Start the server
-  openscanner <command> [args]          Run a command
-  openscanner help [command]            Show help for a command
+  squelch [flags]                   Start the server
+  squelch <command> [args]          Run a command
+  squelch help [command]            Show help for a command
 
 Commands:
-  setup               Install OpenScanner as a system service
+  setup               Install Squelch as a system service
   upgrade             Upgrade the installed binary (with service restart)
   config validate     Validate a JSON config file
   service doctor      Show service installation and status diagnostics
@@ -364,10 +366,10 @@ Commands:
 
 Server Flags:
   --listen <addr>         HTTP listen address (default ":3022")
-  --db-file <path>        SQLite database file path (default "openscanner.db")
+  --db-file <path>        SQLite database file path (default "squelch.db")
   --recordings-dir <dir>  Directory for call audio recordings
   --timezone <tz>         IANA timezone (e.g. America/New_York)
-  --config <path>         Path to JSON config file (default "openscanner.json")
+  --config <path>         Path to JSON config file (default "squelch.json")
   --config-save           Write current flags to JSON config file and exit
   --version               Print version and exit
 
@@ -387,35 +389,35 @@ Service Flags:
 
 CLI Flags (for remote commands):
   --server <url>          Server URL (default "http://localhost:3022")
-                          Also: OPENSCANNER_SERVER env var
+                          Also: SQUELCH_SERVER env var
 
 Environment Variables:
-  OPENSCANNER_LISTEN          Equivalent to --listen
-  OPENSCANNER_DB_FILE         Equivalent to --db-file
-  OPENSCANNER_RECORDINGS_DIR  Equivalent to --recordings-dir
-  OPENSCANNER_SSL_LISTEN      Equivalent to --ssl-listen
-  OPENSCANNER_SSL_CERT        Equivalent to --ssl-cert
-  OPENSCANNER_SSL_KEY         Equivalent to --ssl-key
-  OPENSCANNER_SSL_AUTO_CERT   Equivalent to --ssl-auto-cert
-  OPENSCANNER_ENCRYPTION_KEY       Equivalent to --encryption-key
-  OPENSCANNER_ENCRYPTION_KEY_FILE  Equivalent to --encryption-key-file
-  OPENSCANNER_ADMIN_PASSWORD  Equivalent to --admin-password
-  OPENSCANNER_TIMEZONE        Equivalent to --timezone
-  OPENSCANNER_SERVER          Server URL for CLI commands
+  SQUELCH_LISTEN          Equivalent to --listen
+  SQUELCH_DB_FILE         Equivalent to --db-file
+  SQUELCH_RECORDINGS_DIR  Equivalent to --recordings-dir
+  SQUELCH_SSL_LISTEN      Equivalent to --ssl-listen
+  SQUELCH_SSL_CERT        Equivalent to --ssl-cert
+  SQUELCH_SSL_KEY         Equivalent to --ssl-key
+  SQUELCH_SSL_AUTO_CERT   Equivalent to --ssl-auto-cert
+  SQUELCH_ENCRYPTION_KEY       Equivalent to --encryption-key
+  SQUELCH_ENCRYPTION_KEY_FILE  Equivalent to --encryption-key-file
+  SQUELCH_ADMIN_PASSWORD  Equivalent to --admin-password
+  SQUELCH_TIMEZONE        Equivalent to --timezone
+  SQUELCH_SERVER          Server URL for CLI commands
   TZ                          Fallback timezone
 
 Configuration Precedence:
   CLI flags > environment variables > JSON config file > built-in defaults
 
-Run 'openscanner help <command>' for details on a specific command.
+Run 'squelch help <command>' for details on a specific command.
 `, Version)
 }
 
 // commandHelp maps command names to their detailed help text.
 var commandHelp = map[string]string{
-	"setup": `Usage: openscanner setup [flags]
+	"setup": `Usage: squelch setup [flags]
 
-Install OpenScanner as a system service. Creates config file, database
+Install Squelch as a system service. Creates config file, database
 directory, recordings directory, copies the binary, and registers the service.
 
 Flags:
@@ -428,12 +430,12 @@ Flags:
   --force                  Overwrite/reinstall when setup already exists
 
 Examples:
-  openscanner setup --interactive
-  openscanner setup --listen 0.0.0.0:8080 --force`,
+  squelch setup --interactive
+  squelch setup --listen 0.0.0.0:8080 --force`,
 
-	"upgrade": `Usage: openscanner upgrade [flags]
+	"upgrade": `Usage: squelch upgrade [flags]
 
-Upgrade the installed OpenScanner binary. Stops the service, copies the
+Upgrade the installed Squelch binary. Stops the service, copies the
 new binary, and restarts if it was previously running.
 
 Flags:
@@ -442,10 +444,10 @@ Flags:
   --config <path>          Path to JSON config file
 
 Examples:
-  openscanner upgrade
-  openscanner upgrade --binary /tmp/openscanner-new`,
+  squelch upgrade
+  squelch upgrade --binary /tmp/squelch-new`,
 
-	"config": `Usage: openscanner config validate [flags]
+	"config": `Usage: squelch config validate [flags]
 
 Validate a JSON configuration file. Checks JSON syntax, required fields,
 listen address format, and filesystem permissions.
@@ -454,37 +456,37 @@ Flags:
   --config <path>  Path to JSON config file
 
 Examples:
-  openscanner config validate
-  openscanner config validate --config /etc/openscanner/openscanner.json`,
+  squelch config validate
+  squelch config validate --config /etc/squelch/squelch.json`,
 
-	"service": `Usage: openscanner service doctor
+	"service": `Usage: squelch service doctor
 
 Show service installation status and diagnostics, including whether the
 service is installed, running, and the default config/binary paths.
 
 Examples:
-  openscanner service doctor`,
+  squelch service doctor`,
 
-	"login": `Usage: openscanner login [flags]
+	"login": `Usage: squelch login [flags]
 
-Authenticate with a running OpenScanner server. Prompts for username and
-password interactively. On success, saves the JWT to ~/.openscanner-token.
+Authenticate with a running Squelch server. Prompts for username and
+password interactively. On success, saves the JWT to ~/.squelch-token.
 
 Flags:
   --server <url>  Server URL (default "http://localhost:3022")
 
 Examples:
-  openscanner login
-  openscanner login --server https://scanner.example.com`,
+  squelch login
+  squelch login --server https://scanner.example.com`,
 
-	"logout": `Usage: openscanner logout
+	"logout": `Usage: squelch logout
 
-Remove the saved authentication token (~/.openscanner-token).
+Remove the saved authentication token (~/.squelch-token).
 
 Examples:
-  openscanner logout`,
+  squelch logout`,
 
-	"change-password": `Usage: openscanner change-password [flags]
+	"change-password": `Usage: squelch change-password [flags]
 
 Change the current user's password. Prompts for the current password
 and the new password (with confirmation). Requires prior login.
@@ -493,9 +495,9 @@ Flags:
   --server <url>  Server URL (default "http://localhost:3022")
 
 Examples:
-  openscanner change-password`,
+  squelch change-password`,
 
-	"config-get": `Usage: openscanner config-get [key] [flags]
+	"config-get": `Usage: squelch config-get [key] [flags]
 
 Retrieve application settings from the running server. Without a key,
 prints all settings. With a key, prints only that setting. Requires
@@ -505,10 +507,10 @@ Flags:
   --server <url>  Server URL (default "http://localhost:3022")
 
 Examples:
-  openscanner config-get
-  openscanner config-get audioConversion`,
+  squelch config-get
+  squelch config-get audioConversion`,
 
-	"config-set": `Usage: openscanner config-set <key> <value> [flags]
+	"config-set": `Usage: squelch config-set <key> <value> [flags]
 
 Update an application setting on the running server. Requires admin login.
 
@@ -516,10 +518,10 @@ Flags:
   --server <url>  Server URL (default "http://localhost:3022")
 
 Examples:
-  openscanner config-set audioConversion 2
-  openscanner config-set transcriptionEnabled true`,
+  squelch config-set audioConversion 2
+  squelch config-set transcriptionEnabled true`,
 
-	"user-add": `Usage: openscanner user-add [flags]
+	"user-add": `Usage: squelch user-add [flags]
 
 Create a new user on the running server. Prompts for username, password,
 and role (admin or listener) interactively. Requires admin login.
@@ -528,9 +530,9 @@ Flags:
   --server <url>  Server URL (default "http://localhost:3022")
 
 Examples:
-  openscanner user-add`,
+  squelch user-add`,
 
-	"user-remove": `Usage: openscanner user-remove <username> [flags]
+	"user-remove": `Usage: squelch user-remove <username> [flags]
 
 Delete a user by username on the running server. Requires admin login.
 
@@ -538,7 +540,7 @@ Flags:
   --server <url>  Server URL (default "http://localhost:3022")
 
 Examples:
-  openscanner user-remove jdoe`,
+  squelch user-remove jdoe`,
 }
 
 // RunHelp prints help for a specific command, or the general usage.
@@ -551,7 +553,7 @@ func RunHelp(topic string) int {
 
 	text, ok := commandHelp[topic]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\nRun 'openscanner help' for a list of commands.\n", topic)
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\nRun 'squelch help' for a list of commands.\n", topic)
 		return 1
 	}
 	fmt.Println(text)

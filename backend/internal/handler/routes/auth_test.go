@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/openscanner/openscanner/internal/auth"
-	"github.com/openscanner/openscanner/internal/middleware"
+	"github.com/revtex/squelch/internal/auth"
+	"github.com/revtex/squelch/internal/middleware"
 )
 
 func TestPostLogin_Success(t *testing.T) {

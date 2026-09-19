@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/handler/shared"
+	"github.com/revtex/squelch/internal/db"
+	"github.com/revtex/squelch/internal/handler/shared"
 )
 
 // GetCalls handles GET /api/calls — paginated call archive search.

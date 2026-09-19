@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openscanner/openscanner/migrations"
+	"github.com/revtex/squelch/migrations"
 	_ "modernc.org/sqlite" // register "sqlite" driver
 )
 

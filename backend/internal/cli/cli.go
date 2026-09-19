@@ -1,4 +1,4 @@
-// Package cli implements CLI subcommands that call the running OpenScanner HTTP API.
+// Package cli implements CLI subcommands that call the running Squelch HTTP API.
 package cli
 
 import (
@@ -15,11 +15,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/revtex/squelch/internal/envcompat"
+
 	"golang.org/x/term"
 )
 
 // tokenFileName is the file in the user's home directory that stores the JWT.
-const tokenFileName = ".openscanner-token"
+const tokenFileName = ".squelch-token"
+
+// legacyTokenFileName is the pre-rename filename. Still read so the
+// rebrand does not log people out of the CLI; only the new name is
+// written, so the old file ages out on the next login.
+const legacyTokenFileName = ".openscanner-token"
 
 // Run checks os.Args for a CLI subcommand and executes it.
 // Returns true if a subcommand was handled (caller should exit), false otherwise.
@@ -46,7 +53,7 @@ func Run() bool {
 		os.Exit(runConfigGet(serverURL, key))
 	case "config-set":
 		if len(args) < 3 {
-			slog.Error("usage: openscanner config-set <key> <value>")
+			slog.Error("usage: squelch config-set <key> <value>")
 			os.Exit(1)
 		}
 		os.Exit(runConfigSet(serverURL, args[1], args[2]))
@@ -54,7 +61,7 @@ func Run() bool {
 		os.Exit(runUserAdd(serverURL))
 	case "user-remove":
 		if len(args) < 2 {
-			slog.Error("usage: openscanner user-remove <username>")
+			slog.Error("usage: squelch user-remove <username>")
 			os.Exit(1)
 		}
 		os.Exit(runUserRemove(serverURL, args[1]))
@@ -104,7 +111,7 @@ func resolveServerURL() string {
 		}
 	}
 	if raw == "http://localhost:3022" {
-		if v := os.Getenv("OPENSCANNER_SERVER"); v != "" {
+		if v := envcompat.Lookup("SERVER"); v != "" {
 			raw = v
 		}
 	}
@@ -118,15 +125,15 @@ func resolveServerURL() string {
 func validateServerURL(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "openscanner: invalid --server URL %q: %v\n", raw, err)
+		fmt.Fprintf(os.Stderr, "squelch: invalid --server URL %q: %v\n", raw, err)
 		os.Exit(2)
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
-		fmt.Fprintf(os.Stderr, "openscanner: --server URL must use http or https, got %q\n", u.Scheme)
+		fmt.Fprintf(os.Stderr, "squelch: --server URL must use http or https, got %q\n", u.Scheme)
 		os.Exit(2)
 	}
 	if u.Host == "" {
-		fmt.Fprintf(os.Stderr, "openscanner: --server URL %q is missing a host\n", raw)
+		fmt.Fprintf(os.Stderr, "squelch: --server URL %q is missing a host\n", raw)
 		os.Exit(2)
 	}
 	// Rebuild the URL from the parsed components to strip any userinfo,
@@ -145,13 +152,26 @@ func tokenPath() string {
 	return filepath.Join(home, tokenFileName)
 }
 
-// loadToken reads the stored JWT from disk.
+// loadToken reads the stored JWT from disk, falling back to the
+// pre-rename filename so an existing session survives the upgrade.
 func loadToken() (string, error) {
 	data, err := os.ReadFile(tokenPath())
 	if err != nil {
-		return "", fmt.Errorf("not logged in (run 'openscanner login' first)")
+		if legacy, lerr := os.ReadFile(legacyTokenPath()); lerr == nil {
+			return strings.TrimSpace(string(legacy)), nil
+		}
+		return "", fmt.Errorf("not logged in (run 'squelch login' first)")
 	}
 	return strings.TrimSpace(string(data)), nil
+}
+
+// legacyTokenPath returns the pre-rename token file location.
+func legacyTokenPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return legacyTokenFileName
+	}
+	return filepath.Join(home, legacyTokenFileName)
 }
 
 // saveToken writes the JWT to disk with restricted permissions.
@@ -280,7 +300,7 @@ func runLogin(serverURL string) int {
 	fmt.Printf("Logged in as %s (%s)\n", uname, role)
 
 	if needChange, ok := result["passwordNeedChange"].(bool); ok && needChange {
-		fmt.Println("Note: password change required. Run 'openscanner change-password'.")
+		fmt.Println("Note: password change required. Run 'squelch change-password'.")
 	}
 	return 0
 }

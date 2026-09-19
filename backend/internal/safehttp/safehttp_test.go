@@ -62,7 +62,7 @@ func TestIsBlockedIP(t *testing.T) {
 
 func TestSafeDialContext_BlocksPrivate(t *testing.T) {
 	// httptest.NewServer binds on 127.0.0.1 — default behaviour must allow it
-	// (homelab-friendly), and OPENSCANNER_BLOCK_INTERNAL_HTTP must block it.
+	// (homelab-friendly), and SQUELCH_BLOCK_INTERNAL_HTTP must block it.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -81,7 +81,7 @@ func TestSafeDialContext_BlocksPrivate(t *testing.T) {
 	}
 
 	// Opt in to blocking via env — should now be rejected.
-	t.Setenv("OPENSCANNER_BLOCK_INTERNAL_HTTP", "1")
+	t.Setenv("SQUELCH_BLOCK_INTERNAL_HTTP", "1")
 	resetBlockInternalForTest(t)
 	client = Client(2 * time.Second)
 	_, err = client.Get(srv.URL)
@@ -123,7 +123,7 @@ func TestBlockInternalEnvParsing(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("OPENSCANNER_BLOCK_INTERNAL_HTTP", tc.env)
+			t.Setenv("SQUELCH_BLOCK_INTERNAL_HTTP", tc.env)
 			resetBlockInternalForTest(t)
 			if got := BlockInternal(); got != tc.want {
 				t.Fatalf("BlockInternal() with env=%q = %v, want %v", tc.env, got, tc.want)

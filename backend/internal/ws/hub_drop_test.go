@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // fillSend pre-fills c.send to its capacity so every subsequent trySend drops.

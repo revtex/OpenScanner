@@ -20,9 +20,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/handler/shared"
-	streamsvc "github.com/openscanner/openscanner/internal/stream"
+	"github.com/revtex/squelch/internal/db"
+	"github.com/revtex/squelch/internal/handler/shared"
+	streamsvc "github.com/revtex/squelch/internal/stream"
 )
 
 // maxSidLen caps the client-supplied stream id. It is only ever echoed

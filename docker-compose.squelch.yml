@@ -1,6 +1,6 @@
 services:
-  openscanner:
-    image: ghcr.io/revtex/openscanner:dev
+  squelch:
+    image: ghcr.io/revtex/squelch:dev
     # build: .  # uncomment to build locally instead
     ports:
       - "3022:3022"
@@ -9,28 +9,28 @@ services:
       - ./data:/data
     environment:
       ## Core
-      - OPENSCANNER_DB_FILE=/data/openscanner.db
-      - OPENSCANNER_RECORDINGS_DIR=/data/recordings
-      - OPENSCANNER_LISTEN=0.0.0.0:3022
+      - SQUELCH_DB_FILE=/data/squelch.db
+      - SQUELCH_RECORDINGS_DIR=/data/recordings
+      - SQUELCH_LISTEN=0.0.0.0:3022
       - TZ=America/New_York
-      # - OPENSCANNER_TIMEZONE=America/New_York  # overrides TZ for OpenScanner only
+      # - SQUELCH_TIMEZONE=America/New_York  # overrides TZ for Squelch only
 
       ## TLS / HTTPS (pick one option)
       # Option A — your own certificate:
-      # - OPENSCANNER_SSL_LISTEN=0.0.0.0:3443
-      # - OPENSCANNER_SSL_CERT=/data/tls/cert.pem
-      # - OPENSCANNER_SSL_KEY=/data/tls/key.pem
+      # - SQUELCH_SSL_LISTEN=0.0.0.0:3443
+      # - SQUELCH_SSL_CERT=/data/tls/cert.pem
+      # - SQUELCH_SSL_KEY=/data/tls/key.pem
       # Option B — automatic Let's Encrypt:
-      # - OPENSCANNER_SSL_AUTO_CERT=scanner.example.com
+      # - SQUELCH_SSL_AUTO_CERT=scanner.example.com
 
       ## Secrets encryption (AES-256-GCM)
       # Generate a key:  openssl rand -hex 32
-      # - OPENSCANNER_ENCRYPTION_KEY=your-key-here
+      # - SQUELCH_ENCRYPTION_KEY=your-key-here
       # Or read from a Docker secret (chmod 600 the source file):
-      # - OPENSCANNER_ENCRYPTION_KEY_FILE=/run/secrets/encryption_key
+      # - SQUELCH_ENCRYPTION_KEY_FILE=/run/secrets/encryption_key
 
       ## Admin password reset (remove after first startup)
-      # - OPENSCANNER_ADMIN_PASSWORD=new-password
+      # - SQUELCH_ADMIN_PASSWORD=new-password
     # secrets:
     #   - encryption_key
     healthcheck:
@@ -69,7 +69,7 @@ services:
           echo "[init] writing default mosquitto.conf"
           mkdir -p /mosquitto/config /mosquitto/data
           cat > "$$CONF" <<'EOF'
-        # Default OpenScanner-bundled mosquitto config.
+        # Default Squelch-bundled mosquitto config.
         # Ships with anonymous access so the broker boots cleanly on a
         # fresh checkout. Lock it down after creating a user with
         # `mosquitto_passwd` (see docs/tr-mqtt-guide.md).

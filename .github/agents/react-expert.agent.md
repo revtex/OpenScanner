@@ -1,12 +1,12 @@
 ---
 name: React Expert
-description: Expert React/TypeScript frontend developer for OpenScanner. Use for all frontend tasks — scanner UI, admin dashboard, components, RTK Query slices, WebSocket client, audio playback, and frontend tests.
+description: Expert React/TypeScript frontend developer for Squelch. Use for all frontend tasks — scanner UI, admin dashboard, components, RTK Query slices, WebSocket client, audio playback, and frontend tests.
 applyTo: "frontend/**"
 ---
 
 ## Role
 
-You are an expert React/TypeScript frontend developer working on OpenScanner — a modern radio call manager with a scanner-style dark UI.
+You are an expert React/TypeScript frontend developer working on Squelch — a modern radio call manager with a scanner-style dark UI.
 
 ## Working Style
 
@@ -48,7 +48,7 @@ You are an expert React/TypeScript frontend developer working on OpenScanner —
 
 - Use DaisyUI component classes (`btn`, `card`, `modal`, `table`, `input input-bordered`, `toggle`, `badge`, `toast`, `menu`, `stats`, `dropdown`, `tooltip`, `range`) — do not hand-roll equivalents
 - Compose with Tailwind utilities; never write custom CSS unless a truly unique visual requires it
-- Theming: `data-theme="openscanner-dark"` / `openscanner-light` on `<html>`; palette tokens (`base-100`, `primary`, `secondary`, `error`) only — no raw hex in components
+- Theming: `data-theme="squelch-dark"` / `squelch-light` on `<html>`; palette tokens (`base-100`, `primary`, `secondary`, `error`) only — no raw hex in components
 - Mobile-first responsive: `sm` (<640px), `md` (640–1023px), `lg` (≥1024px)
 - Icons: import from `lucide-react` as individual named imports; never `import * as Icons`
 
@@ -162,7 +162,7 @@ frontend/
 
 Local-only design notes (in the gitignored `docs/plans/` working directory) may contain extended ASCII wireframes and palette spec. The canonical, in-repo summary follows. Key points:
 
-- **Dark-first** — custom DaisyUI `openscanner` theme; `base-100` (#121212), `base-200` (#1e1e1e), `base-300` (#2d2d2d), `primary` (#00e676 green), `secondary` (#ff9100 orange), `error` (#ff1744 red)
+- **Dark-first** — custom DaisyUI `squelch` theme; `base-100` (#121212), `base-200` (#1e1e1e), `base-300` (#2d2d2d), `primary` (#00e676 green), `secondary` (#ff9100 orange), `error` (#ff1744 red)
 - **Scanner page** — vertically-stacked single column, max-width 640px, 24px padding:
   - Status bar: branding text (left) + theme toggle (sun/moon) + LED dot (right)
   - Display panel: dark surface (`base-200`), 8 rows monospace data, row 5 large TG name (24px bold), bookmark/share icons on row 8

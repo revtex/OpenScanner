@@ -1,11 +1,11 @@
-# OpenScanner — Root Makefile
+# Squelch — Root Makefile
 # Delegates to backend and frontend sub-makes
 
 .PHONY: all build dev test lint clean migrate generate
 
 EMBED_DIR=backend/internal/static/dist
 BUILD_DIR=build
-BACKEND_BINARY=$(BUILD_DIR)/openscanner
+BACKEND_BINARY=$(BUILD_DIR)/squelch
 
 all: build
 

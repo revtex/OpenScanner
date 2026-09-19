@@ -14,9 +14,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/openscanner/openscanner/internal/auth"
-	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/handler/shared"
+	"github.com/revtex/squelch/internal/auth"
+	"github.com/revtex/squelch/internal/db"
+	"github.com/revtex/squelch/internal/handler/shared"
 )
 
 // WSDisconnecter is the subset of ws.Hub used by Handler for session eviction.

@@ -1,4 +1,4 @@
-// Package main is the entry point for the OpenScanner migration runner.
+// Package main is the entry point for the Squelch migration runner.
 package main
 
 import (
@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/openscanner/openscanner/internal/config"
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/config"
+	"github.com/revtex/squelch/internal/db"
 )
 
 func main() {

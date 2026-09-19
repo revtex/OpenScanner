@@ -211,7 +211,7 @@ export default function ToolsPanel() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "openscanner-config.json";
+      a.download = "squelch-config.json";
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -341,7 +341,7 @@ export default function ToolsPanel() {
                 className="file-input file-input-bordered file-input-sm w-full"
               />
               <p className="text-xs text-base-content/50">
-                Supports OpenScanner and rdio-scanner CSV formats. Headers are
+                Supports Squelch and rdio-scanner CSV formats. Headers are
                 auto-detected; tag and group names are resolved automatically.
               </p>
               <button

@@ -1,3 +1,4 @@
+import { readStored } from "@/shared/utils/storage";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGetSetupStatusQuery } from "@/app/api";
@@ -35,7 +36,7 @@ export default function Scanner() {
     showListenersCount?: boolean;
   }>(() => {
     try {
-      const raw = sessionStorage.getItem("openscanner-display-prefs");
+      const raw = readStored(sessionStorage, "squelch-display-prefs");
       if (raw)
         return JSON.parse(raw) as {
           time12hFormat?: boolean;

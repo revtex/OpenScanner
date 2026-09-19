@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/auth"
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/auth"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // seedListenerUser creates a listener user with the given systems_json grants.

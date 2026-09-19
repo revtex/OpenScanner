@@ -17,14 +17,14 @@ jobs:
       - name: Delete untagged container versions
         uses: actions/delete-package-versions@v5
         with:
-          package-name: openscanner
+          package-name: squelch
           package-type: container
           delete-only-untagged-versions: true
           min-versions-to-keep: 0
       - name: Delete sha-* tagged container versions
         uses: actions/delete-package-versions@v5
         with:
-          package-name: openscanner
+          package-name: squelch
           package-type: container
           # Keep any version that has at least one non-sha tag.
           # Negative lookahead: a tag is "kept" if it does NOT start with sha-.

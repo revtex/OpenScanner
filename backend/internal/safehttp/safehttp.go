@@ -2,13 +2,13 @@
 // redirects are disabled, response body size is capped, and timeouts are
 // always enforced.
 //
-// OpenScanner is a self-hosted homelab tool — almost every legitimate
+// Squelch is a self-hosted homelab tool — almost every legitimate
 // downstream URL (go-whisper, rdio-scanner, Home Assistant, etc.) sits on
 // a private / LAN address. Blocking those by default would break normal
 // deployments, so private / loopback / link-local destinations are ALLOWED
-// by default. Operators running OpenScanner on a public network with
+// by default. Operators running Squelch on a public network with
 // untrusted admins can opt in to SSRF-style blocking with
-// OPENSCANNER_BLOCK_INTERNAL_HTTP=1, which rejects RFC1918 / loopback /
+// SQUELCH_BLOCK_INTERNAL_HTTP=1, which rejects RFC1918 / loopback /
 // link-local / multicast / unspecified targets (DNS-rebinding aware).
 package safehttp
 
@@ -17,16 +17,18 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/revtex/squelch/internal/envcompat"
 )
 
 // envBlockInternal, when truthy, opts in to SSRF-style blocking of
 // private/loopback/link-local/multicast destinations. Default: unset
 // (all destinations permitted — appropriate for homelab deployments).
-const envBlockInternal = "OPENSCANNER_BLOCK_INTERNAL_HTTP"
+// Read via envcompat, so the pre-rename OPENSCANNER_ name still works.
+const envBlockInternal = "BLOCK_INTERNAL_HTTP"
 
 // ErrBlockedAddress is returned when a dial target resolves to an address
 // that is blocked by the SSRF allow-list.
@@ -42,7 +44,7 @@ var (
 // lifetime of the process after the first call.
 func BlockInternal() bool {
 	blockInternalOnce.Do(func() {
-		v := strings.TrimSpace(os.Getenv(envBlockInternal))
+		v := strings.TrimSpace(envcompat.Lookup(envBlockInternal))
 		blockInternalVal = v == "1" || strings.EqualFold(v, "true") || strings.EqualFold(v, "yes")
 	})
 	return blockInternalVal
@@ -92,7 +94,7 @@ func safeDialContext(dialer *net.Dialer) func(ctx context.Context, network, addr
 }
 
 // Client returns an *http.Client that disables redirect following and
-// enforces the provided timeout. When OPENSCANNER_BLOCK_INTERNAL_HTTP is
+// enforces the provided timeout. When SQUELCH_BLOCK_INTERNAL_HTTP is
 // set, connections to private / loopback / link-local / multicast
 // addresses are rejected at dial time.
 func Client(timeout time.Duration) *http.Client {

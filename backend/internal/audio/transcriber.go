@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/safehttp"
+	"github.com/revtex/squelch/internal/safehttp"
 )
 
 // TranscriptionSegment represents one timestamped segment from go-whisper.

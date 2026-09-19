@@ -14,7 +14,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // ParsedCall is the normalised metadata extracted by a recorder-specific parser.

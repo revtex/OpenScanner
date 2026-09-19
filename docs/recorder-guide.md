@@ -1,6 +1,8 @@
 # Recorder Setup Guide
 
-This guide walks you through connecting your radio recorder to OpenScanner. Each recorder section includes the steps you need to get calls flowing.
+_Squelch was previously named OpenScanner._
+
+This guide walks you through connecting your radio recorder to Squelch. Each recorder section includes the steps you need to get calls flowing.
 
 ## Contents
 
@@ -21,31 +23,31 @@ This guide walks you through connecting your radio recorder to OpenScanner. Each
 
 Before connecting a recorder, make sure:
 
-1. **OpenScanner is running** and accessible from the machine running your recorder (e.g. `http://192.168.1.100:3022`).
+1. **Squelch is running** and accessible from the machine running your recorder (e.g. `http://192.168.1.100:3022`).
 2. **Create your systems** in **Admin → Systems**. There are two auto-populate options to help with initial setup:
    - **Auto-Populate Systems** (global toggle at the top of the Systems panel) — automatically creates new systems from incoming calls.
    - **TG Auto-Populate** (per-system toggle) — automatically creates talkgroups within that system as calls arrive.
 3. **Create an API key** if your recorder uploads over HTTP. Go to **Admin → API Keys → Add Key**, give it a name, and copy the key. You can restrict which systems the key is allowed to send calls for.
 
-> **Tip:** If you're migrating from rdio-scanner, OpenScanner's upload API is backward-compatible. You only need to change the server URL in your recorder config.
+> **Tip:** If you're migrating from rdio-scanner, Squelch's upload API is backward-compatible. You only need to change the server URL in your recorder config.
 
 ---
 
 ## Trunk-Recorder
 
-Trunk-Recorder is the most common recorder used with OpenScanner. You can connect it two ways.
+Trunk-Recorder is the most common recorder used with Squelch. You can connect it two ways.
 
 ### Option A: HTTP Upload (Recommended)
 
-This uses Trunk-Recorder's built-in `rdioscanner_uploader` plugin to send calls directly to OpenScanner over the network.
+This uses Trunk-Recorder's built-in `rdioscanner_uploader` plugin to send calls directly to Squelch over the network.
 
 1. Open your Trunk-Recorder `config.json`.
 2. In the `"plugins"` array, add an entry using the `librdioscanner_uploader.so` library:
    ```json
    {
-     "name": "OpenScanner",
+     "name": "Squelch",
      "library": "librdioscanner_uploader.so",
-     "server": "http://<your-openscanner-address>:3022",
+     "server": "http://<your-squelch-address>:3022",
      "systems": [
        {
          "shortName": "your_system",
@@ -55,18 +57,18 @@ This uses Trunk-Recorder's built-in `rdioscanner_uploader` plugin to send calls 
      ]
    }
    ```
-3. Replace `<your-openscanner-address>` with your OpenScanner server's IP or hostname.
+3. Replace `<your-squelch-address>` with your Squelch server's IP or hostname.
 4. The `"name"` field can be anything — it's just a label.
-5. Each entry in `"systems"` maps a Trunk-Recorder system (by `shortName`) to an OpenScanner system:
+5. Each entry in `"systems"` maps a Trunk-Recorder system (by `shortName`) to an Squelch system:
    - `shortName` — must match the `"shortName"` of a system in your Trunk-Recorder config.
    - `apiKey` — the API key you created in **Admin → API Keys**. Multiple systems can share the same key.
-   - `systemId` — the radio system ID that identifies this system. This must match the **System ID** field of an existing system in **Admin → Systems**. If **Auto-Populate Systems** is enabled, you can use any number and OpenScanner will create the system automatically on the first upload.
+   - `systemId` — the radio system ID that identifies this system. This must match the **System ID** field of an existing system in **Admin → Systems**. If **Auto-Populate Systems** is enabled, you can use any number and Squelch will create the system automatically on the first upload.
 6. If you have multiple Trunk-Recorder systems (e.g. multi-site), add an entry for each one. They can all use the same API key and even the same `systemId` if they belong to the same logical system.
-7. Restart Trunk-Recorder. Calls should start appearing in OpenScanner within seconds.
+7. Restart Trunk-Recorder. Calls should start appearing in Squelch within seconds.
 
 ### Option B: Directory Monitor
 
-If Trunk-Recorder runs on the same machine as OpenScanner (or writes to a shared filesystem), you can have OpenScanner watch the output directory instead.
+If Trunk-Recorder runs on the same machine as Squelch (or writes to a shared filesystem), you can have Squelch watch the output directory instead.
 
 1. Go to **Admin → Directory Monitors → Add Monitor**.
 2. Set **Type** to `trunk-recorder`.
@@ -74,24 +76,24 @@ If Trunk-Recorder runs on the same machine as OpenScanner (or writes to a shared
 4. Leave **Extension** blank — the monitor picks up audio files automatically.
 5. Save and the monitor will begin scanning the directory.
 
-Trunk-Recorder writes a JSON sidecar file alongside each audio recording. OpenScanner reads the sidecar to extract system, talkgroup, frequency, units, and other metadata.
+Trunk-Recorder writes a JSON sidecar file alongside each audio recording. Squelch reads the sidecar to extract system, talkgroup, frequency, units, and other metadata.
 
 ---
 
 ## SDRTrunk
 
-SDRTrunk can send calls to OpenScanner using its built-in Rdio Scanner streaming feature, or you can use directory monitoring.
+SDRTrunk can send calls to Squelch using its built-in Rdio Scanner streaming feature, or you can use directory monitoring.
 
 ### Option A: HTTP Upload (Rdio Scanner Streaming)
 
 1. In SDRTrunk, go to the **Streaming** tab for your system.
 2. Add a new **Rdio Scanner** streaming target.
-3. Set the **Server URL** to `http://<your-openscanner-address>:3022/api/call-upload`.
-4. Enter your **API Key** from OpenScanner.
-5. Set the **System ID** to the radio system ID. This must match the **System ID** field of an existing system in **Admin → Systems**. If **Auto-Populate Systems** is enabled, you can use any number and OpenScanner will create the system automatically on the first upload.
+3. Set the **Server URL** to `http://<your-squelch-address>:3022/api/call-upload`.
+4. Enter your **API Key** from Squelch.
+5. Set the **System ID** to the radio system ID. This must match the **System ID** field of an existing system in **Admin → Systems**. If **Auto-Populate Systems** is enabled, you can use any number and Squelch will create the system automatically on the first upload.
 6. Enable the stream. SDRTrunk will upload calls as they are recorded.
 
-> **Note:** SDRTrunk sends a test request when you first connect to verify the API key. OpenScanner handles this automatically.
+> **Note:** SDRTrunk sends a test request when you first connect to verify the API key. Squelch handles this automatically.
 
 ### Option B: Directory Monitor
 
@@ -101,31 +103,31 @@ SDRTrunk can send calls to OpenScanner using its built-in Rdio Scanner streaming
 4. Set **Extension** to `mp3` (recommended).
 5. Save the monitor.
 
-OpenScanner reads metadata from the MP3 file's ID3 tags (which SDRTrunk embeds automatically) and falls back to the filename if tags are missing.
+Squelch reads metadata from the MP3 file's ID3 tags (which SDRTrunk embeds automatically) and falls back to the filename if tags are missing.
 
 ---
 
 ## RTLSDR-Airband
 
-> **Note:** RTLSDR-Airband support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/OpenScanner/issues).
+> **Note:** RTLSDR-Airband support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/squelch/issues).
 
 RTLSDR-Airband is supported through directory monitoring only.
 
 1. Go to **Admin → Directory Monitors → Add Monitor**.
 2. Set **Type** to `rtlsdr-airband`.
 3. Set **Directory** to where RTLSDR-Airband writes its recordings.
-4. Set **System ID** to the system in OpenScanner that these recordings belong to.
+4. Set **System ID** to the system in Squelch that these recordings belong to.
 5. Set **Talkgroup ID** to the talkgroup to assign (typically one talkgroup per monitored frequency).
 6. Optionally set **Frequency** if you want it stored with each call.
 7. Save the monitor.
 
-Since RTLSDR-Airband doesn't embed metadata in its recordings, you need to tell OpenScanner which system and talkgroup to assign by configuring them on the monitor.
+Since RTLSDR-Airband doesn't embed metadata in its recordings, you need to tell Squelch which system and talkgroup to assign by configuring them on the monitor.
 
 ---
 
 ## DSDPlus Fast Lane
 
-> **Note:** DSDPlus support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/OpenScanner/issues).
+> **Note:** DSDPlus support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/squelch/issues).
 
 DSDPlus is supported through directory monitoring only.
 
@@ -135,13 +137,13 @@ DSDPlus is supported through directory monitoring only.
 4. Set **Extension** to `mp3` or `wav` (whichever DSDPlus outputs).
 5. Save the monitor.
 
-OpenScanner parses system and talkgroup information from the DSDPlus filename structure. You can also set system/talkgroup overrides on the monitor if needed.
+Squelch parses system and talkgroup information from the DSDPlus filename structure. You can also set system/talkgroup overrides on the monitor if needed.
 
 ---
 
 ## ProScan
 
-> **Note:** ProScan support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/OpenScanner/issues).
+> **Note:** ProScan support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/squelch/issues).
 
 ProScan is supported through directory monitoring only.
 
@@ -156,11 +158,11 @@ ProScan is supported through directory monitoring only.
 
 ## voxcall
 
-> **Note:** voxcall support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/OpenScanner/issues).
+> **Note:** voxcall support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/squelch/issues).
 
-voxcall sends calls to OpenScanner via HTTP upload.
+voxcall sends calls to Squelch via HTTP upload.
 
-1. Configure voxcall to POST recordings to `http://<your-openscanner-address>:3022/api/call-upload`.
+1. Configure voxcall to POST recordings to `http://<your-squelch-address>:3022/api/call-upload`.
 2. Include your API key in the `X-API-Key` header (or as a `?key=` query parameter).
 3. voxcall sends call metadata as form fields alongside the audio file.
 
@@ -168,7 +170,7 @@ voxcall sends calls to OpenScanner via HTTP upload.
 
 ## Other Recorders
 
-If your recorder isn't listed above, you can still use OpenScanner with directory monitoring and a generic configuration.
+If your recorder isn't listed above, you can still use Squelch with directory monitoring and a generic configuration.
 
 1. Go to **Admin → Directory Monitors → Add Monitor**.
 2. Set **Type** to `default` (or leave unrecognized — it falls back to generic parsing).
@@ -191,7 +193,7 @@ When creating a directory monitor, these settings are available:
 | **Extension**           | File extension filter (e.g. `mp3`). Leave blank to accept all supported types                                                        |
 | **Mask**                | Filename pattern for extracting metadata (see below)                                                                                 |
 | **Delay**               | Milliseconds to wait after a file appears before ingesting (gives the recorder time to finish writing). Minimum is 2000 (2 seconds). |
-| **Delete After Ingest** | Remove the file from disk after OpenScanner processes it                                                                             |
+| **Delete After Ingest** | Remove the file from disk after Squelch processes it                                                                             |
 | **System ID**           | Override: assign all files to this system                                                                                            |
 | **Talkgroup ID**        | Override: assign all files to this talkgroup                                                                                         |
 | **Frequency**           | Override: assign this frequency to all files                                                                                         |
@@ -200,7 +202,7 @@ When creating a directory monitor, these settings are available:
 
 ## Filename Masks
 
-If your recorder embeds metadata in filenames, you can define a mask pattern to extract it. Masks use tokens that OpenScanner replaces with regex capture groups.
+If your recorder embeds metadata in filenames, you can define a mask pattern to extract it. Masks use tokens that Squelch replaces with regex capture groups.
 
 **Example:** If your files are named `SYS001_TG1234_20260422_143022.mp3`, you could use the mask:
 
@@ -237,7 +239,7 @@ Mask parsing runs after the recorder-specific parser and fills in any metadata t
 
 ## Supported Audio Formats
 
-OpenScanner accepts the following audio file types:
+Squelch accepts the following audio file types:
 
 `.mp3` · `.wav` · `.m4a` · `.aac` · `.ogg` · `.flac` · `.opus`
 

@@ -1,5 +1,5 @@
 // Package admin holds the transport-agnostic CRUD / config / import-export
-// business logic for OpenScanner's admin surface.
+// business logic for Squelch's admin surface.
 //
 // Every method on Operations takes (ctx, params, callerID) and returns
 // (any, error); callers (currently internal/ws) are responsible for
@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/auth"
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/auth"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // ── Public helper types ──

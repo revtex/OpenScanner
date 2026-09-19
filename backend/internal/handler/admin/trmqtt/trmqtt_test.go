@@ -13,11 +13,11 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "modernc.org/sqlite"
 
-	"github.com/openscanner/openscanner/internal/auth"
-	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/handler/routes"
-	"github.com/openscanner/openscanner/internal/logging"
-	trmqttsvc "github.com/openscanner/openscanner/internal/trmqtt"
+	"github.com/revtex/squelch/internal/auth"
+	"github.com/revtex/squelch/internal/db"
+	"github.com/revtex/squelch/internal/handler/routes"
+	"github.com/revtex/squelch/internal/logging"
+	trmqttsvc "github.com/revtex/squelch/internal/trmqtt"
 )
 
 func init() {

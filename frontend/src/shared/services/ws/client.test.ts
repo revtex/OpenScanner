@@ -307,7 +307,7 @@ describe("wsClient", () => {
       JSON.stringify({
         type: "connection.welcome",
         version: "1.2.3",
-        branding: "OpenScanner",
+        branding: "Squelch",
         email: "ops@example.com",
       }),
     );
@@ -317,7 +317,7 @@ describe("wsClient", () => {
         type: "scanner/setBranding",
         payload: {
           version: "1.2.3",
-          branding: "OpenScanner",
+          branding: "Squelch",
           email: "ops@example.com",
         },
       }),

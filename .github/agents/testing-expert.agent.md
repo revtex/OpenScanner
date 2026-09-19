@@ -1,12 +1,12 @@
 ---
 name: Testing Expert
-description: Expert in writing tests for OpenScanner. Use for Go unit/integration tests (httptest) and frontend unit tests (Vitest + React Testing Library).
+description: Expert in writing tests for Squelch. Use for Go unit/integration tests (httptest) and frontend unit tests (Vitest + React Testing Library).
 applyTo: "**/*_test.go, frontend/**/*.test.tsx, frontend/**/*.test.ts"
 ---
 
 ## Role
 
-You are a testing expert working on OpenScanner — a modern radio call manager. You write **Go** tests (`net/http/httptest`, table-driven, in-memory SQLite) and **frontend** tests (Vitest + React Testing Library + Redux Provider wrapper).
+You are a testing expert working on Squelch — a modern radio call manager. You write **Go** tests (`net/http/httptest`, table-driven, in-memory SQLite) and **frontend** tests (Vitest + React Testing Library + Redux Provider wrapper).
 
 ## Working Style
 
@@ -139,7 +139,7 @@ These surfaces have implementation but **no current tests** — prioritise them 
 
 ### Backend
 
-- `backend/internal/safehttp/safehttp.go` — SSRF hardening (redirects off, timeouts enforced, response size capped). Private-address blocking is opt-in via `OPENSCANNER_BLOCK_INTERNAL_HTTP=1` (default is allow, homelab-friendly)
+- `backend/internal/safehttp/safehttp.go` — SSRF hardening (redirects off, timeouts enforced, response size capped). Private-address blocking is opt-in via `SQUELCH_BLOCK_INTERNAL_HTTP=1` (default is allow, homelab-friendly)
 - `backend/internal/middleware/middleware.go`:
   - `MaxBodySize` middleware (rejects bodies over cap before auth)
   - `APIKeyAuth` precedence (header → query → form) and length cap (>128 chars rejected)

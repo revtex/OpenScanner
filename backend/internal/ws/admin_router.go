@@ -15,8 +15,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/openscanner/openscanner/internal/admin"
-	"github.com/openscanner/openscanner/internal/logging"
+	"github.com/revtex/squelch/internal/admin"
+	"github.com/revtex/squelch/internal/logging"
 )
 
 // adminOp is the generic admin.Operations method signature. Every handler

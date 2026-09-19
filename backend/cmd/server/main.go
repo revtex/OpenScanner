@@ -1,6 +1,6 @@
-// Package main is the entry point for the OpenScanner server.
+// Package main is the entry point for the Squelch server.
 //
-//	@title			OpenScanner API
+//	@title			Squelch API
 //	@version		1.0	(overridden at runtime with the binary's build version)
 //	@description	Radio call manager API — real-time audio streaming, call management, and admin CRUD.
 //
@@ -34,22 +34,24 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/revtex/squelch/internal/envcompat"
+
 	"github.com/gin-gonic/gin"
 	"github.com/kardianos/service"
-	"github.com/openscanner/openscanner/internal/admin"
-	"github.com/openscanner/openscanner/internal/audio"
-	"github.com/openscanner/openscanner/internal/auth"
-	"github.com/openscanner/openscanner/internal/cli"
-	"github.com/openscanner/openscanner/internal/config"
-	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/dirmonitor"
-	"github.com/openscanner/openscanner/internal/downstream"
-	"github.com/openscanner/openscanner/internal/handler/routes"
-	streamhandler "github.com/openscanner/openscanner/internal/handler/stream"
-	"github.com/openscanner/openscanner/internal/logging"
-	"github.com/openscanner/openscanner/internal/seed"
-	"github.com/openscanner/openscanner/internal/trmqtt"
-	"github.com/openscanner/openscanner/internal/ws"
+	"github.com/revtex/squelch/internal/admin"
+	"github.com/revtex/squelch/internal/audio"
+	"github.com/revtex/squelch/internal/auth"
+	"github.com/revtex/squelch/internal/cli"
+	"github.com/revtex/squelch/internal/config"
+	"github.com/revtex/squelch/internal/db"
+	"github.com/revtex/squelch/internal/dirmonitor"
+	"github.com/revtex/squelch/internal/downstream"
+	"github.com/revtex/squelch/internal/handler/routes"
+	streamhandler "github.com/revtex/squelch/internal/handler/stream"
+	"github.com/revtex/squelch/internal/logging"
+	"github.com/revtex/squelch/internal/seed"
+	"github.com/revtex/squelch/internal/trmqtt"
+	"github.com/revtex/squelch/internal/ws"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -69,8 +71,15 @@ func main() {
 	}
 
 	if cfg.ShowVersion {
-		fmt.Printf("openscanner %s\n", config.Version)
+		fmt.Printf("squelch %s\n", config.Version)
 		os.Exit(0)
+	}
+
+	// Refuse to start on a data directory left behind by OpenScanner
+	// rather than quietly creating an empty database beside it.
+	if err := config.CheckLegacyDataDir(cfg.DBFile); err != nil {
+		fmt.Fprintf(os.Stderr, "squelch: %v\n", err)
+		os.Exit(1)
 	}
 
 	if cfg.ConfigSave {
@@ -89,9 +98,9 @@ func main() {
 
 	// kardianos/service configuration.
 	svcConfig := &service.Config{
-		Name:        "openscanner",
-		DisplayName: "OpenScanner",
-		Description: "OpenScanner Radio Call Manager",
+		Name:        "squelch",
+		DisplayName: "Squelch",
+		Description: "Squelch Radio Call Manager",
 		Arguments:   serviceArguments(os.Args[1:]),
 	}
 
@@ -154,7 +163,7 @@ func runSetup(args []string) int {
 	dbFile := fs.String("db-file", config.DefaultDBFile, "SQLite database file path")
 	recordingsDir := fs.String("recordings-dir", config.DefaultRecordingsDir, "Directory for call audio recordings")
 	configFile := fs.String("config", config.DefaultConfigFile, "Path to JSON config file")
-	installBinary := fs.String("install-binary", config.DefaultBinaryPath, "Path where OpenScanner executable is installed")
+	installBinary := fs.String("install-binary", config.DefaultBinaryPath, "Path where Squelch executable is installed")
 	interactive := fs.Bool("interactive", false, "Prompt for setup values interactively")
 	force := fs.Bool("force", false, "Overwrite/reinstall when setup already exists")
 	if err := fs.Parse(args); err != nil {
@@ -185,12 +194,12 @@ func runSetup(args []string) int {
 	installed, running, statusText := serviceState(svc)
 
 	if (configExists || dbExists || installed) && !*force {
-		fmt.Println("OpenScanner appears to already be set up.")
+		fmt.Println("Squelch appears to already be set up.")
 		fmt.Printf("- config file: %s (exists=%t)\n", *configFile, configExists)
 		fmt.Printf("- database file: %s (exists=%t)\n", *dbFile, dbExists)
 		fmt.Printf("- service status: installed=%t running=%t (%s)\n", installed, running, statusText)
 		fmt.Println("No changes were made. Use --force to overwrite/reinstall.")
-		fmt.Println("Next steps: openscanner service doctor, openscanner config validate --config <path>")
+		fmt.Println("Next steps: squelch service doctor, squelch config validate --config <path>")
 		return 0
 	}
 
@@ -254,20 +263,20 @@ func runSetup(args []string) int {
 		return 1
 	}
 
-	fmt.Println("OpenScanner setup completed.")
+	fmt.Println("Squelch setup completed.")
 	fmt.Printf("- executable: %s\n", *installBinary)
 	fmt.Printf("- config file: %s\n", *configFile)
 	fmt.Printf("- service args: %s\n", strings.Join(serviceArgs, " "))
 	fmt.Println("- verify: curl -f http://127.0.0.1:3022/api/health")
-	fmt.Println("- doctor: openscanner service doctor")
+	fmt.Println("- doctor: squelch service doctor")
 	return 0
 }
 
 func runUpgrade(args []string) int {
 	fs := flag.NewFlagSet("upgrade", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	binary := fs.String("binary", "", "Path to new OpenScanner executable (defaults to current executable)")
-	installBinary := fs.String("install-binary", config.DefaultBinaryPath, "Installed OpenScanner executable path")
+	binary := fs.String("binary", "", "Path to new Squelch executable (defaults to current executable)")
+	installBinary := fs.String("install-binary", config.DefaultBinaryPath, "Installed Squelch executable path")
 	configFile := fs.String("config", config.DefaultConfigFile, "Path to JSON config file")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -293,7 +302,7 @@ func runUpgrade(args []string) int {
 	installed, running, statusText := serviceState(svc)
 	if !installed {
 		slog.Error("upgrade: service is not installed")
-		fmt.Println("Run 'openscanner setup' first.")
+		fmt.Println("Run 'squelch setup' first.")
 		return 1
 	}
 
@@ -316,7 +325,7 @@ func runUpgrade(args []string) int {
 		}
 	}
 
-	fmt.Println("OpenScanner upgrade completed.")
+	fmt.Println("Squelch upgrade completed.")
 	fmt.Printf("- source executable: %s\n", sourceBinary)
 	fmt.Printf("- installed executable: %s\n", *installBinary)
 	fmt.Printf("- previous service status: %s\n", statusText)
@@ -338,7 +347,7 @@ func runConfigValidate(args []string) int {
 
 	if *configFile == config.DefaultConfigFile && !pathExists(*configFile) {
 		slog.Error("config file not found", "path", *configFile)
-		fmt.Println("Pass a config path via --config /path/to/openscanner.json")
+		fmt.Println("Pass a config path via --config /path/to/squelch.json")
 		return 1
 	}
 
@@ -359,7 +368,7 @@ func runServiceDoctor() int {
 	}
 
 	installed, running, statusText := serviceState(svc)
-	fmt.Println("OpenScanner Service Doctor")
+	fmt.Println("Squelch Service Doctor")
 	fmt.Printf("- installed: %t\n", installed)
 	fmt.Printf("- running:   %t\n", running)
 	fmt.Printf("- status:    %s\n", statusText)
@@ -367,23 +376,23 @@ func runServiceDoctor() int {
 	fmt.Printf("- default executable path: %s\n", config.DefaultBinaryPath)
 
 	if !installed {
-		fmt.Println("- hint: install with 'openscanner setup' or 'openscanner --service install --config /path/to/openscanner.json'")
+		fmt.Println("- hint: install with 'squelch setup' or 'squelch --service install --config /path/to/squelch.json'")
 		return 0
 	}
 
 	if !running {
-		fmt.Println("- hint: start with 'openscanner --service start'")
+		fmt.Println("- hint: start with 'squelch --service start'")
 	}
 
-	fmt.Println("- hint: validate config with 'openscanner config validate --config /path/to/openscanner.json'")
+	fmt.Println("- hint: validate config with 'squelch config validate --config /path/to/squelch.json'")
 	return 0
 }
 
 func newServiceController(args []string, executable string) (service.Service, error) {
 	svcConfig := &service.Config{
-		Name:        "openscanner",
-		DisplayName: "OpenScanner",
-		Description: "OpenScanner Radio Call Manager",
+		Name:        "squelch",
+		DisplayName: "Squelch",
+		Description: "Squelch Radio Call Manager",
 		Arguments:   args,
 		Executable:  executable,
 	}
@@ -421,7 +430,7 @@ func runInteractiveSetup(
 	listen, dbFile, recordingsDir, configFile, installBinary *string,
 ) (bool, error) {
 	reader := bufio.NewReader(in)
-	fmt.Fprintln(out, "OpenScanner interactive setup")
+	fmt.Fprintln(out, "Squelch interactive setup")
 
 	var err error
 	if *listen, err = promptWithDefault(reader, out, "Listen address", *listen); err != nil {
@@ -520,7 +529,7 @@ func copyBinary(sourcePath, targetPath string) error {
 	}
 	defer in.Close()
 
-	tmpFile, err := os.CreateTemp(targetDir, ".openscanner-bin-*")
+	tmpFile, err := os.CreateTemp(targetDir, ".squelch-bin-*")
 	if err != nil {
 		return err
 	}
@@ -662,13 +671,22 @@ func (p *program) run() {
 	logging.LoadHistoricalLogs(logFilePath)
 
 	// Configure structured logging.
-	if os.Getenv("OPENSCANNER_ENV") == "development" {
+	if envcompat.Lookup("ENV") == "development" {
 		logging.Configure(true, logFilePath)
 	} else {
 		logging.Configure(false, logFilePath)
 		gin.SetMode(gin.ReleaseMode)
 	}
 	defer logging.CloseLogFile()
+
+	// Squelch was renamed from OpenScanner. The old environment variable
+	// names still work, but say so once — silently honouring them would
+	// let an operator carry a stale config forward without noticing that
+	// the fallback is scheduled for removal.
+	if legacy := envcompat.Used(); len(legacy) > 0 {
+		slog.Warn("config: using pre-rename OPENSCANNER_* environment variables; rename them to SQUELCH_*, the fallback will be removed in a future release",
+			"variables", strings.Join(legacy, ", "))
+	}
 
 	// Compute display values for the startup banner (printed after all
 	// feature-flag checks complete, down below).
@@ -745,7 +763,7 @@ func (p *program) run() {
 		LogLevel:            logging.GetLevel(),
 		SSL:                 cfg.SSLAutoCert != "" || (cfg.SSLCert != "" && cfg.SSLKey != ""),
 		EncryptionAtRest:    cfg.EncryptionKey != "",
-		JWTSecretExternal:   os.Getenv("OPENSCANNER_JWT_SECRET") != "",
+		JWTSecretExternal:   envcompat.Lookup("JWT_SECRET") != "",
 		FFmpeg:              hasFFmpeg,
 		FDKAAC:              hasFDKAAC,
 		Whisper:             whisperConfigured,
@@ -1181,7 +1199,7 @@ func printStartupBanner(d startupBannerData) {
 			"  ⚠ WARNING: encryption at rest is disabled — the JWT signing secret and\n"+
 				"    downstream API keys are stored in plaintext in the database. Anyone\n"+
 				"    with read access to the DB file can forge admin tokens.\n"+
-				"    Fix: set OPENSCANNER_ENCRYPTION_KEY (or --encryption-key) to a 32-byte\n"+
+				"    Fix: set SQUELCH_ENCRYPTION_KEY (or --encryption-key) to a 32-byte\n"+
 				"    random value. See docs/deployment-guide.md#secrets-encryption.\n\n")
 	}
 }
@@ -1279,17 +1297,17 @@ func migrateSecrets(ctx context.Context, queries *db.Queries, sqlDB *sql.DB, enc
 	if encryptionKey == "" {
 		for _, s := range settings {
 			if admin.SensitiveSettingKeys[s.Key] && auth.IsEncrypted(s.Value) {
-				return fmt.Errorf("setting %q is encrypted but no encryption key is configured — set --encryption-key or OPENSCANNER_ENCRYPTION_KEY", s.Key)
+				return fmt.Errorf("setting %q is encrypted but no encryption key is configured — set --encryption-key or SQUELCH_ENCRYPTION_KEY", s.Key)
 			}
 		}
 		for _, ds := range downstreams {
 			if auth.IsEncrypted(ds.ApiKey) {
-				return fmt.Errorf("downstream %d API key is encrypted but no encryption key is configured — set --encryption-key or OPENSCANNER_ENCRYPTION_KEY", ds.ID)
+				return fmt.Errorf("downstream %d API key is encrypted but no encryption key is configured — set --encryption-key or SQUELCH_ENCRYPTION_KEY", ds.ID)
 			}
 		}
 		slog.Warn("no encryption key configured — secrets stored unencrypted in database",
 			"impact", "JWT signing secret and downstream API keys are stored in plaintext; anyone with read access to the SQLite file can forge admin tokens",
-			"fix", "set OPENSCANNER_ENCRYPTION_KEY (or --encryption-key) to a 32-byte random value; see docs/deployment-guide.md#secrets-encryption")
+			"fix", "set SQUELCH_ENCRYPTION_KEY (or --encryption-key) to a 32-byte random value; see docs/deployment-guide.md#secrets-encryption")
 		return nil
 	}
 

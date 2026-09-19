@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/openscanner/openscanner/internal/auth"
+	"github.com/revtex/squelch/internal/auth"
 )
 
 func TestRateLimiter_NotLockedInitially(t *testing.T) {

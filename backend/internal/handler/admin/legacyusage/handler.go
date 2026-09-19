@@ -10,7 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/openscanner/openscanner/internal/middleware"
+	"github.com/revtex/squelch/internal/middleware"
 )
 
 // LegacyUsageEntry mirrors middleware.LegacyUsageEntry for swagger generation.

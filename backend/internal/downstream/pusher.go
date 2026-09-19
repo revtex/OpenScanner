@@ -1,4 +1,4 @@
-// Package downstream pushes accepted calls to remote OpenScanner instances.
+// Package downstream pushes accepted calls to remote Squelch instances.
 package downstream
 
 import (
@@ -19,10 +19,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/audio"
-	"github.com/openscanner/openscanner/internal/auth"
-	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/safehttp"
+	"github.com/revtex/squelch/internal/audio"
+	"github.com/revtex/squelch/internal/auth"
+	"github.com/revtex/squelch/internal/db"
+	"github.com/revtex/squelch/internal/safehttp"
 )
 
 // CallEvent holds the data for a call that should be pushed downstream.

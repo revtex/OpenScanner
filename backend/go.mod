@@ -1,4 +1,4 @@
-module github.com/openscanner/openscanner
+module github.com/revtex/squelch
 
 go 1.26.0
 

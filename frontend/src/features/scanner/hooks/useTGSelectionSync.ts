@@ -13,9 +13,10 @@ import {
   useUpdateTGSelectionMutation,
 } from "@/features/auth";
 import type { AvoidEntry } from "@/types";
+import { readStored, writeStored } from "@/shared/utils/storage";
 
 function storageKey(instanceId: string): string {
-  return `openscanner-tg-selection-${instanceId}`;
+  return `squelch-tg-selection-${instanceId}`;
 }
 
 /** How many times a rejected write is re-sent with a refreshed version. */
@@ -120,7 +121,7 @@ export function useTGSelectionSync() {
       dispatch(restoreAvoidList(tgSelectionData.avoidList ?? []));
       restoredRef.current = true;
     } else {
-      const raw = localStorage.getItem(storageKey(instanceId));
+      const raw = readStored(localStorage, storageKey(instanceId));
       const restored: Record<number, boolean> = {};
       for (const sys of config.systems) {
         for (const tg of sys.talkgroups ?? []) {
@@ -245,7 +246,7 @@ export function useTGSelectionSync() {
     }
 
     if (!isAuthenticated) {
-      localStorage.setItem(storageKey(instanceId), JSON.stringify(tgSelection));
+      writeStored(localStorage, storageKey(instanceId), JSON.stringify(tgSelection));
       return undefined;
     }
 

@@ -23,12 +23,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/openscanner/openscanner/internal/audio"
-	"github.com/openscanner/openscanner/internal/auth"
-	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/handler/routes"
-	"github.com/openscanner/openscanner/internal/logging"
-	"github.com/openscanner/openscanner/internal/ws"
+	"github.com/revtex/squelch/internal/audio"
+	"github.com/revtex/squelch/internal/auth"
+	"github.com/revtex/squelch/internal/db"
+	"github.com/revtex/squelch/internal/handler/routes"
+	"github.com/revtex/squelch/internal/logging"
+	"github.com/revtex/squelch/internal/ws"
 )
 
 func init() {

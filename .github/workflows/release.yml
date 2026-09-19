@@ -70,10 +70,10 @@ jobs:
           ext=""
           if [ "$GOOS" = "windows" ]; then ext=".exe"; fi
           mkdir -p ../dist
-          out="../dist/openscanner-${VERSION#v}-${GOOS}-${GOARCH}${ext}"
+          out="../dist/squelch-${VERSION#v}-${GOOS}-${GOARCH}${ext}"
           go build \
             -trimpath \
-            -ldflags="-s -w -X github.com/openscanner/openscanner/internal/config.Version=${VERSION#v}" \
+            -ldflags="-s -w -X github.com/revtex/squelch/internal/config.Version=${VERSION#v}" \
             -o "$out" \
             ./cmd/server
           echo "binary=$out" >> "$GITHUB_ENV"
@@ -136,21 +136,21 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           VERSION: ${{ github.ref_name }}
         run: |
-          stem="openscanner-${VERSION#v}-${GOOS}-${GOARCH}"
+          stem="squelch-${VERSION#v}-${GOOS}-${GOARCH}"
           cp ../CHANGELOG.md .
           cp ../LICENSE* . 2>/dev/null || true
           mkdir -p docs
           cp ../dist-docs/*.pdf docs/ 2>/dev/null || true
           if [ "$GOOS" = "windows" ]; then
-            mv "${stem}.exe" "openscanner.exe"
-            zip -9 -r "${stem}.zip" "openscanner.exe" CHANGELOG.md docs LICENSE* 2>/dev/null || \
-              zip -9 -r "${stem}.zip" "openscanner.exe" CHANGELOG.md docs
-            rm "openscanner.exe"
+            mv "${stem}.exe" "squelch.exe"
+            zip -9 -r "${stem}.zip" "squelch.exe" CHANGELOG.md docs LICENSE* 2>/dev/null || \
+              zip -9 -r "${stem}.zip" "squelch.exe" CHANGELOG.md docs
+            rm "squelch.exe"
           else
-            mv "${stem}" "openscanner"
-            tar czf "${stem}.tar.gz" "openscanner" CHANGELOG.md docs LICENSE* 2>/dev/null || \
-              tar czf "${stem}.tar.gz" "openscanner" CHANGELOG.md docs
-            rm "openscanner"
+            mv "${stem}" "squelch"
+            tar czf "${stem}.tar.gz" "squelch" CHANGELOG.md docs LICENSE* 2>/dev/null || \
+              tar czf "${stem}.tar.gz" "squelch" CHANGELOG.md docs
+            rm "squelch"
           fi
           rm -rf CHANGELOG.md docs LICENSE*
 
@@ -165,7 +165,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: openscanner-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: squelch-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/*
           if-no-files-found: error
           retention-days: 7
@@ -174,7 +174,7 @@ jobs:
         if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
         uses: actions/upload-artifact@v4
         with:
-          name: openscanner-docs-pdf
+          name: squelch-docs-pdf
           path: dist-docs/*.pdf
           if-no-files-found: error
           retention-days: 7

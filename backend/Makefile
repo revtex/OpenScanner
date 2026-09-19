@@ -2,11 +2,11 @@
 
 .PHONY: build dev test lint clean migrate generate
 
-BINARY=openscanner
+BINARY=squelch
 CMD=./cmd/server
 OUTPUT?=$(BINARY)
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS=-s -w -X github.com/openscanner/openscanner/internal/config.Version=$(VERSION)
+LDFLAGS=-s -w -X github.com/revtex/squelch/internal/config.Version=$(VERSION)
 
 build:
 	swag init -d cmd/server,internal/handler -g main.go --parseDependency --parseInternal -o docs
@@ -25,7 +25,7 @@ clean:
 	rm -f $(BINARY) server migrate
 	rm -rf tmp/
 	rm -f docs/docs.go docs/swagger.json docs/swagger.yaml
-	rm -f ../data/openscanner.db ../data/openscanner.db-wal ../data/openscanner.db-shm
+	rm -f ../data/squelch.db ../data/squelch.db-wal ../data/squelch.db-shm
 	rm -rf ../data/recordings/
 
 migrate:

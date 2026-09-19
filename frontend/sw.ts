@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = "openscanner-v1";
+const CACHE_NAME = "squelch-v1";
 const SHELL_ASSETS = ["/", "/index.html"];
 
 const sw = self as unknown as ServiceWorkerGlobalScope;

@@ -1,4 +1,4 @@
-// Package ws implements the OpenScanner WebSocket hub.
+// Package ws implements the Squelch WebSocket hub.
 package ws
 
 import (
@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/admin"
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/admin"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // Reloader triggers a service config reload (e.g. dirmonitor, downstream).

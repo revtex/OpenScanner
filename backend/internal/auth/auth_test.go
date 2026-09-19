@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/openscanner/openscanner/internal/auth"
+	"github.com/revtex/squelch/internal/auth"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -251,7 +251,7 @@ func (f *fakeSecretLoader) Upsert(_ context.Context, key, value string) error {
 }
 
 func TestInitJWTSecret_EnvVar(t *testing.T) {
-	t.Setenv("OPENSCANNER_JWT_SECRET", "test-env-secret")
+	t.Setenv("SQUELCH_JWT_SECRET", "test-env-secret")
 	loader := &fakeSecretLoader{}
 
 	if err := auth.InitJWTSecret(context.Background(), loader, ""); err != nil {
@@ -270,7 +270,7 @@ func TestInitJWTSecret_EnvVar(t *testing.T) {
 }
 
 func TestInitJWTSecret_StoredEncrypted(t *testing.T) {
-	t.Setenv("OPENSCANNER_JWT_SECRET", "")
+	t.Setenv("SQUELCH_JWT_SECRET", "")
 	encKey := "test-encryption-key-do-not-use-in-prod"
 	// Build a stored value: 32 random bytes → base64 → encrypt with encKey.
 	raw := make([]byte, 32)
@@ -298,7 +298,7 @@ func TestInitJWTSecret_StoredEncrypted(t *testing.T) {
 }
 
 func TestInitJWTSecret_StoredEncryptedWrongKey(t *testing.T) {
-	t.Setenv("OPENSCANNER_JWT_SECRET", "")
+	t.Setenv("SQUELCH_JWT_SECRET", "")
 	realKey := "real-key-12345"
 	wrongKey := "wrong-key-67890"
 	encrypted, err := auth.EncryptString("dGVzdA==", realKey) // "test" base64
@@ -317,7 +317,7 @@ func TestInitJWTSecret_StoredEncryptedWrongKey(t *testing.T) {
 }
 
 func TestInitJWTSecret_GenerateAndPersist(t *testing.T) {
-	t.Setenv("OPENSCANNER_JWT_SECRET", "")
+	t.Setenv("SQUELCH_JWT_SECRET", "")
 	encKey := "test-enc-key"
 	loader := &fakeSecretLoader{} // empty store
 
@@ -353,7 +353,7 @@ func TestInitJWTSecret_GenerateAndPersist(t *testing.T) {
 }
 
 func TestInitJWTSecret_GeneratePlaintextWhenNoKey(t *testing.T) {
-	t.Setenv("OPENSCANNER_JWT_SECRET", "")
+	t.Setenv("SQUELCH_JWT_SECRET", "")
 	loader := &fakeSecretLoader{}
 
 	if err := auth.InitJWTSecret(context.Background(), loader, ""); err != nil {
@@ -380,7 +380,7 @@ func TestInitJWTSecret_GeneratePlaintextWhenNoKey(t *testing.T) {
 }
 
 func TestInitJWTSecret_PrecedenceEnvOverStored(t *testing.T) {
-	t.Setenv("OPENSCANNER_JWT_SECRET", "env-wins-value")
+	t.Setenv("SQUELCH_JWT_SECRET", "env-wins-value")
 	encKey := "some-key"
 	// Seed a valid stored value that *would* be used if env was empty.
 	encrypted, err := auth.EncryptString(base64.StdEncoding.EncodeToString(make([]byte, 32)), encKey)

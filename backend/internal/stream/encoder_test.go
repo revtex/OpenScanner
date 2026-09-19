@@ -7,7 +7,7 @@ import (
 )
 
 // requireFFmpeg skips when the host has no encoder. The container that runs
-// OpenScanner always has one, so this exercises the real LAME output in CI
+// Squelch always has one, so this exercises the real LAME output in CI
 // and in the image while staying green on a bare dev box.
 func requireFFmpeg(t *testing.T) {
 	t.Helper()

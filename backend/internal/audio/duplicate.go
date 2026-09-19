@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // IsDuplicate returns true if a call for the same system+talkgroup exists

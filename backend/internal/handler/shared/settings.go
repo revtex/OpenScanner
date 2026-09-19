@@ -2,7 +2,7 @@ package shared
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // GetSettingValue fetches a setting value from the DB, returning "" on error.

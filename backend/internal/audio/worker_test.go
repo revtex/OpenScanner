@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openscanner/openscanner/internal/audio"
+	"github.com/revtex/squelch/internal/audio"
 )
 
 func TestFfmpegArgs_Disabled(t *testing.T) {

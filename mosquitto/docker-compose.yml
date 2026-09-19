@@ -1,6 +1,6 @@
 # Standalone bundled MQTT broker for the Trunk Recorder integration.
 #
-# Unlike the `mqtt` profile in ../docker-compose.openscanner.yml — which
+# Unlike the `mqtt` profile in ../docker-compose.squelch.yml — which
 # auto-generates its config on first run — this compose file relies on the
 # committed static files under ./config/ and uses the upstream
 # eclipse-mosquitto image's default entrypoint. Edit the conf directly and
