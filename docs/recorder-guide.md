@@ -113,10 +113,8 @@ Squelch reads metadata from the MP3 file's ID3 tags (which SDRTrunk embeds autom
 
 RTLSDR-Airband is supported through directory monitoring only.
 
-> **Heads-up:** the **Type** dropdown in the admin UI currently lists only Trunk Recorder, SDR Trunk, DSDPlus Fast Lane, and Default (mask-based). The `rtlsdr-airband` parser exists in the server but has no dropdown entry yet, so you cannot select it on the Monitors page. Until it is added you have two options: pick **Default (mask-based)** and describe your filenames with a [mask](#filename-masks), or set `"type": "rtlsdr-airband"` on the monitor through the API or a JSON config import (**Admin → Tools → JSON Config**).
-
 1. Go to **Admin → Monitors → Add Monitor**.
-2. Set **Type** to `rtlsdr-airband` (see the note above).
+2. Set **Type** to **RTLSDR-Airband**.
 3. Set **Directory** to where RTLSDR-Airband writes its recordings.
 4. Set **System ID** to the system in Squelch that these recordings belong to.
 5. Set **Talkgroup ID** to the talkgroup to assign (typically one talkgroup per monitored frequency).
@@ -149,10 +147,8 @@ Squelch parses system and talkgroup information from the DSDPlus filename struct
 
 ProScan is supported through directory monitoring only.
 
-> **Heads-up:** the **Type** dropdown in the admin UI currently lists only Trunk Recorder, SDR Trunk, DSDPlus Fast Lane, and Default (mask-based). The `proscan` parser exists in the server but has no dropdown entry yet, so you cannot select it on the Monitors page. Until it is added you have two options: pick **Default (mask-based)** and describe your filenames with a [mask](#filename-masks), or set `"type": "proscan"` on the monitor through the API or a JSON config import (**Admin → Tools → JSON Config**).
-
 1. Go to **Admin → Monitors → Add Monitor**.
-2. Set **Type** to `proscan` (see the note above).
+2. Set **Type** to **ProScan**.
 3. Set **Directory** to ProScan's recordings folder.
 4. Set **Extension** to `wav` (the typical output format).
 5. Optionally set a **Mask** to extract metadata from filenames (see [Filename Masks](#filename-masks) below).
@@ -192,7 +188,7 @@ When creating a directory monitor, these settings are available:
 
 | Setting                 | Description                                                                                                                          |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **Type**                | Recorder type. The dropdown offers **Trunk Recorder**, **SDR Trunk**, **DSDPlus Fast Lane**, and **Default (mask-based)**. The server also understands `rtlsdr-airband` and `proscan` when set through the API or a JSON config import. |
+| **Type**                | Recorder type: **Trunk Recorder**, **SDR Trunk**, **DSDPlus Fast Lane**, **RTLSDR-Airband**, **ProScan**, or **Default (mask-based)**. The form shows only the fields that type actually uses. |
 | **Directory**           | The folder to watch for new recordings                                                                                               |
 | **Extension**           | File extension filter (e.g. `mp3`). Leave blank to accept all supported types                                                        |
 | **Mask**                | Filename pattern for extracting metadata (see below)                                                                                 |

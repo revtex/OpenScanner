@@ -31,13 +31,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   broker required credentials when anything on the host could connect without
   them. Both broker options now say so plainly, and say to lock it down before
   exposing it beyond loopback.
-- The recorder guide told users to set a directory monitor's **Type** to
-  `rtlsdr-airband` or `proscan`. Those parsers exist in the server, but the
-  admin dropdown only offers Trunk Recorder, SDR Trunk, DSDPlus Fast Lane and
-  Default (mask-based), so the instructions could not be followed. The guide
-  now says which types are selectable and how to set the other two. It also
-  pointed at "Directory Monitors" in the sidebar, which is called "Monitors",
-  and listed API Key Call Rate under Options, where it does not appear.
+- **RTLSDR-Airband and ProScan can now be selected as directory monitor
+  types.** Both parsers have been in the server the whole time, but the admin
+  dropdown only offered four types, so the only way to reach them was the API
+  or a JSON config import — and the recorder guide documented steps that could
+  not be carried out in the UI. They are now in the dropdown, and the form
+  reveals the fields each one actually reads: System and Talkgroup for both,
+  Frequency for RTLSDR-Airband, and a filename Mask for ProScan (the watcher
+  has always applied masks after the type parser, for every type).
+- The recorder guide pointed at "Directory Monitors" in the sidebar, which is
+  called "Monitors", and listed API Key Call Rate under Options, where it does
+  not appear.
 - **Trunk Recorder broker passwords are now encrypted at rest like every other
   secret.** The startup pass that encrypts plaintext secrets once an encryption
   key is configured covered settings and downstream API keys, but was never
