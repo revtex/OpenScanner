@@ -33,11 +33,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/openscanner/openscanner/internal/audio"
-	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/downstream"
-	"github.com/openscanner/openscanner/internal/handler/shared"
-	"github.com/openscanner/openscanner/internal/ws"
+	"github.com/revtex/squelch/internal/audio"
+	"github.com/revtex/squelch/internal/db"
+	"github.com/revtex/squelch/internal/downstream"
+	"github.com/revtex/squelch/internal/handler/shared"
+	"github.com/revtex/squelch/internal/ws"
 )
 
 // PostCallUploadV1 handles POST /api/v1/calls — the native upload endpoint.

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/openscanner/openscanner/internal/auth"
+	"github.com/revtex/squelch/internal/auth"
 	"golang.org/x/crypto/bcrypt"
 )
 

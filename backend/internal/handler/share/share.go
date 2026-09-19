@@ -16,9 +16,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/openscanner/openscanner/internal/audio"
-	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/handler/shared"
+	"github.com/revtex/squelch/internal/audio"
+	"github.com/revtex/squelch/internal/db"
+	"github.com/revtex/squelch/internal/handler/shared"
 )
 
 const (

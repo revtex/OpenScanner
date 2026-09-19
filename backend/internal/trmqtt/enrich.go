@@ -3,7 +3,7 @@ package trmqtt
 import (
 	"context"
 
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // Querier is the subset of sqlc-generated DB methods this package needs.

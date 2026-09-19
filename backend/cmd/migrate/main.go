@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/openscanner/openscanner/internal/config"
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/config"
+	"github.com/revtex/squelch/internal/db"
 )
 
 func main() {

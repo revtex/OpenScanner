@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/audio"
-	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/ws"
+	"github.com/revtex/squelch/internal/audio"
+	"github.com/revtex/squelch/internal/db"
+	"github.com/revtex/squelch/internal/ws"
 )
 
 // TestCallHandler_Limiter_CleansUpStaleEntries verifies that getLimiter

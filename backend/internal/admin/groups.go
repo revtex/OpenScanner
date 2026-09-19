@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // GroupsList returns all groups.

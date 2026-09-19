@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/openscanner/openscanner/docs"
-	"github.com/openscanner/openscanner/internal/handler/routes"
+	"github.com/revtex/squelch/docs"
+	"github.com/revtex/squelch/internal/handler/routes"
 )
 
 // The @version annotation in main.go is a build-time literal, so it goes

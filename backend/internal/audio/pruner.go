@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // PruneLoop runs pruneOldCalls on a 1-hour tick until ctx is cancelled.

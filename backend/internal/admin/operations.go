@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/auth"
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/auth"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // ── Public helper types ──

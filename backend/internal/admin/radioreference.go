@@ -7,7 +7,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // RadioReferenceApply merges RadioReference-sourced talkgroup metadata into

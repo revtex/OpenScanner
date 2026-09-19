@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // TestShareLimiter_CleansUpStaleEntries verifies that getShareLimiter

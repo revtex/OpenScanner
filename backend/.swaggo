@@ -3,14 +3,14 @@ replace database/sql.NullString string
 replace database/sql.NullInt64 int
 
 // Replace raw db types with clean swagger model types.
-replace github.com/openscanner/openscanner/internal/db.Group github.com/openscanner/openscanner/internal/api.swagGroup
-replace github.com/openscanner/openscanner/internal/db.Tag github.com/openscanner/openscanner/internal/api.swagTag
-replace github.com/openscanner/openscanner/internal/db.Setting github.com/openscanner/openscanner/internal/api.swagSetting
-replace github.com/openscanner/openscanner/internal/db.User github.com/openscanner/openscanner/internal/api.swagUser
-replace github.com/openscanner/openscanner/internal/db.System github.com/openscanner/openscanner/internal/api.swagSystem
-replace github.com/openscanner/openscanner/internal/db.Talkgroup github.com/openscanner/openscanner/internal/api.swagTalkgroup
-replace github.com/openscanner/openscanner/internal/db.Unit github.com/openscanner/openscanner/internal/api.swagUnit
-replace github.com/openscanner/openscanner/internal/db.ApiKey github.com/openscanner/openscanner/internal/api.swagApiKey
-replace github.com/openscanner/openscanner/internal/db.Dirmonitor github.com/openscanner/openscanner/internal/api.swagDirmonitor
-replace github.com/openscanner/openscanner/internal/db.Downstream github.com/openscanner/openscanner/internal/api.swagDownstream
-replace github.com/openscanner/openscanner/internal/db.Webhook github.com/openscanner/openscanner/internal/api.swagWebhook
+replace github.com/revtex/squelch/internal/db.Group github.com/revtex/squelch/internal/api.swagGroup
+replace github.com/revtex/squelch/internal/db.Tag github.com/revtex/squelch/internal/api.swagTag
+replace github.com/revtex/squelch/internal/db.Setting github.com/revtex/squelch/internal/api.swagSetting
+replace github.com/revtex/squelch/internal/db.User github.com/revtex/squelch/internal/api.swagUser
+replace github.com/revtex/squelch/internal/db.System github.com/revtex/squelch/internal/api.swagSystem
+replace github.com/revtex/squelch/internal/db.Talkgroup github.com/revtex/squelch/internal/api.swagTalkgroup
+replace github.com/revtex/squelch/internal/db.Unit github.com/revtex/squelch/internal/api.swagUnit
+replace github.com/revtex/squelch/internal/db.ApiKey github.com/revtex/squelch/internal/api.swagApiKey
+replace github.com/revtex/squelch/internal/db.Dirmonitor github.com/revtex/squelch/internal/api.swagDirmonitor
+replace github.com/revtex/squelch/internal/db.Downstream github.com/revtex/squelch/internal/api.swagDownstream
+replace github.com/revtex/squelch/internal/db.Webhook github.com/revtex/squelch/internal/api.swagWebhook

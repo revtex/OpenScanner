@@ -73,7 +73,7 @@ jobs:
           out="../dist/openscanner-${VERSION#v}-${GOOS}-${GOARCH}${ext}"
           go build \
             -trimpath \
-            -ldflags="-s -w -X github.com/openscanner/openscanner/internal/config.Version=${VERSION#v}" \
+            -ldflags="-s -w -X github.com/revtex/squelch/internal/config.Version=${VERSION#v}" \
             -o "$out" \
             ./cmd/server
           echo "binary=$out" >> "$GITHUB_ENV"

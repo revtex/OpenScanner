@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openscanner/openscanner/internal/audio"
+	"github.com/revtex/squelch/internal/audio"
 )
 
 // makeFileHeader builds a *multipart.FileHeader with the given filename and content.

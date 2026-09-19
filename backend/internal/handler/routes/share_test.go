@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/handler/share"
+	"github.com/revtex/squelch/internal/db"
+	"github.com/revtex/squelch/internal/handler/share"
 )
 
 // seedCallWithSystem creates a system, talkgroup, and call in the DB and

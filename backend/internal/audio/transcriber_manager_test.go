@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/audio"
+	"github.com/revtex/squelch/internal/audio"
 )
 
 // newFakeWhisper returns an httptest.Server that answers GET /api/whisper/model

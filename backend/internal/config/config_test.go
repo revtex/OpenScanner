@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openscanner/openscanner/internal/config"
+	"github.com/revtex/squelch/internal/config"
 )
 
 // writeTempConfig writes a JSON config file in t.TempDir() and returns its path.

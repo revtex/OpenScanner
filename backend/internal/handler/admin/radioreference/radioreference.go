@@ -12,8 +12,8 @@ import (
 	"unicode"
 
 	"github.com/gin-gonic/gin"
-	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/handler/shared"
+	"github.com/revtex/squelch/internal/db"
+	"github.com/revtex/squelch/internal/handler/shared"
 )
 
 const rrMergeModeFillMissing = "fill_missing"

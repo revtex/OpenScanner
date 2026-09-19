@@ -10,8 +10,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/openscanner/openscanner/internal/admin"
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/admin"
+	"github.com/revtex/squelch/internal/db"
 	_ "modernc.org/sqlite"
 )
 

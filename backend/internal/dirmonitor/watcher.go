@@ -17,10 +17,10 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/openscanner/openscanner/internal/audio"
-	"github.com/openscanner/openscanner/internal/db"
-	"github.com/openscanner/openscanner/internal/downstream"
-	"github.com/openscanner/openscanner/internal/ws"
+	"github.com/revtex/squelch/internal/audio"
+	"github.com/revtex/squelch/internal/db"
+	"github.com/revtex/squelch/internal/downstream"
+	"github.com/revtex/squelch/internal/ws"
 )
 
 // DownstreamNotifier is the interface used to notify the downstream pusher.

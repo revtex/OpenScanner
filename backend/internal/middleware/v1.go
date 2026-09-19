@@ -16,7 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/openscanner/openscanner/internal/handler/shared"
+	"github.com/revtex/squelch/internal/handler/shared"
 )
 
 // V1Marker tags the gin context as part of the /api/v1/* surface.

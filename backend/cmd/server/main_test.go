@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/kardianos/service"
-	"github.com/openscanner/openscanner/internal/config"
+	"github.com/revtex/squelch/internal/config"
 )
 
 type fakeService struct {

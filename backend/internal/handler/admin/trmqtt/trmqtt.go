@@ -21,9 +21,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/openscanner/openscanner/internal/auth"
-	"github.com/openscanner/openscanner/internal/db"
-	trmqttsvc "github.com/openscanner/openscanner/internal/trmqtt"
+	"github.com/revtex/squelch/internal/auth"
+	"github.com/revtex/squelch/internal/db"
+	trmqttsvc "github.com/revtex/squelch/internal/trmqtt"
 )
 
 // Handler serves the /api/{,v1/}admin/tr/* endpoints.

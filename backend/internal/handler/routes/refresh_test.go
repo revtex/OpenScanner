@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/auth"
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/auth"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // login drives a POST /api/auth/login and returns the response recorder. On

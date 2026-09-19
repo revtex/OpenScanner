@@ -6,7 +6,7 @@ BINARY=openscanner
 CMD=./cmd/server
 OUTPUT?=$(BINARY)
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS=-s -w -X github.com/openscanner/openscanner/internal/config.Version=$(VERSION)
+LDFLAGS=-s -w -X github.com/revtex/squelch/internal/config.Version=$(VERSION)
 
 build:
 	swag init -d cmd/server,internal/handler -g main.go --parseDependency --parseInternal -o docs

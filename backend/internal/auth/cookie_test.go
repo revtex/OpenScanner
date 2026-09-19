@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/openscanner/openscanner/internal/auth"
+	"github.com/revtex/squelch/internal/auth"
 )
 
 // refreshEndpointPaths enumerates every server URL path that MUST receive

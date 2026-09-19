@@ -9,8 +9,8 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/openscanner/openscanner/internal/audio"
-	"github.com/openscanner/openscanner/internal/handler/shared"
+	"github.com/revtex/squelch/internal/audio"
+	"github.com/revtex/squelch/internal/handler/shared"
 )
 
 // transcriptResponse is the JSON shape returned by GetCallTranscript.

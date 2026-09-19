@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openscanner/openscanner/internal/audio"
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/audio"
+	"github.com/revtex/squelch/internal/db"
 	_ "modernc.org/sqlite"
 )
 

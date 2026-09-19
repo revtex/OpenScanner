@@ -20,7 +20,7 @@ COPY backend/ .
 COPY --from=node-builder /src/frontend/dist ./internal/static/dist/
 # Generate Swagger docs (gitignored, must be built in CI)
 RUN swag init -d cmd/server,internal/handler -g main.go --parseDependency --parseInternal
-RUN go build -ldflags="-s -w -X github.com/openscanner/openscanner/internal/config.Version=${VERSION}" -o /openscanner ./cmd/server
+RUN go build -ldflags="-s -w -X github.com/revtex/squelch/internal/config.Version=${VERSION}" -o /openscanner ./cmd/server
 
 # Stage 3: Minimal runtime image
 FROM alpine:3.21

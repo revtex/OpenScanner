@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/openscanner/openscanner/internal/handler/routes"
-	"github.com/openscanner/openscanner/internal/audio"
-	"github.com/openscanner/openscanner/internal/auth"
-	"github.com/openscanner/openscanner/internal/db"
+	"github.com/revtex/squelch/internal/handler/routes"
+	"github.com/revtex/squelch/internal/audio"
+	"github.com/revtex/squelch/internal/auth"
+	"github.com/revtex/squelch/internal/db"
 )
 
 // newTestEngineWithCalls creates a Gin engine wired with all routes including a

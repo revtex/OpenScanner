@@ -9,7 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/openscanner/openscanner/internal/middleware"
+	"github.com/revtex/squelch/internal/middleware"
 )
 
 // TestDeprecatedHeaders asserts the four RFC 8594 headers are set on every

@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/openscanner/openscanner/internal/handler/shared"
+	"github.com/revtex/squelch/internal/handler/shared"
 )
 
 // GetCallAudio handles GET /api/calls/:id/audio.
