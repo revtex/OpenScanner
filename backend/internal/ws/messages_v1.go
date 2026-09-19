@@ -22,6 +22,7 @@ const (
 	TypeCallTranscript  = "call.transcript"
 	TypeSessionExpired  = "session.expired"
 	TypeListenerCount   = "listener.count"
+	TypeStreamCue       = "stream.cue"
 	TypeFeedMapSnapshot = "listener.feedMap.snapshot"
 	TypeFeedMapUpdate   = "listener.feedMap.update"
 	TypeAdminEvent      = "admin.event"
@@ -73,6 +74,19 @@ func NewCallNewV1(call any) ([]byte, error) {
 	return json.Marshal(map[string]any{
 		"type": TypeCallNew,
 		"call": call,
+	})
+}
+
+// NewStreamCueV1 builds a stream.cue JSON-object frame. It tells one
+// stream connection where on its own timeline a call begins, so the client
+// can hold the call's now-playing label until playback actually reaches it
+// — clients run several seconds behind the stream head.
+func NewStreamCueV1(sid string, callID int64, offset float64) ([]byte, error) {
+	return json.Marshal(map[string]any{
+		"type":   TypeStreamCue,
+		"sid":    sid,
+		"callId": callID,
+		"offset": offset,
 	})
 }
 

@@ -30,6 +30,8 @@ interface DisplayPanelProps {
   shareableLinks: boolean;
   isAuthenticated: boolean;
   isLive: boolean;
+  /** Server stream is playing; LIVE is deliberately off in that mode. */
+  backgroundAudio?: boolean;
 }
 
 function useClock() {
@@ -115,6 +117,7 @@ export function DisplayPanel({
   shareableLinks,
   isAuthenticated,
   isLive,
+  backgroundAudio,
 }: DisplayPanelProps) {
   const clock = useClock();
   const liveTranscriptDisplay = useAppSelector(
@@ -237,7 +240,19 @@ export function DisplayPanel({
         <span>{formatClock(clock, time12hFormat)}</span>
         <div className="flex items-center gap-4">
           {showListenersCount && <span>L: {listenerCount}</span>}
-          <span>Q: {queueCount}</span>
+          {/* The queue is the local player's. While background audio is on
+              the server does the queueing, so this counter is structurally
+              zero — a dash says "not applicable here" instead of implying
+              nothing is waiting. */}
+          <span
+            title={
+              backgroundAudio
+                ? "The server manages the queue while background audio is on"
+                : undefined
+            }
+          >
+            Q: {backgroundAudio ? "\u2014" : queueCount}
+          </span>
         </div>
       </div>
 
@@ -397,10 +412,14 @@ export function DisplayPanel({
             <span>&nbsp;</span>
           </div>
 
-          {/* Hint to enable LIVE when offline */}
+          {/* Hint to enable LIVE when offline. In background-audio mode
+              LIVE is deliberately off and the server stream is playing, so
+              telling the user to tap it would be wrong. */}
           {!isLive && (
             <div className="text-center text-sm opacity-40 py-1">
-              Tap LIVE to start listening
+              {backgroundAudio
+                ? "Background audio — streaming"
+                : "Tap LIVE to start listening"}
             </div>
           )}
 

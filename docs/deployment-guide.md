@@ -45,7 +45,7 @@ If you have Docker installed, you can be up and running in a couple of minutes.
          - OPENSCANNER_LISTEN=0.0.0.0:3022
          - TZ=America/New_York # change to your timezone
        healthcheck:
-         test: ["CMD", "wget", "-qO-", "http://localhost:3022/api/health"]
+         test: ["CMD", "wget", "-qO-", "http://localhost:3022/api/v1/health"]
          interval: 30s
          timeout: 5s
          start_period: 10s
@@ -336,7 +336,7 @@ In **Admin → Options** you can pick a conversion mode:
 
 After deploying, check these to confirm everything works:
 
-- [ ] `curl http://localhost:3022/api/health` returns a 200 response
+- [ ] `curl http://localhost:3022/api/v1/health` returns a 200 response
 - [ ] The browser URL shows the scanner interface (or the setup page on first run)
 - [ ] Admin login works and the dashboard loads
 - [ ] A test upload from your recorder appears in OpenScanner

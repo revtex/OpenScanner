@@ -10,6 +10,8 @@ import {
 import { clearCredentials } from "@/features/auth";
 import type { SystemConfig } from "@/types";
 import type { WsListenerInbound, WsListenerOutbound } from "@/shared/types/ws";
+import { streamCues } from "@/shared/services/audio/streamCues";
+import { streamPlayer } from "@/shared/services/audio/streamPlayer";
 
 const MAX_BACKOFF = 30_000;
 const DEDUP_SIZE = 100;
@@ -30,11 +32,13 @@ class WsClient {
   private tokenExpiredCallback: TokenExpiredCallback | null = null;
   private intentionalClose = false;
   private recentCallIds: number[] = [];
+  private wakeHandlersBound = false;
 
   connect(dispatch: AppDispatch, auth: WsAuth = {}): void {
     this.dispatch = dispatch;
     this.auth = auth;
     this.intentionalClose = false;
+    this.bindWakeHandlers();
     this.doConnect();
   }
 
@@ -161,6 +165,13 @@ class WsClient {
         this.dispatch?.(callReceived(call));
         break;
       }
+      case "stream.cue": {
+        // Only this tab's own stream has a timeline these offsets refer to.
+        if (msg.sid && msg.sid === streamPlayer.streamId()) {
+          streamCues.cue(msg.callId, msg.offset);
+        }
+        break;
+      }
       case "scanner.config": {
         if (!this.dispatch) break;
         const cfg = msg.config;
@@ -178,8 +189,6 @@ class WsClient {
             showListenersCount:
               cfg.showListenersCount === true ||
               cfg.showListenersCount === "true",
-            playbackGoesLive:
-              cfg.playbackGoesLive === true || cfg.playbackGoesLive === "true",
             shareableLinks:
               cfg.shareableLinks === true || cfg.shareableLinks === "true",
             keypadBeeps: cfg.keypadBeeps ?? "",
@@ -265,6 +274,39 @@ class WsClient {
       this.reconnectTimeout = null;
       this.doConnect();
     }, delay);
+  }
+
+  /**
+   * Force an immediate reconnect, bypassing any pending backoff timer.
+   * Used by visibility/online handlers — iOS Safari throttles setTimeout
+   * on backgrounded pages and silently kills WebSockets when the page is
+   * suspended, so when the page returns to focus we want to reconnect
+   * right away rather than waiting out the (possibly maxed-out) backoff.
+   */
+  private wake = (): void => {
+    if (this.intentionalClose) return;
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+      return;
+    }
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    this.backoff = 1000;
+    this.doConnect();
+  };
+
+  private bindWakeHandlers(): void {
+    if (this.wakeHandlersBound) return;
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", this.wake);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", this.wake);
+      window.addEventListener("focus", this.wake);
+    }
+    this.wakeHandlersBound = true;
   }
 }
 

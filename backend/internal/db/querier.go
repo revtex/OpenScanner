@@ -24,6 +24,7 @@ type Querier interface {
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) error
 	CreateSharedLink(ctx context.Context, arg CreateSharedLinkParams) (SharedLink, error)
 	CreateSystem(ctx context.Context, arg CreateSystemParams) (int64, error)
+	CreateTRInstance(ctx context.Context, arg CreateTRInstanceParams) (TrInstance, error)
 	CreateTag(ctx context.Context, label string) (int64, error)
 	CreateTalkgroup(ctx context.Context, arg CreateTalkgroupParams) (int64, error)
 	CreateTranscription(ctx context.Context, arg CreateTranscriptionParams) (int64, error)
@@ -40,6 +41,7 @@ type Querier interface {
 	DeleteSharedLink(ctx context.Context, id int64) error
 	DeleteSharedLinkByCallID(ctx context.Context, callID int64) error
 	DeleteSystem(ctx context.Context, id int64) error
+	DeleteTRInstance(ctx context.Context, id int64) error
 	DeleteTag(ctx context.Context, id int64) error
 	DeleteTalkgroup(ctx context.Context, id int64) error
 	DeleteUnit(ctx context.Context, id int64) error
@@ -67,6 +69,8 @@ type Querier interface {
 	GetSystem(ctx context.Context, id int64) (System, error)
 	GetSystemByLabel(ctx context.Context, label string) (System, error)
 	GetSystemBySystemID(ctx context.Context, systemID int64) (System, error)
+	GetTRInstance(ctx context.Context, id int64) (TrInstance, error)
+	GetTRInstanceByLabel(ctx context.Context, label string) (TrInstance, error)
 	GetTag(ctx context.Context, id int64) (Tag, error)
 	GetTagByLabel(ctx context.Context, label string) (Tag, error)
 	GetTalkgroup(ctx context.Context, id int64) (Talkgroup, error)
@@ -94,10 +98,12 @@ type Querier interface {
 	ListCallsAsc(ctx context.Context, arg ListCallsAscParams) ([]Call, error)
 	ListDirMonitors(ctx context.Context) ([]Dirmonitor, error)
 	ListDownstreams(ctx context.Context) ([]Downstream, error)
+	ListEnabledTRInstances(ctx context.Context) ([]TrInstance, error)
 	ListGroups(ctx context.Context) ([]Group, error)
 	ListSettings(ctx context.Context) ([]Setting, error)
 	ListSharedLinks(ctx context.Context) ([]ListSharedLinksRow, error)
 	ListSystems(ctx context.Context) ([]System, error)
+	ListTRInstances(ctx context.Context) ([]TrInstance, error)
 	ListTags(ctx context.Context) ([]Tag, error)
 	ListTalkgroupsBySystem(ctx context.Context, systemID int64) ([]Talkgroup, error)
 	ListUnitsBySystem(ctx context.Context, systemID int64) ([]Unit, error)
@@ -107,6 +113,7 @@ type Querier interface {
 	RevokeRefreshToken(ctx context.Context, id int64) error
 	RevokeRefreshTokenFamily(ctx context.Context, familyID string) error
 	SetSetupComplete(ctx context.Context, setupComplete int64) error
+	TouchTRInstanceLastSeen(ctx context.Context, arg TouchTRInstanceLastSeenParams) error
 	TranscriptionStats(ctx context.Context, since int64) (TranscriptionStatsRow, error)
 	TranscriptionsByLanguage(ctx context.Context) ([]TranscriptionsByLanguageRow, error)
 	TranscriptionsByModel(ctx context.Context) ([]TranscriptionsByModelRow, error)
@@ -115,6 +122,8 @@ type Querier interface {
 	UpdateDownstream(ctx context.Context, arg UpdateDownstreamParams) error
 	UpdateGroup(ctx context.Context, arg UpdateGroupParams) error
 	UpdateSystem(ctx context.Context, arg UpdateSystemParams) error
+	UpdateTRInstance(ctx context.Context, arg UpdateTRInstanceParams) (TrInstance, error)
+	UpdateTRInstancePassword(ctx context.Context, arg UpdateTRInstancePasswordParams) error
 	UpdateTag(ctx context.Context, arg UpdateTagParams) error
 	UpdateTalkgroup(ctx context.Context, arg UpdateTalkgroupParams) error
 	UpdateUnit(ctx context.Context, arg UpdateUnitParams) error

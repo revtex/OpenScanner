@@ -55,6 +55,12 @@ function formatDate(unix: number): string {
   return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+function formatDuration(secs: number): string {
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 function formatTalkgroupLabelName(
   label?: string,
   name?: string,
@@ -961,7 +967,7 @@ export default function SearchPanel({ isOpen, onClose }: SearchPanelProps) {
                       </span>
                       {call.duration > 0 && (
                         <span className="text-[11px] text-base-content/40">
-                          {call.duration}s
+                          {formatDuration(call.duration)}
                         </span>
                       )}
                       <div className="flex items-center gap-0.5">

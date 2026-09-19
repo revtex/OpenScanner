@@ -9,7 +9,7 @@ COPY frontend/ .
 RUN pnpm build
 
 # Stage 2: Build Go binary with embedded frontend
-FROM golang:1.25-alpine AS go-builder
+FROM golang:1.26-alpine AS go-builder
 ARG VERSION=dev
 WORKDIR /src/backend
 COPY backend/go.mod backend/go.sum ./
@@ -37,5 +37,5 @@ ENV OPENSCANNER_DB_FILE=/data/openscanner.db
 ENV OPENSCANNER_RECORDINGS_DIR=/data/recordings
 EXPOSE 3022
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3022/api/health || exit 1
+  CMD wget -qO- http://localhost:3022/api/v1/health || exit 1
 ENTRYPOINT ["./entrypoint.sh"]

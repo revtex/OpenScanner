@@ -152,6 +152,24 @@ type Talkgroup struct {
 	Order       int64          `db:"order" json:"order"`
 }
 
+type TrInstance struct {
+	ID            int64          `db:"id" json:"id"`
+	Label         string         `db:"label" json:"label"`
+	InstanceID    string         `db:"instance_id" json:"instance_id"`
+	BrokerUrl     string         `db:"broker_url" json:"broker_url"`
+	BaseTopic     string         `db:"base_topic" json:"base_topic"`
+	UnitTopic     sql.NullString `db:"unit_topic" json:"unit_topic"`
+	MessageTopic  sql.NullString `db:"message_topic" json:"message_topic"`
+	Username      sql.NullString `db:"username" json:"username"`
+	PasswordEnc   sql.NullString `db:"password_enc" json:"password_enc"`
+	TlsSkipVerify int64          `db:"tls_skip_verify" json:"tls_skip_verify"`
+	Qos           int64          `db:"qos" json:"qos"`
+	Enabled       int64          `db:"enabled" json:"enabled"`
+	CreatedAt     int64          `db:"created_at" json:"created_at"`
+	UpdatedAt     int64          `db:"updated_at" json:"updated_at"`
+	LastSeenAt    sql.NullInt64  `db:"last_seen_at" json:"last_seen_at"`
+}
+
 type Transcription struct {
 	ID         int64          `db:"id" json:"id"`
 	CallID     int64          `db:"call_id" json:"call_id"`

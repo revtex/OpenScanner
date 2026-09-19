@@ -8,6 +8,7 @@ The admin dashboard is at `/admin` and requires signing in with an admin account
 
 - [Navigation](#navigation)
 - [Activity](#activity)
+- [Trunk Recorder Dashboard](#trunk-recorder-dashboard)
 - [Users](#users)
 - [Systems](#systems)
 - [Groups & Tags](#groups--tags)
@@ -54,6 +55,18 @@ The Activity panel gives you a quick overview of your system:
 - **Server Uptime** — how long the server has been running
 - **24-Hour Activity Chart** — visual breakdown of call volume by hour
 - **Top Talkgroups** — most active talkgroups
+
+---
+
+## Trunk Recorder Dashboard
+
+If you run [trunk-recorder](https://github.com/robotastic/trunk-recorder) with the [MQTT status plugin](https://github.com/taclane/trunk-recorder-mqtt-status), OpenScanner can subscribe to its broker and surface live operational data — control-channel decode rate, recorder states, active calls, system tables, unit affiliation, and trunking-message debugging — under **Dashboards → Trunk Recorder**.
+
+The Trunk Recorder integration is opt-in. Enable it under **Options → Trunk Recorder MQTT**, then add one instance row per trunk-recorder under **Dashboards → Trunk Recorder → Instances**.
+
+> Audio is **not** consumed over MQTT — calls keep flowing through your existing dirmonitor or `/api/v1/calls` upload pipeline. The MQTT feed only powers the live dashboard.
+
+See the [Trunk Recorder MQTT guide](tr-mqtt-guide.md) for the full plugin config, multi-TR layout patterns, and bundled mosquitto compose profile (`docker compose --profile mqtt up -d`).
 
 ---
 

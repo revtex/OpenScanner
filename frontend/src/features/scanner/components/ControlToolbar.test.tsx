@@ -74,12 +74,16 @@ describe("ControlToolbar", () => {
     expect(liveBtn.className).toContain("btn-success");
   });
 
-  it("LIVE button has ghost style when isLive is false", () => {
+  it("LIVE button has the faint resting style when isLive is false", () => {
+    // Resting mode buttons carry a faint background rather than none, so
+    // they read as buttons before being pressed; the active state stays
+    // bold enough to remain the obvious difference.
     const props = defaultProps();
     props.isLive = false;
     render(<ControlToolbar {...props} />);
     const liveBtn = screen.getByText("LIVE").closest("button")!;
-    expect(liveBtn.className).toContain("btn-ghost");
+    expect(liveBtn.className).toContain("btn-soft");
+    expect(liveBtn.className).not.toContain("btn-success");
   });
 
   it("volume slider changes value via onSetVolume", () => {
@@ -163,5 +167,101 @@ describe("ControlToolbar", () => {
       talkgroupId: 200,
       expiresAt: 0,
     });
+  });
+
+  it("disables the transport controls while background audio is on", () => {
+    const props = defaultProps();
+    render(
+      <ControlToolbar
+        {...props}
+        backgroundAudio
+        streamState="playing"
+        onToggleBackgroundAudio={vi.fn()}
+      />,
+    );
+
+    // These act on the local player, which is released while the server
+    // stream owns playback — leaving them live would offer controls that
+    // silently do nothing.
+    expect(screen.getByRole("button", { name: "Pause" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Skip" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Replay" })).toBeDisabled();
+  });
+
+  it("leaves the transport controls usable when background audio is off", () => {
+    const props = defaultProps();
+    render(<ControlToolbar {...props} />);
+
+    expect(screen.getByRole("button", { name: "Pause" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Skip" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Replay" })).toBeEnabled();
+  });
+
+  it("only offers the background-audio control when the page provides it", () => {
+    const props = defaultProps();
+    const { rerender } = render(<ControlToolbar {...props} />);
+    // Desktop: the page passes no handler, so the control is absent.
+    expect(
+      screen.queryByRole("button", { name: "Background audio" }),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <ControlToolbar {...props} onToggleBackgroundAudio={vi.fn()} />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Background audio" }),
+    ).toBeInTheDocument();
+  });
+
+  it("disables HOLD while background audio is on", () => {
+    const props = defaultProps();
+    render(
+      <ControlToolbar
+        {...props}
+        backgroundAudio
+        streamState="playing"
+        onToggleBackgroundAudio={vi.fn()}
+      />,
+    );
+
+    // The server never sees HOLD, so it cannot filter the stream — an
+    // enabled control here would silently do nothing.
+    const hold = screen.getByRole("button", { name: "Hold" });
+    expect(hold).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("shows LIVE and BKGND as one joined choice on mobile", () => {
+    const props = defaultProps();
+    render(
+      <ControlToolbar
+        {...props}
+        backgroundAudio={false}
+        streamState="idle"
+        onToggleBackgroundAudio={vi.fn()}
+      />,
+    );
+
+    const live = screen.getByRole("button", { name: /LIVE/ });
+    const bg = screen.getByRole("button", { name: "Background audio" });
+    // Joined, and neither is disabled: they are two modes to pick from,
+    // not a control plus a switch that greys the other one out.
+    expect(live.className).toContain("join-item");
+    expect(bg.className).toContain("join-item");
+    expect(live).toBeEnabled();
+    expect(bg).toBeEnabled();
+  });
+
+  it("leaves LIVE enabled while streaming so the mode can be switched back", () => {
+    const props = defaultProps();
+    render(
+      <ControlToolbar
+        {...props}
+        backgroundAudio
+        streamState="playing"
+        onToggleBackgroundAudio={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /LIVE/ })).toBeEnabled();
   });
 });

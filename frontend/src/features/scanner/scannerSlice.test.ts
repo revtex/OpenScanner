@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   scannerSlice,
   callReceived,
@@ -15,6 +15,7 @@ import {
   expireAvoids,
   toggleTG,
   setAllTGs,
+  setTGsByIds,
   setConfig,
   transcriptReceived,
 } from "./scannerSlice";
@@ -140,6 +141,16 @@ describe("scannerSlice", () => {
   });
 
   describe("addAvoid / removeAvoid / clearAvoids", () => {
+    it("does not write the avoid into tgSelection", () => {
+      // Avoids are tracked separately (and persisted separately); folding
+      // them into tgSelection turned a timed avoid into a permanent disable.
+      const state = reducer(
+        undefined,
+        addAvoid({ talkgroupId: 10, expiresAt: Date.now() + 60_000 }),
+      );
+      expect(state.tgSelection[10]).toBeUndefined();
+    });
+
     it("adds an avoid entry", () => {
       const state = reducer(
         undefined,
@@ -177,18 +188,48 @@ describe("scannerSlice", () => {
       state = reducer(state, clearAvoids());
       expect(state.avoidList).toHaveLength(0);
     });
+
+    it("clearAvoids leaves tgSelection untouched", () => {
+      let state = reducer(undefined, setTGsByIds({ ids: [10], enabled: false }));
+      state = reducer(state, addAvoid({ talkgroupId: 10, expiresAt: 0 }));
+      state = reducer(state, clearAvoids());
+      expect(state.tgSelection[10]).toBe(false);
+    });
   });
 
   describe("toggleTG", () => {
-    it("flips talkgroup selection from undefined to true", () => {
+    it("disables an unkeyed talkgroup (missing key means enabled)", () => {
       const state = reducer(undefined, toggleTG(5));
-      expect(state.tgSelection[5]).toBe(true);
+      expect(state.tgSelection[5]).toBe(false);
     });
 
-    it("flips talkgroup selection from true to false", () => {
+    it("flips talkgroup selection from false to true", () => {
       let state = reducer(undefined, toggleTG(5));
       state = reducer(state, toggleTG(5));
-      expect(state.tgSelection[5]).toBe(false);
+      expect(state.tgSelection[5]).toBe(true);
+    });
+  });
+
+  describe("setTGsByIds", () => {
+    it("disables exactly the given ids", () => {
+      const state = reducer(
+        undefined,
+        setTGsByIds({ ids: [10, 11], enabled: false }),
+      );
+      expect(state.tgSelection).toEqual({ 10: false, 11: false });
+    });
+
+    it("enables the given ids and clears their avoids", () => {
+      let state = reducer(undefined, addAvoid({ talkgroupId: 10, expiresAt: 0 }));
+      state = reducer(state, addAvoid({ talkgroupId: 99, expiresAt: 0 }));
+      state = reducer(state, setTGsByIds({ ids: [10], enabled: true }));
+      expect(state.tgSelection[10]).toBe(true);
+      expect(state.avoidList.map((a) => a.talkgroupId)).toEqual([99]);
+    });
+
+    it("ignores an empty id list", () => {
+      const state = reducer(undefined, setTGsByIds({ ids: [], enabled: false }));
+      expect(state.tgSelection).toEqual({});
     });
   });
 
@@ -227,7 +268,6 @@ describe("scannerSlice", () => {
       version: "1.0",
       time12hFormat: false,
       showListenersCount: false,
-      playbackGoesLive: false,
       keypadBeeps: "uniden",
       shareableLinks: false,
       transcriptionEnabled: false,
@@ -314,6 +354,17 @@ describe("scannerSlice", () => {
       expect(state.avoidList[0].talkgroupId).toBe(10);
     });
 
+    it("leaves the user's own on/off choice alone when an avoid expires", () => {
+      const pastTime = Date.now() - 60_000;
+      // TG 10 was deliberately switched off; avoiding it and letting the
+      // avoid lapse must not silently switch it back on.
+      let state = reducer(undefined, setTGsByIds({ ids: [10], enabled: false }));
+      state = reducer(state, addAvoid({ talkgroupId: 10, expiresAt: pastTime }));
+      state = reducer(state, expireAvoids());
+      expect(state.avoidList).toHaveLength(0);
+      expect(state.tgSelection[10]).toBe(false);
+    });
+
     it("filters mixed avoids correctly", () => {
       const pastTime = Date.now() - 60_000;
       const futureTime = Date.now() + 60_000;
@@ -330,5 +381,49 @@ describe("scannerSlice", () => {
       expect(state.avoidList).toHaveLength(2);
       expect(state.avoidList.map((a) => a.talkgroupId)).toEqual([20, 30]);
     });
+  });
+});
+
+describe("backgroundAudio", () => {
+  afterEach(() => {
+    localStorage.clear();
+    vi.resetModules();
+  });
+
+  /**
+   * Re-import the slice so its initialState is recomputed against whatever
+   * storage currently holds. Without the reset the static import at the top
+   * of this file is reused and the assertion would pass vacuously.
+   */
+  async function freshInitialState(seed: string | null) {
+    vi.resetModules();
+    localStorage.clear();
+    if (seed !== null) {
+      localStorage.setItem("openscanner-background-audio", seed);
+    }
+    const mod = await import("./scannerSlice");
+    return mod.scannerSlice.reducer(undefined, { type: "@@INIT" });
+  }
+
+  it("starts off even when an old stored preference says otherwise", async () => {
+    // Regression: this used to be restored from localStorage. A stream can
+    // only be opened from a user gesture, so a restored "on" suspended the
+    // normal player and showed an enabled control while nothing played,
+    // until an unrelated click happened to satisfy the gesture.
+    const state = await freshInitialState("true");
+
+    expect(state.backgroundAudio).toBe(false);
+    expect(state.streamState).toBe("idle");
+  });
+
+  it("does not write the preference back to storage", async () => {
+    const mod = await import("./scannerSlice");
+    const state = mod.scannerSlice.reducer(
+      undefined,
+      mod.setBackgroundAudio(true),
+    );
+
+    expect(state.backgroundAudio).toBe(true);
+    expect(localStorage.getItem("openscanner-background-audio")).toBeNull();
   });
 });

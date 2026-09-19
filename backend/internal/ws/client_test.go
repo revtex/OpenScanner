@@ -1,10 +1,13 @@
 package ws
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -387,5 +390,66 @@ func TestHandleAdminWS_ListenerJWTRejected(t *testing.T) {
 	cmd := extractCommand(t, msg)
 	if cmd != "XPR" {
 		t.Errorf("expected XPR for listener JWT on admin endpoint, got %q", cmd)
+	}
+}
+
+// --- accept options ---
+
+// permessage-deflate with context takeover makes each message depend on the
+// previous message's compression window. Clients that don't carry that window
+// across messages (iOS Safari) survive the handshake and the first frame, then
+// drop the connection on the next one and reconnect forever. Compression must
+// stay off no matter what the client offers.
+func TestWSAcceptOptions_CompressionDisabled(t *testing.T) {
+	opts := wsAcceptOptions(httptest.NewRequest(http.MethodGet, "http://example.test/ws", nil))
+	if opts.CompressionMode != websocket.CompressionDisabled {
+		t.Fatalf("CompressionMode = %v, want CompressionDisabled", opts.CompressionMode)
+	}
+}
+
+func TestWSAccept_DoesNotNegotiateCompression(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := websocket.Accept(w, r, wsAcceptOptions(r))
+		if err != nil {
+			return
+		}
+		defer conn.CloseNow() //nolint:errcheck // test teardown
+		_, _, _ = conn.Read(r.Context())
+	}))
+	defer srv.Close()
+
+	host := strings.TrimPrefix(srv.URL, "http://")
+	conn, err := net.Dial("tcp", host)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close() //nolint:errcheck // test teardown
+
+	// A browser-style offer, which the server must decline.
+	req := "GET /ws HTTP/1.1\r\n" +
+		"Host: " + host + "\r\n" +
+		"Upgrade: websocket\r\n" +
+		"Connection: Upgrade\r\n" +
+		"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n" +
+		"Sec-WebSocket-Version: 13\r\n" +
+		"Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits\r\n\r\n"
+	if _, err := conn.Write([]byte(req)); err != nil {
+		t.Fatalf("write handshake: %v", err)
+	}
+
+	if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatalf("set deadline: %v", err)
+	}
+	resp, err := http.ReadResponse(bufio.NewReader(conn), nil)
+	if err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck // test teardown
+
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		t.Fatalf("status = %d, want 101", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Sec-WebSocket-Extensions"); got != "" {
+		t.Fatalf("server negotiated extension %q, want none", got)
 	}
 }

@@ -147,6 +147,7 @@ export const api = createApi({
     "Setup",
     "SharedLinks",
     "LegacyUsage",
+    "TrInstances",
   ],
   baseQuery: baseQueryWithRefresh,
   endpoints: (builder) => ({

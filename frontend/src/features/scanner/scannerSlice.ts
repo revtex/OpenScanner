@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { AvoidEntry, ConnectionStatus, ScannerConfig } from "@/types";
+import type { StreamState } from "@/shared/services/audio/streamPlayer";
 import type { Call, TranscriptionSegment } from "./types";
 
 const MAX_HISTORY = 5;
@@ -21,13 +22,41 @@ interface ScannerState {
   listenerCount: number;
   connectionStatus: ConnectionStatus;
   config: ScannerConfig | null;
+  // True only once a real scanner.config/CFG frame has been applied.
+  // `config` alone is not a safe signal: connection.welcome arrives first and
+  // setBranding fabricates a config with an empty `systems` array, which made
+  // the selection logic treat "no talkgroups yet" as "nothing is disabled".
+  configReceived: boolean;
   tgSelection: Record<number, boolean>;
   tgSelectionReady: boolean;
+  // When true the server sends one continuous audio stream instead of the
+  // client playing each call itself. Opt-in, because it trades the local
+  // queue controls (skip/replay/hold) for playback that survives an iOS
+  // screen lock. See shared/services/audio/streamPlayer.
+  backgroundAudio: boolean;
+  /**
+   * What the server stream is actually doing. Distinct from
+   * backgroundAudio, which is only what the user asked for: the browser can
+   * refuse a stream (autoplay policy, a failed connect), leaving the
+   * request on while nothing plays ("blocked"). "starting" is an ordinary
+   * connect and must not be shown as paused.
+   */
+  streamState: StreamState;
   pendingTranscripts: Record<number, PendingTranscript>;
 }
 
 const initialState: ScannerState = {
   isLive: false,
+  // Deliberately not restored. A stream can only be opened from a user
+  // gesture, so a remembered "on" is a preference the page cannot act on:
+  // it suspends the normal per-call player and shows an enabled-looking
+  // control while nothing plays, until some unrelated click happens to
+  // satisfy the gesture. Starting off means the button always describes
+  // what is actually happening.
+  backgroundAudio: false,
+  // Never restored: a stream can only be opened from a user gesture, so a
+  // freshly loaded page is never streaming yet however the preference reads.
+  streamState: "idle",
   isPaused:
     typeof sessionStorage !== "undefined" &&
     sessionStorage.getItem("openscanner-paused") === "true",
@@ -40,6 +69,7 @@ const initialState: ScannerState = {
   listenerCount: 0,
   connectionStatus: "disconnected",
   config: null,
+  configReceived: false,
   tgSelection: {},
   tgSelectionReady: false,
   pendingTranscripts: {},
@@ -162,8 +192,10 @@ export const scannerSlice = createSlice({
         (a) => a.talkgroupId !== action.payload.talkgroupId,
       );
       state.avoidList.push(action.payload);
-      // Avoided talkgroups are filtered talkgroups: mark unchecked.
-      state.tgSelection[action.payload.talkgroupId] = false;
+      // Deliberately does NOT touch tgSelection. An avoid is a separate,
+      // often time-boxed mute (see audioListenerMiddleware, which checks
+      // both lists); folding it into tgSelection persisted it as a
+      // permanent disable the moment anything else was saved.
     },
     removeAvoid(state, action: PayloadAction<number>) {
       state.avoidList = state.avoidList.filter(
@@ -171,9 +203,8 @@ export const scannerSlice = createSlice({
       );
     },
     clearAvoids(state) {
-      for (const entry of state.avoidList) {
-        state.tgSelection[entry.talkgroupId] = true;
-      }
+      // Only the avoids are cleared — a talkgroup the user switched off
+      // stays off (see addAvoid on why the two are kept separate).
       state.avoidList = [];
     },
     setListenerCount(state, action: PayloadAction<number>) {
@@ -184,6 +215,7 @@ export const scannerSlice = createSlice({
     },
     setConfig(state, action: PayloadAction<ScannerConfig>) {
       const incoming = action.payload;
+      state.configReceived = true;
       state.config = {
         ...incoming,
         branding: incoming.branding ?? state.config?.branding ?? "",
@@ -216,11 +248,12 @@ export const scannerSlice = createSlice({
         state.config.email = action.payload.email;
         state.config.version = action.payload.version;
       } else {
+        // NOTE: this placeholder carries no systems. Anything that reads
+        // talkgroups must gate on `configReceived`, not on `config != null`.
         state.config = {
           systems: [],
           time12hFormat: false,
           showListenersCount: false,
-          playbackGoesLive: false,
           shareableLinks: false,
           transcriptionEnabled: false,
           liveTranscriptDisplay: false,
@@ -229,15 +262,29 @@ export const scannerSlice = createSlice({
         };
       }
     },
+    setStreamState(state, action: PayloadAction<StreamState>) {
+      state.streamState = action.payload;
+    },
+    setBackgroundAudio(state, action: PayloadAction<boolean>) {
+      state.backgroundAudio = action.payload;
+    },
     toggleTG(state, action: PayloadAction<number>) {
       const id = action.payload;
-      state.tgSelection[id] = !state.tgSelection[id];
+      // A missing key means "enabled" everywhere else in the app (see
+      // `tgSelection[id] !== false`), so an unkeyed talkgroup must flip to
+      // false — `!undefined` would have made the first click a visible no-op.
+      state.tgSelection[id] = state.tgSelection[id] === false;
     },
     restoreTGSelection(state, action: PayloadAction<Record<number, boolean>>) {
+      // Restoring before the real config would mark an empty selection
+      // "ready" and let the persist effect save it back as "nothing
+      // disabled". Callers gate on this too; this is the backstop.
+      if (!state.configReceived) return;
       state.tgSelection = action.payload;
       state.tgSelectionReady = true;
     },
     restoreFromDisabledTGs(state, action: PayloadAction<number[]>) {
+      if (!state.configReceived) return;
       const disabled = new Set(action.payload);
       const selection: Record<number, boolean> = {};
       if (state.config) {
@@ -255,10 +302,6 @@ export const scannerSlice = createSlice({
       state.avoidList = action.payload.filter(
         (a) => a.expiresAt === 0 || a.expiresAt > now,
       );
-      // Ensure active avoids are reflected as unchecked.
-      for (const entry of state.avoidList) {
-        state.tgSelection[entry.talkgroupId] = false;
-      }
     },
     setAllTGs(state, action: PayloadAction<boolean>) {
       const enabled = action.payload;
@@ -270,44 +313,27 @@ export const scannerSlice = createSlice({
         }
       }
     },
-    setTGsBySystem(
+    // Bulk toggle by explicit talkgroup id. Callers (the Select Talkgroups
+    // panel) pass the exact list they rendered, so the section bucketing rule
+    // lives in exactly one place and the toggle always matches the badge the
+    // user is looking at — including sections keyed by a placeholder label
+    // such as "(No Group)"/"(No Tag)", which match no talkgroup field.
+    setTGsByIds(
       state,
-      action: PayloadAction<{ systemId: number; enabled: boolean }>,
+      action: PayloadAction<{ ids: number[]; enabled: boolean }>,
     ) {
-      const { systemId, enabled } = action.payload;
-      const sys = state.config?.systems.find((s) => s.id === systemId);
-      if (sys) {
-        for (const tg of sys.talkgroups) {
-          state.tgSelection[tg.id] = enabled;
-        }
+      const { ids, enabled } = action.payload;
+      for (const id of ids) {
+        state.tgSelection[id] = enabled;
       }
-    },
-    setTGsByGroup(
-      state,
-      action: PayloadAction<{ group: string; enabled: boolean }>,
-    ) {
-      const { group, enabled } = action.payload;
-      if (!state.config) return;
-      for (const sys of state.config.systems) {
-        for (const tg of sys.talkgroups) {
-          if (tg.group === group) {
-            state.tgSelection[tg.id] = enabled;
-          }
-        }
-      }
-    },
-    setTGsByTag(
-      state,
-      action: PayloadAction<{ tag: string; enabled: boolean }>,
-    ) {
-      const { tag, enabled } = action.payload;
-      if (!state.config) return;
-      for (const sys of state.config.systems) {
-        for (const tg of sys.talkgroups) {
-          if (tg.tag === tag) {
-            state.tgSelection[tg.id] = enabled;
-          }
-        }
+      if (enabled && state.avoidList.length > 0) {
+        // Avoids also read as "off", so a bulk enable must clear them or the
+        // section LED could never reach green (and the next click would try
+        // to enable again, forever).
+        const wanted = new Set(ids);
+        state.avoidList = state.avoidList.filter(
+          (a) => !wanted.has(a.talkgroupId),
+        );
       }
     },
     expireAvoids(state) {
@@ -316,10 +342,9 @@ export const scannerSlice = createSlice({
       for (const entry of state.avoidList) {
         if (entry.expiresAt === 0 || entry.expiresAt > now) {
           kept.push(entry);
-        } else {
-          // Timed avoid expired: auto re-enable the talkgroup.
-          state.tgSelection[entry.talkgroupId] = true;
         }
+        // An expired avoid just drops out of the list — tgSelection is the
+        // user's own on/off choice and is left exactly as they set it.
       }
       state.avoidList = kept;
     },
@@ -357,6 +382,8 @@ export const scannerSlice = createSlice({
 
 export const {
   callReceived,
+  setBackgroundAudio,
+  setStreamState,
   setCurrentCall,
   clearCurrentCall,
   resetDisplay,
@@ -381,8 +408,6 @@ export const {
   restoreFromDisabledTGs,
   restoreAvoidList,
   setAllTGs,
-  setTGsBySystem,
-  setTGsByGroup,
-  setTGsByTag,
+  setTGsByIds,
   transcriptReceived,
 } = scannerSlice.actions;

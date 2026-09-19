@@ -1,7 +1,7 @@
 // Package main is the entry point for the OpenScanner server.
 //
 //	@title			OpenScanner API
-//	@version		1.0
+//	@version		1.0	(overridden at runtime with the binary's build version)
 //	@description	Radio call manager API — real-time audio streaming, call management, and admin CRUD.
 //
 //	@BasePath	/api
@@ -37,7 +37,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kardianos/service"
 	"github.com/openscanner/openscanner/internal/admin"
-	"github.com/openscanner/openscanner/internal/handler/routes"
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/auth"
 	"github.com/openscanner/openscanner/internal/cli"
@@ -45,8 +44,11 @@ import (
 	"github.com/openscanner/openscanner/internal/db"
 	"github.com/openscanner/openscanner/internal/dirmonitor"
 	"github.com/openscanner/openscanner/internal/downstream"
+	"github.com/openscanner/openscanner/internal/handler/routes"
+	streamhandler "github.com/openscanner/openscanner/internal/handler/stream"
 	"github.com/openscanner/openscanner/internal/logging"
 	"github.com/openscanner/openscanner/internal/seed"
+	"github.com/openscanner/openscanner/internal/trmqtt"
 	"github.com/openscanner/openscanner/internal/ws"
 	"golang.org/x/crypto/acme/autocert"
 )
@@ -771,16 +773,6 @@ func (p *program) run() {
 		os.Exit(1)
 	}
 
-	// Warn at startup if webhook/push-notification features exist in the DB
-	// but have no dispatcher wired. CRUD remains available through the admin
-	// WebSocket (admin-only); no HTTP attack surface exists for these.
-	if setting, err := queries.GetSetting(context.Background(), "webhooksEnabled"); err == nil && setting.Value == "true" {
-		slog.Warn("webhooksEnabled=true but no webhook dispatcher is wired — webhooks will NOT fire")
-	}
-	if setting, err := queries.GetSetting(context.Background(), "pushNotifications"); err == nil && setting.Value == "true" {
-		slog.Warn("pushNotifications=true but no push dispatcher is wired — push notifications will NOT fire")
-	}
-
 	// Set up Gin router with registered routes.
 	router := gin.New()
 	router.MaxMultipartMemory = 50 << 20 // 50 MiB limit for multipart uploads
@@ -885,9 +877,56 @@ func (p *program) run() {
 	})
 	go hub.Run(ctx)
 
+	// Continuous listener audio stream. Startup shells out to FFmpeg to
+	// build the silence filler, so a host without a usable encoder simply
+	// leaves the endpoint answering 503 instead of failing to boot.
+	streamMgr := streamhandler.NewManager(queries, cfg.RecordingsDir)
+	if err := streamMgr.Start(ctx); err != nil {
+		slog.Warn("stream: continuous audio stream disabled", "error", err)
+	} else {
+		hub.SetCallNotifier(streamMgr.Notify)
+		// Lets a stream listener hold a call's now-playing label until its
+		// own playback reaches that call, instead of showing it the moment
+		// the call arrives — clients run several seconds behind the head.
+		streamMgr.SetCuePublisher(hub.SendStreamCue)
+	}
+
 	dwService := dirmonitor.NewService(queries, processor, hub, dsService, transcriberMgr)
 	dwService.Start(ctx)
 	hub.SetDirMonitorReloader(dwService)
+
+	// trunk-recorder MQTT subscriber. One autopaho client per tr_instances row;
+	// supervised reconnect, in-memory snapshot. Events fan out to admin
+	// clients via hub.BroadcastAdminEvent under tr.* topic names defined on
+	// trmqtt.Event.Type. The payload is the typed frame struct from the
+	// trmqtt package — admin WS handlers JSON-encode it as-is.
+	trManager := trmqtt.NewManager(queries, cfg.EncryptionKey, nil)
+	if err := trManager.Start(ctx); err != nil {
+		slog.Error("trmqtt: failed to start manager", "error", err)
+	}
+	trEvents, trUnsubscribe := trManager.Subscribe()
+	go func() {
+		defer trUnsubscribe()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case ev, ok := <-trEvents:
+				if !ok {
+					return
+				}
+				// Admin event topic is exactly the trmqtt EventType value.
+				// Payload includes instance_id/label so the frontend can
+				// route to the right per-instance view.
+				hub.BroadcastAdminEvent(string(ev.Type), map[string]any{
+					"instanceId": ev.InstanceID,
+					"label":      ev.Label,
+					"payload":    ev.Payload,
+					"error":      formatTRMqttErr(ev.Err),
+				})
+			}
+		}
+	}()
 
 	// Start transcription result consumer (stores results in DB, broadcasts TRN).
 	go consumeTranscriptionResults(ctx, queries, hub, transcriberMgr)
@@ -906,6 +945,9 @@ func (p *program) run() {
 		FFmpegAvailable:    hasFFmpeg,
 		FDKAACAvailable:    hasFDKAAC,
 		WhisperAvailable:   hasWhisper,
+		TRMqttManager:      trManager,
+		EncryptionKey:      cfg.EncryptionKey,
+		StreamManager:      streamMgr,
 	})
 
 	// Create HTTP server.
@@ -985,6 +1027,7 @@ func (p *program) run() {
 	}
 
 	dsService.Stop()
+	trManager.Stop()
 	slog.Info("server: shutdown complete")
 }
 
@@ -1141,6 +1184,16 @@ func printStartupBanner(d startupBannerData) {
 				"    Fix: set OPENSCANNER_ENCRYPTION_KEY (or --encryption-key) to a 32-byte\n"+
 				"    random value. See docs/deployment-guide.md#secrets-encryption.\n\n")
 	}
+}
+
+// formatTRMqttErr renders a trmqtt event error as a string suitable for
+// inclusion in admin events. Returns "" for a nil error so the admin event
+// payload omits the field cleanly when JSON-encoded by the hub.
+func formatTRMqttErr(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }
 
 // consumeTranscriptionResults reads completed transcription jobs, stores them

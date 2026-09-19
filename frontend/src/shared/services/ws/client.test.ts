@@ -5,6 +5,7 @@ import { scannerSlice } from "@/features/scanner";
 import { authSlice } from "@/features/auth";
 import { callsSlice } from "@/features/scanner";
 import { api } from "@/app/api";
+import { trMqttReducer } from "@/app/store";
 
 // ── Fake WebSocket stub ───────────────────────────────────────────────────
 
@@ -66,6 +67,7 @@ function makeStore() {
   return configureStore({
     reducer: {
       scanner: scannerSlice.reducer,
+      trMqtt: trMqttReducer,
       auth: authSlice.reducer,
       calls: callsSlice.reducer,
       [api.reducerPath]: api.reducer,

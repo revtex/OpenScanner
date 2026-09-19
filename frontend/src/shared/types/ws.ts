@@ -25,7 +25,6 @@ export interface WsScannerConfig {
     version?: string;
     time12hFormat?: boolean | string;
     showListenersCount?: boolean | string;
-    playbackGoesLive?: boolean | string;
     shareableLinks?: boolean | string;
     keypadBeeps?: string;
     transcriptionEnabled?: boolean | string;
@@ -64,6 +63,19 @@ export interface WsConnectionRejected {
   reason: string;
 }
 
+/**
+ * Tells this connection where a call begins on its own stream timeline, so
+ * the now-playing label can be held until playback reaches it. Sent only
+ * to the stream's own tab, identified by sid.
+ */
+export interface WsStreamCue {
+  type: "stream.cue";
+  sid: string;
+  callId: number;
+  /** Seconds from the start of this connection's stream. */
+  offset: number;
+}
+
 export type WsListenerInbound =
   | WsWelcome
   | WsScannerConfig
@@ -72,7 +84,8 @@ export type WsListenerInbound =
   | WsSessionExpired
   | WsListenerCount
   | WsFeedMapSnapshot
-  | WsConnectionRejected;
+  | WsConnectionRejected
+  | WsStreamCue;
 
 // ── Listener WS — outbound (client → server) ────────────────────────────
 

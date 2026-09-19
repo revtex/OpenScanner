@@ -478,3 +478,99 @@ func TestSwaggerCookieAuth(t *testing.T) {
 	// Silence unused import.
 	_ = fmt.Sprintf
 }
+
+// --- V1ErrorEnvelope streaming behaviour ---
+
+// The envelope middleware buffers the body so it can rewrite legacy error
+// shapes. It must stop buffering as soon as the status is known to be
+// non-error: a streaming 200 never returns, so a buffering wrapper emits
+// nothing at all and grows without bound. This is what broke the listener
+// audio stream — the response reached the client as 200 audio/mpeg with
+// zero bytes of body.
+func TestV1ErrorEnvelope_StreamsSuccessResponsesIncrementally(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(middleware.V1ErrorEnvelope())
+
+	released := make(chan struct{})
+	r.GET("/stream", func(c *gin.Context) {
+		c.Writer.WriteHeader(http.StatusOK)
+		_, _ = c.Writer.Write([]byte("first-chunk"))
+		c.Writer.Flush()
+		<-released // handler is still running, as a live stream would be
+		_, _ = c.Writer.Write([]byte("second-chunk"))
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/stream", nil)
+
+	done := make(chan struct{})
+	go func() {
+		r.ServeHTTP(w, req)
+		close(done)
+	}()
+
+	// The first chunk must be visible while the handler is still running.
+	deadline := time.After(2 * time.Second)
+	for {
+		if strings.Contains(w.Body.String(), "first-chunk") {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("no body reached the client while streaming; got %q", w.Body.String())
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
+
+	close(released)
+	<-done
+
+	if got := w.Body.String(); got != "first-chunksecond-chunk" {
+		t.Errorf("body = %q, want both chunks exactly once", got)
+	}
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200", w.Code)
+	}
+}
+
+// A streaming handler must be able to clear the server's write deadline,
+// which requires the wrapper to expose what it wraps.
+func TestV1ErrorEnvelope_WriterCanBeUnwrapped(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(middleware.V1ErrorEnvelope())
+
+	var unwrapped bool
+	r.GET("/x", func(c *gin.Context) {
+		type unwrapper interface{ Unwrap() http.ResponseWriter }
+		u, ok := c.Writer.(unwrapper)
+		unwrapped = ok && u.Unwrap() != nil
+		c.Status(http.StatusOK)
+	})
+
+	r.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/x", nil))
+	if !unwrapped {
+		t.Error("response writer does not expose Unwrap; http.ResponseController cannot reach the connection")
+	}
+}
+
+// Error bodies must still be buffered and rewritten.
+func TestV1ErrorEnvelope_StillRewritesLegacyErrors(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(middleware.V1ErrorEnvelope())
+	r.GET("/e", func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "call not found"})
+	})
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/e", nil))
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), `"code"`) {
+		t.Errorf("legacy error was not rewritten into the v1 envelope: %s", w.Body.String())
+	}
+}

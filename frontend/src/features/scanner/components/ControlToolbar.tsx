@@ -11,10 +11,12 @@ import {
   Ban,
   List,
   Search,
+  Smartphone,
 } from "lucide-react";
 import { useCallback } from "react";
 import { playBeep } from "@/shared/services/audio/beep";
 import type { AvoidEntry } from "@/types";
+import type { StreamState } from "@/shared/services/audio/streamPlayer";
 
 interface ControlToolbarProps {
   isPaused: boolean;
@@ -35,6 +37,10 @@ interface ControlToolbarProps {
   onToggleSelectTG: () => void;
   onToggleSearch: () => void;
   onToggleBookmarks?: () => void;
+  backgroundAudio?: boolean;
+  /** What the stream is really doing, not merely what is enabled. */
+  streamState?: StreamState;
+  onToggleBackgroundAudio?: () => void;
   keypadBeeps?: string;
 }
 
@@ -57,6 +63,9 @@ export function ControlToolbar({
   onToggleSelectTG,
   onToggleSearch,
   onToggleBookmarks,
+  backgroundAudio,
+  streamState,
+  onToggleBackgroundAudio,
   keypadBeeps,
 }: ControlToolbarProps) {
   const beep = useCallback(() => {
@@ -76,13 +85,22 @@ export function ControlToolbar({
     <div className="mt-4 space-y-2">
       {/* Row 1 — Playback + Quick Actions */}
       <div className="flex items-center justify-center gap-2 flex-wrap">
-        {/* Play/Pause */}
+        {/* Play/Pause. Inert while the server stream owns playback: these
+            three act on the local player, which is released in that mode,
+            so they would look available while doing nothing. */}
         <div
           className="tooltip tooltip-bottom"
-          data-tip={isPaused ? "Resume" : "Pause"}
+          data-tip={
+            backgroundAudio
+              ? "Not available while background audio is on"
+              : isPaused
+                ? "Resume"
+                : "Pause"
+          }
         >
           <button
             className="btn btn-circle btn-ghost w-11 h-11"
+            disabled={backgroundAudio === true}
             onClick={() => {
               beep();
               onTogglePause();
@@ -98,9 +116,17 @@ export function ControlToolbar({
         </div>
 
         {/* Skip */}
-        <div className="tooltip tooltip-bottom" data-tip="Skip">
+        <div
+          className="tooltip tooltip-bottom"
+          data-tip={
+            backgroundAudio
+              ? "Not available while background audio is on"
+              : "Skip"
+          }
+        >
           <button
             className="btn btn-circle btn-ghost w-9 h-9"
+            disabled={backgroundAudio === true}
             onClick={() => {
               beep();
               onSkip();
@@ -112,9 +138,17 @@ export function ControlToolbar({
         </div>
 
         {/* Replay */}
-        <div className="tooltip tooltip-bottom" data-tip="Replay">
+        <div
+          className="tooltip tooltip-bottom"
+          data-tip={
+            backgroundAudio
+              ? "Not available while background audio is on"
+              : "Replay"
+          }
+        >
           <button
             className="btn btn-circle btn-ghost w-9 h-9"
+            disabled={backgroundAudio === true}
             onClick={() => {
               beep();
               onReplay();
@@ -148,6 +182,7 @@ export function ControlToolbar({
             value={volume}
             onChange={(e) => onSetVolume(Number(e.target.value))}
             className="range range-xs range-primary w-28"
+            aria-label="Volume"
           />
         </div>
 
@@ -176,6 +211,7 @@ export function ControlToolbar({
               value={volume}
               onChange={(e) => onSetVolume(Number(e.target.value))}
               className="range range-xs range-primary w-28"
+              aria-label="Volume"
             />
           </div>
         </div>
@@ -197,31 +233,97 @@ export function ControlToolbar({
         )}
       </div>
 
-      {/* Row 2 — Mode Toggles */}
-      <div className="grid grid-cols-5 gap-1 sm:gap-2 w-full items-center">
-        {/* LIVE */}
-        <div className="tooltip tooltip-bottom" data-tip="Live Mode">
-          <button
-            className={`btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 ${
-              isLive ? "btn-success" : "btn-ghost text-base-content"
+      {/* Row 2 — Mode Toggles. Six columns when the background-audio
+          control is present (mobile only); five otherwise. */}
+      <div
+        className={`grid ${
+          onToggleBackgroundAudio ? "grid-cols-6" : "grid-cols-5"
+        } gap-1 sm:gap-2 w-full items-center`}
+      >
+        {/* Playback mode. LIVE and BACKGROUND are two ways of listening,
+            not a control plus a mystery switch — joining them makes the
+            choice visible and removes the greyed-out LIVE that used to
+            need explaining. BACKGROUND is mobile-only; on desktop this is
+            just the LIVE button it always was. */}
+        <div
+          className={`${onToggleBackgroundAudio ? "col-span-2 join w-full" : ""}`}
+        >
+          <div
+            className={`tooltip tooltip-bottom ${
+              onToggleBackgroundAudio ? "w-1/2" : "w-full"
             }`}
-            onClick={() => {
-              beep();
-              onToggleLive();
-            }}
+            data-tip="Play in this tab"
           >
-            <Radio className="hidden sm:inline w-3.5 h-3.5" />
-            LIVE
-          </button>
+            <button
+              className={`btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 ${
+                onToggleBackgroundAudio ? "join-item" : ""
+              } ${
+                isLive && !backgroundAudio
+                  ? "btn-success"
+                  : "btn-soft"
+              }`}
+              onClick={() => {
+                beep();
+                onToggleLive();
+              }}
+            >
+              <Radio className="hidden sm:inline w-3.5 h-3.5" />
+              LIVE
+            </button>
+          </div>
+
+          {onToggleBackgroundAudio && (
+            <div
+              className="tooltip tooltip-bottom w-1/2"
+              data-tip={
+                streamState === "blocked" && backgroundAudio
+                  ? "Paused — tap to resume"
+                  : "Keeps playing when your screen locks"
+              }
+            >
+              <button
+                className={`btn btn-xs sm:btn-sm join-item w-full min-w-0 px-1 sm:px-2 gap-1 ${
+                  backgroundAudio
+                    ? streamState === "blocked"
+                      ? "btn-warning"
+                      : "btn-primary"
+                    : "btn-soft"
+                }`}
+                onClick={() => {
+                  beep();
+                  onToggleBackgroundAudio();
+                }}
+                aria-label="Background audio"
+                aria-pressed={backgroundAudio === true}
+              >
+                <Smartphone className="hidden sm:inline w-3.5 h-3.5" />
+                BKGND
+              </button>
+            </div>
+          )}
         </div>
 
         {/* HOLD */}
         <div className="dropdown dropdown-top w-full">
+          {/* HOLD is transient UI state the server never sees, so it
+              cannot filter the stream — it would look like it worked and
+              silently do nothing. */}
           <div
-            tabIndex={0}
+            tabIndex={backgroundAudio ? -1 : 0}
             role="button"
+            aria-label="Hold"
+            aria-disabled={backgroundAudio === true}
+            title={
+              backgroundAudio
+                ? "Not available while background audio is on"
+                : undefined
+            }
             className={`btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 ${
-              isHolding ? "btn-secondary" : "btn-ghost"
+              backgroundAudio
+                ? "btn-disabled"
+                : isHolding
+                  ? "btn-secondary"
+                  : "btn-soft"
             }`}
           >
             <Lock className="hidden sm:inline w-3.5 h-3.5" />
@@ -259,7 +361,8 @@ export function ControlToolbar({
           <div
             tabIndex={0}
             role="button"
-            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-ghost"
+            aria-label="Avoid"
+            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-soft"
           >
             <Ban className="hidden sm:inline w-3.5 h-3.5" />
             AVOID
@@ -286,7 +389,7 @@ export function ControlToolbar({
         {/* SELECT */}
         <div className="tooltip tooltip-bottom" data-tip="Select Talkgroups">
           <button
-            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-ghost"
+            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-soft"
             onClick={() => {
               beep();
               onToggleSelectTG();
@@ -300,7 +403,7 @@ export function ControlToolbar({
         {/* SEARCH */}
         <div className="tooltip tooltip-bottom" data-tip="Search Calls">
           <button
-            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-ghost"
+            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-soft"
             onClick={() => {
               beep();
               onToggleSearch();

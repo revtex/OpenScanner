@@ -34,12 +34,63 @@ services:
     # secrets:
     #   - encryption_key
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3022/api/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3022/api/v1/health"]
       interval: 30s
       timeout: 5s
       start_period: 10s
       retries: 3
     restart: unless-stopped
+
+  ## Optional bundled MQTT broker for the Trunk Recorder integration.
+  ## Activate with:  docker compose --profile mqtt up -d
+  ##
+  ## On first start, ./mosquitto/config/mosquitto.conf is generated bound
+  ## to 127.0.0.1:1883 with password authentication required. Add users
+  ## with:
+  ##   docker compose exec mosquitto mosquitto_passwd /mosquitto/config/passwd <user>
+  ## To expose the broker to the LAN, change the published port mapping
+  ## below to "0.0.0.0:1883:1883" and set listener 0.0.0.0 in the conf.
+  mosquitto:
+    image: eclipse-mosquitto:2
+    profiles: ["mqtt"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -e
+        CONF=/mosquitto/config/mosquitto.conf
+        if [ ! -f "$$CONF" ]; then
+          echo "[init] writing default mosquitto.conf"
+          mkdir -p /mosquitto/config /mosquitto/data
+          cat > "$$CONF" <<'EOF'
+        # Default OpenScanner-bundled mosquitto config.
+        # Ships with anonymous access so the broker boots cleanly on a
+        # fresh checkout. Lock it down after creating a user with
+        # `mosquitto_passwd` (see docs/tr-mqtt-guide.md).
+        listener 1883 0.0.0.0
+        allow_anonymous true
+        #allow_anonymous false
+        #password_file /mosquitto/config/passwd
+        persistence true
+        persistence_location /mosquitto/data/
+        log_dest stdout
+        EOF
+        fi
+        # The passwd file is NOT auto-created. Run mosquitto_passwd inside
+        # the container after first boot. `--user mosquitto` is required
+        # so the file is owned by UID 1883 with 0700 perms (mosquitto 2.x
+        # refuses files with looser perms or wrong ownership):
+        #
+        #   docker compose exec --user mosquitto mosquitto \
+        #     mosquitto_passwd -c -b /mosquitto/config/passwd <user> <password>
+        #   docker compose restart mosquitto
+        exec /docker-entrypoint.sh /usr/sbin/mosquitto -c "$$CONF"
 
 # secrets:
 #   encryption_key:

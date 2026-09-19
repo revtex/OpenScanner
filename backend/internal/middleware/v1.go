@@ -32,23 +32,49 @@ func V1Marker() gin.HandlerFunc {
 
 // envelopeRewriter is a gin.ResponseWriter that buffers the body so it can be
 // optionally rewritten before being flushed to the client.
+//
+// Only error responses are ever rewritten, so buffering stops the moment the
+// status is known to be non-error. That is not just an optimisation: a
+// streaming 200 — the listener audio stream — never returns, so buffering it
+// would grow without bound and emit nothing at all. It also keeps ordinary
+// large bodies, such as call audio, from being copied for no reason.
 type envelopeRewriter struct {
 	gin.ResponseWriter
 	buf    bytes.Buffer
 	status int
+	// passthrough means writes go straight to the client and the body must
+	// not be re-emitted after the handler returns.
+	passthrough bool
 }
 
 func (w *envelopeRewriter) WriteHeader(status int) {
 	w.status = status
-	// Defer to embedded writer when we flush. Don't propagate yet.
+	if status < 400 {
+		w.passthrough = true
+		w.ResponseWriter.WriteHeader(status)
+	}
+	// For errors, defer to the embedded writer when we flush.
 }
 
 func (w *envelopeRewriter) Write(p []byte) (int, error) {
+	if w.passthrough {
+		return w.ResponseWriter.Write(p)
+	}
 	return w.buf.Write(p)
 }
 
 func (w *envelopeRewriter) WriteString(s string) (int, error) {
+	if w.passthrough {
+		return w.ResponseWriter.WriteString(s)
+	}
 	return w.buf.WriteString(s)
+}
+
+// Unwrap exposes the writer underneath so http.ResponseController can reach
+// it — without this a streaming handler cannot clear its write deadline and
+// the server's WriteTimeout cuts the response off mid-body.
+func (w *envelopeRewriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }
 
 // V1ErrorEnvelope rewrites legacy `{"error":"<string>"}` 4xx/5xx response
@@ -70,6 +96,11 @@ func V1ErrorEnvelope() gin.HandlerFunc {
 		}()
 
 		c.Next()
+
+		// Already streamed straight to the client; nothing left to rewrite.
+		if rw.passthrough {
+			return
+		}
 
 		status := rw.status
 		if status == 0 {

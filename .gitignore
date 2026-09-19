@@ -21,6 +21,12 @@
 /audio/
 *.m4a
 
+# mosquitto runtime — keep config/ committed, ignore data and the passwd
+# file (created at runtime via `mosquitto_passwd` inside the container so
+# it has the correct UID 1883 ownership and 0700 perms).
+/mosquitto/data/
+/mosquitto/config/passwd
+
 # SQLite DB files
 *.db
 *.db-shm
@@ -49,6 +55,15 @@ Thumbs.db
 # In-progress planning docs
 /docs/plans/
 
+# Operator-side TR/SDR config moved to its own repo (2026-09-16).
+# Kept as a guard so nothing operator-side lands here again.
 /systems-config/
+
 # Local preview (not meant to be committed)
 /tmp-pdf-preview/
+
+# AI assistant / MCP session artifacts (machine-specific, not shared)
+/.claude/
+/.mcp.json
+/.playwright-mcp/
+/test-playwright.png

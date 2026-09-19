@@ -2,6 +2,7 @@ import { createListenerMiddleware } from "@reduxjs/toolkit";
 import type { RootState } from "@/app/store";
 import { callReceived } from "@/features/scanner";
 import { audioPlayer } from "@/shared/services/audio/player";
+import { streamCues } from "@/shared/services/audio/streamCues";
 
 /**
  * Listener middleware that bridges incoming Redux call events to the
@@ -15,17 +16,50 @@ import { audioPlayer } from "@/shared/services/audio/player";
  * - HOLD SYSTEM → only that system plays.
  * - AVOID → active avoid entries block their talkgroup.
  * - SELECT → talkgroups explicitly disabled in tgSelection are dropped.
+ * - Background audio on → the server stream plays instead; drop everything.
  */
+/** True while an AVOID entry for this talkgroup is still in force. */
+function isAvoided(
+  avoidList: RootState["scanner"]["avoidList"],
+  talkgroupId: number,
+): boolean {
+  const now = Date.now();
+  for (const entry of avoidList) {
+    if (entry.talkgroupId === talkgroupId) {
+      if (entry.expiresAt === 0 || entry.expiresAt > now) return true;
+    }
+  }
+  return false;
+}
+
 export const audioListenerMiddleware = createListenerMiddleware();
 
 audioListenerMiddleware.startListening({
   actionCreator: callReceived,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState() as RootState;
-    if (!state.scanner.isLive) return;
-
     const call = action.payload;
-    const { heldTG, heldSystem, avoidList, tgSelection } = state.scanner;
+    const { heldTG, heldSystem, avoidList, tgSelection, backgroundAudio } =
+      state.scanner;
+
+    // Background-audio mode moves playback to the server's continuous
+    // stream, which applies the selection itself — enqueuing here too would
+    // play every call twice. The lock screen still needs labelling though,
+    // and nothing else does it in that mode, so mirror the server's filter
+    // (selection + AVOID, but not HOLD, which the server cannot see).
+    //
+    // The label is handed to the cue scheduler rather than published now:
+    // this event arrives the moment the call is ingested, but its audio is
+    // still several seconds down the stream's buffer, and changing the lock
+    // screen that far ahead of the sound is just confusing. See streamCues.
+    if (backgroundAudio) {
+      if (isAvoided(avoidList, call.talkgroup)) return;
+      if (tgSelection[call.talkgroup] === false) return;
+      streamCues.hold(call);
+      return;
+    }
+
+    if (!state.scanner.isLive) return;
 
     if (heldTG !== null) {
       if (call.talkgroup !== heldTG) return;
@@ -33,12 +67,7 @@ audioListenerMiddleware.startListening({
       if (call.system !== heldSystem) return;
     }
 
-    const now = Date.now();
-    for (const entry of avoidList) {
-      if (entry.talkgroupId === call.talkgroup) {
-        if (entry.expiresAt === 0 || entry.expiresAt > now) return;
-      }
-    }
+    if (isAvoided(avoidList, call.talkgroup)) return;
 
     if (tgSelection[call.talkgroup] === false) return;
 

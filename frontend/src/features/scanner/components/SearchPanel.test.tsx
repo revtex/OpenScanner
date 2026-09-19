@@ -9,6 +9,7 @@ import { callsSlice } from "../callsSlice";
 import { api } from "@/app/api";
 import type { RootState } from "@/app/store";
 import type { ScannerConfig } from "@/types";
+import { trMqttReducer } from "@/app/store";
 
 // --- Mocks ---
 
@@ -44,6 +45,7 @@ function makeStore(preloadedState?: Partial<RootState>) {
   return configureStore({
     reducer: {
       scanner: scannerSlice.reducer,
+      trMqtt: trMqttReducer,
       auth: authSlice.reducer,
       calls: callsSlice.reducer,
       [api.reducerPath]: api.reducer,
@@ -104,7 +106,6 @@ const testConfig: ScannerConfig = {
   version: "1.0",
   time12hFormat: false,
   showListenersCount: false,
-  playbackGoesLive: false,
   keypadBeeps: "uniden",
   shareableLinks: false,
   transcriptionEnabled: false,
@@ -118,6 +119,8 @@ function scannerState(
     isLive: true,
     isPaused: false,
     isAudioActive: false,
+    backgroundAudio: false,
+      streamState: "idle" as const,
     heldSystem: null,
     heldTG: null,
     avoidList: [],
@@ -127,6 +130,7 @@ function scannerState(
     connectionStatus: "disconnected",
     config: testConfig,
     tgSelection: {},
+    configReceived: true,
     tgSelectionReady: true,
     pendingTranscripts: {},
     ...overrides,

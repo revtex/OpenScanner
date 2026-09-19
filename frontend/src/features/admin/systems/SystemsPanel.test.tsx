@@ -10,6 +10,7 @@ import { authSlice } from "@/features/auth";
 import { callsSlice } from "@/features/scanner";
 import { api } from "@/app/api";
 import type { AdminSystem } from "@/types";
+import { trMqttReducer } from "@/app/store";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,7 @@ function makeStore() {
   return configureStore({
     reducer: {
       scanner: scannerSlice.reducer,
+      trMqtt: trMqttReducer,
       auth: authSlice.reducer,
       calls: callsSlice.reducer,
       [api.reducerPath]: api.reducer,

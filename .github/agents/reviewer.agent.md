@@ -245,7 +245,7 @@ This reviewer covers the whole application. Sections below map to subsystems:
 - [ ] Every log line uses `log/slog` with key/value pairs — no `log.Println`, `fmt.Println`
 - [ ] Request ID middleware injects a UUID into the context and the `X-Request-ID` response header
 - [ ] Error log lines include the request ID, user ID (if authenticated), and the affected resource ID
-- [ ] Health check endpoint (`/api/health`) returns version and does not require auth
+- [ ] Health check endpoint (`/api/v1/health`) returns version and does not require auth
 - [ ] Structured log fields are stable (`user_id`, `request_id`, `call_id`) — not ad-hoc names per handler
 - [ ] Log level is controlled by config, not hardcoded
 
@@ -286,7 +286,7 @@ This reviewer covers the whole application. Sections below map to subsystems:
 - [ ] Systemd unit (via kardianos/service) supports start/stop/status
 - [ ] Graceful shutdown: context cancellation → `srv.Shutdown(ctx)` → WS hub drain → DB close
 - [ ] Data volumes (DB, audio) are configurable, documented, and outside the binary dir
-- [ ] Versioning: binary reports semver + git SHA on `/api/health` and startup log
+- [ ] Versioning: binary reports semver + git SHA on `/api/v1/health` and startup log
 
 ## Testing Posture
 

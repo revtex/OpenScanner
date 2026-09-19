@@ -35,6 +35,7 @@ const (
 	CodeTalkgroupNotFound  = "talkgroup_not_found"
 	CodeRateLimited        = "rate_limited"
 	CodeInternalError      = "internal_error"
+	CodeUnavailable        = "unavailable"
 )
 
 // APIError is the inner object of the native v1 error envelope.

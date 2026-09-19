@@ -86,11 +86,3 @@ func (c *replayCache) sweepLocked() {
 		}
 	}
 }
-
-// flush removes every entry. Used by tests to simulate the grace window
-// having elapsed without sleeping.
-func (c *replayCache) flush() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.items = make(map[string]replayCacheEntry)
-}
