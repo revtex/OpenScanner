@@ -7,6 +7,7 @@ This guide walks you through getting Squelch running at home. The Docker path is
 ## Contents
 
 - [Quick Start with Docker](#quick-start-with-docker)
+- [Upgrading to v3.0.0](#upgrading-to-v300)
 - [Upgrading from OpenScanner](#upgrading-from-openscanner)
 - [First-Time Login](#first-time-login)
 - [Your Data Directory](#your-data-directory)
@@ -70,19 +71,96 @@ That's it. Everything below is optional — only read on if you need it.
 
 ---
 
+## Upgrading to v3.0.0
+
+v3.0.0 changes how secrets stored in the database are encrypted. Secrets written
+by v2.x or earlier cannot be read by v3.0.0 until they are re-encrypted, so
+**Squelch will refuse to start** until you have run the `squelch-rekey` tool
+once. It names the secrets it cannot read, so you will not be guessing.
+
+`squelch-rekey` ships beside the server binary in every release archive, and
+inside the Docker image.
+
+### Before you start
+
+Stop the server. The tool takes its own backup, but it needs the database to be
+idle — and a backup taken while the server is running is not a backup you can
+trust.
+
+### 1. See what would change
+
+```bash
+squelch-rekey -db /var/lib/squelch/squelch.db
+```
+
+It reports what it found and exits without writing anything:
+
+```
+Found 3 encrypted value(s): 0 already current, 3 to re-encrypt.
+  re-encrypt  settings.value rowid=1
+  re-encrypt  downstreams.api_key rowid=1
+  re-encrypt  tr_instances.password_enc rowid=1
+
+Dry run — nothing was written. Re-run with -apply to make these changes.
+```
+
+The encryption key comes from `SQUELCH_ENCRYPTION_KEY`, or `-key`. It is the
+same key the server runs with — the tool does not change your key, only what is
+derived from it.
+
+If it reports that a value cannot be decrypted under **either** scheme, stop:
+your encryption key does not match this database. Nothing has been written.
+
+### 2. Apply
+
+```bash
+squelch-rekey -db /var/lib/squelch/squelch.db -apply
+```
+
+It writes a backup to `squelch.db.pre-rekey-<timestamp>` first, then re-encrypts
+everything in a single transaction. Running it again is safe — a second pass
+finds nothing to do.
+
+### Docker
+
+```bash
+docker compose down
+docker compose run --rm --entrypoint ./squelch-rekey squelch \
+  -db /data/squelch.db
+# then, once the report looks right:
+docker compose run --rm --entrypoint ./squelch-rekey squelch \
+  -db /data/squelch.db -apply
+docker compose up -d
+```
+
+### 3. Rename your environment variables
+
+v3.0.0 no longer reads `OPENSCANNER_*`. If your compose file or service unit
+still sets them, rename them to `SQUELCH_*` now — **they will not error, they
+will simply be ignored**, and the server will fall back to defaults.
+
+### Other things that reset
+
+- The CLI no longer reads `~/.openscanner-token`. Run `squelch login` once more.
+- Browser theme and paused state reset once per browser. Your talkgroup
+  selection is **not** affected — it lives on your user account, server-side.
+
 ## Upgrading from OpenScanner
 
 Squelch was previously named OpenScanner. Your data carries over intact,
-but three things are named differently and need a one-time change.
+but several things are named differently and need a one-time change.
+
+> **Upgrading from v1.x?** Go via v2.x rather than straight to v3.0.0.
+> v3.0.0 no longer detects an OpenScanner data directory, so pointed at
+> one it will create an empty database beside your old one rather than
+> stopping. Upgrade to v2.x first, which does stop and tell you what to
+> do — or perform step 2 below by hand before starting v3.0.0.
 
 **1. The image.** `ghcr.io/revtex/openscanner` becomes
 `ghcr.io/revtex/squelch`. The old image is no longer updated.
 
 **2. The database filename.** `openscanner.db` becomes `squelch.db`.
-Squelch will **not** rename it for you — it refuses to start and prints
-the exact command instead, because silently starting fresh next to your
-old database looks identical to losing every call you have ever
-recorded. Stop the old container, then:
+Squelch will **not** rename it for you. Stop the old container, then:
 
 ```bash
 cd /path/to/your/data
@@ -97,9 +175,9 @@ If you would rather keep the old filename, point Squelch at it with
 needs to change.
 
 **3. The environment variables.** `OPENSCANNER_*` becomes `SQUELCH_*`.
-The old names still work for now — Squelch logs one warning at startup
-naming each one it honoured — but they will be removed in a future
-release, so rename them when convenient.
+v2.x honoured the old names with a startup warning; **v3.0.0 ignores
+them entirely**, falling back to defaults without an error. Rename them
+before upgrading to v3.0.0.
 
 | Before | After |
 | --- | --- |
@@ -109,16 +187,19 @@ release, so rename them when convenient.
 | `OPENSCANNER_ENCRYPTION_KEY` | `SQUELCH_ENCRYPTION_KEY` |
 | `OPENSCANNER_JWT_SECRET` | `SQUELCH_JWT_SECRET` |
 
-Everything else is unchanged. The database schema is identical, so no
-migration runs and you can move back to OpenScanner v1.4.0 by renaming
-the file back. Your recordings directory, API keys, admin users, and
-encrypted secrets are all untouched — the encryption scheme was
-deliberately left on its original key derivation so existing `enc::`
-values keep decrypting.
+**4. Encrypted secrets (v3.0.0 only).** v1.x and v2.x share one secrets
+encryption scheme; v3.0.0 changed it. See
+[Upgrading to v3.0.0](#upgrading-to-v300) — you must run `squelch-rekey`
+once, and the server will refuse to start until you have.
 
-In the browser, your theme, paused state, and saved talkgroup selection
-are read from their old storage keys once and migrated forward
-automatically. You should not have to re-select anything.
+The database schema is identical throughout, so no migration runs. Your
+recordings directory, API keys, and admin users are untouched.
+
+In the browser, v2.x migrated your theme, paused state, and saved
+talkgroup selection forward from their old storage keys. v3.0.0 no
+longer does, so theme and paused state reset once. Your talkgroup
+selection is unaffected — it is stored on your user account,
+server-side, not in the browser.
 
 ---
 

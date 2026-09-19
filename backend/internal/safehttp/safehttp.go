@@ -17,17 +17,15 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/revtex/squelch/internal/envcompat"
 )
 
 // envBlockInternal, when truthy, opts in to SSRF-style blocking of
 // private/loopback/link-local/multicast destinations. Default: unset
 // (all destinations permitted — appropriate for homelab deployments).
-// Read via envcompat, so the pre-rename OPENSCANNER_ name still works.
 const envBlockInternal = "BLOCK_INTERNAL_HTTP"
 
 // ErrBlockedAddress is returned when a dial target resolves to an address
@@ -44,7 +42,7 @@ var (
 // lifetime of the process after the first call.
 func BlockInternal() bool {
 	blockInternalOnce.Do(func() {
-		v := strings.TrimSpace(envcompat.Lookup(envBlockInternal))
+		v := strings.TrimSpace(os.Getenv("SQUELCH_" + envBlockInternal))
 		blockInternalVal = v == "1" || strings.EqualFold(v, "true") || strings.EqualFold(v, "yes")
 	})
 	return blockInternalVal

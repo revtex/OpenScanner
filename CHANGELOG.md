@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking: upgrading requires one manual step.** The secrets-at-rest
+  encryption scheme changed, so secrets written by v2.x or earlier have to be
+  re-encrypted once, with the server stopped, using the new `squelch-rekey`
+  tool that ships beside the binary and inside the image:
+
+  ```
+  squelch-rekey -db /var/lib/squelch/squelch.db            # report only
+  squelch-rekey -db /var/lib/squelch/squelch.db -apply     # re-encrypt
+  ```
+
+  It reports and exits unless given `-apply`, takes a backup before writing,
+  and rewrites everything in one transaction or not at all. Squelch refuses to
+  start until it has been run, naming the secrets it cannot read — it does not
+  migrate anything itself. See
+  [Upgrading to v3.0.0](docs/deployment-guide.md#upgrading-to-v300).
+- **Breaking: `OPENSCANNER_*` environment variables are no longer read.** Only
+  `SQUELCH_*`. A compose file still using the old names will fall back to
+  defaults rather than erroring, so check it before upgrading.
+- **Breaking: the pre-rename compatibility shims are gone.** The CLI no longer
+  reads `~/.openscanner-token` (log in once more), the browser no longer reads
+  pre-rename storage keys (theme and paused state reset once per browser;
+  talkgroup selection is unaffected, being stored server-side), and the server
+  no longer refuses to start on an `openscanner.db` data directory. Upgrading
+  from v1.x goes v1 → v2 → v3, or rename the database file by hand.
+- The old product name is now absent from everything except one file in the
+  migration tool, which needs it to read what earlier versions wrote.
+
 ## [2.0.0] — 2026-09-18
 
 ### Changed

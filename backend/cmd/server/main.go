@@ -34,8 +34,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/revtex/squelch/internal/envcompat"
-
 	"github.com/gin-gonic/gin"
 	"github.com/kardianos/service"
 	"github.com/revtex/squelch/internal/admin"
@@ -49,6 +47,7 @@ import (
 	"github.com/revtex/squelch/internal/handler/routes"
 	streamhandler "github.com/revtex/squelch/internal/handler/stream"
 	"github.com/revtex/squelch/internal/logging"
+	"github.com/revtex/squelch/internal/secrets"
 	"github.com/revtex/squelch/internal/seed"
 	"github.com/revtex/squelch/internal/trmqtt"
 	"github.com/revtex/squelch/internal/ws"
@@ -73,13 +72,6 @@ func main() {
 	if cfg.ShowVersion {
 		fmt.Printf("squelch %s\n", config.Version)
 		os.Exit(0)
-	}
-
-	// Refuse to start on a data directory left behind by OpenScanner
-	// rather than quietly creating an empty database beside it.
-	if err := config.CheckLegacyDataDir(cfg.DBFile); err != nil {
-		fmt.Fprintf(os.Stderr, "squelch: %v\n", err)
-		os.Exit(1)
 	}
 
 	if cfg.ConfigSave {
@@ -671,22 +663,13 @@ func (p *program) run() {
 	logging.LoadHistoricalLogs(logFilePath)
 
 	// Configure structured logging.
-	if envcompat.Lookup("ENV") == "development" {
+	if os.Getenv("SQUELCH_ENV") == "development" {
 		logging.Configure(true, logFilePath)
 	} else {
 		logging.Configure(false, logFilePath)
 		gin.SetMode(gin.ReleaseMode)
 	}
 	defer logging.CloseLogFile()
-
-	// Squelch was renamed from OpenScanner. The old environment variable
-	// names still work, but say so once — silently honouring them would
-	// let an operator carry a stale config forward without noticing that
-	// the fallback is scheduled for removal.
-	if legacy := envcompat.Used(); len(legacy) > 0 {
-		slog.Warn("config: using pre-rename OPENSCANNER_* environment variables; rename them to SQUELCH_*, the fallback will be removed in a future release",
-			"variables", strings.Join(legacy, ", "))
-	}
 
 	// Compute display values for the startup banner (printed after all
 	// feature-flag checks complete, down below).
@@ -763,7 +746,7 @@ func (p *program) run() {
 		LogLevel:            logging.GetLevel(),
 		SSL:                 cfg.SSLAutoCert != "" || (cfg.SSLCert != "" && cfg.SSLKey != ""),
 		EncryptionAtRest:    cfg.EncryptionKey != "",
-		JWTSecretExternal:   envcompat.Lookup("JWT_SECRET") != "",
+		JWTSecretExternal:   os.Getenv("SQUELCH_JWT_SECRET") != "",
 		FFmpeg:              hasFFmpeg,
 		FDKAAC:              hasFDKAAC,
 		Whisper:             whisperConfigured,
@@ -776,6 +759,15 @@ func (p *program) run() {
 		"public_access", publicAccess,
 		"auto_populate_systems", autoPopulateSystems,
 	)
+
+	// Before touching any secret, confirm they can all still be read.
+	// Runs first so that an unmigrated v2 database is reported as such,
+	// rather than as the "wrong key?" migrateSecrets would otherwise
+	// blame it on.
+	if err := secrets.CheckReadable(context.Background(), queries, cfg.EncryptionKey); err != nil {
+		fmt.Fprintf(os.Stderr, "\nsquelch: %v\n\n", err)
+		os.Exit(1)
+	}
 
 	// Run secrets-at-rest encryption migration.
 	if err := migrateSecrets(context.Background(), queries, sqlDB, cfg.EncryptionKey); err != nil {

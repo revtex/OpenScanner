@@ -10,18 +10,16 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/revtex/squelch/internal/envcompat"
-
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // HashAPIKey returns a stable SHA-256 hex digest of an API key.
@@ -119,7 +117,7 @@ type jwtSecretLoader interface {
 // and the encryption key has been resolved.
 func InitJWTSecret(ctx context.Context, loader jwtSecretLoader, encryptionKey string) error {
 	// 1. Env var — highest precedence, never touches the DB.
-	if v := strings.TrimSpace(envcompat.Lookup("JWT_SECRET")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("SQUELCH_JWT_SECRET")); v != "" {
 		SetJWTSecretForTest([]byte(v))
 		slog.Info("auth: JWT secret loaded from SQUELCH_JWT_SECRET")
 		return nil

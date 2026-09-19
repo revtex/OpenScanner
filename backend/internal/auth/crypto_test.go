@@ -105,12 +105,14 @@ func TestDifferentEncryptionsDiffer(t *testing.T) {
 
 // TestKeyDerivationInputsAreFrozen pins the HKDF inputs.
 //
-// These were not renamed during the OpenScanner -> Squelch rebrand on
-// purpose: they are key-derivation material, so changing them derives a
-// different key and silently makes every stored "enc::" secret
-// undecryptable. This test exists so that a future global rename cannot
-// do that by accident — if it fails, the rebrand has eaten the
-// encryption key, not merely a label.
+// These are key-derivation material, so changing them derives a different
+// key and makes every stored "enc::" secret unreadable until it is
+// re-encrypted. They changed exactly once, in v3.0.0, paired with the
+// squelch-rekey tool; cmd/rekey pins the pre-v3.0.0 value the same way,
+// because that tool still has to read secrets written under it.
+//
+// If this fails, an edit has invalidated every secret in every existing
+// deployment. Revert it, or ship another rekey pass and a major version.
 func TestKeyDerivationInputsAreFrozen(t *testing.T) {
 	// Ciphertext produced by the shipped scheme, decryptable only if the
 	// salt and info string still match what deployments encrypted with.
@@ -133,12 +135,13 @@ func TestKeyDerivationInputsAreFrozen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("deriveKey: %v", err)
 	}
-	// Golden key for the passphrase above under the frozen salt/info.
-	const wantKey = "6ffec789c8c5ddc5575e0909fc0244813ba9bcd799878aa8dfb696a7a61124dc"
+	// Golden key for the passphrase above under the v3.0.0 salt/info.
+	const wantKey = "d6bf8dfaaa6b5450b8182c2e41d8803f497a04d9f6fc4703521c1ca0b32fa836"
 	if hex.EncodeToString(key) != wantKey {
 		t.Errorf("derived key changed: got %s, want %s\n"+
 			"The HKDF salt or info string was modified. Every existing "+
-			"enc:: secret is now undecryptable. Revert that change.",
+			"enc:: secret is now unreadable. Revert that change, or pair "+
+			"it with a squelch-rekey pass and a major version.",
 			hex.EncodeToString(key), wantKey)
 	}
 }

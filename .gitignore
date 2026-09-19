@@ -59,6 +59,11 @@ Thumbs.db
 # Kept as a guard so nothing operator-side lands here again.
 /systems-config/
 
+# Stray binaries from `go build ./cmd/<name>` without -o
+/backend/server
+/backend/rekey
+/backend/migrate
+
 # Local preview (not meant to be committed)
 /tmp-pdf-preview/
 

@@ -35,9 +35,10 @@ than invent it: a reconstructed alternative is worse than none.
 | --- | --- | --- |
 | [0001](0001-single-binary-embedded-spa.md) | Single binary with embedded SPA | Accepted |
 | [0002](0002-two-http-api-surfaces.md) | Two HTTP API surfaces | Accepted |
-| [0003](0003-secrets-at-rest.md) | Secrets at rest with frozen key derivation | Accepted |
+| [0003](0003-secrets-at-rest.md) | Secrets at rest with frozen key derivation | Superseded by [0006](0006-rotate-key-derivation-with-an-external-tool.md) |
 | [0004](0004-background-audio-server-stream.md) | Background audio via a server-side stream | Accepted |
 | [0005](0005-rename-to-squelch.md) | Rename to Squelch with compatibility shims | Accepted |
+| [0006](0006-rotate-key-derivation-with-an-external-tool.md) | Rotate the key-derivation inputs with an external tool | Accepted |
 
 ## Not yet written
 
