@@ -848,7 +848,7 @@ Squelch signs login sessions and API tokens with a secret it auto-generates on f
 export SQUELCH_JWT_SECRET="$(openssl rand -hex 32)"
 ```
 
-**Docker Compose:** add the key to your `.env` file alongside `SQUELCH_ENCRYPTION_KEY`, then reference it in `docker-compose.yml`:
+**Docker Compose:** put the key in your `.env` file, then reference it in `docker-compose.yml`:
 
 ```bash
 echo "SQUELCH_JWT_SECRET=$(openssl rand -hex 32)" >> .env
@@ -861,8 +861,8 @@ environment:
 
 When set:
 
-- Squelch uses this value and never reads or writes the database's `jwt_secret` setting.
-- The encryption key only protects downstream API keys in that case (you're managing the session key yourself).
+- Squelch uses this value and never reads or writes the database's `jwtSecret` setting.
+- Encryption at rest still protects everything else in the table above — the web push key, downstream API keys, and Trunk Recorder broker passwords. You're just managing the session key yourself.
 - Rotating the secret means changing the variable and restarting — existing sessions are invalidated and everyone logs in again.
 
 For most setups you don't need this — the default (stored in the DB, encrypted if you set an encryption key) works fine.

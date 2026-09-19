@@ -2,209 +2,237 @@
 
 **Hear what matters.**
 
+Squelch is a self-hosted archive for scanner radio traffic. Point your radio
+recorder at it and every call is stored, transcribed, and searchable — plus a
+live feed you can listen to in any browser, on your phone or at your desk.
+
 _Squelch was previously named OpenScanner._
 
-**Squelch** is a self-hosted radio call archive for monitoring, searching, and sharing scanner traffic in real time. It ingests calls from popular radio recorders, processes and stores audio, streams live feeds to browser clients, and provides a full admin dashboard for configuration and operations.
+---
 
-Squelch is a modern reimplementation of [rdio-scanner](https://github.com/chuot/rdio-scanner), built from the ground up as a single Go binary with an embedded React frontend. It maintains backward compatibility with rdio-scanner's upload API, so existing recorder configurations (Trunk-Recorder's `rdioscanner_uploader`, SDRTrunk's Rdio Scanner streaming target) work without changes.
+## Is this for you?
+
+Squelch is the **listening and archiving end** of a scanner setup. It does not
+tune radios itself — something else does the receiving and hands Squelch the
+audio.
+
+You'll get the most out of it if:
+
+- You already run a radio recorder — [Trunk-Recorder](https://github.com/robotastic/trunk-recorder),
+  [SDRTrunk](https://github.com/DSheirer/sdrtrunk), or another tool that writes
+  one audio file per call.
+- You want to listen live **and** go back and find the call you missed.
+- You have a machine that stays on — a NAS, a mini PC, or a small VPS is plenty.
+
+What you need before you start:
+
+- **A machine that's always on**, with Docker installed (or run the single
+  binary yourself — no database server to set up either way).
+- **A radio recorder** already producing per-call audio.
+- **Disk space** for the audio. Squelch can prune old calls automatically.
+
+Already running rdio-scanner? Squelch speaks the same upload protocol, so your
+recorder config works with a URL change. See [Coming from rdio-scanner](#coming-from-rdio-scanner).
 
 ---
 
-## Features
-
-### Scanner Interface
-
-- **Live feed** — real-time call streaming over WebSocket with playback controls (play/pause, skip, replay)
-- **Hold & avoid** — lock to a system or talkgroup; temporarily avoid talkgroups for 5/15/30 min or indefinitely
-- **Talkgroup selection** — search and multi-select talkgroups by system, group, or tag; selection persisted per user
-- **Call archive** — search historical calls by system, talkgroup, group, tag, date range, transcript text, or bookmark state
-- **Bookmarks** — bookmark calls for later, filter archive to bookmarked only
-- **Call sharing** — generate public share links for individual calls with configurable expiry
-- **Live transcripts** — view call transcriptions in the live player with speaker diarization segments (requires whisper sidecar)
-- **LED indicators** — live/recording status, listener count, now-playing info
-- **Dark/light theme** — toggle between themes; preference saved in browser
-- **Responsive** — mobile-first layout with drawer navigation, touch-friendly controls, and virtual scrolling
-
-### Call Ingest
-
-- **HTTP upload** — `POST /api/call-upload` with API key auth; backward-compatible alias at `/api/trunk-recorder-call-upload`
-- **Directory monitoring** — watch local directories for new recordings with configurable polling, masks, and auto-delete
-- **Supported recorders** — Trunk-Recorder, SDRTrunk, DSDPlus, RTLSDR-Airband, ProScan, and generic mask-based sources
-- **Auto-populate** — automatically create systems, talkgroups, groups, tags, and units from incoming call metadata
-- **Metadata extraction** — Trunk-Recorder JSON sidecars, MP3 ID3 tags, filename masks with tokens (`#SYS`, `#TG`, `#DATE`, `#UNIT`, etc.)
-- **Duplicate detection** — configurable time-window dedup to reject redundant uploads
-- **Audio processing** — FFmpeg conversion with four modes (disabled, enabled, normalize, loudnorm) and multiple encoding presets (MP3, AAC-LC, HE-AAC)
-- **Auto-pruning** — automatically delete calls older than a configurable number of days
-
-### Administration
-
-- **Dashboard** — calls today/week/total, active listeners, uptime, 24-hour activity chart, top talkgroups
-- **User management** — create/edit/disable users with admin or listener roles, account expiration, session limits, per-user talkgroup selection, and password-change enforcement
-- **Radio data** — CRUD for systems, talkgroups, units, groups, and tags with CSV import/export and RadioReference enrichment
-- **API keys** — create/rotate upload keys with per-key system grants and per-key rate limits
-- **Directory monitors** — configure ingest paths with type-specific settings, polling vs. filesystem watch, and a server-side directory browser
-- **Downstreams** — forward calls to remote Squelch instances with per-downstream system grants (experimental, untested)
-- **Shared links** — view and manage all active share links with expiry tracking
-- **Transcription** — manage whisper models (download, select, delete), configure language and diarization, monitor connection status and stats
-- **Options** — grouped settings for general config, scanner behavior, call processing, display, and sharing
-- **Tools** — CSV import/export for talkgroups and units, JSON config export/import, RadioReference preview
-- **Logs** — query server logs by level, date range, and text search with auto-refresh and runtime log level control
-- **Config import/export** — full JSON backup and restore of all configuration data
-
-### Transcription
-
-Squelch integrates with [go-whisper](https://github.com/mutablelogic/go-whisper) (a whisper.cpp HTTP sidecar) for automatic call transcription. Features include:
-
-- **Model management** — download, select, and delete Whisper models directly from the admin panel (11 models available from tiny to large-v3-turbo)
-- **Live transcript display** — show transcription text in the live scanner player as calls come in
-- **Searchable transcripts** — find calls by transcript text from the search page
-- **Speaker diarization** — identify who is talking using tinydiarize models (`ggml-small.en-tdrz`)
-- **Language support** — 15 languages plus auto-detect
-- **GPU acceleration** — CPU, NVIDIA CUDA, Intel iGPU, or AMD ROCm (GPU highly recommended; 6 GB+ VRAM suggested)
-
-### Deployment
-
-- **Single binary** — no external database; SQLite embedded with WAL mode
-- **Guided setup** — `squelch setup --interactive` creates directories, writes config, installs a system service
-- **Cross-platform** — Linux (systemd/SysV/OpenRC), macOS (launchd), Windows (SCM) with auto-detected service management
-- **Docker** — pre-built Alpine image with FFmpeg included
-- **JSON config** — persist settings with `--config-save`; load from file, env vars, or CLI flags
-- **Service management** — `setup`, `upgrade`, `config validate`, `service doctor` commands
-- **TLS** — certificate files with HTTP auto-redirect to HTTPS; experimental Let's Encrypt auto-cert
-- **Reverse proxy** — tested with Nginx and Caddy; WebSocket-aware proxy configs in the docs
-
-### Security
-
-- JWT authentication with refresh token rotation and configurable expiry
-- bcrypt password hashing (cost ≥ 12)
-- Role-based access control (admin / listener)
-- API key auth for uploads (`X-API-Key` header or `?key=` query param)
-- Per-IP rate limiting on login and shared link access
-- Per-user rate limiting on share creation
-- Per-API-key sliding-window rate limiting on uploads
-- WebSocket session re-validation with forced disconnect on user disable/delete
-- Shared link expiry (configurable in days, enforced on access)
-- Public access mode for unauthenticated listening (admin routes always protected)
-- Audio path sanitization, no shell injection, no secrets in logs
-- Optional secrets-at-rest encryption (AES-256-GCM) for the JWT signing secret and downstream API keys
-- Optional TLS with certificate/key files; experimental Let's Encrypt auto-cert (untested)
-- Outbound HTTP (transcription, downstreams) goes through a hardened client with redirects disabled, timeouts enforced, and response bodies capped. LAN/loopback destinations are permitted by default (homelab-friendly); set `SQUELCH_BLOCK_INTERNAL_HTTP=1` to reject private-network targets
-
----
-
-## What's New vs. rdio-scanner
-
-Squelch is a complete rewrite, not a fork. Everything below is new or significantly improved:
-
-| Feature                     | rdio-scanner  | Squelch                                                                                           |
-| --------------------------- | ------------- | ----------------------------------------------------------------------------------------------------- |
-| **Automatic transcription** | Not available | Built-in via go-whisper with GPU support, model management, live display, and search                  |
-| **Auto-populate**           | Systems only  | Systems, talkgroups, groups, tags, and units — all created from incoming metadata                     |
-| **Call sharing**            | Not available | Generate public share links with configurable expiry                                                  |
-| **Bookmarks**               | Not available | Bookmark calls and filter the archive to bookmarked only                                              |
-| **Talkgroup selection**     | Basic         | Per-user multi-select by system, group, or tag; persisted server-side                                 |
-| **Audio encoding presets**  | Single format | 8 presets across MP3, AAC-LC, and HE-AAC at multiple bitrates                                         |
-| **User management & RBAC**  | Access codes  | Named user accounts with admin/listener roles, per-user system grants, expiration, and session limits |
-| **Per-key rate limits**     | Not available | Global and per-API-key call rate limiting with sliding window                                         |
-| **Downstream forwarding**   | Basic         | Forward calls to other Squelch instances with system grants (experimental, untested)              |
-| **Service management**      | Manual        | Guided `setup`, `upgrade`, `config validate`, `service doctor` commands                               |
-| **Auto-pruning**            | Basic         | Configurable retention with automatic deletion of calls older than N days                             |
-| **Let's Encrypt**           | Not available | Automatic certificate provisioning with `--ssl-auto-cert` (experimental, untested)                    |
-| **Admin WebSocket**         | REST polling  | Real-time admin operations over WebSocket — instant updates                                           |
-| **CSV import/export**       | Limited       | Full CSV import/export for talkgroups and units with duplicate handling                               |
-| **JSON config backup**      | Not available | Export and import full server configuration                                                           |
-| **Log viewer**              | Basic         | Query logs by level, date, text with auto-refresh and runtime level control                           |
-| **Dark/light theme**        | Dark only     | Toggle between themes                                                                                 |
-| **RadioReference import**   | Not available | Preview and apply talkgroup metadata from RadioReference directly in admin                            |
-| **Secrets encryption**      | Not available | Optional AES-256-GCM encryption for the JWT signing secret and downstream API keys                    |
-
----
-
-## Quick Start
-
-### Docker Compose
+## Quick start
 
 ```bash
+git clone https://github.com/revtex/squelch.git
+cd squelch
 docker compose up -d
 ```
 
-Open `http://localhost:3022` and complete the first-run setup to create your admin account.
+Then open **<http://localhost:3022>** and follow the first-run setup to create
+your admin account.
 
-### Build from Source
+That's a working server. To start hearing traffic, add an API key and point your
+recorder at it — the [Recorder Guide](docs/recorder-guide.md) walks through it
+for each supported recorder.
 
-```bash
-make build
-./build/squelch --listen 0.0.0.0:3022 --db-file ./data/squelch.db --recordings-dir ./data/recordings
-```
-
-### Configuration
-
-Squelch is configured via CLI flags, environment variables, or a JSON config file:
-
-| Flag               | Env Var                       | Description                                       |
-| ------------------ | ----------------------------- | ------------------------------------------------- |
-| `--listen`         | `SQUELCH_LISTEN`          | Listen address (default `:3022`)                  |
-| `--db-file`        | `SQUELCH_DB_FILE`         | SQLite database path                              |
-| `--recordings-dir` | `SQUELCH_RECORDINGS_DIR`  | Audio file storage directory                      |
-| `--ssl-listen`     | `SQUELCH_SSL_LISTEN`      | HTTPS listen address                              |
-| `--ssl-cert`       | `SQUELCH_SSL_CERT`        | TLS certificate file (PEM)                        |
-| `--ssl-key`        | `SQUELCH_SSL_KEY`         | TLS private key file (PEM)                        |
-| `--ssl-auto-cert`  | `SQUELCH_SSL_AUTO_CERT`   | Domain for Let's Encrypt auto-cert (experimental) |
-| `--encryption-key` | `SQUELCH_ENCRYPTION_KEY`  | AES-256 key for encrypting secrets at rest        |
-| `--timezone`       | `SQUELCH_TIMEZONE` / `TZ` | IANA timezone for recorder timestamps             |
-
-All application settings (audio processing, scanner behavior, sharing, etc.) are managed through the admin dashboard and stored in the database. See the [Deployment Guide](docs/deployment-guide.md) for the full configuration reference.
-
----
-
-## Recorder Compatibility
-
-Squelch works with any radio recorder that produces per-call audio files. It accepts calls via HTTP upload (API) or by watching a local directory (DirMonitor).
-
-| Recorder                                                       | API | DirMonitor |
-| -------------------------------------------------------------- | :-: | :--------: |
-| [Trunk-Recorder](https://github.com/robotastic/trunk-recorder) |  ✔  |     ✔      |
-| [SDRTrunk](https://github.com/DSheirer/sdrtrunk)               |  ✔  |     ✔      |
-| [RTLSDR-Airband](https://github.com/szpajder/RTLSDR-Airband)   |     |     ✔      |
-| [DSDPlus Fast Lane](https://www.dsdplus.com/)                  |     |     ✔      |
-| [ProScan](https://www.proscan.org/)                            |     |     ✔      |
-| [voxcall](https://github.com/aaknitt/voxcall)                  |  ✔  |            |
-
-- **API upload** — `POST /api/call-upload` (or `/api/trunk-recorder-call-upload`) with an API key. Compatible with rdio-scanner's upload protocol — existing recorder configs work with just a URL change.
-- **DirMonitor** — watch a local directory for new recordings. Supports per-type parsers (Trunk-Recorder JSON sidecars, SDRTrunk ID3 tags, DSDPlus date folders, filename masks with tokens like `#SYS`, `#TG`, `#DATE`, etc.).
-
-See [docs/recorder-guide.md](docs/recorder-guide.md) for detailed setup steps.
-
----
-
-## rdio-scanner Compatibility
-
-Squelch is designed as a drop-in replacement for [rdio-scanner](https://github.com/chuot/rdio-scanner). Key compatibility points:
-
-- The upload endpoint `/api/trunk-recorder-call-upload` accepts the same multipart form fields
-- API key authentication works via `X-API-Key` header or `?key=` query parameter
-- SDRTrunk's partial-data key verification probe returns the same plain-text responses
-- Error messages match rdio-scanner's format for recorder-side log compatibility
-- Existing recorder configurations can be pointed at Squelch with only a URL change
-
----
-
-## API & WebSocket
-
-- **REST API** — `/api/*` with JSON request/response; Swagger UI available at `/api/admin/docs` for authenticated admins
-- **Listener WebSocket** — `/ws` for real-time call streaming, configuration updates, and listener count
-- **Admin WebSocket** — `/api/admin/ws` for live admin dashboard operations (CRUD, events, settings)
-- **Health check** — `GET /api/v1/health` returns server status and version (the legacy `/api/health` alias still works but emits deprecation headers)
+Prefer to run it without Docker, or put it behind a reverse proxy with HTTPS?
+The [Deployment Guide](docs/deployment-guide.md) covers both.
 
 ---
 
 ## Documentation
 
-| Document                                             | Description                           |
-| ---------------------------------------------------- | ------------------------------------- |
-| [docs/admin-guide.md](docs/admin-guide.md)           | Admin dashboard usage guide           |
-| [docs/deployment-guide.md](docs/deployment-guide.md) | Build, run, and deployment operations |
-| [docs/recorder-guide.md](docs/recorder-guide.md)     | Recorder setup guide                  |
+Start here, in this order:
+
+| Guide | What it covers |
+| --- | --- |
+| [Deployment Guide](docs/deployment-guide.md) | Installing, upgrading, backups, reverse proxies, HTTPS, encrypting secrets |
+| [Recorder Guide](docs/recorder-guide.md) | Pointing each supported recorder at Squelch |
+| [Admin Guide](docs/admin-guide.md) | Every screen in the admin dashboard, panel by panel |
+| [Trunk Recorder MQTT Guide](docs/tr-mqtt-guide.md) | Live recorder health dashboard via trunk-recorder's MQTT plugin |
+
+For contributors: [CONTEXT.md](CONTEXT.md) defines the project's vocabulary, and
+[docs/adr/](docs/adr/) records the significant design decisions and why the
+alternatives lost.
+
+---
+
+## What you get
+
+### Listening
+
+- **Live feed** with play/pause, skip, and replay, streamed as calls arrive.
+- **Hold and avoid** — lock onto a system or talkgroup, or mute one for 5/15/30
+  minutes or until you undo it.
+- **Talkgroup selection** — search and multi-select by system, group, or tag.
+  Your selection is saved to your account, not just the browser.
+- **Search the archive** by system, talkgroup, group, tag, date range,
+  transcript text, or bookmark.
+- **Bookmarks and share links** — flag calls for later, or generate a public
+  link to a single call with an expiry date.
+- **Works on a phone** — mobile-first layout, and a background mode that keeps
+  playing when the screen locks.
+- **Dark and light themes.**
+
+### Getting calls in
+
+- **HTTP upload** — recorders POST to `/api/call-upload`, using the same
+  protocol and API-key auth as rdio-scanner.
+- **Directory monitoring** — or let Squelch watch a folder for new recordings,
+  with configurable polling, filename masks, and optional auto-delete.
+- **Supported recorders** — Trunk-Recorder, SDRTrunk, DSDPlus, RTLSDR-Airband,
+  ProScan, voxcall, and generic filename-mask sources.
+- **Auto-populate** — systems, talkgroups, groups, tags, and units are created
+  from incoming call metadata, so you aren't hand-entering a radio system.
+- **Duplicate detection** and **auto-pruning** of calls older than N days.
+- **Audio processing** via FFmpeg — optional conversion, normalization, and
+  several MP3/AAC encoding presets.
+
+### Transcription
+
+Squelch can transcribe calls automatically using
+[go-whisper](https://github.com/mutablelogic/go-whisper), run as a separate
+container.
+
+- Download and switch between Whisper models from the admin dashboard.
+- Transcripts appear live in the player and are **searchable** afterwards.
+- Speaker diarization, 15 languages plus auto-detect.
+- Runs on CPU, but a GPU is strongly recommended (6 GB+ VRAM).
+
+### Administration
+
+- **Dashboard** — calls today/week/total, active listeners, uptime, a 24-hour
+  activity chart, and top talkgroups.
+- **Users** — named accounts with admin or listener roles, per-user talkgroup
+  selection, expiration dates, and session limits.
+- **Radio data** — manage systems, talkgroups, units, groups, and tags, with CSV
+  import/export and RadioReference enrichment.
+- **API keys** with per-key system grants and rate limits.
+- **Trunk Recorder dashboard** — if you run trunk-recorder's MQTT status plugin,
+  Squelch shows live decode rates, recorder states, active calls, and unit
+  activity. See the [Trunk Recorder MQTT Guide](docs/tr-mqtt-guide.md).
+- **Logs** — query by level, date, and text, with runtime log-level control.
+- **Backup and restore** of your full configuration as JSON.
+
+### Running it
+
+- **One binary, no database server** — SQLite is built in.
+- **Docker image** with FFmpeg included, or a guided
+  `squelch setup --interactive` that writes config and installs a system service
+  on Linux, macOS, or Windows.
+- **HTTPS** with your own certificate, or behind Nginx or Caddy — both have
+  tested, WebSocket-aware example configs in the deployment guide.
+- **Optional encryption at rest** (AES-256-GCM) for the login signing key, web
+  push key, downstream API keys, and Trunk Recorder broker passwords.
+- Sensible security defaults: JWT sessions with refresh-token rotation, bcrypt
+  password hashing, role-based access, and rate limiting on logins, uploads, and
+  share links.
+
+---
+
+## Coming from rdio-scanner
+
+Squelch is a from-scratch reimplementation of
+[rdio-scanner](https://github.com/chuot/rdio-scanner), not a fork, and it keeps
+the upload API compatible on purpose:
+
+- `/api/call-upload` and `/api/trunk-recorder-call-upload` accept the same
+  multipart fields.
+- API keys work the same way (`X-API-Key` header or `?key=` query parameter).
+- SDRTrunk's key-verification probe and the recorder-facing error messages match,
+  so recorder-side logs stay readable.
+- **Your existing recorder config works with only a URL change.**
+
+What's different:
+
+| | rdio-scanner | Squelch |
+| --- | --- | --- |
+| **Transcription** | Not available | Built in, with search, live display, and GPU support |
+| **Auto-populate** | Systems only | Systems, talkgroups, groups, tags, and units |
+| **Call sharing** | Not available | Public share links with an expiry |
+| **Bookmarks** | Not available | Bookmark calls and filter the archive to them |
+| **Users** | Access codes | Named accounts, admin/listener roles, expiry, session limits |
+| **Recorder health** | Not available | Live Trunk Recorder dashboard over MQTT |
+| **Log viewer** | Basic | Query by level, date, and text with runtime level control |
+| **Config backup** | Not available | Export and import the whole configuration as JSON |
+| **Secrets encryption** | Not available | Optional AES-256-GCM encryption at rest |
+
+---
+
+## Recorder compatibility
+
+Squelch works with any recorder that produces one audio file per call, either by
+receiving an upload or by watching a directory.
+
+| Recorder | Upload | Directory watch |
+| --- | :-: | :-: |
+| [Trunk-Recorder](https://github.com/robotastic/trunk-recorder) | ✔ | ✔ |
+| [SDRTrunk](https://github.com/DSheirer/sdrtrunk) | ✔ | ✔ |
+| [RTLSDR-Airband](https://github.com/szpajder/RTLSDR-Airband) | | ✔ |
+| [DSDPlus Fast Lane](https://www.dsdplus.com/) | | ✔ |
+| [ProScan](https://www.proscan.org/) | | ✔ |
+| [voxcall](https://github.com/aaknitt/voxcall) | ✔ | |
+
+Setup steps for each are in the [Recorder Guide](docs/recorder-guide.md).
+
+---
+
+## Configuration
+
+Almost everything — audio processing, scanner behavior, sharing, retention — is
+configured in the admin dashboard and stored in the database. There's no config
+file to edit for day-to-day settings.
+
+Only the handful of options Squelch needs *before* it can open its database come
+from the command line, environment, or a JSON config file:
+
+| Flag | Environment variable | What it does |
+| --- | --- | --- |
+| `--listen` | `SQUELCH_LISTEN` | Listen address (default `:3022`) |
+| `--db-file` | `SQUELCH_DB_FILE` | Where the database lives |
+| `--recordings-dir` | `SQUELCH_RECORDINGS_DIR` | Where audio files are stored |
+| `--ssl-listen` | `SQUELCH_SSL_LISTEN` | HTTPS listen address |
+| `--ssl-cert` | `SQUELCH_SSL_CERT` | TLS certificate file (PEM) |
+| `--ssl-key` | `SQUELCH_SSL_KEY` | TLS private key file (PEM) |
+| `--ssl-auto-cert` | `SQUELCH_SSL_AUTO_CERT` | Domain for Let's Encrypt (experimental) |
+| `--encryption-key` | `SQUELCH_ENCRYPTION_KEY` | Key for encrypting secrets at rest |
+| `--encryption-key-file` | `SQUELCH_ENCRYPTION_KEY_FILE` | Read that key from a file instead |
+| `--timezone` | `SQUELCH_TIMEZONE` / `TZ` | IANA timezone for recorder timestamps |
+
+The full reference is in the
+[Deployment Guide](docs/deployment-guide.md#configuration-reference).
+
+---
+
+## API
+
+- **REST API** at `/api/v1/*`, with Swagger UI for signed-in admins at
+  `/api/v1/admin/docs`.
+- **Listener WebSocket** at `/api/v1/ws/listener` for live call streaming and
+  listener counts.
+- **Admin WebSocket** at `/api/v1/ws/admin` for live dashboard updates.
+- **Health check** at `GET /api/v1/health`.
+
+The older `/api/*` endpoints — including `/ws` and `/api/admin/ws` — still work
+and send deprecation headers. Recorders should keep using `/api/call-upload`,
+which is deliberately kept rdio-scanner-compatible; everything else new should
+use `/api/v1/*`.
 
 ---
 
@@ -217,16 +245,14 @@ make test    # Run all tests
 make lint    # Lint Go + TypeScript
 ```
 
-## Tech Stack
-
-- **Backend:** Go, Gin, coder/websocket, SQLite (modernc, WAL mode), sqlc, golang-jwt, bcrypt
-- **Frontend:** React 18, TypeScript (strict), Vite, Tailwind CSS 4, DaisyUI 5, Redux Toolkit, RTK Query
-- **Audio:** FFmpeg (optional), bounded worker pool
-- **Transcription:** go-whisper (whisper.cpp HTTP sidecar)
-- **Storage:** SQLite for metadata + filesystem for audio files
+**Tech stack:** Go + Gin, SQLite (modernc, WAL) with sqlc, React 18 +
+TypeScript, Vite, Tailwind CSS 4 with DaisyUI 5, Redux Toolkit and RTK Query.
+FFmpeg for audio, go-whisper for transcription. The React app is embedded into
+the Go binary at build time, so production is a single executable.
 
 ---
 
 ## License
 
-This project is licensed under the [GNU General Public License v3.0](LICENSE).
+Squelch is licensed under the
+[GNU General Public License v3.0](LICENSE).

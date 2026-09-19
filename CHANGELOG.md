@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Documentation corrections found by checking the docs against the code.**
+  The admin guide described four Scanner Behavior settings and one Call
+  Processing setting that do not exist in the Options panel, named the first
+  sidebar item "Activity" when it is "Dashboards", said the default audio
+  preset was AAC-LC when it is MP3 32 kbps, pointed at the pre-v1 Swagger path,
+  and did not document the Integrations section at all. The deployment guide
+  claimed that externalizing the login signing key leaves only downstream API
+  keys encrypted, which has not been true since the web push key and Trunk
+  Recorder passwords joined the set. Two links pointed at a
+  `#secrets-encryption` anchor that has never existed.
+- The bundled compose file told operators to `chmod 600` the encryption key
+  file. Squelch runs as uid/gid 1001, so a key file readable only by the
+  invoking user makes the container restart-loop; it now says to make the file
+  group-readable by 1001.
 - **Trunk Recorder broker passwords are now encrypted at rest like every other
   secret.** The startup pass that encrypts plaintext secrets once an encryption
   key is configured covered settings and downstream API keys, but was never
@@ -19,6 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The README is now an introduction rather than a feature inventory.** It
+  opens with who Squelch is for and what you need, puts the quick start near
+  the top, and links out to the guides instead of restating them. The
+  Trunk Recorder MQTT integration and its guide were missing entirely.
 - **Breaking: upgrading requires one manual step.** The secrets-at-rest
   encryption scheme changed, so secrets written by v2.x or earlier have to be
   re-encrypted once, with the server stopped, using the new `squelch-rekey`
