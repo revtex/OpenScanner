@@ -1,4 +1,4 @@
-# OpenScanner — Root Makefile
+# Squelch — Root Makefile
 # Delegates to backend and frontend sub-makes
 
 .PHONY: all build dev test lint clean migrate generate

@@ -393,6 +393,6 @@ Rdio Scanner streaming target).
   untested.
 - Transcription requires a separately deployed go-whisper sidecar.
 
-[Unreleased]: https://github.com/revtex/OpenScanner/compare/v1.4.0...HEAD
-[1.4.0]: https://github.com/revtex/OpenScanner/releases/tag/v1.4.0
-[1.0.0]: https://github.com/revtex/OpenScanner/releases/tag/v1.0.0
+[Unreleased]: https://github.com/revtex/squelch/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/revtex/squelch/releases/tag/v1.4.0
+[1.0.0]: https://github.com/revtex/squelch/releases/tag/v1.0.0

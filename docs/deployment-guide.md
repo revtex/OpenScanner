@@ -510,7 +510,7 @@ squelch --service uninstall
 #### Upgrading
 
 ```bash
-curl -L -o /tmp/squelch-new https://github.com/revtex/OpenScanner/releases/latest/...
+curl -L -o /tmp/squelch-new https://github.com/revtex/squelch/releases/latest/...
 squelch upgrade --binary /tmp/squelch-new
 ```
 

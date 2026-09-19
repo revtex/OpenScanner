@@ -109,7 +109,7 @@ Squelch reads metadata from the MP3 file's ID3 tags (which SDRTrunk embeds autom
 
 ## RTLSDR-Airband
 
-> **Note:** RTLSDR-Airband support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/OpenScanner/issues).
+> **Note:** RTLSDR-Airband support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/squelch/issues).
 
 RTLSDR-Airband is supported through directory monitoring only.
 
@@ -127,7 +127,7 @@ Since RTLSDR-Airband doesn't embed metadata in its recordings, you need to tell 
 
 ## DSDPlus Fast Lane
 
-> **Note:** DSDPlus support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/OpenScanner/issues).
+> **Note:** DSDPlus support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/squelch/issues).
 
 DSDPlus is supported through directory monitoring only.
 
@@ -143,7 +143,7 @@ Squelch parses system and talkgroup information from the DSDPlus filename struct
 
 ## ProScan
 
-> **Note:** ProScan support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/OpenScanner/issues).
+> **Note:** ProScan support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/squelch/issues).
 
 ProScan is supported through directory monitoring only.
 
@@ -158,7 +158,7 @@ ProScan is supported through directory monitoring only.
 
 ## voxcall
 
-> **Note:** voxcall support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/OpenScanner/issues).
+> **Note:** voxcall support has not been fully tested. If you run into issues, please [submit a GitHub issue](https://github.com/revtex/squelch/issues).
 
 voxcall sends calls to Squelch via HTTP upload.
 

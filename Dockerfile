@@ -1,4 +1,4 @@
-# OpenScanner — multi-stage build
+# Squelch — multi-stage build
 
 # Stage 1: Build frontend (must run before Go so go:embed has files to embed)
 FROM node:22-alpine AS node-builder

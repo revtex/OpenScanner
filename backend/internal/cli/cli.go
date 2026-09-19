@@ -53,7 +53,7 @@ func Run() bool {
 		os.Exit(runConfigGet(serverURL, key))
 	case "config-set":
 		if len(args) < 3 {
-			slog.Error("usage: openscanner config-set <key> <value>")
+			slog.Error("usage: squelch config-set <key> <value>")
 			os.Exit(1)
 		}
 		os.Exit(runConfigSet(serverURL, args[1], args[2]))
@@ -61,7 +61,7 @@ func Run() bool {
 		os.Exit(runUserAdd(serverURL))
 	case "user-remove":
 		if len(args) < 2 {
-			slog.Error("usage: openscanner user-remove <username>")
+			slog.Error("usage: squelch user-remove <username>")
 			os.Exit(1)
 		}
 		os.Exit(runUserRemove(serverURL, args[1]))
@@ -125,15 +125,15 @@ func resolveServerURL() string {
 func validateServerURL(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "openscanner: invalid --server URL %q: %v\n", raw, err)
+		fmt.Fprintf(os.Stderr, "squelch: invalid --server URL %q: %v\n", raw, err)
 		os.Exit(2)
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
-		fmt.Fprintf(os.Stderr, "openscanner: --server URL must use http or https, got %q\n", u.Scheme)
+		fmt.Fprintf(os.Stderr, "squelch: --server URL must use http or https, got %q\n", u.Scheme)
 		os.Exit(2)
 	}
 	if u.Host == "" {
-		fmt.Fprintf(os.Stderr, "openscanner: --server URL %q is missing a host\n", raw)
+		fmt.Fprintf(os.Stderr, "squelch: --server URL %q is missing a host\n", raw)
 		os.Exit(2)
 	}
 	// Rebuild the URL from the parsed components to strip any userinfo,
@@ -300,7 +300,7 @@ func runLogin(serverURL string) int {
 	fmt.Printf("Logged in as %s (%s)\n", uname, role)
 
 	if needChange, ok := result["passwordNeedChange"].(bool); ok && needChange {
-		fmt.Println("Note: password change required. Run 'openscanner change-password'.")
+		fmt.Println("Note: password change required. Run 'squelch change-password'.")
 	}
 	return 0
 }
