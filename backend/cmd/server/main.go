@@ -1285,6 +1285,11 @@ func migrateSecrets(ctx context.Context, queries *db.Queries, sqlDB *sql.DB, enc
 		return fmt.Errorf("list downstreams: %w", err)
 	}
 
+	instances, err := queries.ListTRInstances(ctx)
+	if err != nil {
+		return fmt.Errorf("list tr instances: %w", err)
+	}
+
 	// Check for encrypted values with no key configured.
 	if encryptionKey == "" {
 		for _, s := range settings {
@@ -1295,6 +1300,11 @@ func migrateSecrets(ctx context.Context, queries *db.Queries, sqlDB *sql.DB, enc
 		for _, ds := range downstreams {
 			if auth.IsEncrypted(ds.ApiKey) {
 				return fmt.Errorf("downstream %d API key is encrypted but no encryption key is configured — set --encryption-key or SQUELCH_ENCRYPTION_KEY", ds.ID)
+			}
+		}
+		for _, in := range instances {
+			if in.PasswordEnc.Valid && auth.IsEncrypted(in.PasswordEnc.String) {
+				return fmt.Errorf("trunk recorder instance %d password is encrypted but no encryption key is configured — set --encryption-key or SQUELCH_ENCRYPTION_KEY", in.ID)
 			}
 		}
 		slog.Warn("no encryption key configured — secrets stored unencrypted in database",
@@ -1365,6 +1375,36 @@ func migrateSecrets(ctx context.Context, queries *db.Queries, sqlDB *sql.DB, enc
 		}
 		migrated++
 		slog.Info("secrets: encrypted downstream API key", "id", ds.ID)
+	}
+
+	// Trunk Recorder broker passwords. Added later than the two loops
+	// above and missed when the MQTT integration shipped, so a
+	// deployment that enabled encryption after configuring an instance
+	// kept its broker password in plaintext — the manager warned about
+	// it on every connect and nothing ever fixed it.
+	for _, in := range instances {
+		if !in.PasswordEnc.Valid || in.PasswordEnc.String == "" {
+			continue
+		}
+		if auth.IsEncrypted(in.PasswordEnc.String) {
+			if _, err := auth.DecryptString(in.PasswordEnc.String, encryptionKey); err != nil {
+				return fmt.Errorf("trunk recorder instance %d: cannot decrypt password with current key (wrong key?): %w", in.ID, err)
+			}
+			continue
+		}
+		encrypted, err := auth.EncryptString(in.PasswordEnc.String, encryptionKey)
+		if err != nil {
+			return fmt.Errorf("encrypt trunk recorder instance %d password: %w", in.ID, err)
+		}
+		if err := qtx.UpdateTRInstancePassword(ctx, db.UpdateTRInstancePasswordParams{
+			ID:          in.ID,
+			PasswordEnc: sql.NullString{String: encrypted, Valid: true},
+			UpdatedAt:   time.Now().Unix(),
+		}); err != nil {
+			return fmt.Errorf("update trunk recorder instance %d password: %w", in.ID, err)
+		}
+		migrated++
+		slog.Info("secrets: encrypted trunk recorder broker password", "id", in.ID)
 	}
 
 	if err := tx.Commit(); err != nil {

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Trunk Recorder broker passwords are now encrypted at rest like every other
+  secret.** The startup pass that encrypts plaintext secrets once an encryption
+  key is configured covered settings and downstream API keys, but was never
+  extended to cover Trunk Recorder instances when the MQTT integration shipped.
+  A deployment that configured an instance and then enabled encryption kept its
+  broker password in plaintext indefinitely — warned about on every connect,
+  and fixed by nothing. It is now encrypted on the next start.
+
 ### Changed
 
 - **Breaking: upgrading requires one manual step.** The secrets-at-rest
