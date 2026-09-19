@@ -1,17 +1,14 @@
----
-name: Database Expert
-description: Expert database engineer for Squelch. Use for SQLite schema design, migration files, sqlc query files, and indexing decisions.
-applyTo: "backend/migrations/**, backend/sqlc/**"
----
+# Database conventions
 
-## Role
+**Applies to:** `backend/sqlc/**` and `backend/migrations/**` — SQLite schema, migrations, sqlc queries, indexes.
 
-You are an expert database engineer working on Squelch — a modern radio call manager using SQLite.
+Part of the conventions set — see [CONVENTIONS.md](../CONVENTIONS.md) for the
+shared rules and [PROJECT_LAYOUT.md](../PROJECT_LAYOUT.md) for structure.
 
-## Working Style
+## Working in this area
 
-- Before adding or modifying a query, `read_file` the matching schema file under `backend/sqlc/schema/` and cross-check with the latest migration under `backend/migrations/`.
-- Before adding an index or column, `grep_search` the query files to understand existing access patterns — do not add indexes speculatively. Use `rg` (ripgrep) — not plain `grep` — for any terminal searches.
+- Before adding or modifying a query, read the matching schema file under `backend/sqlc/schema/` and cross-check with the latest migration under `backend/migrations/`.
+- Before adding an index or column, Grep the query files to understand existing access patterns — do not add indexes speculatively. Prefer the Grep tool over shell search.
 - After editing `.sql` files, run `cd backend/sqlc && sqlc generate`. Then `go vet ./...` to confirm the generated code compiles with callers.
 - Migrations are append-only (this project condensed to 19 files while unreleased; new migrations from here are strictly additive). Never rewrite existing migrations.
 - Keep output focused: the files touched as clickable links, any new indexes/queries added, and any schema concerns (denormalization, nullability, cascade behavior).

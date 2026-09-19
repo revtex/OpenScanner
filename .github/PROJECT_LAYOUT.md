@@ -2,7 +2,7 @@
 
 Reference for human contributors and subagents. Terse on purpose. When in doubt, follow the existing tree; when the existing tree contradicts this doc, this doc wins and the tree is the bug.
 
-Companion to [.github/copilot-instructions.md](copilot-instructions.md). Per-domain detail lives in [.github/agents/](agents/).
+Companion to [.github/CONVENTIONS.md](CONVENTIONS.md). Per-domain detail lives in [.github/conventions/](conventions/).
 
 ---
 
@@ -13,8 +13,12 @@ squelch/
   backend/         Go binary, sqlc, migrations
   frontend/        React + TypeScript SPA
   docs/            Tracked user/design docs (admin-guide, deployment-guide, recorder-guide)
+  docs/adr/        Architecture Decision Records — numbered, append-only (README.md has the format)
+  docs/research/   Committed research notes, primary-sourced (what an ADR cites for evidence)
   docs/plans/      Local-only working notes (gitignored — never reference from tracked files)
-  .github/         Workflows, agents, this doc, copilot-instructions
+  CONTEXT.md       Domain model — the project's shared vocabulary
+  .github/         Workflows, conventions, this doc
+  .claude/skills/  Packaged workflows invoked as /<name> (tracked; the rest of .claude/ is not)
   .devcontainer/   Codespaces / dev container
 ```
 
@@ -113,7 +117,7 @@ Convention: feature handler subpackages use `handler.go` (or per-route file like
 - All SQL via sqlc; no string concatenation.
 - External processes via `exec.CommandContext` with arg slice; never a shell string.
 - Outbound HTTP via `safehttp.Client`.
-- See [.github/copilot-instructions.md § Security Rules](copilot-instructions.md) for the full OWASP-aligned list.
+- See [.github/CONVENTIONS.md § Security Rules](CONVENTIONS.md) for the full OWASP-aligned list.
 
 ### 2.6 Database conventions
 
@@ -297,6 +301,8 @@ Rules:
 - The entire `docs/plans/` directory is **gitignored**. Files there are personal scratchpads.
 - **Never** reference plan files from any tracked file — CHANGELOG, committed docs, commit messages, PR titles, code comments.
 - If you find a tracked file that links into `docs/plans/`, that's a bug — remove the reference.
+- `docs/research/` is the tracked counterpart: notes meant to be cited. If code or an ADR references a research note, that note must be committed — a citation to a file nobody else has is worse than no citation.
+- ADRs are append-only. Never renumber or rewrite a committed one; supersede it with a new ADR and mark the old one superseded.
 
 ### 4.5 Subagent delegation
 
@@ -325,7 +331,7 @@ The top-level conversation coordinates and reports; agents do the work. Inline h
 - [Semantic Versioning](https://semver.org/) — version numbers.
 - [Conventional Commits](https://www.conventionalcommits.org/) — commit message format (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `test:`).
 - [The Twelve-Factor App](https://12factor.net/) — config via env, logs as event streams, stateless processes.
-- [OWASP Top 10](https://owasp.org/www-project-top-ten/) — the security baseline (see copilot-instructions.md § Security Rules).
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/) — the security baseline (see CONVENTIONS.md § Security Rules).
 
 ---
 

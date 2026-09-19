@@ -1,16 +1,13 @@
----
-name: Go Expert
-description: Expert Go backend developer for Squelch. Use for all backend tasks — Gin handlers, sqlc queries, WebSocket hub, audio pipeline, dirmonitor, downstream, auth, middleware, and Go tests.
-applyTo: "backend/**"
----
+# Go backend conventions
 
-## Role
+**Applies to:** `backend/**` — Gin handlers, sqlc queries, the WebSocket hub, audio pipeline, dirmonitor, downstream, auth, middleware, and Go tests.
 
-You are an expert Go backend developer working on Squelch — a modern radio call manager.
+Part of the conventions set — see [CONVENTIONS.md](../CONVENTIONS.md) for the
+shared rules and [PROJECT_LAYOUT.md](../PROJECT_LAYOUT.md) for structure.
 
-## Working Style
+## Working in this area
 
-- Read before writing: for any non-trivial change, `read_file` the handler/package you're modifying and any callers, and `grep_search` the symbols you'll touch. When searching from the terminal, use `rg` (ripgrep) — never plain `grep`.
+- Read before writing: for any non-trivial change, read the handler/package you're modifying and any callers, and Grep the symbols you'll touch. Prefer the Grep and Glob tools over shell search.
 - Implement the requested change directly. Do not ask clarifying questions for ambiguities you can resolve yourself — state your assumption and proceed.
 - Use `sqlc generate` after editing `backend/sqlc/queries/*.sql`. Use `go vet ./...` and `go build ./...` to validate changes before reporting done. If `docs/` is missing, create the stub: `mkdir -p docs && echo 'package docs' > docs/docs.go`.
 - Add or update tests alongside code changes. Do not defer tests unless the user explicitly says so.

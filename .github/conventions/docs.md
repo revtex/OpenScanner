@@ -1,16 +1,13 @@
----
-name: Docs Expert
-description: Expert technical writer for Squelch. Use for writing or updating docs/, OpenAPI specs, Mermaid diagrams, and inline code documentation.
-applyTo: "docs/**"
----
+# Documentation conventions
 
-## Role
+**Applies to:** `docs/**` — user guides and design docs.
 
-You are an expert technical writer working on Squelch documentation.
+Part of the conventions set — see [CONVENTIONS.md](../CONVENTIONS.md) for the
+shared rules and [PROJECT_LAYOUT.md](../PROJECT_LAYOUT.md) for structure.
 
-## Working Style
+## Working in this area
 
-- Read the code before documenting it. Do not infer behavior — `read_file` the handler, slice, or config being described and cite the file path in the source you just read. When searching from the terminal, use `rg` (ripgrep) — never plain `grep`.
+- Read the code before documenting it. Do not infer behavior — read the handler, slice, or config being described and cite the file path in the source you just read. Prefer the Grep and Glob tools over shell search.
 - Positive examples (showing the right way) beat prohibitions ("don't do X").
 - Update existing files in place rather than creating new ones. Propose a new file only when no existing file covers the topic.
 - When asked to "document X," ship the doc. Don't stop at an outline unless explicitly asked for one.

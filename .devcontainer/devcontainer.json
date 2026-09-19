@@ -61,8 +61,6 @@
         "ms-azuretools.vscode-docker",
         // General
         "editorconfig.editorconfig",
-        "github.copilot",
-        "github.copilot-chat",
         "eamodio.gitlens",
         "ms-vscode.makefile-tools"
       ]
