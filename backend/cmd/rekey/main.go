@@ -56,6 +56,7 @@ func run() error {
 	var (
 		dbPath   = flag.String("db", os.Getenv("SQUELCH_DB_FILE"), "path to squelch.db (or SQUELCH_DB_FILE)")
 		key      = flag.String("key", os.Getenv("SQUELCH_ENCRYPTION_KEY"), "encryption key (or SQUELCH_ENCRYPTION_KEY)")
+		keyFile  = flag.String("key-file", os.Getenv("SQUELCH_ENCRYPTION_KEY_FILE"), "file holding the encryption key (or SQUELCH_ENCRYPTION_KEY_FILE)")
 		apply    = flag.Bool("apply", false, "write the changes; without it, report and exit")
 		backup   = flag.String("backup", "", "backup path (default: <db>.pre-rekey-<timestamp>)")
 		noBackup = flag.Bool("no-backup", false, "skip the backup — only if you have taken one yourself")
@@ -65,8 +66,23 @@ func run() error {
 	if *dbPath == "" {
 		return errors.New("-db is required (or set SQUELCH_DB_FILE)")
 	}
+	// A key file is the better way to supply this, and it is what the
+	// server supports, so the tool has to read it the same way — an
+	// operator using the file pattern should not have to extract their
+	// key onto a command line to run this.
+	if *key == "" && *keyFile != "" {
+		data, err := os.ReadFile(*keyFile)
+		if err != nil {
+			return fmt.Errorf("read encryption key file: %w", err)
+		}
+		*key = strings.TrimSpace(string(data))
+		if *key == "" {
+			return fmt.Errorf("encryption key file %s is empty", *keyFile)
+		}
+	}
 	if *key == "" {
-		return errors.New("-key is required (or set SQUELCH_ENCRYPTION_KEY)\n\n" +
+		return errors.New("no encryption key: pass -key or -key-file, or set\n" +
+			"SQUELCH_ENCRYPTION_KEY or SQUELCH_ENCRYPTION_KEY_FILE.\n\n" +
 			"This is the same key the server runs with. Without it the secrets\n" +
 			"cannot be read, and this tool cannot help you.")
 	}

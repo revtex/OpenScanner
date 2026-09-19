@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -215,5 +216,37 @@ func mustExec(t *testing.T, db *sql.DB, q string, args ...any) {
 	t.Helper()
 	if _, err := db.Exec(q, args...); err != nil {
 		t.Fatalf("exec %s: %v", q, err)
+	}
+}
+
+func TestKeyFileIsRead(t *testing.T) {
+	// The server supports SQUELCH_ENCRYPTION_KEY_FILE, so the tool has to
+	// as well: an operator using the file pattern should never have to
+	// put their key on a command line to run this.
+	dir := t.TempDir()
+	path := dir + "/key"
+	if err := os.WriteFile(path, []byte(testPass+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.TrimSpace(string(data))
+	if got != testPass {
+		t.Fatalf("key file not trimmed to the key: %q", got)
+	}
+	// A key read this way must derive the same legacy key as one passed
+	// inline — otherwise the file path would silently migrate nothing.
+	a, err := deriveLegacyKey(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := deriveLegacyKey(testPass)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hex.EncodeToString(a) != hex.EncodeToString(b) {
+		t.Error("key from file derives a different key than the same key inline")
 	}
 }

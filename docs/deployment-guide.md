@@ -104,9 +104,10 @@ Found 3 encrypted value(s): 0 already current, 3 to re-encrypt.
 Dry run — nothing was written. Re-run with -apply to make these changes.
 ```
 
-The encryption key comes from `SQUELCH_ENCRYPTION_KEY`, or `-key`. It is the
-same key the server runs with — the tool does not change your key, only what is
-derived from it.
+The encryption key comes from `SQUELCH_ENCRYPTION_KEY` or `-key`, or from a key
+file via `SQUELCH_ENCRYPTION_KEY_FILE` or `-key-file` — whichever the server
+already uses. It is the same key the server runs with; the tool does not change
+your key, only what is derived from it.
 
 If it reports that a value cannot be decrypted under **either** scheme, stop:
 your encryption key does not match this database. Nothing has been written.
