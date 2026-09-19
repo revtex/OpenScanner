@@ -1,6 +1,6 @@
 services:
-  openscanner:
-    image: ghcr.io/revtex/openscanner:dev
+  squelch:
+    image: ghcr.io/revtex/squelch:dev
     # build: .  # uncomment to build locally instead
     ports:
       - "3022:3022"

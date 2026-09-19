@@ -5,7 +5,7 @@
 
 EMBED_DIR=backend/internal/static/dist
 BUILD_DIR=build
-BACKEND_BINARY=$(BUILD_DIR)/openscanner
+BACKEND_BINARY=$(BUILD_DIR)/squelch
 
 all: build
 

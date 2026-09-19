@@ -89,7 +89,7 @@ func main() {
 
 	// kardianos/service configuration.
 	svcConfig := &service.Config{
-		Name:        "openscanner",
+		Name:        "squelch",
 		DisplayName: "Squelch",
 		Description: "Squelch Radio Call Manager",
 		Arguments:   serviceArguments(os.Args[1:]),
@@ -381,7 +381,7 @@ func runServiceDoctor() int {
 
 func newServiceController(args []string, executable string) (service.Service, error) {
 	svcConfig := &service.Config{
-		Name:        "openscanner",
+		Name:        "squelch",
 		DisplayName: "Squelch",
 		Description: "Squelch Radio Call Manager",
 		Arguments:   args,

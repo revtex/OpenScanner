@@ -20,7 +20,7 @@ COPY backend/ .
 COPY --from=node-builder /src/frontend/dist ./internal/static/dist/
 # Generate Swagger docs (gitignored, must be built in CI)
 RUN swag init -d cmd/server,internal/handler -g main.go --parseDependency --parseInternal
-RUN go build -ldflags="-s -w -X github.com/revtex/squelch/internal/config.Version=${VERSION}" -o /openscanner ./cmd/server
+RUN go build -ldflags="-s -w -X github.com/revtex/squelch/internal/config.Version=${VERSION}" -o /squelch ./cmd/server
 
 # Stage 3: Minimal runtime image
 FROM alpine:3.21
@@ -28,7 +28,7 @@ RUN apk add --no-cache ffmpeg ca-certificates tzdata su-exec && \
   adduser -D -u 1001 appuser && \
   mkdir -p /data/recordings && chown -R appuser:appuser /data
 WORKDIR /app
-COPY --from=go-builder /openscanner ./openscanner
+COPY --from=go-builder /squelch ./squelch
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
 # Defaults for standalone docker run; override via environment or compose.

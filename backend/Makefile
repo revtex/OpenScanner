@@ -2,7 +2,7 @@
 
 .PHONY: build dev test lint clean migrate generate
 
-BINARY=openscanner
+BINARY=squelch
 CMD=./cmd/server
 OUTPUT?=$(BINARY)
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo dev)

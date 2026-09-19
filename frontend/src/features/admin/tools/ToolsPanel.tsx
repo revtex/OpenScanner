@@ -211,7 +211,7 @@ export default function ToolsPanel() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "openscanner-config.json";
+      a.download = "squelch-config.json";
       a.click();
       URL.revokeObjectURL(url);
     } catch {
