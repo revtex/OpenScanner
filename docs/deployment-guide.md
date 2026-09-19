@@ -379,7 +379,7 @@ reads the same file when you need it.
    it.
 
    ```bash
-   head -c 48 /dev/urandom | base64 -w0 > squelch-encryption.key
+   openssl rand -hex 32 > squelch-encryption.key
    ```
 
 2. Make it readable by the container. Squelch drops privileges to `appuser`
@@ -449,14 +449,19 @@ line per secret it converted:
 "msg":"secrets: encrypted trunk recorder broker password","id":1
 ```
 
-And the plaintext warnings it used to print on every start should be gone. To
-check the database directly:
+And the plaintext warnings it used to print on every start should be gone.
+Those two signals are the verification — between them they tell you the key was
+read and every secret was converted.
+
+If you want to confirm in the database itself, **stop the container first** and
+open the file read-write. Squelch runs SQLite in WAL mode, so a read-only copy
+or a `:ro` mount cannot take a read lock, and a freshly encrypted value may
+still be sitting in the `-wal` file rather than the main database:
 
 ```bash
-docker run --rm -v "$PWD/data:/data:ro" alpine:3 sh -c \
-  'apk add --no-cache sqlite >/dev/null 2>&1;
-   sqlite3 "file:/data/squelch.db?mode=ro" \
-     "SELECT key FROM settings WHERE value LIKE '"'"'enc::%'"'"';"'
+docker compose stop squelch
+sqlite3 data/squelch.db "SELECT key FROM settings WHERE value LIKE 'enc::%';"
+docker compose start squelch
 ```
 
 > **Important:** Back up the key file (or the key inside `.env`) somewhere
