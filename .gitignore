@@ -62,8 +62,11 @@ Thumbs.db
 # Local preview (not meant to be committed)
 /tmp-pdf-preview/
 
-# AI assistant / MCP session artifacts (machine-specific, not shared)
-/.claude/
+# AI assistant / MCP session artifacts (machine-specific, not shared).
+# Skills are the exception: they are shared project conventions, so they
+# are tracked while local settings and session state stay ignored.
+/.claude/*
+!/.claude/skills/
 /.mcp.json
 /.playwright-mcp/
 /test-playwright.png

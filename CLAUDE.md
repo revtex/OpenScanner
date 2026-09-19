@@ -13,10 +13,12 @@ Two existing files are the source of truth for structure and rules — read them
 - **`.github/PROJECT_LAYOUT.md`** — full directory layout, package boundaries, file-split heuristics, naming, and per-domain conventions. When it contradicts the tree, the doc wins and the tree is the bug.
 - **`.github/copilot-instructions.md`** — tech stack, the numbered Security Rules (OWASP-aligned, always enforced), changelog/release policy, and the subagent assignment table.
 - **`.github/agents/*.agent.md`** — seven per-domain convention files (go, react, db, docs, reviewer, testing, cleanup). Useful as **domain cheat-sheets**; read the relevant one before non-trivial work in that area.
+- **`CONTEXT.md`** — the domain model: the vocabulary for Calls, Talkgroups, Systems, Listeners, LIVE/BKGND, and the words we deliberately don't use. Read it before naming anything.
+- **`docs/adr/`** — numbered, append-only Architecture Decision Records: what was decided and *why*, including the alternatives that lost. Check it before changing something in an area it covers; add one when a decision worth keeping gets made. `docs/adr/README.md` has the format and the index.
 
 Do not duplicate those rules from memory — defer to them.
 
-> **Subagents in Claude Code:** the docs above were authored for VS Code Copilot's `runSubagent` and assume work is *always* delegated to a matching expert agent. That does **not** apply to Claude Code — do the work inline with your own tools, and only launch an Agent when the user explicitly asks. The `.agent.md` files remain valuable as reference material; read them, don't dispatch to them by default.
+> **Subagents in Claude Code:** the docs above were authored for VS Code Copilot's `runSubagent` and assume work is *always* delegated to a matching expert agent. In Claude Code the `.agent.md` files are **reference material, not dispatch targets** — read the relevant one rather than spawning an agent to read it for you. Skills under `.claude/skills/` may spawn sub-agents where they say to (`two-axis-review` runs its two axes in parallel, `research` runs in the background); follow the skill.
 
 ## Commands
 
@@ -53,6 +55,16 @@ cd frontend && npx tsc --noEmit
 **Swagger:** there is no `make swag` target — `swag init` runs automatically as part of `make build` (backend Makefile). After editing Swaggo annotations, run `make build` (or the `swag init` line from `backend/Makefile`) and commit the regenerated `backend/docs/`.
 
 **Dev tools** (`sqlc`, `golang-migrate`, `swag`, `air`, `golangci-lint`, `pnpm`) are provisioned by `.devcontainer/`. The frontend uses **pnpm**, not npm.
+
+## Skills
+
+Packaged workflows live in `.claude/skills/` and are invoked as `/<name>`:
+
+- **`diagnosing-bugs`** — the loop for hard bugs. Its Phase 1 rule is the point: build a tight, red-capable feedback loop and paste the command that produced it **before** forming any hypothesis. No red loop, no theory.
+- **`two-axis-review`** — reviews a diff since a fixed point along Standards and Spec separately, in parallel sub-agents, so neither masks the other. Named to avoid colliding with the built-in `/code-review`.
+- **`research`** — background agent, primary sources only, writes a committed note to `docs/research/`.
+- **`grilling`** — stress-tests a plan one question at a time.
+- **`resolving-merge-conflicts`** — for an in-progress merge or rebase.
 
 ## Architecture (big picture)
 

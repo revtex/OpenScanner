@@ -13,8 +13,12 @@ squelch/
   backend/         Go binary, sqlc, migrations
   frontend/        React + TypeScript SPA
   docs/            Tracked user/design docs (admin-guide, deployment-guide, recorder-guide)
+  docs/adr/        Architecture Decision Records — numbered, append-only (README.md has the format)
+  docs/research/   Committed research notes, primary-sourced (what an ADR cites for evidence)
   docs/plans/      Local-only working notes (gitignored — never reference from tracked files)
+  CONTEXT.md       Domain model — the project's shared vocabulary
   .github/         Workflows, agents, this doc, copilot-instructions
+  .claude/skills/  Packaged workflows invoked as /<name> (tracked; the rest of .claude/ is not)
   .devcontainer/   Codespaces / dev container
 ```
 
@@ -297,6 +301,8 @@ Rules:
 - The entire `docs/plans/` directory is **gitignored**. Files there are personal scratchpads.
 - **Never** reference plan files from any tracked file — CHANGELOG, committed docs, commit messages, PR titles, code comments.
 - If you find a tracked file that links into `docs/plans/`, that's a bug — remove the reference.
+- `docs/research/` is the tracked counterpart: notes meant to be cited. If code or an ADR references a research note, that note must be committed — a citation to a file nobody else has is worse than no citation.
+- ADRs are append-only. Never renumber or rewrite a committed one; supersede it with a new ADR and mark the old one superseded.
 
 ### 4.5 Subagent delegation
 
