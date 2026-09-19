@@ -74,12 +74,16 @@ describe("ControlToolbar", () => {
     expect(liveBtn.className).toContain("btn-success");
   });
 
-  it("LIVE button has ghost style when isLive is false", () => {
+  it("LIVE button has the faint resting style when isLive is false", () => {
+    // Resting mode buttons carry a faint background rather than none, so
+    // they read as buttons before being pressed; the active state stays
+    // bold enough to remain the obvious difference.
     const props = defaultProps();
     props.isLive = false;
     render(<ControlToolbar {...props} />);
     const liveBtn = screen.getByText("LIVE").closest("button")!;
-    expect(liveBtn.className).toContain("btn-ghost");
+    expect(liveBtn.className).toContain("btn-soft");
+    expect(liveBtn.className).not.toContain("btn-success");
   });
 
   it("volume slider changes value via onSetVolume", () => {

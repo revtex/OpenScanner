@@ -260,7 +260,7 @@ export function ControlToolbar({
               } ${
                 isLive && !backgroundAudio
                   ? "btn-success"
-                  : "btn-ghost text-base-content"
+                  : "btn-soft"
               }`}
               onClick={() => {
                 beep();
@@ -287,7 +287,7 @@ export function ControlToolbar({
                     ? streamState === "blocked"
                       ? "btn-warning"
                       : "btn-primary"
-                    : "btn-ghost text-base-content"
+                    : "btn-soft"
                 }`}
                 onClick={() => {
                   beep();
@@ -323,7 +323,7 @@ export function ControlToolbar({
                 ? "btn-disabled"
                 : isHolding
                   ? "btn-secondary"
-                  : "btn-ghost"
+                  : "btn-soft"
             }`}
           >
             <Lock className="hidden sm:inline w-3.5 h-3.5" />
@@ -362,7 +362,7 @@ export function ControlToolbar({
             tabIndex={0}
             role="button"
             aria-label="Avoid"
-            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-ghost"
+            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-soft"
           >
             <Ban className="hidden sm:inline w-3.5 h-3.5" />
             AVOID
@@ -389,7 +389,7 @@ export function ControlToolbar({
         {/* SELECT */}
         <div className="tooltip tooltip-bottom" data-tip="Select Talkgroups">
           <button
-            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-ghost"
+            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-soft"
             onClick={() => {
               beep();
               onToggleSelectTG();
@@ -403,7 +403,7 @@ export function ControlToolbar({
         {/* SEARCH */}
         <div className="tooltip tooltip-bottom" data-tip="Search Calls">
           <button
-            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-ghost"
+            className="btn btn-xs sm:btn-sm w-full min-w-0 px-1 sm:px-2 gap-1 btn-soft"
             onClick={() => {
               beep();
               onToggleSearch();
