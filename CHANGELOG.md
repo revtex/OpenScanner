@@ -23,6 +23,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   file. Squelch runs as uid/gid 1001, so a key file readable only by the
   invoking user makes the container restart-loop; it now says to make the file
   group-readable by 1001.
+- **The Trunk Recorder MQTT guide said the bundled broker starts locked down.**
+  It described the auto-generated `mosquitto.conf` as having
+  `allow_anonymous false` with a password file. The entrypoint actually writes
+  `allow_anonymous true` — on purpose, so the broker boots before a `passwd`
+  file exists — which means an operator following the guide would believe the
+  broker required credentials when anything on the host could connect without
+  them. Both broker options now say so plainly, and say to lock it down before
+  exposing it beyond loopback.
+- The recorder guide told users to set a directory monitor's **Type** to
+  `rtlsdr-airband` or `proscan`. Those parsers exist in the server, but the
+  admin dropdown only offers Trunk Recorder, SDR Trunk, DSDPlus Fast Lane and
+  Default (mask-based), so the instructions could not be followed. The guide
+  now says which types are selectable and how to set the other two. It also
+  pointed at "Directory Monitors" in the sidebar, which is called "Monitors",
+  and listed API Key Call Rate under Options, where it does not appear.
 - **Trunk Recorder broker passwords are now encrypted at rest like every other
   secret.** The startup pass that encrypts plaintext secrets once an encryption
   key is configured covered settings and downstream API keys, but was never

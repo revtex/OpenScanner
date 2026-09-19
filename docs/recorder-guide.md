@@ -59,7 +59,7 @@ This uses Trunk-Recorder's built-in `rdioscanner_uploader` plugin to send calls 
    ```
 3. Replace `<your-squelch-address>` with your Squelch server's IP or hostname.
 4. The `"name"` field can be anything — it's just a label.
-5. Each entry in `"systems"` maps a Trunk-Recorder system (by `shortName`) to an Squelch system:
+5. Each entry in `"systems"` maps a Trunk-Recorder system (by `shortName`) to a Squelch system:
    - `shortName` — must match the `"shortName"` of a system in your Trunk-Recorder config.
    - `apiKey` — the API key you created in **Admin → API Keys**. Multiple systems can share the same key.
    - `systemId` — the radio system ID that identifies this system. This must match the **System ID** field of an existing system in **Admin → Systems**. If **Auto-Populate Systems** is enabled, you can use any number and Squelch will create the system automatically on the first upload.
@@ -70,8 +70,8 @@ This uses Trunk-Recorder's built-in `rdioscanner_uploader` plugin to send calls 
 
 If Trunk-Recorder runs on the same machine as Squelch (or writes to a shared filesystem), you can have Squelch watch the output directory instead.
 
-1. Go to **Admin → Directory Monitors → Add Monitor**.
-2. Set **Type** to `trunk-recorder`.
+1. Go to **Admin → Monitors → Add Monitor**.
+2. Set **Type** to **Trunk Recorder**.
 3. Set **Directory** to Trunk-Recorder's recording output folder (e.g. `/opt/trunk-recorder/recordings`).
 4. Leave **Extension** blank — the monitor picks up audio files automatically.
 5. Save and the monitor will begin scanning the directory.
@@ -97,8 +97,8 @@ SDRTrunk can send calls to Squelch using its built-in Rdio Scanner streaming fea
 
 ### Option B: Directory Monitor
 
-1. Go to **Admin → Directory Monitors → Add Monitor**.
-2. Set **Type** to `sdrtrunk`.
+1. Go to **Admin → Monitors → Add Monitor**.
+2. Set **Type** to **SDR Trunk**.
 3. Set **Directory** to SDRTrunk's recordings folder.
 4. Set **Extension** to `mp3` (recommended).
 5. Save the monitor.
@@ -113,8 +113,10 @@ Squelch reads metadata from the MP3 file's ID3 tags (which SDRTrunk embeds autom
 
 RTLSDR-Airband is supported through directory monitoring only.
 
-1. Go to **Admin → Directory Monitors → Add Monitor**.
-2. Set **Type** to `rtlsdr-airband`.
+> **Heads-up:** the **Type** dropdown in the admin UI currently lists only Trunk Recorder, SDR Trunk, DSDPlus Fast Lane, and Default (mask-based). The `rtlsdr-airband` parser exists in the server but has no dropdown entry yet, so you cannot select it on the Monitors page. Until it is added you have two options: pick **Default (mask-based)** and describe your filenames with a [mask](#filename-masks), or set `"type": "rtlsdr-airband"` on the monitor through the API or a JSON config import (**Admin → Tools → JSON Config**).
+
+1. Go to **Admin → Monitors → Add Monitor**.
+2. Set **Type** to `rtlsdr-airband` (see the note above).
 3. Set **Directory** to where RTLSDR-Airband writes its recordings.
 4. Set **System ID** to the system in Squelch that these recordings belong to.
 5. Set **Talkgroup ID** to the talkgroup to assign (typically one talkgroup per monitored frequency).
@@ -131,8 +133,8 @@ Since RTLSDR-Airband doesn't embed metadata in its recordings, you need to tell 
 
 DSDPlus is supported through directory monitoring only.
 
-1. Go to **Admin → Directory Monitors → Add Monitor**.
-2. Set **Type** to `dsdplus`.
+1. Go to **Admin → Monitors → Add Monitor**.
+2. Set **Type** to **DSDPlus Fast Lane**.
 3. Set **Directory** to the parent folder that contains DSDPlus's date-organized subfolders (e.g. `C:\DSDPlus\recordings`).
 4. Set **Extension** to `mp3` or `wav` (whichever DSDPlus outputs).
 5. Save the monitor.
@@ -147,8 +149,10 @@ Squelch parses system and talkgroup information from the DSDPlus filename struct
 
 ProScan is supported through directory monitoring only.
 
-1. Go to **Admin → Directory Monitors → Add Monitor**.
-2. Set **Type** to `proscan`.
+> **Heads-up:** the **Type** dropdown in the admin UI currently lists only Trunk Recorder, SDR Trunk, DSDPlus Fast Lane, and Default (mask-based). The `proscan` parser exists in the server but has no dropdown entry yet, so you cannot select it on the Monitors page. Until it is added you have two options: pick **Default (mask-based)** and describe your filenames with a [mask](#filename-masks), or set `"type": "proscan"` on the monitor through the API or a JSON config import (**Admin → Tools → JSON Config**).
+
+1. Go to **Admin → Monitors → Add Monitor**.
+2. Set **Type** to `proscan` (see the note above).
 3. Set **Directory** to ProScan's recordings folder.
 4. Set **Extension** to `wav` (the typical output format).
 5. Optionally set a **Mask** to extract metadata from filenames (see [Filename Masks](#filename-masks) below).
@@ -172,8 +176,8 @@ voxcall sends calls to Squelch via HTTP upload.
 
 If your recorder isn't listed above, you can still use Squelch with directory monitoring and a generic configuration.
 
-1. Go to **Admin → Directory Monitors → Add Monitor**.
-2. Set **Type** to `default` (or leave unrecognized — it falls back to generic parsing).
+1. Go to **Admin → Monitors → Add Monitor**.
+2. Set **Type** to **Default (mask-based)**.
 3. Set **Directory** to wherever your recorder saves files.
 4. Set **Extension** to match your audio format (e.g. `mp3`, `wav`).
 5. Set **System ID** and **Talkgroup ID** if all recordings in that folder belong to one system/talkgroup.
@@ -188,7 +192,7 @@ When creating a directory monitor, these settings are available:
 
 | Setting                 | Description                                                                                                                          |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **Type**                | Recorder type (`trunk-recorder`, `sdrtrunk`, `rtlsdr-airband`, `dsdplus`, `proscan`, or `default`)                                   |
+| **Type**                | Recorder type. The dropdown offers **Trunk Recorder**, **SDR Trunk**, **DSDPlus Fast Lane**, and **Default (mask-based)**. The server also understands `rtlsdr-airband` and `proscan` when set through the API or a JSON config import. |
 | **Directory**           | The folder to watch for new recordings                                                                                               |
 | **Extension**           | File extension filter (e.g. `mp3`). Leave blank to accept all supported types                                                        |
 | **Mask**                | Filename pattern for extracting metadata (see below)                                                                                 |
@@ -256,6 +260,6 @@ These settings in **Admin → Options** affect how calls are ingested:
 | **Audio Conversion**               | Converts incoming audio to a standard format using FFmpeg. Choose from disabled, basic conversion, normalized, or loudnorm modes. |
 | **Disable Duplicate Detection**    | Turns off the check that rejects calls with the same system/talkgroup within a short time window.                                 |
 | **Duplicate Detection Time Frame** | How close (in milliseconds) two calls must be to be considered duplicates.                                                        |
-| **API Key Call Rate**              | Default maximum calls per minute an API key can upload. Can also be set per key.                                                  |
+| **API Key Call Rate**              | Default maximum calls per minute an API key can upload. This one lives in **Admin → API Keys**, not Options, and can be overridden per key. |
 
 > **Note:** Auto-populate settings are in **Admin → Systems**, not in Options. **Auto-Populate Systems** is a global toggle at the top of the panel, and each system has its own **TG Auto-Populate** toggle for automatic talkgroup creation.
