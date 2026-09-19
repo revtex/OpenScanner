@@ -5,7 +5,7 @@ all use for the same things. When a name here and a name in code disagree, one
 of them is a bug.
 
 This is the *shared language* file. Structure and rules live elsewhere:
-`.github/PROJECT_LAYOUT.md` for layout, `.github/copilot-instructions.md` for
+`.github/PROJECT_LAYOUT.md` for layout, `.github/CONVENTIONS.md` for
 the Security Rules, `docs/adr/` for decisions and why they were made.
 
 ## What Squelch is

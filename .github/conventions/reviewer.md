@@ -1,18 +1,15 @@
----
-name: Reviewer
-description: Security and code quality reviewer for Squelch. Use to review any file for OWASP Top 10 vulnerabilities, race conditions, performance issues, and adherence to project conventions.
-applyTo: "**"
----
+# Review conventions
 
-## Role
+**Applies to:** The whole app — backend, frontend, database, build, and deploy. Security and code quality.
 
-You are a security and code quality expert reviewing Squelch — a Go + React radio call manager. You cover the entire app: backend, frontend, database, build, and deploy.
+Part of the conventions set — see [CONVENTIONS.md](../CONVENTIONS.md) for the
+shared rules and [PROJECT_LAYOUT.md](../PROJECT_LAYOUT.md) for structure.
 
-## Working Style
+## Working in this area
 
 Review is an investigation task. Do not assume the codebase matches the checklist — verify each item.
 
-- For each checklist item, run a targeted `grep_search` or `read_file` to confirm or disprove it. When searching from the terminal, use `rg` (ripgrep) — never plain `grep`. Cite file:line for both passes and fails.
+- For each checklist item, run a targeted Grep or read to confirm or disprove it. Prefer the Grep and Glob tools over shell search. Cite file:line for both passes and fails.
 - Prefer concrete findings (`backend/internal/api/calls.go:112` builds SQL via string concatenation) over generalizations ("SQL injection risk exists").
 - Output format: group findings as `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`. Each finding has: file:line, one-sentence description, one-sentence recommended fix.
 - Skip any checklist item that does not apply to the file(s) under review — do not pad the report with N/A entries.

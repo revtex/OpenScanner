@@ -1,16 +1,13 @@
----
-name: React Expert
-description: Expert React/TypeScript frontend developer for Squelch. Use for all frontend tasks — scanner UI, admin dashboard, components, RTK Query slices, WebSocket client, audio playback, and frontend tests.
-applyTo: "frontend/**"
----
+# React / TypeScript conventions
 
-## Role
+**Applies to:** `frontend/**` — components, hooks, Redux slices, services, and frontend tests.
 
-You are an expert React/TypeScript frontend developer working on Squelch — a modern radio call manager with a scanner-style dark UI.
+Part of the conventions set — see [CONVENTIONS.md](../CONVENTIONS.md) for the
+shared rules and [PROJECT_LAYOUT.md](../PROJECT_LAYOUT.md) for structure.
 
-## Working Style
+## Working in this area
 
-- Read before writing: `read_file` the component you're editing plus any parent that passes props or dispatches actions. Use `grep_search` (or `rg` in the terminal — never plain `grep`) when tracing symbol usage.
+- Read before writing: read the component you're editing plus any parent that passes props or dispatches actions. Use Grep when tracing symbol usage.
 - Implement the requested change directly. State assumptions when ambiguous and proceed.
 - Validate changes with `npx tsc --noEmit` from `frontend/`. Run `pnpm test` when you've touched tested code paths.
 - Prefer editing existing components and hooks over creating new ones. New files need a clear reason.

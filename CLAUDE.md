@@ -11,14 +11,14 @@ Squelch is a web-based radio call manager — a single Go binary with an embedde
 Two existing files are the source of truth for structure and rules — read them before non-trivial work, and keep them in sync if you change conventions:
 
 - **`.github/PROJECT_LAYOUT.md`** — full directory layout, package boundaries, file-split heuristics, naming, and per-domain conventions. When it contradicts the tree, the doc wins and the tree is the bug.
-- **`.github/copilot-instructions.md`** — tech stack, the numbered Security Rules (OWASP-aligned, always enforced), changelog/release policy, and the subagent assignment table.
-- **`.github/agents/*.agent.md`** — seven per-domain convention files (go, react, db, docs, reviewer, testing, cleanup). Useful as **domain cheat-sheets**; read the relevant one before non-trivial work in that area.
+- **`.github/CONVENTIONS.md`** — tech stack, the numbered Security Rules (OWASP-aligned, always enforced), required change ordering, and changelog/release policy.
+- **`.github/conventions/*.md`** — seven per-domain convention files (go, react, db, docs, reviewer, testing, cleanup). Read the relevant one before non-trivial work in that area.
 - **`CONTEXT.md`** — the domain model: the vocabulary for Calls, Talkgroups, Systems, Listeners, LIVE/BKGND, and the words we deliberately don't use. Read it before naming anything.
 - **`docs/adr/`** — numbered, append-only Architecture Decision Records: what was decided and *why*, including the alternatives that lost. Check it before changing something in an area it covers; add one when a decision worth keeping gets made. `docs/adr/README.md` has the format and the index.
 
 Do not duplicate those rules from memory — defer to them.
 
-> **Subagents in Claude Code:** the docs above were authored for VS Code Copilot's `runSubagent` and assume work is *always* delegated to a matching expert agent. In Claude Code the `.agent.md` files are **reference material, not dispatch targets** — read the relevant one rather than spawning an agent to read it for you. Skills under `.claude/skills/` may spawn sub-agents where they say to (`two-axis-review` runs its two axes in parallel, `research` runs in the background); follow the skill.
+> **On sub-agents:** the per-domain files are **reference material, not dispatch targets** — read the relevant one rather than spawning an agent to read it for you. Skills under `.claude/skills/` may spawn sub-agents where they say to (`two-axis-review` runs its two axes in parallel, `research` runs in the background); follow the skill.
 
 ## Commands
 
@@ -90,12 +90,12 @@ Packaged workflows live in `.claude/skills/` and are invoked as `/<name>`:
 - **Go:** errors returned not panicked; `log/slog` only (no `log.Println`/`fmt.Println`); external processes via `exec.CommandContext` with an arg slice, never a shell string; outbound HTTP via `safehttp.Client`; every public `/api/*` endpoint carries Swaggo annotations.
 - **TypeScript:** no `any`, no `@ts-ignore` (use `unknown` + narrow); no `dangerouslySetInnerHTML`; `@/` alias for all `src/` imports (no `../../` chains); DaisyUI classes over hand-rolled UI.
 - **DB:** edit `.sql` → `make generate` (sqlc) → update `schema/schema.sql`; every index must back a real query.
-- **Security:** see `copilot-instructions.md § Security Rules` — secrets-at-rest use the `enc::` AES-256-GCM scheme, refresh tokens are SHA-256 hashed with family rotation, admin routes always require an admin JWT.
+- **Security:** see `CONVENTIONS.md § Security Rules` — secrets-at-rest use the `enc::` AES-256-GCM scheme, refresh tokens are SHA-256 hashed with family rotation, admin routes always require an admin JWT.
 - **Accessibility:** interactive controls need accessible names. Watch two patterns that don't expose a label automatically: DaisyUI dropdown triggers (`div[role="button"]`) and bare `<input type="range">` — add `aria-label` (see `features/scanner/components/ControlToolbar.tsx`).
 
 ## Changelog & releases
 
-User-visible changes must add a bullet under `[Unreleased]` in `CHANGELOG.md` (Keep a Changelog format) in the same PR — a CI `changelog` job blocks merges into `main` otherwise (use the `skip-changelog` label for pure internal/CI/typo changes). Any user-visible fix or feature ships as a `vX.Y.Z` release in the same session rather than sitting unreleased. See `copilot-instructions.md § Releases`.
+User-visible changes must add a bullet under `[Unreleased]` in `CHANGELOG.md` (Keep a Changelog format) in the same PR — a CI `changelog` job blocks merges into `main` otherwise (use the `skip-changelog` label for pure internal/CI/typo changes). Any user-visible fix or feature ships as a `vX.Y.Z` release in the same session rather than sitting unreleased. See `CONVENTIONS.md § Releases`.
 
 ## Local-only planning docs
 

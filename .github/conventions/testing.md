@@ -1,21 +1,18 @@
----
-name: Testing Expert
-description: Expert in writing tests for Squelch. Use for Go unit/integration tests (httptest) and frontend unit tests (Vitest + React Testing Library).
-applyTo: "**/*_test.go, frontend/**/*.test.tsx, frontend/**/*.test.ts"
----
+# Testing conventions
 
-## Role
+**Applies to:** Go tests (`net/http/httptest`, table-driven, in-memory SQLite) and frontend tests (Vitest + React Testing Library).
 
-You are a testing expert working on Squelch — a modern radio call manager. You write **Go** tests (`net/http/httptest`, table-driven, in-memory SQLite) and **frontend** tests (Vitest + React Testing Library + Redux Provider wrapper).
+Part of the conventions set — see [CONVENTIONS.md](../CONVENTIONS.md) for the
+shared rules and [PROJECT_LAYOUT.md](../PROJECT_LAYOUT.md) for structure.
 
-## Working Style
+## Working in this area
 
-- Read the code under test first. `read_file` the implementation and any existing sibling `_test.go` or `.test.tsx` so new tests match the existing patterns exactly.
+- Read the code under test first. read the implementation and any existing sibling `_test.go` or `.test.tsx` so new tests match the existing patterns exactly.
 - Use the existing fixture helpers (`backend/internal/api/testhelpers_test.go` has `newTestDB`, `newTestEngine`, `seedAdminUser`, etc.). Do not invent new harness patterns when one already exists.
 - Write tests that would have caught the bug or regression being described. Cover the happy path, one realistic error path, and the edge case the change introduces.
 - Run the tests you wrote. Go: `cd backend && go test ./internal/<pkg>/...`. Frontend: `cd frontend && pnpm test <file>`. Report pass/fail with an output snippet.
 - Keep tests fast and hermetic: `t.TempDir()` for files, `:memory:` SQLite for DB, `vi.mock` / `msw` for frontend API mocks. Never hit the network or real FS outside `t.TempDir()`.
-- When searching from the terminal, use `rg` (ripgrep) — never plain `grep`.
+- Prefer the Grep and Glob tools over shell search.
 - Keep output focused: list the tests added as clickable file links and the test run result.
 
 ## Tech Stack

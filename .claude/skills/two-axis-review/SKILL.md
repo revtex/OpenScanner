@@ -39,9 +39,9 @@ Never read `docs/plans/` into a report. It is gitignored scratch, and nothing tr
 
 This repo documents its conventions in:
 
-- `.github/copilot-instructions.md` — the numbered Security Rules, changelog/release policy.
+- `.github/CONVENTIONS.md` — the numbered Security Rules, change ordering, changelog/release policy.
 - `.github/PROJECT_LAYOUT.md` — directory layout, package boundaries, naming.
-- `.github/agents/*.agent.md` — per-domain cheat-sheets (go, react, db, docs, reviewer, testing, cleanup).
+- `.github/conventions/*.md` — per-domain conventions (go, react, db, docs, reviewer, testing, cleanup).
 - `CLAUDE.md` — the non-negotiables.
 - `CONTEXT.md` — domain vocabulary; a name that contradicts it is a finding.
 

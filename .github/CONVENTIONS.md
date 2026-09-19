@@ -1,4 +1,4 @@
-# Squelch — Copilot Instructions
+# Squelch — Conventions
 
 ## Project Overview
 
@@ -21,39 +21,26 @@ squelch/
   backend/             ← Go backend
   frontend/            ← React frontend
   docs/                ← Documentation (user guides + design plans)
-  .github/agents/      ← Expert agents — one per domain, delegate to them
+  .github/conventions/ ← Per-domain conventions (go, react, db, docs, reviewer, testing, cleanup)
   .devcontainer/       ← Codespaces / dev container setup (ripgrep, Go, Node, pnpm, sqlc, migrate, swag, air)
 ```
 
-## Subagent Usage — Default Behavior
+## Change ordering
 
-**Always delegate domain-specific work to the matching expert agent** via `runSubagent`. The top-level conversation stays focused on planning, coordination, and reporting; the agents do the work. Each agent has file-scoped context (e.g. go-expert is scoped to `backend/**`) and hardened conventions that the top-level agent must not duplicate from memory.
+Some changes have a required order, because one side generates what the other
+consumes:
 
-When a request touches multiple domains (backend + frontend, or schema + Go), run the relevant subagents in parallel when the work is independent, and sequentially when one depends on the other (e.g. sqlc changes before the Go code that consumes them).
+- **New database column** — migration and query `.sql` first, then `make generate`
+  (sqlc types must exist before Go can consume them), then the Go code, then the
+  frontend if the column surfaces in the UI.
+- **Feature spanning backend and frontend** — settle the API shape first; the
+  frontend can then be built against it rather than guessing.
+- **Security-sensitive change** — implement it, then review it against the
+  Security Rules below as a separate pass. Reviewing while writing misses things.
+- **Any non-trivial implementation** — tests come with it, not after the fact.
 
-Use the `Explore` agent for read-only codebase investigation when the answer is not obvious from 1–2 file reads — it avoids cluttering the main conversation with long search chains.
-
-Do not handle domain work inline when a matching agent exists. Inline handling is acceptable only for trivial one-liner edits, tiny config tweaks, or direct terminal commands.
-
-## Agent Assignment
-
-| Task                                                               | Agent                |
-| ------------------------------------------------------------------ | -------------------- |
-| Go backend code (handlers, WS, audio, auth, middleware, tests)     | **Go Expert**        |
-| React/TypeScript code (components, hooks, slices, services, tests) | **React Expert**     |
-| SQLite schema, migrations, sqlc queries, indexes                   | **Database Expert**  |
-| User guides or design docs under `docs/`                           | **Docs Expert**      |
-| Security / quality review (OWASP, concurrency, performance)        | **Reviewer**         |
-| Writing new tests (Go httptest or Vitest + RTL)                    | **Testing Expert**   |
-| Dead code removal, unused imports, stale files                     | **Cleanup Expert**   |
-| Read-only investigation across the codebase                        | **Explore**          |
-
-### Cross-cutting changes
-
-- Feature spanning backend + frontend → run **Go Expert** and **React Expert** (sequential if the backend defines the API shape first, parallel if both sides can be stubbed)
-- New database column → **Database Expert** first, then **Go Expert** (sqlc types must exist before Go consumes them), then **React Expert** if the column is surfaced in UI
-- Security-sensitive change → implement with the domain agent, then run **Reviewer** on the result
-- After any non-trivial implementation → invoke **Testing Expert** for coverage unless tests were written alongside
+Per-domain detail lives in `.github/conventions/` (go, react, db, docs, reviewer,
+testing, cleanup). Read the relevant one before non-trivial work in that area.
 
 ## Coding Conventions (high level)
 
