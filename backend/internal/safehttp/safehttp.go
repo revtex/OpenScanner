@@ -2,11 +2,11 @@
 // redirects are disabled, response body size is capped, and timeouts are
 // always enforced.
 //
-// OpenScanner is a self-hosted homelab tool — almost every legitimate
+// Squelch is a self-hosted homelab tool — almost every legitimate
 // downstream URL (go-whisper, rdio-scanner, Home Assistant, etc.) sits on
 // a private / LAN address. Blocking those by default would break normal
 // deployments, so private / loopback / link-local destinations are ALLOWED
-// by default. Operators running OpenScanner on a public network with
+// by default. Operators running Squelch on a public network with
 // untrusted admins can opt in to SSRF-style blocking with
 // OPENSCANNER_BLOCK_INTERNAL_HTTP=1, which rejects RFC1918 / loopback /
 // link-local / multicast / unspecified targets (DNS-rebinding aware).

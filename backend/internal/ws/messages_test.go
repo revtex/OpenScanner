@@ -124,7 +124,7 @@ func TestNewCALMessage(t *testing.T) {
 }
 
 func TestNewVERMessage(t *testing.T) {
-	data, err := NewVERMessage("1.2.3", "OpenScanner", "admin@example.com")
+	data, err := NewVERMessage("1.2.3", "Squelch", "admin@example.com")
 	if err != nil {
 		t.Fatalf("NewVERMessage error: %v", err)
 	}
@@ -152,8 +152,8 @@ func TestNewVERMessage(t *testing.T) {
 	if body["version"] != "1.2.3" {
 		t.Errorf("version = %q, want %q", body["version"], "1.2.3")
 	}
-	if body["branding"] != "OpenScanner" {
-		t.Errorf("branding = %q, want %q", body["branding"], "OpenScanner")
+	if body["branding"] != "Squelch" {
+		t.Errorf("branding = %q, want %q", body["branding"], "Squelch")
 	}
 	if body["email"] != "admin@example.com" {
 		t.Errorf("email = %q, want %q", body["email"], "admin@example.com")
@@ -288,13 +288,13 @@ func TestLegacyWireFormat_ByteEqual(t *testing.T) {
 			// VER — fixed 3-string struct in fixed key order.
 			name: "VER welcome",
 			got: func(t *testing.T) []byte {
-				b, err := NewVERMessage("1.2.3", "OpenScanner", "admin@example.com")
+				b, err := NewVERMessage("1.2.3", "Squelch", "admin@example.com")
 				if err != nil {
 					t.Fatalf("NewVERMessage: %v", err)
 				}
 				return b
 			},
-			want: []byte(`["VER",{"branding":"OpenScanner","email":"admin@example.com","version":"1.2.3"}]`),
+			want: []byte(`["VER",{"branding":"Squelch","email":"admin@example.com","version":"1.2.3"}]`),
 		},
 		{
 			name: "LSC listener count",

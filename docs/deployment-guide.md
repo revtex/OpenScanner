@@ -1,6 +1,8 @@
 # Deployment Guide
 
-This guide walks you through getting OpenScanner running at home. The Docker path is the easiest and works for most people — start there, and only dip into the Advanced section if you need something special.
+_Squelch was previously named OpenScanner._
+
+This guide walks you through getting Squelch running at home. The Docker path is the easiest and works for most people — start there, and only dip into the Advanced section if you need something special.
 
 ## Contents
 
@@ -59,7 +61,7 @@ If you have Docker installed, you can be up and running in a couple of minutes.
    docker compose up -d
    ```
 
-4. Open <http://localhost:3022> in your browser. OpenScanner will walk you through creating your first admin account.
+4. Open <http://localhost:3022> in your browser. Squelch will walk you through creating your first admin account.
 
 > **Tip:** Set `TZ` to your local timezone (the [IANA name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones), like `America/Chicago` or `Europe/London`). That way recorder timestamps come out right.
 
@@ -69,9 +71,9 @@ That's it. Everything below is optional — only read on if you need it.
 
 ## First-Time Login
 
-The first time you open OpenScanner you'll see a setup page instead of a login page. Pick a username and password and click **Create**. That account becomes the admin user.
+The first time you open Squelch you'll see a setup page instead of a login page. Pick a username and password and click **Create**. That account becomes the admin user.
 
-There is no default username or password — OpenScanner doesn't ship with one. If you ever forget your admin password, you can reset it on the next startup:
+There is no default username or password — Squelch doesn't ship with one. If you ever forget your admin password, you can reset it on the next startup:
 
 - **Binary:** run once with `--admin-password new-password`, then restart normally.
 - **Docker:** add `OPENSCANNER_ADMIN_PASSWORD=new-password` to your compose file, run `docker compose up -d --force-recreate`, then remove the line and recreate again.
@@ -84,7 +86,7 @@ Once you're logged in, head to **Admin → Systems** to set up your first trunke
 
 ## Your Data Directory
 
-The `./data` folder you mounted in the compose file holds everything OpenScanner needs to remember: the SQLite database (`openscanner.db`), the server log file (`openscanner.log`, written alongside the database), and the audio recordings (`recordings/`). Anything else OpenScanner creates — cached transcription models, temporary files — lives inside the container and can be thrown away without losing your data.
+The `./data` folder you mounted in the compose file holds everything Squelch needs to remember: the SQLite database (`openscanner.db`), the server log file (`openscanner.log`, written alongside the database), and the audio recordings (`recordings/`). Anything else Squelch creates — cached transcription models, temporary files — lives inside the container and can be thrown away without losing your data.
 
 Keep that `./data` folder safe, and you can reinstall, upgrade, or move to a new machine without losing anything.
 
@@ -97,7 +99,7 @@ Backups are small and simple. You only need two things:
 1. The database file — `data/openscanner.db`
 2. The recordings folder — `data/recordings/`
 
-A plain `tar` or `rsync` of the `data/` directory is enough. You can copy it while OpenScanner is running (SQLite's WAL mode handles that safely), but for a tidy point-in-time backup it's better to stop the container first:
+A plain `tar` or `rsync` of the `data/` directory is enough. You can copy it while Squelch is running (SQLite's WAL mode handles that safely), but for a tidy point-in-time backup it's better to stop the container first:
 
 ```bash
 docker compose stop
@@ -113,14 +115,14 @@ To restore, unpack the archive into the same location and start the container ag
 
 ## Running Behind a Reverse Proxy
 
-Most people already have a web server (Caddy, nginx, Traefik) on their home server. Putting OpenScanner behind it gives you a clean domain name and one place to manage TLS certificates.
+Most people already have a web server (Caddy, nginx, Traefik) on their home server. Putting Squelch behind it gives you a clean domain name and one place to manage TLS certificates.
 
 Two rules to remember when proxying:
 
 - **Forward WebSocket upgrades** on `/api/ws`, `/ws`, and `/api/admin/ws` — the live call feed and admin events use them. `/api/ws` is the canonical listener endpoint; `/ws` is a compatibility alias kept for legacy clients and should also be proxied. (Audio is delivered separately as a regular HTTP response from `/api/calls/:id/audio` and does not require WebSocket forwarding.)
-- **Send `X-Forwarded-Proto`** so OpenScanner knows whether to mark cookies as secure.
+- **Send `X-Forwarded-Proto`** so Squelch knows whether to mark cookies as secure.
 
-If the proxy is on the same machine, it's also a good idea to bind OpenScanner to localhost only so nothing bypasses the proxy. In your compose file:
+If the proxy is on the same machine, it's also a good idea to bind Squelch to localhost only so nothing bypasses the proxy. In your compose file:
 
 ```yaml
 environment:
@@ -189,10 +191,10 @@ After starting the proxy, open the public URL in a browser and confirm the live 
 
 ## HTTPS Options
 
-You have two choices for serving OpenScanner over HTTPS:
+You have two choices for serving Squelch over HTTPS:
 
-- **Reverse proxy (recommended):** Let Caddy, nginx, or Traefik terminate TLS and forward plain HTTP to OpenScanner on localhost. This is the standard setup for self-hosted apps and gives you a single place to manage certificates.
-- **Built-in TLS:** OpenScanner can serve HTTPS directly if you pass it a certificate and key, or ask it to fetch one from Let's Encrypt. This is useful when you don't want to run a separate proxy — for example, on a small VPS that only runs OpenScanner.
+- **Reverse proxy (recommended):** Let Caddy, nginx, or Traefik terminate TLS and forward plain HTTP to Squelch on localhost. This is the standard setup for self-hosted apps and gives you a single place to manage certificates.
+- **Built-in TLS:** Squelch can serve HTTPS directly if you pass it a certificate and key, or ask it to fetch one from Let's Encrypt. This is useful when you don't want to run a separate proxy — for example, on a small VPS that only runs Squelch.
 
 For built-in TLS, see [Built-in TLS](#built-in-tls) under Advanced.
 
@@ -200,11 +202,11 @@ For built-in TLS, see [Built-in TLS](#built-in-tls) under Advanced.
 
 ## Keeping Secrets Safe
 
-OpenScanner stores a few sensitive values in its database: the signing key used for your login sessions and any downstream scanner API keys you configure. By default these are stored as plain text.
+Squelch stores a few sensitive values in its database: the signing key used for your login sessions and any downstream scanner API keys you configure. By default these are stored as plain text.
 
-You can turn on an encryption option that **scrambles those values in the database file**, so that someone who steals your `openscanner.db` can't read your API keys or forge logins from it. You provide a key when OpenScanner starts, and that key is the only way to unlock the scrambled values.
+You can turn on an encryption option that **scrambles those values in the database file**, so that someone who steals your `openscanner.db` can't read your API keys or forge logins from it. You provide a key when Squelch starts, and that key is the only way to unlock the scrambled values.
 
-**Do I need this?** If your OpenScanner is only reachable from your home network and you trust the people on it, you can skip encryption without any real downside. If you're exposing OpenScanner to the internet, or you share the server with other users, turn it on.
+**Do I need this?** If your Squelch is only reachable from your home network and you trust the people on it, you can skip encryption without any real downside. If you're exposing Squelch to the internet, or you share the server with other users, turn it on.
 
 ### Turning Encryption On (Docker)
 
@@ -238,7 +240,7 @@ You can turn on an encryption option that **scrambles those values in the databa
    docker compose up -d --force-recreate
    ```
 
-On the next startup OpenScanner will encrypt your existing secrets in place and print `Encryption at rest  yes` in its startup banner. You're done.
+On the next startup Squelch will encrypt your existing secrets in place and print `Encryption at rest  yes` in its startup banner. You're done.
 
 > **Important:** Back up your `.env` file, or at least the key inside it, somewhere safe. If you lose the key, the scrambled values in the database can't be recovered — you'll need to re-enter your downstream API keys and everyone will need to log in again.
 
@@ -251,21 +253,21 @@ Here's the short list of what changes when encryption is on. Everything else (sy
 | Value               | Where it lives                  | What it's used for                                       |
 | ------------------- | ------------------------------- | -------------------------------------------------------- |
 | Login signing key   | `settings` table (`jwtSecret`)  | Signs your login sessions and API tokens                 |
-| Downstream API keys | `downstreams` table (`api_key`) | Lets OpenScanner forward calls to another scanner server |
+| Downstream API keys | `downstreams` table (`api_key`) | Lets Squelch forward calls to another scanner server |
 
 Encrypted entries are prefixed with `enc::` in the database, so if you're poking around in SQLite you can tell which rows are encrypted at a glance.
 
 ### If You Don't Set a Key
 
-OpenScanner still starts fine without `OPENSCANNER_ENCRYPTION_KEY` — it just keeps the values above as plain text. On startup it prints a warning in the log letting you know encryption is off, so you don't forget by accident. For a hobby setup on a trusted home network, that's perfectly reasonable. If you later decide to turn it on, just set the variable and restart — OpenScanner will encrypt the existing values on its own.
+Squelch still starts fine without `OPENSCANNER_ENCRYPTION_KEY` — it just keeps the values above as plain text. On startup it prints a warning in the log letting you know encryption is off, so you don't forget by accident. For a hobby setup on a trusted home network, that's perfectly reasonable. If you later decide to turn it on, just set the variable and restart — Squelch will encrypt the existing values on its own.
 
 ---
 
 ## Transcription (Optional)
 
-OpenScanner can automatically transcribe calls using [go-whisper](https://github.com/mutablelogic/go-whisper), a whisper.cpp sidecar that runs as its own service.
+Squelch can automatically transcribe calls using [go-whisper](https://github.com/mutablelogic/go-whisper), a whisper.cpp sidecar that runs as its own service.
 
-Add this alongside OpenScanner in your `docker-compose.yml`:
+Add this alongside Squelch in your `docker-compose.yml`:
 
 ```yaml
 whisper:
@@ -279,7 +281,7 @@ whisper:
   restart: unless-stopped
 ```
 
-Then in OpenScanner's admin dashboard, open **Admin → Transcription** and:
+Then in Squelch's admin dashboard, open **Admin → Transcription** and:
 
 1. Set **Transcription URL** to `http://whisper:8081`.
 2. **Download a model** — pick one from the list and click download.
@@ -315,7 +317,7 @@ Options:
 - **Intel iGPU** — mount `/dev/dri` with the right group IDs for Vulkan/OpenCL
 - **AMD ROCm** — mount ROCm devices
 
-The project's [docker-compose.yml](../docker-compose.yml) has commented-out examples for each. For more detail, see the [go-whisper repository](https://github.com/mutablelogic/go-whisper) — note that go-whisper is a third-party project and OpenScanner doesn't provide support for it directly.
+The project's [docker-compose.yml](../docker-compose.yml) has commented-out examples for each. For more detail, see the [go-whisper repository](https://github.com/mutablelogic/go-whisper) — note that go-whisper is a third-party project and Squelch doesn't provide support for it directly.
 
 ---
 
@@ -339,7 +341,7 @@ After deploying, check these to confirm everything works:
 - [ ] `curl http://localhost:3022/api/v1/health` returns a 200 response
 - [ ] The browser URL shows the scanner interface (or the setup page on first run)
 - [ ] Admin login works and the dashboard loads
-- [ ] A test upload from your recorder appears in OpenScanner
+- [ ] A test upload from your recorder appears in Squelch
 - [ ] The live scanner feed shows new calls in real time (this proves WebSockets are working) and plays them back (this proves audio HTTP fetches and cookies are working)
 
 ---
@@ -350,7 +352,7 @@ Everything below is for less-common setups: binary installs, CLI flags, external
 
 ### Binary Install
 
-OpenScanner also ships as a single executable for Linux, macOS, and Windows — no Docker, no external database.
+Squelch also ships as a single executable for Linux, macOS, and Windows — no Docker, no external database.
 
 #### Guided Setup
 
@@ -368,7 +370,7 @@ It asks for:
 - Config file location
 - Install path for the binary
 
-Once it's done, OpenScanner is running as a system service. Open the listen address in your browser to finish setup.
+Once it's done, Squelch is running as a system service. Open the listen address in your browser to finish setup.
 
 To accept platform defaults without prompting:
 
@@ -412,10 +414,10 @@ When you use `openscanner setup`, paths are chosen for your OS:
 
 | Setting    | Default                                      |
 | ---------- | -------------------------------------------- |
-| Config     | `%ProgramData%\OpenScanner\openscanner.json` |
-| Database   | `%ProgramData%\OpenScanner\openscanner.db`   |
-| Recordings | `%ProgramData%\OpenScanner\recordings`       |
-| Executable | `%ProgramFiles%\OpenScanner\openscanner.exe` |
+| Config     | `%ProgramData%\Squelch\openscanner.json` |
+| Database   | `%ProgramData%\Squelch\openscanner.db`   |
+| Recordings | `%ProgramData%\Squelch\recordings`       |
+| Executable | `%ProgramFiles%\Squelch\openscanner.exe` |
 | Service    | Windows Service Control Manager              |
 
 You can override any of these with flags:
@@ -463,7 +465,7 @@ If the service was stopped before upgrading, it stays stopped afterwards.
 
 ### Configuration Reference
 
-OpenScanner reads settings from three places, in this priority order:
+Squelch reads settings from three places, in this priority order:
 
 **CLI flags > environment variables > JSON config file > built-in defaults**
 
@@ -512,8 +514,8 @@ A couple of toggles don't have matching CLI flags or JSON fields — they only e
 
 | Variable                          | Description                                                                                                                                                                                                                     | Default |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `OPENSCANNER_BLOCK_INTERNAL_HTTP` | When set to `1`, `true`, or `yes`, OpenScanner refuses outbound HTTP (transcription, downstream push) to private-network, loopback, link-local, and multicast addresses. Off by default so whisper and LAN scanners still work. | unset   |
-| `OPENSCANNER_JWT_SECRET`          | Lets you supply the login-session signing key yourself instead of having OpenScanner auto-generate one. See [Externalizing the Login Signing Key](#externalizing-the-login-signing-key) below.                                  | unset   |
+| `OPENSCANNER_BLOCK_INTERNAL_HTTP` | When set to `1`, `true`, or `yes`, Squelch refuses outbound HTTP (transcription, downstream push) to private-network, loopback, link-local, and multicast addresses. Off by default so whisper and LAN scanners still work. | unset   |
+| `OPENSCANNER_JWT_SECRET`          | Lets you supply the login-session signing key yourself instead of having Squelch auto-generate one. See [Externalizing the Login Signing Key](#externalizing-the-login-signing-key) below.                                  | unset   |
 
 #### JSON Config File
 
@@ -543,7 +545,7 @@ Temporary flags (`--admin-password`, `--config-save`, `--version`, `--service`) 
 
 ### Built-in TLS
 
-OpenScanner can serve HTTPS itself in two ways.
+Squelch can serve HTTPS itself in two ways.
 
 #### With Your Own Certificate
 
@@ -561,9 +563,9 @@ openscanner --ssl-auto-cert scanner.example.com
 
 How it works:
 
-1. OpenScanner uses Go's `autocert` library to talk to Let's Encrypt.
-2. Let's Encrypt verifies you control the domain by fetching a file from `http://your-domain/.well-known/acme-challenge/...`. OpenScanner's HTTP listener answers automatically.
-3. Once verified, a certificate is issued and OpenScanner serves HTTPS on port 443.
+1. Squelch uses Go's `autocert` library to talk to Let's Encrypt.
+2. Let's Encrypt verifies you control the domain by fetching a file from `http://your-domain/.well-known/acme-challenge/...`. Squelch's HTTP listener answers automatically.
+3. Once verified, a certificate is issued and Squelch serves HTTPS on port 443.
 4. Certificates are cached in `autocert-cache/` next to the binary and renewed automatically.
 
 Requirements:
@@ -610,7 +612,7 @@ The installed service reads `--config <path>` on every start, so no reinstall is
 
 ### Externalizing the Login Signing Key
 
-OpenScanner signs login sessions and API tokens with a secret it auto-generates on first startup and stores in the database. If you have your own secret-management setup (Kubernetes secrets, Vault, a `.env` file you already use for other services), you can supply the key yourself with `OPENSCANNER_JWT_SECRET`.
+Squelch signs login sessions and API tokens with a secret it auto-generates on first startup and stores in the database. If you have your own secret-management setup (Kubernetes secrets, Vault, a `.env` file you already use for other services), you can supply the key yourself with `OPENSCANNER_JWT_SECRET`.
 
 **Binary / shell:**
 
@@ -631,7 +633,7 @@ environment:
 
 When set:
 
-- OpenScanner uses this value and never reads or writes the database's `jwt_secret` setting.
+- Squelch uses this value and never reads or writes the database's `jwt_secret` setting.
 - The encryption key only protects downstream API keys in that case (you're managing the session key yourself).
 - Rotating the secret means changing the variable and restarting — existing sessions are invalidated and everyone logs in again.
 
@@ -639,7 +641,7 @@ For most setups you don't need this — the default (stored in the DB, encrypted
 
 ### Blocking Outbound Traffic to Private Networks
 
-By default, OpenScanner's outbound HTTP (to your transcription sidecar, downstream scanners, webhook targets) is allowed to reach private network addresses. That's what lets `http://whisper:8081` and other LAN services work.
+By default, Squelch's outbound HTTP (to your transcription sidecar, downstream scanners, webhook targets) is allowed to reach private network addresses. That's what lets `http://whisper:8081` and other LAN services work.
 
 If you're in a more locked-down environment and want to block outbound traffic to private, loopback, link-local, and multicast addresses, set:
 

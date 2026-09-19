@@ -1,4 +1,4 @@
-// Package routes wires all OpenScanner HTTP and WebSocket routes onto a Gin engine.
+// Package routes wires all Squelch HTTP and WebSocket routes onto a Gin engine.
 //
 // It owns the top-level route registration and middleware ordering, and delegates
 // per-feature handling to the handler subpackages (auth, calls, bookmarks, share,
@@ -219,7 +219,7 @@ func RegisterRoutes(r *gin.Engine, deps Deps) {
 	}
 
 	// WebSocket endpoints.
-	// /api/ws is the canonical OpenScanner listener route. /ws is a temporary
+	// /api/ws is the canonical Squelch listener route. /ws is a temporary
 	// compatibility alias that delegates to the same handler so existing
 	// rdio-scanner-shaped clients keep working during the legacy-API transition.
 	listenerWS := gin.WrapF(ws.HandleListenerWS(deps.Hub, deps.Queries))

@@ -1,4 +1,4 @@
-// Package downstream pushes accepted calls to remote OpenScanner instances.
+// Package downstream pushes accepted calls to remote Squelch instances.
 package downstream
 
 import (

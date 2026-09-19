@@ -1,4 +1,4 @@
-// Package ws implements the OpenScanner WebSocket hub.
+// Package ws implements the Squelch WebSocket hub.
 package ws
 
 import (

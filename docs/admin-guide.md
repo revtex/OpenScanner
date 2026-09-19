@@ -1,6 +1,8 @@
 # Admin Guide
 
-This guide covers every panel in the OpenScanner admin dashboard — what each setting does, how panels work, and how to configure your system.
+_Squelch was previously named OpenScanner._
+
+This guide covers every panel in the Squelch admin dashboard — what each setting does, how panels work, and how to configure your system.
 
 The admin dashboard is at `/admin` and requires signing in with an admin account.
 
@@ -33,7 +35,7 @@ The sidebar contains these panels, in order:
 4. **Groups & Tags** — organize talkgroups into categories
 5. **API Keys** — manage recorder upload keys
 6. **Monitors** — set up directory-based call import
-7. **Downstreams** — forward calls to other OpenScanner instances
+7. **Downstreams** — forward calls to other Squelch instances
 8. **Shared Links** — view and manage shared call links
 9. **Transcription** — configure speech-to-text
 10. **Options** — general settings and behavior
@@ -60,7 +62,7 @@ The Activity panel gives you a quick overview of your system:
 
 ## Trunk Recorder Dashboard
 
-If you run [trunk-recorder](https://github.com/robotastic/trunk-recorder) with the [MQTT status plugin](https://github.com/taclane/trunk-recorder-mqtt-status), OpenScanner can subscribe to its broker and surface live operational data — control-channel decode rate, recorder states, active calls, system tables, unit affiliation, and trunking-message debugging — under **Dashboards → Trunk Recorder**.
+If you run [trunk-recorder](https://github.com/robotastic/trunk-recorder) with the [MQTT status plugin](https://github.com/taclane/trunk-recorder-mqtt-status), Squelch can subscribe to its broker and surface live operational data — control-channel decode rate, recorder states, active calls, system tables, unit affiliation, and trunking-message debugging — under **Dashboards → Trunk Recorder**.
 
 The Trunk Recorder integration is opt-in. Enable it under **Options → Trunk Recorder MQTT**, then add one instance row per trunk-recorder under **Dashboards → Trunk Recorder → Instances**.
 
@@ -72,7 +74,7 @@ See the [Trunk Recorder MQTT guide](tr-mqtt-guide.md) for the full plugin config
 
 ## Users
 
-Manage who can access OpenScanner.
+Manage who can access Squelch.
 
 Each user has:
 
@@ -130,13 +132,13 @@ Groups and tags organize your talkgroups into categories.
 
 Both are simple label lists. Assign them to talkgroups in the Systems panel.
 
-OpenScanner ships with sensible defaults (Air, Common, EMS, Fire, Interop, Law, Public Works for groups; ~20 tags covering law, fire, EMS, corrections, and more).
+Squelch ships with sensible defaults (Air, Common, EMS, Fire, Interop, Law, Public Works for groups; ~20 tags covering law, fire, EMS, corrections, and more).
 
 ---
 
 ## API Keys
 
-API keys authenticate recorders that upload calls to OpenScanner over HTTP.
+API keys authenticate recorders that upload calls to Squelch over HTTP.
 
 Each key has:
 
@@ -190,7 +192,7 @@ The UI includes a help section with the full token reference.
 
 > **Note:** Downstream forwarding is implemented but has not been tested. Use at your own risk.
 
-Downstreams forward ingested calls to other OpenScanner instances. Use this to fan out from a central server to regional or public-facing instances.
+Downstreams forward ingested calls to other Squelch instances. Use this to fan out from a central server to regional or public-facing instances.
 
 Each downstream has:
 
@@ -249,7 +251,7 @@ The panel also shows transcription statistics when available.
 
 ## Options
 
-General settings that control how OpenScanner behaves. Settings are organized into groups.
+General settings that control how Squelch behaves. Settings are organized into groups.
 
 ### General
 

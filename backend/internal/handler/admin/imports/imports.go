@@ -41,8 +41,8 @@ type tgColumnMap struct {
 	talkgroupID int
 	label       int
 	name        int
-	tagID       int // OpenScanner integer FK
-	groupID     int // OpenScanner integer FK
+	tagID       int // Squelch integer FK
+	groupID     int // Squelch integer FK
 	tagName     int // rdio-scanner text name (resolved to FK)
 	groupName   int // rdio-scanner text name (resolved to FK)
 	frequency   int
@@ -113,7 +113,7 @@ func col(record []string, i int) string {
 // ImportTalkgroups handles POST /api/admin/import/talkgroups.
 //
 //	@Summary      Import talkgroups from CSV
-//	@Description  Accepts a multipart CSV file with talkgroup data and a system_id form field. Supports OpenScanner format (talkgroup_id, label, name, tag_id, group_id, frequency, led, order) and rdio-scanner format (dec, hex, alpha_tag, description, tag, group, priority). Header rows are auto-detected; tag/group names are resolved to IDs automatically. Use mode=overwrite (default) to update existing talkgroups or mode=skip to leave existing talkgroups unchanged.
+//	@Description  Accepts a multipart CSV file with talkgroup data and a system_id form field. Supports Squelch format (talkgroup_id, label, name, tag_id, group_id, frequency, led, order) and rdio-scanner format (dec, hex, alpha_tag, description, tag, group, priority). Header rows are auto-detected; tag/group names are resolved to IDs automatically. Use mode=overwrite (default) to update existing talkgroups or mode=skip to leave existing talkgroups unchanged.
 //	@Tags         Admin,v1-Admin
 //	@Accept       multipart/form-data
 //	@Produce      json

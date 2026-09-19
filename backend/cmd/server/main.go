@@ -1,6 +1,6 @@
-// Package main is the entry point for the OpenScanner server.
+// Package main is the entry point for the Squelch server.
 //
-//	@title			OpenScanner API
+//	@title			Squelch API
 //	@version		1.0	(overridden at runtime with the binary's build version)
 //	@description	Radio call manager API — real-time audio streaming, call management, and admin CRUD.
 //
@@ -90,8 +90,8 @@ func main() {
 	// kardianos/service configuration.
 	svcConfig := &service.Config{
 		Name:        "openscanner",
-		DisplayName: "OpenScanner",
-		Description: "OpenScanner Radio Call Manager",
+		DisplayName: "Squelch",
+		Description: "Squelch Radio Call Manager",
 		Arguments:   serviceArguments(os.Args[1:]),
 	}
 
@@ -154,7 +154,7 @@ func runSetup(args []string) int {
 	dbFile := fs.String("db-file", config.DefaultDBFile, "SQLite database file path")
 	recordingsDir := fs.String("recordings-dir", config.DefaultRecordingsDir, "Directory for call audio recordings")
 	configFile := fs.String("config", config.DefaultConfigFile, "Path to JSON config file")
-	installBinary := fs.String("install-binary", config.DefaultBinaryPath, "Path where OpenScanner executable is installed")
+	installBinary := fs.String("install-binary", config.DefaultBinaryPath, "Path where Squelch executable is installed")
 	interactive := fs.Bool("interactive", false, "Prompt for setup values interactively")
 	force := fs.Bool("force", false, "Overwrite/reinstall when setup already exists")
 	if err := fs.Parse(args); err != nil {
@@ -185,7 +185,7 @@ func runSetup(args []string) int {
 	installed, running, statusText := serviceState(svc)
 
 	if (configExists || dbExists || installed) && !*force {
-		fmt.Println("OpenScanner appears to already be set up.")
+		fmt.Println("Squelch appears to already be set up.")
 		fmt.Printf("- config file: %s (exists=%t)\n", *configFile, configExists)
 		fmt.Printf("- database file: %s (exists=%t)\n", *dbFile, dbExists)
 		fmt.Printf("- service status: installed=%t running=%t (%s)\n", installed, running, statusText)
@@ -254,7 +254,7 @@ func runSetup(args []string) int {
 		return 1
 	}
 
-	fmt.Println("OpenScanner setup completed.")
+	fmt.Println("Squelch setup completed.")
 	fmt.Printf("- executable: %s\n", *installBinary)
 	fmt.Printf("- config file: %s\n", *configFile)
 	fmt.Printf("- service args: %s\n", strings.Join(serviceArgs, " "))
@@ -266,8 +266,8 @@ func runSetup(args []string) int {
 func runUpgrade(args []string) int {
 	fs := flag.NewFlagSet("upgrade", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	binary := fs.String("binary", "", "Path to new OpenScanner executable (defaults to current executable)")
-	installBinary := fs.String("install-binary", config.DefaultBinaryPath, "Installed OpenScanner executable path")
+	binary := fs.String("binary", "", "Path to new Squelch executable (defaults to current executable)")
+	installBinary := fs.String("install-binary", config.DefaultBinaryPath, "Installed Squelch executable path")
 	configFile := fs.String("config", config.DefaultConfigFile, "Path to JSON config file")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -316,7 +316,7 @@ func runUpgrade(args []string) int {
 		}
 	}
 
-	fmt.Println("OpenScanner upgrade completed.")
+	fmt.Println("Squelch upgrade completed.")
 	fmt.Printf("- source executable: %s\n", sourceBinary)
 	fmt.Printf("- installed executable: %s\n", *installBinary)
 	fmt.Printf("- previous service status: %s\n", statusText)
@@ -359,7 +359,7 @@ func runServiceDoctor() int {
 	}
 
 	installed, running, statusText := serviceState(svc)
-	fmt.Println("OpenScanner Service Doctor")
+	fmt.Println("Squelch Service Doctor")
 	fmt.Printf("- installed: %t\n", installed)
 	fmt.Printf("- running:   %t\n", running)
 	fmt.Printf("- status:    %s\n", statusText)
@@ -382,8 +382,8 @@ func runServiceDoctor() int {
 func newServiceController(args []string, executable string) (service.Service, error) {
 	svcConfig := &service.Config{
 		Name:        "openscanner",
-		DisplayName: "OpenScanner",
-		Description: "OpenScanner Radio Call Manager",
+		DisplayName: "Squelch",
+		Description: "Squelch Radio Call Manager",
 		Arguments:   args,
 		Executable:  executable,
 	}
@@ -421,7 +421,7 @@ func runInteractiveSetup(
 	listen, dbFile, recordingsDir, configFile, installBinary *string,
 ) (bool, error) {
 	reader := bufio.NewReader(in)
-	fmt.Fprintln(out, "OpenScanner interactive setup")
+	fmt.Fprintln(out, "Squelch interactive setup")
 
 	var err error
 	if *listen, err = promptWithDefault(reader, out, "Listen address", *listen); err != nil {

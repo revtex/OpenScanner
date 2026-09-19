@@ -1,5 +1,5 @@
 // Package admin holds the transport-agnostic CRUD / config / import-export
-// business logic for OpenScanner's admin surface.
+// business logic for Squelch's admin surface.
 //
 // Every method on Operations takes (ctx, params, callerID) and returns
 // (any, error); callers (currently internal/ws) are responsible for

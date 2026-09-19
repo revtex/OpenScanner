@@ -342,7 +342,7 @@ func ensureDirWritable(path string) error {
 
 // PrintUsage writes the full CLI help text to w.
 func PrintUsage(w io.Writer) {
-	fmt.Fprintf(w, `OpenScanner — Radio Call Manager (v%s)
+	fmt.Fprintf(w, `Squelch — Radio Call Manager (v%s)
 
 Usage:
   openscanner [flags]                   Start the server
@@ -350,7 +350,7 @@ Usage:
   openscanner help [command]            Show help for a command
 
 Commands:
-  setup               Install OpenScanner as a system service
+  setup               Install Squelch as a system service
   upgrade             Upgrade the installed binary (with service restart)
   config validate     Validate a JSON config file
   service doctor      Show service installation and status diagnostics
@@ -415,7 +415,7 @@ Run 'openscanner help <command>' for details on a specific command.
 var commandHelp = map[string]string{
 	"setup": `Usage: openscanner setup [flags]
 
-Install OpenScanner as a system service. Creates config file, database
+Install Squelch as a system service. Creates config file, database
 directory, recordings directory, copies the binary, and registers the service.
 
 Flags:
@@ -433,7 +433,7 @@ Examples:
 
 	"upgrade": `Usage: openscanner upgrade [flags]
 
-Upgrade the installed OpenScanner binary. Stops the service, copies the
+Upgrade the installed Squelch binary. Stops the service, copies the
 new binary, and restarts if it was previously running.
 
 Flags:
@@ -467,7 +467,7 @@ Examples:
 
 	"login": `Usage: openscanner login [flags]
 
-Authenticate with a running OpenScanner server. Prompts for username and
+Authenticate with a running Squelch server. Prompts for username and
 password interactively. On success, saves the JWT to ~/.openscanner-token.
 
 Flags:

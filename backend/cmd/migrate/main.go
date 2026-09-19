@@ -1,4 +1,4 @@
-// Package main is the entry point for the OpenScanner migration runner.
+// Package main is the entry point for the Squelch migration runner.
 package main
 
 import (

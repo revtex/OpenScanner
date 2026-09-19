@@ -26,11 +26,11 @@ func init() {
 		if programFiles == "" {
 			programFiles = `C:\Program Files`
 		}
-		base := filepath.Join(programData, "OpenScanner")
+		base := filepath.Join(programData, "Squelch")
 		DefaultConfigFile = filepath.Join(base, "openscanner.json")
 		DefaultDBFile = filepath.Join(base, "openscanner.db")
 		DefaultRecordingsDir = filepath.Join(base, "recordings")
-		DefaultBinaryPath = filepath.Join(programFiles, "OpenScanner", "openscanner.exe")
+		DefaultBinaryPath = filepath.Join(programFiles, "Squelch", "openscanner.exe")
 
 	case "darwin":
 		DefaultConfigFile = "/usr/local/etc/openscanner/openscanner.json"

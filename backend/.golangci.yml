@@ -1,4 +1,4 @@
-# golangci-lint configuration for OpenScanner.
+# golangci-lint configuration for Squelch.
 #
 # Philosophy: enable high-signal linters that catch real bugs (leaked HTTP
 # bodies, shadowed errors, SQL rows never closed, unhandled context, SSRF-ish

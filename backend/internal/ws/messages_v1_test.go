@@ -16,7 +16,7 @@ import (
 // --- v1 message constructor shape tests ---
 
 func TestNewWelcomeV1(t *testing.T) {
-	b, err := NewWelcomeV1("1.2.3", "OpenScanner", "ops@example.com")
+	b, err := NewWelcomeV1("1.2.3", "Squelch", "ops@example.com")
 	if err != nil {
 		t.Fatalf("NewWelcomeV1: %v", err)
 	}
@@ -30,7 +30,7 @@ func TestNewWelcomeV1(t *testing.T) {
 	if m["version"] != "1.2.3" {
 		t.Errorf("version = %v", m["version"])
 	}
-	if m["branding"] != "OpenScanner" {
+	if m["branding"] != "Squelch" {
 		t.Errorf("branding = %v", m["branding"])
 	}
 	if m["email"] != "ops@example.com" {

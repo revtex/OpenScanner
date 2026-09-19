@@ -1,4 +1,4 @@
-// Package cli implements CLI subcommands that call the running OpenScanner HTTP API.
+// Package cli implements CLI subcommands that call the running Squelch HTTP API.
 package cli
 
 import (
