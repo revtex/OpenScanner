@@ -1192,7 +1192,7 @@ func printStartupBanner(d startupBannerData) {
 				"    downstream API keys are stored in plaintext in the database. Anyone\n"+
 				"    with read access to the DB file can forge admin tokens.\n"+
 				"    Fix: set SQUELCH_ENCRYPTION_KEY (or --encryption-key) to a 32-byte\n"+
-				"    random value. See docs/deployment-guide.md#secrets-encryption.\n\n")
+				"    random value. See docs/deployment-guide.md#keeping-secrets-safe.\n\n")
 	}
 }
 
@@ -1309,7 +1309,7 @@ func migrateSecrets(ctx context.Context, queries *db.Queries, sqlDB *sql.DB, enc
 		}
 		slog.Warn("no encryption key configured — secrets stored unencrypted in database",
 			"impact", "JWT signing secret and downstream API keys are stored in plaintext; anyone with read access to the SQLite file can forge admin tokens",
-			"fix", "set SQUELCH_ENCRYPTION_KEY (or --encryption-key) to a 32-byte random value; see docs/deployment-guide.md#secrets-encryption")
+			"fix", "set SQUELCH_ENCRYPTION_KEY (or --encryption-key) to a 32-byte random value; see docs/deployment-guide.md#keeping-secrets-safe")
 		return nil
 	}
 

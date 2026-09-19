@@ -359,7 +359,7 @@ For built-in TLS, see [Built-in TLS](#built-in-tls) under Advanced.
 
 ## Keeping Secrets Safe
 
-Squelch stores a few sensitive values in its database: the signing key used for your login sessions and any downstream scanner API keys you configure. By default these are stored as plain text.
+Squelch stores a few sensitive values in its database: the signing key used for your login sessions, your web-push key, any downstream scanner API keys, and any Trunk Recorder broker passwords. By default these are stored as plain text.
 
 You can turn on an encryption option that **scrambles those values in the database file**, so that someone who steals your `squelch.db` can't read your API keys or forge logins from it. You provide a key when Squelch starts, and that key is the only way to unlock the scrambled values.
 
@@ -367,56 +367,122 @@ You can turn on an encryption option that **scrambles those values in the databa
 
 ### Turning Encryption On (Docker)
 
-1. Generate a random key and save it to a `.env` file next to your `docker-compose.yml`:
+Two ways to supply the key. A **key file** is the better one and is what the
+rest of this guide assumes: it keeps the key out of the container's environment
+(where `docker inspect` and any crash dump would show it), and `squelch-rekey`
+reads the same file when you need it.
+
+#### Option A — key file (recommended)
+
+1. Generate a key next to your `docker-compose.yml`. Keep it **outside** the
+   data volume: a copy of your database should not carry the key that protects
+   it.
+
+   ```bash
+   head -c 48 /dev/urandom | base64 -w0 > squelch-encryption.key
+   ```
+
+2. Make it readable by the container. Squelch drops privileges to `appuser`
+   (uid/gid **1001**) before it reads anything, so a key file owned only by you
+   will fail with `permission denied` and the container will restart-loop:
+
+   ```bash
+   sudo chown "$USER":1001 squelch-encryption.key
+   chmod 640 squelch-encryption.key
+   ```
+
+   Group-readable by 1001, writable only by you, not world-readable.
+
+3. Mount it read-only and point Squelch at it:
+
+   ```yaml
+   services:
+     squelch:
+       image: ghcr.io/revtex/squelch:dev
+       volumes:
+         - ./data:/data
+         - ./squelch-encryption.key:/run/secrets/squelch-encryption.key:ro
+       environment:
+         - SQUELCH_ENCRYPTION_KEY_FILE=/run/secrets/squelch-encryption.key
+         # ...your other env vars...
+   ```
+
+4. Recreate the container:
+
+   ```bash
+   docker compose up -d --force-recreate
+   ```
+
+#### Option B — environment variable
+
+1. Generate a key into a `.env` file next to your `docker-compose.yml`:
 
    ```bash
    echo "SQUELCH_ENCRYPTION_KEY=$(openssl rand -hex 32)" > .env
    chmod 600 .env
    ```
 
-2. Add `.env` to your `.gitignore` if you version-control your compose file:
-
-   ```gitignore
-   .env
-   ```
+2. Add `.env` to your `.gitignore` if you version-control your compose file.
 
 3. Reference the variable in your `docker-compose.yml`:
 
    ```yaml
    services:
      squelch:
-       image: ghcr.io/revtex/squelch:dev
        environment:
          - SQUELCH_ENCRYPTION_KEY=${SQUELCH_ENCRYPTION_KEY}
-         # ...your other env vars...
    ```
 
-4. Recreate the container so the new variable takes effect:
+4. Recreate the container as above.
 
-   ```bash
-   docker compose up -d --force-recreate
-   ```
+Putting the key directly inside `docker-compose.yml` works too, but then it ends
+up in whatever copy of that file you share or commit.
 
-On the next startup Squelch will encrypt your existing secrets in place and print `Encryption at rest  yes` in its startup banner. You're done.
+### Confirming It Worked
 
-> **Important:** Back up your `.env` file, or at least the key inside it, somewhere safe. If you lose the key, the scrambled values in the database can't be recovered — you'll need to re-enter your downstream API keys and everyone will need to log in again.
+On the next startup Squelch encrypts your existing secrets in place and prints
+`Encryption at rest  yes` in its startup banner. You should also see one log
+line per secret it converted:
 
-Putting the key directly inside `docker-compose.yml` works too, but then it ends up in whatever copy of that file you share or commit. The `.env` approach keeps them separate.
+```
+"msg":"secrets: encrypted setting","key":"jwtSecret"
+"msg":"secrets: encrypted trunk recorder broker password","id":1
+```
+
+And the plaintext warnings it used to print on every start should be gone. To
+check the database directly:
+
+```bash
+docker run --rm -v "$PWD/data:/data:ro" alpine:3 sh -c \
+  'apk add --no-cache sqlite >/dev/null 2>&1;
+   sqlite3 "file:/data/squelch.db?mode=ro" \
+     "SELECT key FROM settings WHERE value LIKE '"'"'enc::%'"'"';"'
+```
+
+> **Important:** Back up the key file (or the key inside `.env`) somewhere
+> separate from your database backups. If you lose it, the encrypted values
+> cannot be recovered — you would need to re-enter your downstream API keys and
+> Trunk Recorder broker passwords, and everyone would need to log in again.
+> Keeping the key in the same place as the database backup defeats the point.
 
 ### What Gets Encrypted
 
 Here's the short list of what changes when encryption is on. Everything else (system names, talkgroup lists, colors, toggles) stays as plain text.
 
-| Value               | Where it lives                  | What it's used for                                       |
-| ------------------- | ------------------------------- | -------------------------------------------------------- |
-| Login signing key   | `settings` table (`jwtSecret`)  | Signs your login sessions and API tokens                 |
+| Value | Where it lives | What it's used for |
+| --- | --- | --- |
+| Login signing key | `settings` table (`jwtSecret`) | Signs your login sessions and API tokens |
+| Web push key | `settings` table (`vapidPrivateKey`) | Signs browser push notifications |
 | Downstream API keys | `downstreams` table (`api_key`) | Lets Squelch forward calls to another scanner server |
+| Trunk Recorder broker password | `tr_instances` table (`password_enc`) | Authenticates to your MQTT broker |
 
 Encrypted entries are prefixed with `enc::` in the database, so if you're poking around in SQLite you can tell which rows are encrypted at a glance.
 
 ### If You Don't Set a Key
 
-Squelch still starts fine without `SQUELCH_ENCRYPTION_KEY` — it just keeps the values above as plain text. On startup it prints a warning in the log letting you know encryption is off, so you don't forget by accident. For a hobby setup on a trusted home network, that's perfectly reasonable. If you later decide to turn it on, just set the variable and restart — Squelch will encrypt the existing values on its own.
+Squelch still starts fine without a key — it just keeps the values above as plain text. On startup it prints a warning in the log letting you know encryption is off, so you don't forget by accident. For a hobby setup on a trusted home network, that's perfectly reasonable. If you later decide to turn it on, add the key file (or the variable) and restart — Squelch will encrypt the existing values on its own, no separate migration step.
+
+Going the other way is not supported: once values are encrypted, removing the key does **not** decrypt them. Squelch refuses to start rather than run with secrets it cannot read, so keep the key for as long as you keep the database.
 
 ---
 
