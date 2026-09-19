@@ -7,6 +7,7 @@ This guide walks you through getting Squelch running at home. The Docker path is
 ## Contents
 
 - [Quick Start with Docker](#quick-start-with-docker)
+- [Upgrading from OpenScanner](#upgrading-from-openscanner)
 - [First-Time Login](#first-time-login)
 - [Your Data Directory](#your-data-directory)
 - [Backing Up](#backing-up)
@@ -27,24 +28,24 @@ If you have Docker installed, you can be up and running in a couple of minutes.
 1. Create a folder to hold your database and recordings, then step into it:
 
    ```bash
-   mkdir -p openscanner/data
-   cd openscanner
+   mkdir -p squelch/data
+   cd squelch
    ```
 
 2. Create a file called `docker-compose.yml` with this content:
 
    ```yaml
    services:
-     openscanner:
-       image: ghcr.io/revtex/openscanner:dev
+     squelch:
+       image: ghcr.io/revtex/squelch:dev
        ports:
          - "3022:3022"
        volumes:
          - ./data:/data
        environment:
-         - OPENSCANNER_DB_FILE=/data/openscanner.db
-         - OPENSCANNER_RECORDINGS_DIR=/data/recordings
-         - OPENSCANNER_LISTEN=0.0.0.0:3022
+         - SQUELCH_DB_FILE=/data/squelch.db
+         - SQUELCH_RECORDINGS_DIR=/data/recordings
+         - SQUELCH_LISTEN=0.0.0.0:3022
          - TZ=America/New_York # change to your timezone
        healthcheck:
          test: ["CMD", "wget", "-qO-", "http://localhost:3022/api/v1/health"]
@@ -69,6 +70,58 @@ That's it. Everything below is optional — only read on if you need it.
 
 ---
 
+## Upgrading from OpenScanner
+
+Squelch was previously named OpenScanner. Your data carries over intact,
+but three things are named differently and need a one-time change.
+
+**1. The image.** `ghcr.io/revtex/openscanner` becomes
+`ghcr.io/revtex/squelch`. The old image is no longer updated.
+
+**2. The database filename.** `openscanner.db` becomes `squelch.db`.
+Squelch will **not** rename it for you — it refuses to start and prints
+the exact command instead, because silently starting fresh next to your
+old database looks identical to losing every call you have ever
+recorded. Stop the old container, then:
+
+```bash
+cd /path/to/your/data
+mv openscanner.db squelch.db
+# Only if they exist (they do if the server was not shut down cleanly):
+mv openscanner.db-wal squelch.db-wal
+mv openscanner.db-shm squelch.db-shm
+```
+
+If you would rather keep the old filename, point Squelch at it with
+`--db-file /data/openscanner.db` (or `SQUELCH_DB_FILE`) and nothing else
+needs to change.
+
+**3. The environment variables.** `OPENSCANNER_*` becomes `SQUELCH_*`.
+The old names still work for now — Squelch logs one warning at startup
+naming each one it honoured — but they will be removed in a future
+release, so rename them when convenient.
+
+| Before | After |
+| --- | --- |
+| `OPENSCANNER_DB_FILE` | `SQUELCH_DB_FILE` |
+| `OPENSCANNER_RECORDINGS_DIR` | `SQUELCH_RECORDINGS_DIR` |
+| `OPENSCANNER_LISTEN` | `SQUELCH_LISTEN` |
+| `OPENSCANNER_ENCRYPTION_KEY` | `SQUELCH_ENCRYPTION_KEY` |
+| `OPENSCANNER_JWT_SECRET` | `SQUELCH_JWT_SECRET` |
+
+Everything else is unchanged. The database schema is identical, so no
+migration runs and you can move back to OpenScanner v1.4.0 by renaming
+the file back. Your recordings directory, API keys, admin users, and
+encrypted secrets are all untouched — the encryption scheme was
+deliberately left on its original key derivation so existing `enc::`
+values keep decrypting.
+
+In the browser, your theme, paused state, and saved talkgroup selection
+are read from their old storage keys once and migrated forward
+automatically. You should not have to re-select anything.
+
+---
+
 ## First-Time Login
 
 The first time you open Squelch you'll see a setup page instead of a login page. Pick a username and password and click **Create**. That account becomes the admin user.
@@ -76,7 +129,7 @@ The first time you open Squelch you'll see a setup page instead of a login page.
 There is no default username or password — Squelch doesn't ship with one. If you ever forget your admin password, you can reset it on the next startup:
 
 - **Binary:** run once with `--admin-password new-password`, then restart normally.
-- **Docker:** add `OPENSCANNER_ADMIN_PASSWORD=new-password` to your compose file, run `docker compose up -d --force-recreate`, then remove the line and recreate again.
+- **Docker:** add `SQUELCH_ADMIN_PASSWORD=new-password` to your compose file, run `docker compose up -d --force-recreate`, then remove the line and recreate again.
 
 Either way, the password is consumed at startup — remove the flag or env var afterwards so it isn't sitting in your config.
 
@@ -86,7 +139,7 @@ Once you're logged in, head to **Admin → Systems** to set up your first trunke
 
 ## Your Data Directory
 
-The `./data` folder you mounted in the compose file holds everything Squelch needs to remember: the SQLite database (`openscanner.db`), the server log file (`openscanner.log`, written alongside the database), and the audio recordings (`recordings/`). Anything else Squelch creates — cached transcription models, temporary files — lives inside the container and can be thrown away without losing your data.
+The `./data` folder you mounted in the compose file holds everything Squelch needs to remember: the SQLite database (`squelch.db`), the server log file (`squelch.log`, written alongside the database), and the audio recordings (`recordings/`). Anything else Squelch creates — cached transcription models, temporary files — lives inside the container and can be thrown away without losing your data.
 
 Keep that `./data` folder safe, and you can reinstall, upgrade, or move to a new machine without losing anything.
 
@@ -96,14 +149,14 @@ Keep that `./data` folder safe, and you can reinstall, upgrade, or move to a new
 
 Backups are small and simple. You only need two things:
 
-1. The database file — `data/openscanner.db`
+1. The database file — `data/squelch.db`
 2. The recordings folder — `data/recordings/`
 
 A plain `tar` or `rsync` of the `data/` directory is enough. You can copy it while Squelch is running (SQLite's WAL mode handles that safely), but for a tidy point-in-time backup it's better to stop the container first:
 
 ```bash
 docker compose stop
-tar czf openscanner-backup-$(date +%F).tar.gz data/
+tar czf squelch-backup-$(date +%F).tar.gz data/
 docker compose start
 ```
 
@@ -126,7 +179,7 @@ If the proxy is on the same machine, it's also a good idea to bind Squelch to lo
 
 ```yaml
 environment:
-  - OPENSCANNER_LISTEN=127.0.0.1:3022
+  - SQUELCH_LISTEN=127.0.0.1:3022
 ports:
   - "127.0.0.1:3022:3022"
 ```
@@ -204,7 +257,7 @@ For built-in TLS, see [Built-in TLS](#built-in-tls) under Advanced.
 
 Squelch stores a few sensitive values in its database: the signing key used for your login sessions and any downstream scanner API keys you configure. By default these are stored as plain text.
 
-You can turn on an encryption option that **scrambles those values in the database file**, so that someone who steals your `openscanner.db` can't read your API keys or forge logins from it. You provide a key when Squelch starts, and that key is the only way to unlock the scrambled values.
+You can turn on an encryption option that **scrambles those values in the database file**, so that someone who steals your `squelch.db` can't read your API keys or forge logins from it. You provide a key when Squelch starts, and that key is the only way to unlock the scrambled values.
 
 **Do I need this?** If your Squelch is only reachable from your home network and you trust the people on it, you can skip encryption without any real downside. If you're exposing Squelch to the internet, or you share the server with other users, turn it on.
 
@@ -213,7 +266,7 @@ You can turn on an encryption option that **scrambles those values in the databa
 1. Generate a random key and save it to a `.env` file next to your `docker-compose.yml`:
 
    ```bash
-   echo "OPENSCANNER_ENCRYPTION_KEY=$(openssl rand -hex 32)" > .env
+   echo "SQUELCH_ENCRYPTION_KEY=$(openssl rand -hex 32)" > .env
    chmod 600 .env
    ```
 
@@ -227,10 +280,10 @@ You can turn on an encryption option that **scrambles those values in the databa
 
    ```yaml
    services:
-     openscanner:
-       image: ghcr.io/revtex/openscanner:dev
+     squelch:
+       image: ghcr.io/revtex/squelch:dev
        environment:
-         - OPENSCANNER_ENCRYPTION_KEY=${OPENSCANNER_ENCRYPTION_KEY}
+         - SQUELCH_ENCRYPTION_KEY=${SQUELCH_ENCRYPTION_KEY}
          # ...your other env vars...
    ```
 
@@ -259,7 +312,7 @@ Encrypted entries are prefixed with `enc::` in the database, so if you're poking
 
 ### If You Don't Set a Key
 
-Squelch still starts fine without `OPENSCANNER_ENCRYPTION_KEY` — it just keeps the values above as plain text. On startup it prints a warning in the log letting you know encryption is off, so you don't forget by accident. For a hobby setup on a trusted home network, that's perfectly reasonable. If you later decide to turn it on, just set the variable and restart — Squelch will encrypt the existing values on its own.
+Squelch still starts fine without `SQUELCH_ENCRYPTION_KEY` — it just keeps the values above as plain text. On startup it prints a warning in the log letting you know encryption is off, so you don't forget by accident. For a hobby setup on a trusted home network, that's perfectly reasonable. If you later decide to turn it on, just set the variable and restart — Squelch will encrypt the existing values on its own.
 
 ---
 
@@ -359,7 +412,7 @@ Squelch also ships as a single executable for Linux, macOS, and Windows — no D
 The easiest way is the built-in setup command, which creates directories, writes a config file, and installs a system service.
 
 ```bash
-sudo ./openscanner setup --interactive
+sudo ./squelch setup --interactive
 ```
 
 It asks for:
@@ -375,7 +428,7 @@ Once it's done, Squelch is running as a system service. Open the listen address 
 To accept platform defaults without prompting:
 
 ```bash
-sudo ./openscanner setup
+sudo ./squelch setup
 ```
 
 #### Manual Run
@@ -383,82 +436,82 @@ sudo ./openscanner setup
 If you'd rather just run it without installing a service:
 
 ```bash
-./openscanner --listen 0.0.0.0:3022 --db-file ./data/openscanner.db --recordings-dir ./data/recordings
+./squelch --listen 0.0.0.0:3022 --db-file ./data/squelch.db --recordings-dir ./data/recordings
 ```
 
 #### Platform Defaults
 
-When you use `openscanner setup`, paths are chosen for your OS:
+When you use `squelch setup`, paths are chosen for your OS:
 
 **Linux:**
 
 | Setting    | Default                                 |
 | ---------- | --------------------------------------- |
-| Config     | `/etc/openscanner/openscanner.json`     |
-| Database   | `/var/lib/openscanner/openscanner.db`   |
-| Recordings | `/var/lib/openscanner/recordings`       |
-| Executable | `/usr/local/bin/openscanner`            |
+| Config     | `/etc/squelch/squelch.json`     |
+| Database   | `/var/lib/squelch/squelch.db`   |
+| Recordings | `/var/lib/squelch/recordings`       |
+| Executable | `/usr/local/bin/squelch`            |
 | Service    | systemd / SysV / OpenRC (auto-detected) |
 
 **macOS:**
 
 | Setting    | Default                                         |
 | ---------- | ----------------------------------------------- |
-| Config     | `/usr/local/etc/openscanner/openscanner.json`   |
-| Database   | `/usr/local/var/lib/openscanner/openscanner.db` |
-| Recordings | `/usr/local/var/lib/openscanner/recordings`     |
-| Executable | `/usr/local/bin/openscanner`                    |
+| Config     | `/usr/local/etc/squelch/squelch.json`   |
+| Database   | `/usr/local/var/lib/squelch/squelch.db` |
+| Recordings | `/usr/local/var/lib/squelch/recordings`     |
+| Executable | `/usr/local/bin/squelch`                    |
 | Service    | launchd                                         |
 
 **Windows:**
 
 | Setting    | Default                                      |
 | ---------- | -------------------------------------------- |
-| Config     | `%ProgramData%\Squelch\openscanner.json` |
-| Database   | `%ProgramData%\Squelch\openscanner.db`   |
+| Config     | `%ProgramData%\Squelch\squelch.json` |
+| Database   | `%ProgramData%\Squelch\squelch.db`   |
 | Recordings | `%ProgramData%\Squelch\recordings`       |
-| Executable | `%ProgramFiles%\Squelch\openscanner.exe` |
+| Executable | `%ProgramFiles%\Squelch\squelch.exe` |
 | Service    | Windows Service Control Manager              |
 
 You can override any of these with flags:
 
 ```bash
-openscanner setup \
+squelch setup \
   --listen 0.0.0.0:3022 \
-  --db-file /opt/openscanner/data.db \
-  --recordings-dir /opt/openscanner/recordings \
-  --config /opt/openscanner/config.json \
-  --install-binary /opt/openscanner/openscanner
+  --db-file /opt/squelch/data.db \
+  --recordings-dir /opt/squelch/recordings \
+  --config /opt/squelch/config.json \
+  --install-binary /opt/squelch/squelch
 ```
 
 ### Service Management
 
-After `openscanner setup`, the following commands manage the installed service:
+After `squelch setup`, the following commands manage the installed service:
 
 | Command                                     | What it does                                                     |
 | ------------------------------------------- | ---------------------------------------------------------------- |
-| `openscanner setup`                         | Full install (create dirs, write config, install service, start) |
-| `openscanner setup --interactive`           | Same, with interactive prompts                                   |
-| `openscanner setup --force`                 | Overwrite existing setup / reinstall service                     |
-| `openscanner upgrade --binary /path/to/new` | Replace the installed binary and restart the service             |
-| `openscanner config validate`               | Check your JSON config file for errors                           |
-| `openscanner service doctor`                | Print service status and diagnostics                             |
+| `squelch setup`                         | Full install (create dirs, write config, install service, start) |
+| `squelch setup --interactive`           | Same, with interactive prompts                                   |
+| `squelch setup --force`                 | Overwrite existing setup / reinstall service                     |
+| `squelch upgrade --binary /path/to/new` | Replace the installed binary and restart the service             |
+| `squelch config validate`               | Check your JSON config file for errors                           |
+| `squelch service doctor`                | Print service status and diagnostics                             |
 
 For direct control:
 
 ```bash
-openscanner --service install --config /path/to/openscanner.json
-openscanner --service start
-openscanner --service stop
-openscanner --service restart
-openscanner --service uninstall
+squelch --service install --config /path/to/squelch.json
+squelch --service start
+squelch --service stop
+squelch --service restart
+squelch --service uninstall
 ```
 
 #### Upgrading
 
 ```bash
-curl -L -o /tmp/openscanner-new https://github.com/revtex/OpenScanner/releases/latest/...
-openscanner upgrade --binary /tmp/openscanner-new
+curl -L -o /tmp/squelch-new https://github.com/revtex/OpenScanner/releases/latest/...
+squelch upgrade --binary /tmp/squelch-new
 ```
 
 If the service was stopped before upgrading, it stays stopped afterwards.
@@ -469,14 +522,14 @@ Squelch reads settings from three places, in this priority order:
 
 **CLI flags > environment variables > JSON config file > built-in defaults**
 
-Docker users will almost always use environment variables; binary users typically use the JSON config file written by `openscanner setup`.
+Docker users will almost always use environment variables; binary users typically use the JSON config file written by `squelch setup`.
 
 #### CLI Flags
 
 | Flag                    | Description                                               | Default                |
 | ----------------------- | --------------------------------------------------------- | ---------------------- |
 | `--listen`              | HTTP listen address                                       | `:3022`                |
-| `--db-file`             | SQLite database file path                                 | `openscanner.db`       |
+| `--db-file`             | SQLite database file path                                 | `squelch.db`       |
 | `--recordings-dir`      | Directory for audio recordings                            | (executable directory) |
 | `--ssl-listen`          | HTTPS listen address                                      | (disabled)             |
 | `--ssl-cert`            | TLS certificate file (PEM)                                |                        |
@@ -486,7 +539,7 @@ Docker users will almost always use environment variables; binary users typicall
 | `--encryption-key-file` | Path to a file containing the encryption key              |                        |
 | `--timezone`            | IANA timezone for recorder timestamps                     | `UTC`                  |
 | `--admin-password`      | Reset the first admin user's password on startup          |                        |
-| `--config`              | Path to JSON config file                                  | `openscanner.json`     |
+| `--config`              | Path to JSON config file                                  | `squelch.json`     |
 | `--config-save`         | Write current flags to JSON config and exit               |                        |
 | `--version`             | Print version and exit                                    |                        |
 | `--service`             | Service command: install, uninstall, start, stop, restart |                        |
@@ -495,17 +548,17 @@ Docker users will almost always use environment variables; binary users typicall
 
 | Variable                          | Maps to                 |
 | --------------------------------- | ----------------------- |
-| `OPENSCANNER_LISTEN`              | `--listen`              |
-| `OPENSCANNER_DB_FILE`             | `--db-file`             |
-| `OPENSCANNER_RECORDINGS_DIR`      | `--recordings-dir`      |
-| `OPENSCANNER_SSL_LISTEN`          | `--ssl-listen`          |
-| `OPENSCANNER_SSL_CERT`            | `--ssl-cert`            |
-| `OPENSCANNER_SSL_KEY`             | `--ssl-key`             |
-| `OPENSCANNER_SSL_AUTO_CERT`       | `--ssl-auto-cert`       |
-| `OPENSCANNER_ENCRYPTION_KEY`      | `--encryption-key`      |
-| `OPENSCANNER_ENCRYPTION_KEY_FILE` | `--encryption-key-file` |
-| `OPENSCANNER_ADMIN_PASSWORD`      | `--admin-password`      |
-| `OPENSCANNER_TIMEZONE`            | `--timezone`            |
+| `SQUELCH_LISTEN`              | `--listen`              |
+| `SQUELCH_DB_FILE`             | `--db-file`             |
+| `SQUELCH_RECORDINGS_DIR`      | `--recordings-dir`      |
+| `SQUELCH_SSL_LISTEN`          | `--ssl-listen`          |
+| `SQUELCH_SSL_CERT`            | `--ssl-cert`            |
+| `SQUELCH_SSL_KEY`             | `--ssl-key`             |
+| `SQUELCH_SSL_AUTO_CERT`       | `--ssl-auto-cert`       |
+| `SQUELCH_ENCRYPTION_KEY`      | `--encryption-key`      |
+| `SQUELCH_ENCRYPTION_KEY_FILE` | `--encryption-key-file` |
+| `SQUELCH_ADMIN_PASSWORD`      | `--admin-password`      |
+| `SQUELCH_TIMEZONE`            | `--timezone`            |
 | `TZ`                              | `--timezone` (fallback) |
 
 #### Env-Only Settings
@@ -514,15 +567,15 @@ A couple of toggles don't have matching CLI flags or JSON fields — they only e
 
 | Variable                          | Description                                                                                                                                                                                                                     | Default |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `OPENSCANNER_BLOCK_INTERNAL_HTTP` | When set to `1`, `true`, or `yes`, Squelch refuses outbound HTTP (transcription, downstream push) to private-network, loopback, link-local, and multicast addresses. Off by default so whisper and LAN scanners still work. | unset   |
-| `OPENSCANNER_JWT_SECRET`          | Lets you supply the login-session signing key yourself instead of having Squelch auto-generate one. See [Externalizing the Login Signing Key](#externalizing-the-login-signing-key) below.                                  | unset   |
+| `SQUELCH_BLOCK_INTERNAL_HTTP` | When set to `1`, `true`, or `yes`, Squelch refuses outbound HTTP (transcription, downstream push) to private-network, loopback, link-local, and multicast addresses. Off by default so whisper and LAN scanners still work. | unset   |
+| `SQUELCH_JWT_SECRET`          | Lets you supply the login-session signing key yourself instead of having Squelch auto-generate one. See [Externalizing the Login Signing Key](#externalizing-the-login-signing-key) below.                                  | unset   |
 
 #### JSON Config File
 
 You can save your settings to a JSON file so you don't need to pass flags every time:
 
 ```bash
-openscanner --listen 0.0.0.0:3022 --db-file /data/openscanner.db --config-save
+squelch --listen 0.0.0.0:3022 --db-file /data/squelch.db --config-save
 ```
 
 That produces:
@@ -530,7 +583,7 @@ That produces:
 ```json
 {
   "listen": "0.0.0.0:3022",
-  "db_file": "/data/openscanner.db",
+  "db_file": "/data/squelch.db",
   "recordings_dir": "/data/recordings",
   "ssl_listen": "",
   "ssl_cert_file": "",
@@ -550,7 +603,7 @@ Squelch can serve HTTPS itself in two ways.
 #### With Your Own Certificate
 
 ```bash
-openscanner --ssl-listen :443 --ssl-cert /path/to/cert.pem --ssl-key /path/to/key.pem
+squelch --ssl-listen :443 --ssl-cert /path/to/cert.pem --ssl-key /path/to/key.pem
 ```
 
 #### Automatic Let's Encrypt (Experimental)
@@ -558,7 +611,7 @@ openscanner --ssl-listen :443 --ssl-cert /path/to/cert.pem --ssl-key /path/to/ke
 > **Warning:** This is implemented but hasn't been tested widely in production. For reliable TLS, a reverse proxy like Caddy is the safer bet.
 
 ```bash
-openscanner --ssl-auto-cert scanner.example.com
+squelch --ssl-auto-cert scanner.example.com
 ```
 
 How it works:
@@ -579,13 +632,13 @@ In both TLS modes, non-challenge HTTP traffic is redirected to HTTPS.
 
 #### Adding TLS After Setup
 
-`openscanner setup` doesn't configure TLS — it only writes listen address, database path, and recordings directory. To add TLS afterwards, either edit your JSON config file directly:
+`squelch setup` doesn't configure TLS — it only writes listen address, database path, and recordings directory. To add TLS afterwards, either edit your JSON config file directly:
 
 ```json
 {
   "listen": ":3022",
-  "db_file": "/var/lib/openscanner/openscanner.db",
-  "recordings_dir": "/var/lib/openscanner/recordings",
+  "db_file": "/var/lib/squelch/squelch.db",
+  "recordings_dir": "/var/lib/squelch/recordings",
   "ssl_listen": ":443",
   "ssl_cert_file": "/path/to/cert.pem",
   "ssl_key_file": "/path/to/key.pem"
@@ -595,7 +648,7 @@ In both TLS modes, non-challenge HTTP traffic is redirected to HTTPS.
 Or merge new flags into the existing config with `--config-save`:
 
 ```bash
-openscanner --config /etc/openscanner/openscanner.json \
+squelch --config /etc/squelch/squelch.json \
   --ssl-listen :443 \
   --ssl-cert /path/to/cert.pem \
   --ssl-key /path/to/key.pem \
@@ -605,30 +658,30 @@ openscanner --config /etc/openscanner/openscanner.json \
 Then restart the service:
 
 ```bash
-openscanner --service restart
+squelch --service restart
 ```
 
 The installed service reads `--config <path>` on every start, so no reinstall is needed.
 
 ### Externalizing the Login Signing Key
 
-Squelch signs login sessions and API tokens with a secret it auto-generates on first startup and stores in the database. If you have your own secret-management setup (Kubernetes secrets, Vault, a `.env` file you already use for other services), you can supply the key yourself with `OPENSCANNER_JWT_SECRET`.
+Squelch signs login sessions and API tokens with a secret it auto-generates on first startup and stores in the database. If you have your own secret-management setup (Kubernetes secrets, Vault, a `.env` file you already use for other services), you can supply the key yourself with `SQUELCH_JWT_SECRET`.
 
 **Binary / shell:**
 
 ```bash
-export OPENSCANNER_JWT_SECRET="$(openssl rand -hex 32)"
+export SQUELCH_JWT_SECRET="$(openssl rand -hex 32)"
 ```
 
-**Docker Compose:** add the key to your `.env` file alongside `OPENSCANNER_ENCRYPTION_KEY`, then reference it in `docker-compose.yml`:
+**Docker Compose:** add the key to your `.env` file alongside `SQUELCH_ENCRYPTION_KEY`, then reference it in `docker-compose.yml`:
 
 ```bash
-echo "OPENSCANNER_JWT_SECRET=$(openssl rand -hex 32)" >> .env
+echo "SQUELCH_JWT_SECRET=$(openssl rand -hex 32)" >> .env
 ```
 
 ```yaml
 environment:
-  - OPENSCANNER_JWT_SECRET=${OPENSCANNER_JWT_SECRET}
+  - SQUELCH_JWT_SECRET=${SQUELCH_JWT_SECRET}
 ```
 
 When set:
@@ -647,7 +700,7 @@ If you're in a more locked-down environment and want to block outbound traffic t
 
 ```yaml
 environment:
-  - OPENSCANNER_BLOCK_INTERNAL_HTTP=1
+  - SQUELCH_BLOCK_INTERNAL_HTTP=1
 ```
 
 Note that this will also block a whisper sidecar running on the same host, so only turn it on if all your downstream targets are on the public internet.
@@ -666,7 +719,7 @@ Note that this will also block a whisper sidecar running on the same host, so on
 make build
 ```
 
-This builds the frontend, embeds it into the Go binary, and writes `build/openscanner`.
+This builds the frontend, embeds it into the Go binary, and writes `build/squelch`.
 
 #### Development
 

@@ -12,11 +12,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/revtex/squelch/internal/envcompat"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -109,7 +110,7 @@ type jwtSecretLoader interface {
 // InitJWTSecret loads (or creates) the persistent JWT signing secret.
 //
 // Resolution order:
-//  1. OPENSCANNER_JWT_SECRET env var (treated as the raw secret string)
+//  1. SQUELCH_JWT_SECRET env var (treated as the raw secret string)
 //  2. Encrypted "jwtSecret" row in the settings table (decrypted with encryptionKey)
 //  3. Generate 32 random bytes, encrypt with encryptionKey, persist, and use
 //
@@ -118,9 +119,9 @@ type jwtSecretLoader interface {
 // and the encryption key has been resolved.
 func InitJWTSecret(ctx context.Context, loader jwtSecretLoader, encryptionKey string) error {
 	// 1. Env var — highest precedence, never touches the DB.
-	if v := strings.TrimSpace(os.Getenv("OPENSCANNER_JWT_SECRET")); v != "" {
+	if v := strings.TrimSpace(envcompat.Lookup("JWT_SECRET")); v != "" {
 		SetJWTSecretForTest([]byte(v))
-		slog.Info("auth: JWT secret loaded from OPENSCANNER_JWT_SECRET")
+		slog.Info("auth: JWT secret loaded from SQUELCH_JWT_SECRET")
 		return nil
 	}
 
@@ -151,7 +152,7 @@ func InitJWTSecret(ctx context.Context, loader jwtSecretLoader, encryptionKey st
 	} else {
 		slog.Warn("auth: no encryption key configured — JWT secret will be stored in plaintext",
 			"impact", "anyone with read access to the database file can forge admin tokens",
-			"fix", "set OPENSCANNER_ENCRYPTION_KEY, or provide OPENSCANNER_JWT_SECRET to bypass DB storage entirely")
+			"fix", "set SQUELCH_ENCRYPTION_KEY, or provide SQUELCH_JWT_SECRET to bypass DB storage entirely")
 	}
 	if err := loader.Upsert(ctx, JWTSecretKeyName, stored); err != nil {
 		return fmt.Errorf("auth: persist JWT secret: %w", err)

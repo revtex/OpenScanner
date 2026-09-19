@@ -47,7 +47,7 @@ This uses Trunk-Recorder's built-in `rdioscanner_uploader` plugin to send calls 
    {
      "name": "Squelch",
      "library": "librdioscanner_uploader.so",
-     "server": "http://<your-openscanner-address>:3022",
+     "server": "http://<your-squelch-address>:3022",
      "systems": [
        {
          "shortName": "your_system",
@@ -57,7 +57,7 @@ This uses Trunk-Recorder's built-in `rdioscanner_uploader` plugin to send calls 
      ]
    }
    ```
-3. Replace `<your-openscanner-address>` with your Squelch server's IP or hostname.
+3. Replace `<your-squelch-address>` with your Squelch server's IP or hostname.
 4. The `"name"` field can be anything — it's just a label.
 5. Each entry in `"systems"` maps a Trunk-Recorder system (by `shortName`) to an Squelch system:
    - `shortName` — must match the `"shortName"` of a system in your Trunk-Recorder config.
@@ -88,7 +88,7 @@ SDRTrunk can send calls to Squelch using its built-in Rdio Scanner streaming fea
 
 1. In SDRTrunk, go to the **Streaming** tab for your system.
 2. Add a new **Rdio Scanner** streaming target.
-3. Set the **Server URL** to `http://<your-openscanner-address>:3022/api/call-upload`.
+3. Set the **Server URL** to `http://<your-squelch-address>:3022/api/call-upload`.
 4. Enter your **API Key** from Squelch.
 5. Set the **System ID** to the radio system ID. This must match the **System ID** field of an existing system in **Admin → Systems**. If **Auto-Populate Systems** is enabled, you can use any number and Squelch will create the system automatically on the first upload.
 6. Enable the stream. SDRTrunk will upload calls as they are recorded.
@@ -162,7 +162,7 @@ ProScan is supported through directory monitoring only.
 
 voxcall sends calls to Squelch via HTTP upload.
 
-1. Configure voxcall to POST recordings to `http://<your-openscanner-address>:3022/api/call-upload`.
+1. Configure voxcall to POST recordings to `http://<your-squelch-address>:3022/api/call-upload`.
 2. Include your API key in the `X-API-Key` header (or as a `?key=` query parameter).
 3. voxcall sends call metadata as form fields alongside the audio file.
 

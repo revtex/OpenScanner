@@ -5,7 +5,7 @@
 
 /* Custom themes */
 @plugin "daisyui/theme" {
-  name: "openscanner-dark";
+  name: "squelch-dark";
   default: true;
   prefersdark: true;
   color-scheme: dark;
@@ -34,7 +34,7 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "openscanner-light";
+  name: "squelch-light";
   default: false;
   color-scheme: light;
   --color-base-100: #ffffff;

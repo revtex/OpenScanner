@@ -65,7 +65,7 @@ Squelch integrates with [go-whisper](https://github.com/mutablelogic/go-whisper)
 ### Deployment
 
 - **Single binary** — no external database; SQLite embedded with WAL mode
-- **Guided setup** — `openscanner setup --interactive` creates directories, writes config, installs a system service
+- **Guided setup** — `squelch setup --interactive` creates directories, writes config, installs a system service
 - **Cross-platform** — Linux (systemd/SysV/OpenRC), macOS (launchd), Windows (SCM) with auto-detected service management
 - **Docker** — pre-built Alpine image with FFmpeg included
 - **JSON config** — persist settings with `--config-save`; load from file, env vars, or CLI flags
@@ -88,7 +88,7 @@ Squelch integrates with [go-whisper](https://github.com/mutablelogic/go-whisper)
 - Audio path sanitization, no shell injection, no secrets in logs
 - Optional secrets-at-rest encryption (AES-256-GCM) for the JWT signing secret and downstream API keys
 - Optional TLS with certificate/key files; experimental Let's Encrypt auto-cert (untested)
-- Outbound HTTP (transcription, downstreams) goes through a hardened client with redirects disabled, timeouts enforced, and response bodies capped. LAN/loopback destinations are permitted by default (homelab-friendly); set `OPENSCANNER_BLOCK_INTERNAL_HTTP=1` to reject private-network targets
+- Outbound HTTP (transcription, downstreams) goes through a hardened client with redirects disabled, timeouts enforced, and response bodies capped. LAN/loopback destinations are permitted by default (homelab-friendly); set `SQUELCH_BLOCK_INTERNAL_HTTP=1` to reject private-network targets
 
 ---
 
@@ -134,7 +134,7 @@ Open `http://localhost:3022` and complete the first-run setup to create your adm
 
 ```bash
 make build
-./build/openscanner --listen 0.0.0.0:3022 --db-file ./data/openscanner.db --recordings-dir ./data/recordings
+./build/squelch --listen 0.0.0.0:3022 --db-file ./data/squelch.db --recordings-dir ./data/recordings
 ```
 
 ### Configuration
@@ -143,15 +143,15 @@ Squelch is configured via CLI flags, environment variables, or a JSON config fil
 
 | Flag               | Env Var                       | Description                                       |
 | ------------------ | ----------------------------- | ------------------------------------------------- |
-| `--listen`         | `OPENSCANNER_LISTEN`          | Listen address (default `:3022`)                  |
-| `--db-file`        | `OPENSCANNER_DB_FILE`         | SQLite database path                              |
-| `--recordings-dir` | `OPENSCANNER_RECORDINGS_DIR`  | Audio file storage directory                      |
-| `--ssl-listen`     | `OPENSCANNER_SSL_LISTEN`      | HTTPS listen address                              |
-| `--ssl-cert`       | `OPENSCANNER_SSL_CERT`        | TLS certificate file (PEM)                        |
-| `--ssl-key`        | `OPENSCANNER_SSL_KEY`         | TLS private key file (PEM)                        |
-| `--ssl-auto-cert`  | `OPENSCANNER_SSL_AUTO_CERT`   | Domain for Let's Encrypt auto-cert (experimental) |
-| `--encryption-key` | `OPENSCANNER_ENCRYPTION_KEY`  | AES-256 key for encrypting secrets at rest        |
-| `--timezone`       | `OPENSCANNER_TIMEZONE` / `TZ` | IANA timezone for recorder timestamps             |
+| `--listen`         | `SQUELCH_LISTEN`          | Listen address (default `:3022`)                  |
+| `--db-file`        | `SQUELCH_DB_FILE`         | SQLite database path                              |
+| `--recordings-dir` | `SQUELCH_RECORDINGS_DIR`  | Audio file storage directory                      |
+| `--ssl-listen`     | `SQUELCH_SSL_LISTEN`      | HTTPS listen address                              |
+| `--ssl-cert`       | `SQUELCH_SSL_CERT`        | TLS certificate file (PEM)                        |
+| `--ssl-key`        | `SQUELCH_SSL_KEY`         | TLS private key file (PEM)                        |
+| `--ssl-auto-cert`  | `SQUELCH_SSL_AUTO_CERT`   | Domain for Let's Encrypt auto-cert (experimental) |
+| `--encryption-key` | `SQUELCH_ENCRYPTION_KEY`  | AES-256 key for encrypting secrets at rest        |
+| `--timezone`       | `SQUELCH_TIMEZONE` / `TZ` | IANA timezone for recorder timestamps             |
 
 All application settings (audio processing, scanner behavior, sharing, etc.) are managed through the admin dashboard and stored in the database. See the [Deployment Guide](docs/deployment-guide.md) for the full configuration reference.
 

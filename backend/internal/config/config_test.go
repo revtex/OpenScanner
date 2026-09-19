@@ -13,7 +13,7 @@ import (
 // writeTempConfig writes a JSON config file in t.TempDir() and returns its path.
 func writeTempConfig(t *testing.T, contents string) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "openscanner.json")
+	path := filepath.Join(t.TempDir(), "squelch.json")
 	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
 		t.Fatalf("write temp config: %v", err)
 	}
@@ -27,7 +27,7 @@ func writeTempConfig(t *testing.T, contents string) string {
 func TestValidateJSONFile_LegacyEncryptionKey_Refused(t *testing.T) {
 	path := writeTempConfig(t, `{
 		"listen": ":3022",
-		"db_file": "openscanner.db",
+		"db_file": "squelch.db",
 		"recordings_dir": "`+t.TempDir()+`",
 		"encryption_key": "leaked-secret"
 	}`)
@@ -46,7 +46,7 @@ func TestValidateJSONFile_HappyPath(t *testing.T) {
 	dbDir := t.TempDir()
 	path := writeTempConfig(t, `{
 		"listen": ":3022",
-		"db_file": "`+filepath.Join(dbDir, "openscanner.db")+`",
+		"db_file": "`+filepath.Join(dbDir, "squelch.db")+`",
 		"recordings_dir": "`+recDir+`",
 		"timezone": "UTC"
 	}`)
@@ -81,7 +81,7 @@ func TestValidateJSONFile_MalformedJSON(t *testing.T) {
 
 func TestValidateJSONFile_MissingListen(t *testing.T) {
 	path := writeTempConfig(t, `{
-		"db_file": "openscanner.db",
+		"db_file": "squelch.db",
 		"recordings_dir": "`+t.TempDir()+`"
 	}`)
 
@@ -98,11 +98,11 @@ func TestValidateJSONFile_MissingListen(t *testing.T) {
 // encryption key to disk and that the file is written with 0o600 permissions.
 func TestSaveJSON_OmitsEncryptionKey(t *testing.T) {
 	recDir := t.TempDir()
-	path := filepath.Join(t.TempDir(), "openscanner.json")
+	path := filepath.Join(t.TempDir(), "squelch.json")
 
 	cfg := &config.Config{
 		Listen:        ":3022",
-		DBFile:        "openscanner.db",
+		DBFile:        "squelch.db",
 		RecordingsDir: recDir,
 		Timezone:      "UTC",
 		EncryptionKey: "this-must-never-be-persisted",
@@ -148,8 +148,8 @@ func TestSaveJSON_OmitsEncryptionKey(t *testing.T) {
 // fields survive the round trip.
 func TestSaveJSON_RoundTrip(t *testing.T) {
 	recDir := t.TempDir()
-	dbFile := filepath.Join(t.TempDir(), "openscanner.db")
-	path := filepath.Join(t.TempDir(), "openscanner.json")
+	dbFile := filepath.Join(t.TempDir(), "squelch.db")
+	path := filepath.Join(t.TempDir(), "squelch.json")
 
 	cfg := &config.Config{
 		Listen:        ":4000",

@@ -26,15 +26,15 @@ func (f *fakeService) Logger(chan<- error) (service.Logger, error) { return nil,
 func (f *fakeService) SystemLogger(chan<- error) (service.Logger, error) {
 	return nil, nil
 }
-func (f *fakeService) String() string                  { return "openscanner" }
+func (f *fakeService) String() string                  { return "squelch" }
 func (f *fakeService) Platform() string                { return "test" }
 func (f *fakeService) Status() (service.Status, error) { return f.status, nil }
 
 func TestRunConfigValidate_CustomPathValid(t *testing.T) {
 	temp := t.TempDir()
-	dbFile := filepath.Join(temp, "openscanner.db")
+	dbFile := filepath.Join(temp, "squelch.db")
 	recDir := filepath.Join(temp, "recordings")
-	cfgPath := filepath.Join(temp, "openscanner.json")
+	cfgPath := filepath.Join(temp, "squelch.json")
 
 	cfg := &config.Config{
 		Listen:        "127.0.0.1:3022",
@@ -72,8 +72,8 @@ func TestRunSetup_AlreadyConfigured_NoForce(t *testing.T) {
 	}()
 
 	temp := t.TempDir()
-	cfgPath := filepath.Join(temp, "openscanner.json")
-	dbPath := filepath.Join(temp, "openscanner.db")
+	cfgPath := filepath.Join(temp, "squelch.json")
+	dbPath := filepath.Join(temp, "squelch.db")
 	recDir := filepath.Join(temp, "recordings")
 
 	if err := os.WriteFile(cfgPath, []byte("{}\n"), 0o644); err != nil {
@@ -87,7 +87,7 @@ func TestRunSetup_AlreadyConfigured_NoForce(t *testing.T) {
 		return &fakeService{status: service.StatusRunning}, nil
 	}
 	executablePathFn = func() (string, error) {
-		return filepath.Join(temp, "openscanner"), nil
+		return filepath.Join(temp, "squelch"), nil
 	}
 	called := false
 	serviceControlFn = func(_ service.Service, _ string) error {
@@ -99,7 +99,7 @@ func TestRunSetup_AlreadyConfigured_NoForce(t *testing.T) {
 		"--config", cfgPath,
 		"--db-file", dbPath,
 		"--recordings-dir", recDir,
-		"--install-binary", filepath.Join(temp, "installed", "openscanner"),
+		"--install-binary", filepath.Join(temp, "installed", "squelch"),
 	}
 	if code := runSetup(args); code != 0 {
 		t.Fatalf("runSetup returned %d, want 0", code)
@@ -120,8 +120,8 @@ func TestRunSetup_ForceReinstallFlow(t *testing.T) {
 	}()
 
 	temp := t.TempDir()
-	cfgPath := filepath.Join(temp, "openscanner.json")
-	dbPath := filepath.Join(temp, "openscanner.db")
+	cfgPath := filepath.Join(temp, "squelch.json")
+	dbPath := filepath.Join(temp, "squelch.db")
 	recDir := filepath.Join(temp, "recordings")
 
 	if err := os.WriteFile(cfgPath, []byte("{}\n"), 0o644); err != nil {
@@ -135,14 +135,14 @@ func TestRunSetup_ForceReinstallFlow(t *testing.T) {
 		return &fakeService{status: service.StatusStopped}, nil
 	}
 
-	exeSource := filepath.Join(temp, "openscanner-src")
+	exeSource := filepath.Join(temp, "squelch-src")
 	if err := os.WriteFile(exeSource, []byte("fake-binary"), 0o755); err != nil {
 		t.Fatalf("write fake executable: %v", err)
 	}
 	executablePathFn = func() (string, error) {
 		return exeSource, nil
 	}
-	installPath := filepath.Join(temp, "installed", "openscanner")
+	installPath := filepath.Join(temp, "installed", "squelch")
 
 	var actions []string
 	serviceControlFn = func(_ service.Service, action string) error {
@@ -191,8 +191,8 @@ func TestRunUpgrade_RestartsRunningService(t *testing.T) {
 	}()
 
 	temp := t.TempDir()
-	source := filepath.Join(temp, "openscanner-new")
-	installPath := filepath.Join(temp, "installed", "openscanner")
+	source := filepath.Join(temp, "squelch-new")
+	installPath := filepath.Join(temp, "installed", "squelch")
 	if err := os.WriteFile(source, []byte("new-binary"), 0o755); err != nil {
 		t.Fatalf("write source binary: %v", err)
 	}
@@ -230,7 +230,7 @@ func TestRunUpgrade_RequiresInstalledService(t *testing.T) {
 	}()
 
 	temp := t.TempDir()
-	source := filepath.Join(temp, "openscanner-new")
+	source := filepath.Join(temp, "squelch-new")
 	if err := os.WriteFile(source, []byte("new-binary"), 0o755); err != nil {
 		t.Fatalf("write source binary: %v", err)
 	}
@@ -239,7 +239,7 @@ func TestRunUpgrade_RequiresInstalledService(t *testing.T) {
 		return &fakeStatusErrorService{err: errors.New("service not installed")}, nil
 	}
 
-	if code := runUpgrade([]string{"--binary", source, "--install-binary", filepath.Join(temp, "installed", "openscanner")}); code != 1 {
+	if code := runUpgrade([]string{"--binary", source, "--install-binary", filepath.Join(temp, "installed", "squelch")}); code != 1 {
 		t.Fatalf("runUpgrade returned %d, want 1", code)
 	}
 }
@@ -266,7 +266,7 @@ func (f *fakeStatusErrorService) Logger(chan<- error) (service.Logger, error) { 
 func (f *fakeStatusErrorService) SystemLogger(chan<- error) (service.Logger, error) {
 	return nil, nil
 }
-func (f *fakeStatusErrorService) String() string   { return "openscanner" }
+func (f *fakeStatusErrorService) String() string   { return "squelch" }
 func (f *fakeStatusErrorService) Platform() string { return "test" }
 func (f *fakeStatusErrorService) Status() (service.Status, error) {
 	return service.StatusUnknown, f.err
@@ -274,10 +274,10 @@ func (f *fakeStatusErrorService) Status() (service.Status, error) {
 
 func TestRunInteractiveSetup_UsesDefaultsAndCancels(t *testing.T) {
 	listen := "127.0.0.1:3022"
-	db := "/var/lib/openscanner/openscanner.db"
-	rec := "/var/lib/openscanner/recordings"
-	cfg := "/etc/openscanner/openscanner.json"
-	install := "/usr/local/bin/openscanner"
+	db := "/var/lib/squelch/squelch.db"
+	rec := "/var/lib/squelch/recordings"
+	cfg := "/etc/squelch/squelch.json"
+	install := "/usr/local/bin/squelch"
 
 	in := strings.NewReader("\n\n\n\n\n\nn\n")
 	out := &bytes.Buffer{}
@@ -289,22 +289,22 @@ func TestRunInteractiveSetup_UsesDefaultsAndCancels(t *testing.T) {
 	if proceed {
 		t.Fatalf("expected setup to be cancelled")
 	}
-	if listen != "127.0.0.1:3022" || db != "/var/lib/openscanner/openscanner.db" || rec != "/var/lib/openscanner/recordings" || cfg != "/etc/openscanner/openscanner.json" {
+	if listen != "127.0.0.1:3022" || db != "/var/lib/squelch/squelch.db" || rec != "/var/lib/squelch/recordings" || cfg != "/etc/squelch/squelch.json" {
 		t.Fatalf("expected defaults to remain unchanged")
 	}
-	if install != "/usr/local/bin/openscanner" {
+	if install != "/usr/local/bin/squelch" {
 		t.Fatalf("expected install path default to remain unchanged")
 	}
 }
 
 func TestRunInteractiveSetup_AppliesOverridesAndConfirms(t *testing.T) {
 	listen := "127.0.0.1:3022"
-	db := "/var/lib/openscanner/openscanner.db"
-	rec := "/var/lib/openscanner/recordings"
-	cfg := "/etc/openscanner/openscanner.json"
-	install := "/usr/local/bin/openscanner"
+	db := "/var/lib/squelch/squelch.db"
+	rec := "/var/lib/squelch/recordings"
+	cfg := "/etc/squelch/squelch.json"
+	install := "/usr/local/bin/squelch"
 
-	in := strings.NewReader("0.0.0.0:3022\n/tmp/openscanner.db\n/tmp/recordings\n/tmp/openscanner.json\n/tmp/openscanner\ny\n")
+	in := strings.NewReader("0.0.0.0:3022\n/tmp/squelch.db\n/tmp/recordings\n/tmp/squelch.json\n/tmp/squelch\ny\n")
 	out := &bytes.Buffer{}
 
 	proceed, err := runInteractiveSetup(in, out, &listen, &db, &rec, &cfg, &install)
@@ -317,16 +317,16 @@ func TestRunInteractiveSetup_AppliesOverridesAndConfirms(t *testing.T) {
 	if listen != "0.0.0.0:3022" {
 		t.Fatalf("listen override not applied: %s", listen)
 	}
-	if db != "/tmp/openscanner.db" {
+	if db != "/tmp/squelch.db" {
 		t.Fatalf("db override not applied: %s", db)
 	}
 	if rec != "/tmp/recordings" {
 		t.Fatalf("recordings override not applied: %s", rec)
 	}
-	if cfg != "/tmp/openscanner.json" {
+	if cfg != "/tmp/squelch.json" {
 		t.Fatalf("config override not applied: %s", cfg)
 	}
-	if install != "/tmp/openscanner" {
+	if install != "/tmp/squelch" {
 		t.Fatalf("install path override not applied: %s", install)
 	}
 }
@@ -339,13 +339,13 @@ func TestServiceArguments_StripsTransientFlags(t *testing.T) {
 	}{
 		{
 			name: "strips --service with value",
-			args: []string{"--config", "/etc/openscanner.json", "--service", "install"},
-			want: []string{"--config", "/etc/openscanner.json"},
+			args: []string{"--config", "/etc/squelch.json", "--service", "install"},
+			want: []string{"--config", "/etc/squelch.json"},
 		},
 		{
 			name: "strips --service=value",
-			args: []string{"--config", "/etc/openscanner.json", "--service=install"},
-			want: []string{"--config", "/etc/openscanner.json"},
+			args: []string{"--config", "/etc/squelch.json", "--service=install"},
+			want: []string{"--config", "/etc/squelch.json"},
 		},
 		{
 			name: "strips --admin-password with value",

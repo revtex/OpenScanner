@@ -1,3 +1,4 @@
+import { readStored, writeStored } from "@/shared/utils/storage";
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { AvoidEntry, ConnectionStatus, ScannerConfig } from "@/types";
 import type { StreamState } from "@/shared/services/audio/streamPlayer";
@@ -59,7 +60,7 @@ const initialState: ScannerState = {
   streamState: "idle",
   isPaused:
     typeof sessionStorage !== "undefined" &&
-    sessionStorage.getItem("openscanner-paused") === "true",
+    readStored(sessionStorage, "squelch-paused") === "true",
   isAudioActive: false,
   heldSystem: null,
   heldTG: null,
@@ -158,7 +159,7 @@ export const scannerSlice = createSlice({
     togglePause(state) {
       state.isPaused = !state.isPaused;
       try {
-        sessionStorage.setItem("openscanner-paused", String(state.isPaused));
+        writeStored(sessionStorage, "squelch-paused", String(state.isPaused));
       } catch {
         /* quota exceeded or SSR */
       }
@@ -169,7 +170,7 @@ export const scannerSlice = createSlice({
     setPaused(state, action: PayloadAction<boolean>) {
       state.isPaused = action.payload;
       try {
-        sessionStorage.setItem("openscanner-paused", String(state.isPaused));
+        writeStored(sessionStorage, "squelch-paused", String(state.isPaused));
       } catch {
         /* quota exceeded or SSR */
       }
@@ -224,8 +225,9 @@ export const scannerSlice = createSlice({
       };
       // Cache display prefs so the next page load avoids a flash of defaults.
       try {
-        sessionStorage.setItem(
-          "openscanner-display-prefs",
+        writeStored(
+          sessionStorage,
+          "squelch-display-prefs",
           JSON.stringify({
             time12hFormat: state.config.time12hFormat,
             showListenersCount: state.config.showListenersCount,

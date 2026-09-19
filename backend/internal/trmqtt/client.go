@@ -101,7 +101,7 @@ func (c *Client) Start(ctx context.Context) error {
 	subCtx, cancel := context.WithCancel(ctx)
 	c.cancel = cancel
 
-	clientID := fmt.Sprintf("openscanner-tr-%d-%d", c.cfg.InstanceID, time.Now().UnixNano())
+	clientID := fmt.Sprintf("squelch-tr-%d-%d", c.cfg.InstanceID, time.Now().UnixNano())
 
 	apCfg := autopaho.ClientConfig{
 		ServerUrls:                    []*url.URL{u},

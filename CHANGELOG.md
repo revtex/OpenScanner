@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **OpenScanner is now Squelch.** Same project, same data, new name — a self-hosted radio call archive rather than something that does the scanning itself. The app, README, and guides all say Squelch; the Go module path is now `github.com/revtex/squelch`.
+- **Breaking: the binary, image, default paths, and environment prefix are renamed.** The binary is `squelch`, the image is `ghcr.io/revtex/squelch`, the database defaults to `squelch.db` under `/var/lib/squelch`, and configuration is read from `SQUELCH_*`. See [Upgrading from OpenScanner](docs/deployment-guide.md#upgrading-from-openscanner) — it is a file rename and an environment-variable rename, with no schema migration.
+- `OPENSCANNER_*` environment variables are still honoured, with one startup warning naming each one used, and will be removed in a future release. `SQUELCH_*` wins when both are set.
+- **Squelch refuses to start on an OpenScanner data directory** rather than creating an empty database beside the old one. Starting fresh is indistinguishable from total data loss at a glance, and silently renaming files leaves no way back, so it stops and prints the exact `mv` command — including the `-wal` and `-shm` files, but only when they actually exist.
+- Saved browser state — theme, paused state, and your talkgroup selection — is read from its pre-rename key once and migrated forward, so nothing needs re-selecting. The DaisyUI theme names moved from `openscanner-dark`/`-light` to `squelch-dark`/`-light`, and a stored old value is mapped forward too.
+- The CLI's stored login token moved to `~/.squelch-token`; the old file is still read, so existing sessions survive.
+- **The secrets encryption scheme is deliberately unchanged.** Its HKDF salt and info string still contain the old name because they are key-derivation inputs, not labels: renaming them would derive a different key and make every stored `enc::` secret — the JWT secret, downstream API keys, Trunk Recorder broker passwords — permanently undecryptable. A test now pins those constants so a future global rename cannot quietly break them.
+
 ## [1.4.0] — 2026-09-18
 
 ### Added

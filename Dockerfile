@@ -32,9 +32,9 @@ COPY --from=go-builder /squelch ./squelch
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
 # Defaults for standalone docker run; override via environment or compose.
-ENV OPENSCANNER_LISTEN=0.0.0.0:3022
-ENV OPENSCANNER_DB_FILE=/data/openscanner.db
-ENV OPENSCANNER_RECORDINGS_DIR=/data/recordings
+ENV SQUELCH_LISTEN=0.0.0.0:3022
+ENV SQUELCH_DB_FILE=/data/squelch.db
+ENV SQUELCH_RECORDINGS_DIR=/data/recordings
 EXPOSE 3022
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:3022/api/v1/health || exit 1

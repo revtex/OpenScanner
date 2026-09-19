@@ -27,22 +27,22 @@ func init() {
 			programFiles = `C:\Program Files`
 		}
 		base := filepath.Join(programData, "Squelch")
-		DefaultConfigFile = filepath.Join(base, "openscanner.json")
-		DefaultDBFile = filepath.Join(base, "openscanner.db")
+		DefaultConfigFile = filepath.Join(base, "squelch.json")
+		DefaultDBFile = filepath.Join(base, "squelch.db")
 		DefaultRecordingsDir = filepath.Join(base, "recordings")
-		DefaultBinaryPath = filepath.Join(programFiles, "Squelch", "openscanner.exe")
+		DefaultBinaryPath = filepath.Join(programFiles, "Squelch", "squelch.exe")
 
 	case "darwin":
-		DefaultConfigFile = "/usr/local/etc/openscanner/openscanner.json"
-		DefaultDBFile = "/usr/local/var/lib/openscanner/openscanner.db"
-		DefaultRecordingsDir = "/usr/local/var/lib/openscanner/recordings"
-		DefaultBinaryPath = "/usr/local/bin/openscanner"
+		DefaultConfigFile = "/usr/local/etc/squelch/squelch.json"
+		DefaultDBFile = "/usr/local/var/lib/squelch/squelch.db"
+		DefaultRecordingsDir = "/usr/local/var/lib/squelch/recordings"
+		DefaultBinaryPath = "/usr/local/bin/squelch"
 
 	default: // linux, freebsd, etc.
-		DefaultConfigFile = "/etc/openscanner/openscanner.json"
-		DefaultDBFile = "/var/lib/openscanner/openscanner.db"
-		DefaultRecordingsDir = "/var/lib/openscanner/recordings"
-		DefaultBinaryPath = "/usr/local/bin/openscanner"
+		DefaultConfigFile = "/etc/squelch/squelch.json"
+		DefaultDBFile = "/var/lib/squelch/squelch.db"
+		DefaultRecordingsDir = "/var/lib/squelch/recordings"
+		DefaultBinaryPath = "/usr/local/bin/squelch"
 	}
 }
 

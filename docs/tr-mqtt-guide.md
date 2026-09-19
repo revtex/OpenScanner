@@ -10,7 +10,7 @@ Squelch can subscribe to a [trunk-recorder MQTT status plugin](https://github.co
 
 - [Architecture](#architecture)
 - [Install the plugin in trunk-recorder](#install-the-plugin-in-trunk-recorder)
-- [Wire it to Squelch](#wire-it-to-openscanner)
+- [Wire it to Squelch](#wire-it-to-squelch)
 - [Bundled mosquitto broker](#bundled-mosquitto-broker)
 - [Multiple trunk-recorders on one broker](#multiple-trunk-recorders-on-one-broker)
 - [Troubleshooting](#troubleshooting)
@@ -93,7 +93,7 @@ The repository ships two opt-in ways to run a local MQTT broker. Pick whichever 
 
 ### Option A — auto-bootstrapping profile (zero-touch)
 
-`docker-compose.openscanner.yml` includes a `mosquitto` service behind the `mqtt` Compose profile. It is **not** started by default.
+`docker-compose.squelch.yml` includes a `mosquitto` service behind the `mqtt` Compose profile. It is **not** started by default.
 
 ```sh
 docker compose --profile mqtt up -d

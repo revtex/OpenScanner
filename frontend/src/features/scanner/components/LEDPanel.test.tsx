@@ -21,7 +21,7 @@ vi.mock("@/shared/hooks/useTheme", () => ({
   useTheme: () => ({
     isDark: mockIsDark,
     toggle: mockToggle,
-    theme: mockIsDark ? "openscanner-dark" : "openscanner-light",
+    theme: mockIsDark ? "squelch-dark" : "squelch-light",
   }),
 }));
 

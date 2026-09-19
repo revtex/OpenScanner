@@ -34,6 +34,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/revtex/squelch/internal/envcompat"
+
 	"github.com/gin-gonic/gin"
 	"github.com/kardianos/service"
 	"github.com/revtex/squelch/internal/admin"
@@ -69,8 +71,15 @@ func main() {
 	}
 
 	if cfg.ShowVersion {
-		fmt.Printf("openscanner %s\n", config.Version)
+		fmt.Printf("squelch %s\n", config.Version)
 		os.Exit(0)
+	}
+
+	// Refuse to start on a data directory left behind by OpenScanner
+	// rather than quietly creating an empty database beside it.
+	if err := config.CheckLegacyDataDir(cfg.DBFile); err != nil {
+		fmt.Fprintf(os.Stderr, "squelch: %v\n", err)
+		os.Exit(1)
 	}
 
 	if cfg.ConfigSave {
@@ -190,7 +199,7 @@ func runSetup(args []string) int {
 		fmt.Printf("- database file: %s (exists=%t)\n", *dbFile, dbExists)
 		fmt.Printf("- service status: installed=%t running=%t (%s)\n", installed, running, statusText)
 		fmt.Println("No changes were made. Use --force to overwrite/reinstall.")
-		fmt.Println("Next steps: openscanner service doctor, openscanner config validate --config <path>")
+		fmt.Println("Next steps: squelch service doctor, squelch config validate --config <path>")
 		return 0
 	}
 
@@ -259,7 +268,7 @@ func runSetup(args []string) int {
 	fmt.Printf("- config file: %s\n", *configFile)
 	fmt.Printf("- service args: %s\n", strings.Join(serviceArgs, " "))
 	fmt.Println("- verify: curl -f http://127.0.0.1:3022/api/health")
-	fmt.Println("- doctor: openscanner service doctor")
+	fmt.Println("- doctor: squelch service doctor")
 	return 0
 }
 
@@ -293,7 +302,7 @@ func runUpgrade(args []string) int {
 	installed, running, statusText := serviceState(svc)
 	if !installed {
 		slog.Error("upgrade: service is not installed")
-		fmt.Println("Run 'openscanner setup' first.")
+		fmt.Println("Run 'squelch setup' first.")
 		return 1
 	}
 
@@ -338,7 +347,7 @@ func runConfigValidate(args []string) int {
 
 	if *configFile == config.DefaultConfigFile && !pathExists(*configFile) {
 		slog.Error("config file not found", "path", *configFile)
-		fmt.Println("Pass a config path via --config /path/to/openscanner.json")
+		fmt.Println("Pass a config path via --config /path/to/squelch.json")
 		return 1
 	}
 
@@ -367,15 +376,15 @@ func runServiceDoctor() int {
 	fmt.Printf("- default executable path: %s\n", config.DefaultBinaryPath)
 
 	if !installed {
-		fmt.Println("- hint: install with 'openscanner setup' or 'openscanner --service install --config /path/to/openscanner.json'")
+		fmt.Println("- hint: install with 'squelch setup' or 'squelch --service install --config /path/to/squelch.json'")
 		return 0
 	}
 
 	if !running {
-		fmt.Println("- hint: start with 'openscanner --service start'")
+		fmt.Println("- hint: start with 'squelch --service start'")
 	}
 
-	fmt.Println("- hint: validate config with 'openscanner config validate --config /path/to/openscanner.json'")
+	fmt.Println("- hint: validate config with 'squelch config validate --config /path/to/squelch.json'")
 	return 0
 }
 
@@ -520,7 +529,7 @@ func copyBinary(sourcePath, targetPath string) error {
 	}
 	defer in.Close()
 
-	tmpFile, err := os.CreateTemp(targetDir, ".openscanner-bin-*")
+	tmpFile, err := os.CreateTemp(targetDir, ".squelch-bin-*")
 	if err != nil {
 		return err
 	}
@@ -662,13 +671,22 @@ func (p *program) run() {
 	logging.LoadHistoricalLogs(logFilePath)
 
 	// Configure structured logging.
-	if os.Getenv("OPENSCANNER_ENV") == "development" {
+	if envcompat.Lookup("ENV") == "development" {
 		logging.Configure(true, logFilePath)
 	} else {
 		logging.Configure(false, logFilePath)
 		gin.SetMode(gin.ReleaseMode)
 	}
 	defer logging.CloseLogFile()
+
+	// Squelch was renamed from OpenScanner. The old environment variable
+	// names still work, but say so once — silently honouring them would
+	// let an operator carry a stale config forward without noticing that
+	// the fallback is scheduled for removal.
+	if legacy := envcompat.Used(); len(legacy) > 0 {
+		slog.Warn("config: using pre-rename OPENSCANNER_* environment variables; rename them to SQUELCH_*, the fallback will be removed in a future release",
+			"variables", strings.Join(legacy, ", "))
+	}
 
 	// Compute display values for the startup banner (printed after all
 	// feature-flag checks complete, down below).
@@ -745,7 +763,7 @@ func (p *program) run() {
 		LogLevel:            logging.GetLevel(),
 		SSL:                 cfg.SSLAutoCert != "" || (cfg.SSLCert != "" && cfg.SSLKey != ""),
 		EncryptionAtRest:    cfg.EncryptionKey != "",
-		JWTSecretExternal:   os.Getenv("OPENSCANNER_JWT_SECRET") != "",
+		JWTSecretExternal:   envcompat.Lookup("JWT_SECRET") != "",
 		FFmpeg:              hasFFmpeg,
 		FDKAAC:              hasFDKAAC,
 		Whisper:             whisperConfigured,
@@ -1181,7 +1199,7 @@ func printStartupBanner(d startupBannerData) {
 			"  ⚠ WARNING: encryption at rest is disabled — the JWT signing secret and\n"+
 				"    downstream API keys are stored in plaintext in the database. Anyone\n"+
 				"    with read access to the DB file can forge admin tokens.\n"+
-				"    Fix: set OPENSCANNER_ENCRYPTION_KEY (or --encryption-key) to a 32-byte\n"+
+				"    Fix: set SQUELCH_ENCRYPTION_KEY (or --encryption-key) to a 32-byte\n"+
 				"    random value. See docs/deployment-guide.md#secrets-encryption.\n\n")
 	}
 }
@@ -1279,17 +1297,17 @@ func migrateSecrets(ctx context.Context, queries *db.Queries, sqlDB *sql.DB, enc
 	if encryptionKey == "" {
 		for _, s := range settings {
 			if admin.SensitiveSettingKeys[s.Key] && auth.IsEncrypted(s.Value) {
-				return fmt.Errorf("setting %q is encrypted but no encryption key is configured — set --encryption-key or OPENSCANNER_ENCRYPTION_KEY", s.Key)
+				return fmt.Errorf("setting %q is encrypted but no encryption key is configured — set --encryption-key or SQUELCH_ENCRYPTION_KEY", s.Key)
 			}
 		}
 		for _, ds := range downstreams {
 			if auth.IsEncrypted(ds.ApiKey) {
-				return fmt.Errorf("downstream %d API key is encrypted but no encryption key is configured — set --encryption-key or OPENSCANNER_ENCRYPTION_KEY", ds.ID)
+				return fmt.Errorf("downstream %d API key is encrypted but no encryption key is configured — set --encryption-key or SQUELCH_ENCRYPTION_KEY", ds.ID)
 			}
 		}
 		slog.Warn("no encryption key configured — secrets stored unencrypted in database",
 			"impact", "JWT signing secret and downstream API keys are stored in plaintext; anyone with read access to the SQLite file can forge admin tokens",
-			"fix", "set OPENSCANNER_ENCRYPTION_KEY (or --encryption-key) to a 32-byte random value; see docs/deployment-guide.md#secrets-encryption")
+			"fix", "set SQUELCH_ENCRYPTION_KEY (or --encryption-key) to a 32-byte random value; see docs/deployment-guide.md#secrets-encryption")
 		return nil
 	}
 

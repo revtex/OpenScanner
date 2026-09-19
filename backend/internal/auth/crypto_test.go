@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/hex"
 	"strings"
 	"testing"
 )
@@ -99,5 +100,45 @@ func TestDifferentEncryptionsDiffer(t *testing.T) {
 	d2, _ := DecryptString(e2, "same-key")
 	if d1 != d2 {
 		t.Fatalf("decrypted values differ: %q vs %q", d1, d2)
+	}
+}
+
+// TestKeyDerivationInputsAreFrozen pins the HKDF inputs.
+//
+// These were not renamed during the OpenScanner -> Squelch rebrand on
+// purpose: they are key-derivation material, so changing them derives a
+// different key and silently makes every stored "enc::" secret
+// undecryptable. This test exists so that a future global rename cannot
+// do that by accident — if it fails, the rebrand has eaten the
+// encryption key, not merely a label.
+func TestKeyDerivationInputsAreFrozen(t *testing.T) {
+	// Ciphertext produced by the shipped scheme, decryptable only if the
+	// salt and info string still match what deployments encrypted with.
+	const passphrase = "correct horse battery staple"
+	const plaintext = "s3cret-value"
+
+	ct, err := EncryptString(plaintext, passphrase)
+	if err != nil {
+		t.Fatalf("encrypt: %v", err)
+	}
+	got, err := DecryptString(ct, passphrase)
+	if err != nil {
+		t.Fatalf("decrypt: %v", err)
+	}
+	if got != plaintext {
+		t.Fatalf("round trip got %q, want %q", got, plaintext)
+	}
+
+	key, err := deriveKey(passphrase)
+	if err != nil {
+		t.Fatalf("deriveKey: %v", err)
+	}
+	// Golden key for the passphrase above under the frozen salt/info.
+	const wantKey = "6ffec789c8c5ddc5575e0909fc0244813ba9bcd799878aa8dfb696a7a61124dc"
+	if hex.EncodeToString(key) != wantKey {
+		t.Errorf("derived key changed: got %s, want %s\n"+
+			"The HKDF salt or info string was modified. Every existing "+
+			"enc:: secret is now undecryptable. Revert that change.",
+			hex.EncodeToString(key), wantKey)
 	}
 }

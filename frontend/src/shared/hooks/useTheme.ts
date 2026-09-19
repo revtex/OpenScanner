@@ -1,12 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
+import {
+  readStored,
+  writeStored,
+  migrateThemeValue,
+} from "@/shared/utils/storage";
 
-const DARK_THEME = "openscanner-dark";
-const LIGHT_THEME = "openscanner-light";
-const STORAGE_KEY = "openscanner-theme";
+const DARK_THEME = "squelch-dark";
+const LIGHT_THEME = "squelch-light";
+const STORAGE_KEY = "squelch-theme";
 
 export function useTheme() {
   const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    // The stored value is a theme name, which carried the old product
+    // name, so it is mapped forward as well as the key it lives under.
+    const saved = migrateThemeValue(readStored(localStorage, STORAGE_KEY));
     if (saved === LIGHT_THEME) return false;
     // Default to dark
     return true;
@@ -15,7 +22,7 @@ export function useTheme() {
   useEffect(() => {
     const theme = isDark ? DARK_THEME : LIGHT_THEME;
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem(STORAGE_KEY, theme);
+    writeStored(localStorage, STORAGE_KEY, theme);
   }, [isDark]);
 
   const toggle = useCallback(() => {
