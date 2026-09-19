@@ -16,7 +16,7 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	_ "github.com/openscanner/openscanner/docs" // swagger generated docs
+	"github.com/openscanner/openscanner/docs" // swagger generated docs
 
 	"github.com/openscanner/openscanner/internal/audio"
 	"github.com/openscanner/openscanner/internal/auth"
@@ -81,6 +81,13 @@ type Deps struct {
 
 // RegisterRoutes wires all API routes onto the Gin engine.
 func RegisterRoutes(r *gin.Engine, deps Deps) {
+	// The @version annotation in main.go is a build-time literal that goes
+	// stale the moment a release is cut, so report the binary's real version
+	// instead. Empty in tests, which pass a zero Deps.
+	if deps.Version != "" {
+		docs.SwaggerInfo.Version = deps.Version
+	}
+
 	healthHandler := health.New(deps.Version)
 	setupHandler := setup.New(deps.Queries)
 	// Avoid the typed-nil interface footgun: only promote deps.Hub into the

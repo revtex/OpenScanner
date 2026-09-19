@@ -1,7 +1,7 @@
 // Package main is the entry point for the OpenScanner server.
 //
 //	@title			OpenScanner API
-//	@version		1.0
+//	@version		1.0	(overridden at runtime with the binary's build version)
 //	@description	Radio call manager API — real-time audio streaming, call management, and admin CRUD.
 //
 //	@BasePath	/api
