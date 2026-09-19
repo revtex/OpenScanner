@@ -14,8 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/revtex/squelch/internal/envcompat"
 )
 
 // Version is set at build time via ldflags (-X ...config.Version=...).
@@ -161,37 +159,37 @@ func loadJSON(cfg *Config) {
 
 // applyEnv applies environment variable overrides.
 func applyEnv(cfg *Config) {
-	if v := envcompat.Lookup("LISTEN"); v != "" {
+	if v := os.Getenv("SQUELCH_LISTEN"); v != "" {
 		cfg.Listen = v
 	}
-	if v := envcompat.Lookup("DB_FILE"); v != "" {
+	if v := os.Getenv("SQUELCH_DB_FILE"); v != "" {
 		cfg.DBFile = v
 	}
-	if v := envcompat.Lookup("RECORDINGS_DIR"); v != "" {
+	if v := os.Getenv("SQUELCH_RECORDINGS_DIR"); v != "" {
 		cfg.RecordingsDir = v
 	}
-	if v := envcompat.Lookup("SSL_LISTEN"); v != "" {
+	if v := os.Getenv("SQUELCH_SSL_LISTEN"); v != "" {
 		cfg.SSLListen = v
 	}
-	if v := envcompat.Lookup("SSL_CERT"); v != "" {
+	if v := os.Getenv("SQUELCH_SSL_CERT"); v != "" {
 		cfg.SSLCert = v
 	}
-	if v := envcompat.Lookup("SSL_KEY"); v != "" {
+	if v := os.Getenv("SQUELCH_SSL_KEY"); v != "" {
 		cfg.SSLKey = v
 	}
-	if v := envcompat.Lookup("SSL_AUTO_CERT"); v != "" {
+	if v := os.Getenv("SQUELCH_SSL_AUTO_CERT"); v != "" {
 		cfg.SSLAutoCert = v
 	}
-	if v := envcompat.Lookup("ENCRYPTION_KEY"); v != "" {
+	if v := os.Getenv("SQUELCH_ENCRYPTION_KEY"); v != "" {
 		cfg.EncryptionKey = v
 	}
-	if v := envcompat.Lookup("ENCRYPTION_KEY_FILE"); v != "" {
+	if v := os.Getenv("SQUELCH_ENCRYPTION_KEY_FILE"); v != "" {
 		cfg.EncryptionKeyFile = v
 	}
-	if v := envcompat.Lookup("ADMIN_PASSWORD"); v != "" {
+	if v := os.Getenv("SQUELCH_ADMIN_PASSWORD"); v != "" {
 		cfg.AdminPassword = v
 	}
-	if v := envcompat.Lookup("TIMEZONE"); v != "" {
+	if v := os.Getenv("SQUELCH_TIMEZONE"); v != "" {
 		cfg.Timezone = v
 	} else if v := os.Getenv("TZ"); v != "" {
 		cfg.Timezone = v

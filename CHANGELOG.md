@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] — 2026-09-19
+
+### Fixed
+
+- **Documentation corrections found by checking the docs against the code.**
+  The admin guide described four Scanner Behavior settings and one Call
+  Processing setting that do not exist in the Options panel, named the first
+  sidebar item "Activity" when it is "Dashboards", said the default audio
+  preset was AAC-LC when it is MP3 32 kbps, pointed at the pre-v1 Swagger path,
+  and did not document the Integrations section at all. The deployment guide
+  claimed that externalizing the login signing key leaves only downstream API
+  keys encrypted, which has not been true since the web push key and Trunk
+  Recorder passwords joined the set. Two links pointed at a
+  `#secrets-encryption` anchor that has never existed.
+- The bundled compose file told operators to `chmod 600` the encryption key
+  file. Squelch runs as uid/gid 1001, so a key file readable only by the
+  invoking user makes the container restart-loop; it now says to make the file
+  group-readable by 1001.
+- **The Trunk Recorder MQTT guide said the bundled broker starts locked down.**
+  It described the auto-generated `mosquitto.conf` as having
+  `allow_anonymous false` with a password file. The entrypoint actually writes
+  `allow_anonymous true` — on purpose, so the broker boots before a `passwd`
+  file exists — which means an operator following the guide would believe the
+  broker required credentials when anything on the host could connect without
+  them. Both broker options now say so plainly, and say to lock it down before
+  exposing it beyond loopback.
+- **RTLSDR-Airband and ProScan can now be selected as directory monitor
+  types.** Both parsers have been in the server the whole time, but the admin
+  dropdown only offered four types, so the only way to reach them was the API
+  or a JSON config import — and the recorder guide documented steps that could
+  not be carried out in the UI. They are now in the dropdown, and the form
+  reveals the fields each one actually reads: System and Talkgroup for both,
+  Frequency for RTLSDR-Airband, and a filename Mask for ProScan (the watcher
+  has always applied masks after the type parser, for every type).
+- The recorder guide pointed at "Directory Monitors" in the sidebar, which is
+  called "Monitors", and listed API Key Call Rate under Options, where it does
+  not appear.
+- **Trunk Recorder broker passwords are now encrypted at rest like every other
+  secret.** The startup pass that encrypts plaintext secrets once an encryption
+  key is configured covered settings and downstream API keys, but was never
+  extended to cover Trunk Recorder instances when the MQTT integration shipped.
+  A deployment that configured an instance and then enabled encryption kept its
+  broker password in plaintext indefinitely — warned about on every connect,
+  and fixed by nothing. It is now encrypted on the next start.
+
+### Changed
+
+- **The README is now an introduction rather than a feature inventory.** It
+  opens with who Squelch is for and what you need, puts the quick start near
+  the top, and links out to the guides instead of restating them. The
+  Trunk Recorder MQTT integration and its guide were missing entirely.
+- **Breaking: upgrading requires one manual step.** The secrets-at-rest
+  encryption scheme changed, so secrets written by v2.x or earlier have to be
+  re-encrypted once, with the server stopped, using the new `squelch-rekey`
+  tool that ships beside the binary and inside the image:
+
+  ```
+  squelch-rekey -db /var/lib/squelch/squelch.db            # report only
+  squelch-rekey -db /var/lib/squelch/squelch.db -apply     # re-encrypt
+  ```
+
+  It reports and exits unless given `-apply`, takes a backup before writing,
+  and rewrites everything in one transaction or not at all. Squelch refuses to
+  start until it has been run, naming the secrets it cannot read — it does not
+  migrate anything itself. See
+  [Upgrading to v3.0.0](docs/deployment-guide.md#upgrading-to-v300).
+- **Breaking: `OPENSCANNER_*` environment variables are no longer read.** Only
+  `SQUELCH_*`. A compose file still using the old names will fall back to
+  defaults rather than erroring, so check it before upgrading.
+- **Breaking: the pre-rename compatibility shims are gone.** The CLI no longer
+  reads `~/.openscanner-token` (log in once more), the browser no longer reads
+  pre-rename storage keys (theme and paused state reset once per browser;
+  talkgroup selection is unaffected, being stored server-side), and the server
+  no longer refuses to start on an `openscanner.db` data directory. Upgrading
+  from v1.x goes v1 → v2 → v3, or rename the database file by hand.
+- The old product name is now absent from everything except one file in the
+  migration tool, which needs it to read what earlier versions wrote.
+
 ## [2.0.0] — 2026-09-18
 
 ### Changed
@@ -395,7 +473,8 @@ Rdio Scanner streaming target).
   untested.
 - Transcription requires a separately deployed go-whisper sidecar.
 
-[Unreleased]: https://github.com/revtex/squelch/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/revtex/squelch/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/revtex/squelch/releases/tag/v3.0.0
 [2.0.0]: https://github.com/revtex/squelch/releases/tag/v2.0.0
 [1.4.0]: https://github.com/revtex/squelch/releases/tag/v1.4.0
 [1.0.0]: https://github.com/revtex/squelch/releases/tag/v1.0.0

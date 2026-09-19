@@ -66,7 +66,7 @@ Recommended fields:
 ## Wire it to Squelch
 
 1. Sign in to Squelch as an admin.
-2. Open **Admin → Options** and confirm the **Trunk Recorder MQTT** integration is enabled (`trMqttEnabled = true`). It is off by default; flip it on once and save.
+2. Open **Admin → Options → Integrations** and turn on **Trunk Recorder MQTT**. It is off by default; flip it on once and save.
 3. Open **Admin → Dashboards → Trunk Recorder → Instances** and click **Add instance**. Fill in:
 
 | Field           | Notes                                                                                                     |
@@ -77,15 +77,28 @@ Recommended fields:
 | Base topic      | The plugin's `topic` value.                                                                               |
 | Unit topic      | Optional — must match `unit_topic` if set.                                                                |
 | Message topic   | Optional — must match `message_topic` if set.                                                             |
-| Username / Pwd  | Broker credentials. Passwords are encrypted at rest with the Squelch encryption key (`enc::` prefix). |
+| Username / Pwd  | Broker credentials. The password is encrypted at rest (`enc::` prefix) when an [encryption key](deployment-guide.md#keeping-secrets-safe) is configured, and stored in plaintext when one is not — the startup banner warns about that case. The API never returns it, only a `hasPassword` flag. |
 | QoS             | `0`–`2`. Match the plugin.                                                                                |
 | TLS skip verify | Only check this for self-signed brokers in lab setups.                                                    |
 | Enabled         | Toggle without deleting.                                                                                  |
 
-4. Click **Test** to verify Squelch can reach the broker (CONNECT only, no subscriptions). Save once it succeeds.
+4. Click **Test** to verify Squelch can reach the broker. It opens a real one-shot connection with the credentials you entered, waits for the broker's acknowledgement, and tears it down again; the result reports "Broker reachable" or a redacted error. Save once it succeeds.
 5. Switch to the **Dashboard** sub-tab. Within a few seconds you should see decode rate, recorders, and any active calls. **Units** and **Messages** populate as trunking traffic arrives.
 
-The instance row's status badge reflects the live MQTT connection: `connected` (green), `disconnected` (yellow), or `error` (red, hover for the most recent broker error).
+The Trunk Recorder view has eight sub-tabs:
+
+| Sub-tab | Shows |
+| --- | --- |
+| **Instances** | Your configured trunk-recorders, their connection status, and the Add/Test/Edit controls |
+| **Dashboard** | Control-channel decode rate, recorder states, and a live summary |
+| **Calls** | Calls currently being recorded |
+| **Recorders** | Per-recorder state and utilisation |
+| **Systems** | The system table the plugin reports |
+| **Units** | Unit affiliation events (on, off, join, call, location, …) |
+| **Messages** | Raw trunking control-channel messages, for debugging |
+| **Config** | The configuration payload the plugin published |
+
+The instance row's status badge reflects the live MQTT connection: `connected` (green), `disconnected` (yellow), `error` (red — hover for the most recent broker error), or `disabled` (grey) when the row's **Enabled** toggle is off.
 
 ## Bundled mosquitto broker
 
@@ -102,11 +115,12 @@ docker compose --profile mqtt up -d
 On first start the container's entrypoint generates `./mosquitto/config/mosquitto.conf` with:
 
 - listener on port `1883`,
-- `allow_anonymous false`,
-- `password_file /mosquitto/config/passwd`,
+- **`allow_anonymous true`**, with `allow_anonymous false` and `password_file` written in but commented out,
 - persistence enabled at `./mosquitto/data/`.
 
-After the first boot the files are yours to edit — the entrypoint only writes them when they don't already exist. The `passwd` file is **not** auto-created; you must run `mosquitto_passwd` inside the container before mosquitto will accept clients (see [Adding users](#adding-users-both-options) below).
+> ⚠️ **The generated broker accepts anonymous clients.** It ships that way so it boots cleanly on a fresh checkout — otherwise mosquitto would refuse to start against a `passwd` file that doesn't exist yet. Compose publishes it on `127.0.0.1:1883` only, so it is not reachable from your network until you change the `ports:` line, but **anything on the host can connect without credentials**. Add a user and flip the two auth lines before you expose it — see [Adding users](#adding-users-both-options) below.
+
+After the first boot the files are yours to edit — the entrypoint only writes them when they don't already exist. The `passwd` file is never auto-created.
 
 ### Option B — committed static config (explicit)
 
@@ -123,7 +137,7 @@ The broker listens on `127.0.0.1:1883` by default. Logs stream to stdout — vie
 docker compose logs -f mosquitto
 ```
 
-Edit [`mosquitto/config/mosquitto.conf`](../mosquitto/config/mosquitto.conf) directly and `docker compose restart mosquitto` to apply changes. The `passwd` file is **not** committed — create it inside the container (see [Adding users](#adding-users-both-options) below) so it has the correct UID 1883 ownership and `0700` perms that mosquitto 2.x requires.
+Edit [`mosquitto/config/mosquitto.conf`](../mosquitto/config/mosquitto.conf) directly and `docker compose restart mosquitto` to apply changes. The committed `mosquitto.conf` also ships with `allow_anonymous true` for the same bootstrap reason, so the same warning applies. The `passwd` file is **not** committed — create it inside the container (see [Adding users](#adding-users-both-options) below) so it has the correct UID 1883 ownership and `0700` perms that mosquitto 2.x requires.
 
 #### Files and folders
 
@@ -213,4 +227,4 @@ Pick whichever matches your operational style. Always set `instance_id` — it c
 
 **The Trunk Recorder tab is missing from Dashboards**
 
-- Check **Admin → Options → Trunk Recorder MQTT** is enabled. The kill-switch returns 404 from the REST endpoints when off, which hides the dashboard entirely.
+- Check **Admin → Options → Integrations → Trunk Recorder MQTT** is enabled. The kill-switch returns 404 from the REST endpoints when off, which hides the dashboard entirely.

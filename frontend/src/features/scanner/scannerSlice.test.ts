@@ -399,7 +399,7 @@ describe("backgroundAudio", () => {
     vi.resetModules();
     localStorage.clear();
     if (seed !== null) {
-      localStorage.setItem("openscanner-background-audio", seed);
+      localStorage.setItem("squelch-background-audio", seed);
     }
     const mod = await import("./scannerSlice");
     return mod.scannerSlice.reducer(undefined, { type: "@@INIT" });
@@ -424,6 +424,6 @@ describe("backgroundAudio", () => {
     );
 
     expect(state.backgroundAudio).toBe(true);
-    expect(localStorage.getItem("openscanner-background-audio")).toBeNull();
+    expect(localStorage.getItem("squelch-background-audio")).toBeNull();
   });
 });

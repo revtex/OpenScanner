@@ -14,6 +14,8 @@ import type { AdminDirMonitor } from "@/types";
 const DIRMONITOR_TYPES = [
   { value: "default", label: "Default (mask-based)" },
   { value: "dsdplus", label: "DSDPlus Fast Lane" },
+  { value: "proscan", label: "ProScan" },
+  { value: "rtlsdr-airband", label: "RTLSDR-Airband" },
   { value: "sdr-trunk", label: "SDR Trunk" },
   { value: "trunk-recorder", label: "Trunk Recorder" },
 ] as const;
@@ -380,8 +382,14 @@ export default function DirMonitorPanel() {
               </span>
             </label>
 
-            {/* Extension — shown for default, dsdplus, trunk-recorder */}
-            {["default", "dsdplus", "trunk-recorder"].includes(form.type) && (
+            {/* Extension — shown for the types whose files are picked by extension */}
+            {[
+              "default",
+              "dsdplus",
+              "proscan",
+              "rtlsdr-airband",
+              "trunk-recorder",
+            ].includes(form.type) && (
               <label className="flex flex-col w-full">
                 <span className="text-sm">Extension</span>
                 <span className="text-xs text-base-content/60">
@@ -399,8 +407,10 @@ export default function DirMonitorPanel() {
               </label>
             )}
 
-            {/* System dropdown — shown for default and dsdplus */}
-            {["default", "dsdplus"].includes(form.type) && (
+            {/* System dropdown — shown for the types that read it off the monitor */}
+            {["default", "dsdplus", "proscan", "rtlsdr-airband"].includes(
+              form.type,
+            ) && (
               <label className="flex flex-col w-full">
                 <span className="text-sm">System</span>
                 <span className="text-xs text-base-content/60">
@@ -430,32 +440,36 @@ export default function DirMonitorPanel() {
               </label>
             )}
 
-            {/* Talkgroup dropdown — shown for default and dsdplus, only when a system is selected */}
-            {["default", "dsdplus"].includes(form.type) && form.systemId && (
-              <label className="flex flex-col w-full">
-                <span className="text-sm">Talkgroup</span>
-                <span className="text-xs text-base-content/60">
-                  Override: send all files to this talkgroup
-                </span>
-                <select
-                  className="select w-full"
-                  value={form.talkgroupId}
-                  onChange={(e) =>
-                    setForm({ ...form, talkgroupId: e.target.value })
-                  }
-                >
-                  <option value="">— extract from mask / filename —</option>
-                  {talkgroupsForSelectedSystem.map((tg) => (
-                    <option key={tg.id} value={String(tg.id)}>
-                      {tg.label ?? tg.talkgroupId} ({tg.talkgroupId})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+            {/* Talkgroup dropdown — same types as System, once a system is chosen */}
+            {["default", "dsdplus", "proscan", "rtlsdr-airband"].includes(
+              form.type,
+            ) &&
+              form.systemId && (
+                <label className="flex flex-col w-full">
+                  <span className="text-sm">Talkgroup</span>
+                  <span className="text-xs text-base-content/60">
+                    Override: send all files to this talkgroup
+                  </span>
+                  <select
+                    className="select w-full"
+                    value={form.talkgroupId}
+                    onChange={(e) =>
+                      setForm({ ...form, talkgroupId: e.target.value })
+                    }
+                  >
+                    <option value="">— extract from mask / filename —</option>
+                    {talkgroupsForSelectedSystem.map((tg) => (
+                      <option key={tg.id} value={String(tg.id)}>
+                        {tg.label ?? tg.talkgroupId} ({tg.talkgroupId})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
-            {/* Mask — shown for default only */}
-            {form.type === "default" && (
+            {/* Mask — the watcher applies it after any parser, so ProScan
+                can use one to fill in what its filenames carry. */}
+            {["default", "proscan"].includes(form.type) && (
               <div className="flex flex-col w-full">
                 <span className="text-sm">Mask</span>
                 <input
@@ -476,8 +490,8 @@ export default function DirMonitorPanel() {
               </div>
             )}
 
-            {/* Frequency — shown for default only */}
-            {form.type === "default" && (
+            {/* Frequency — default, plus RTLSDR-Airband which reads it per monitor */}
+            {["default", "rtlsdr-airband"].includes(form.type) && (
               <label className="flex flex-col w-full">
                 <span className="text-sm">Frequency (Hz)</span>
                 <span className="text-xs text-base-content/60">

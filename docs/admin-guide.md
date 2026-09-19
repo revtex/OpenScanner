@@ -29,7 +29,7 @@ The admin dashboard is at `/admin` and requires signing in with an admin account
 
 The sidebar contains these panels, in order:
 
-1. **Activity** — dashboard overview and stats
+1. **Dashboards** — overview stats, and the Trunk Recorder view
 2. **Users** — manage user accounts
 3. **Systems** — manage systems, talkgroups, and units
 4. **Groups & Tags** — organize talkgroups into categories
@@ -42,13 +42,15 @@ The sidebar contains these panels, in order:
 11. **Logs** — view server logs
 12. **Tools** — import, export, and maintenance
 
+**Dashboards** holds two tabs: **Activity** (the default) and **Trunk Recorder**. The tab you're on is kept in the address bar, so you can bookmark or share a link straight to either one.
+
 The **Scanner** link in the sidebar returns you to the live scanner at `/`. **Sign Out** clears your session. If you have unsaved changes in a panel, you'll be prompted before navigating away.
 
 ---
 
 ## Activity
 
-The Activity panel gives you a quick overview of your system:
+**Dashboards → Activity** gives you a quick overview of your system:
 
 - **Calls Today** — number of calls ingested today
 - **This Week** — calls over the last 7 days
@@ -204,7 +206,7 @@ Each downstream has:
 | Disabled | Temporarily stop forwarding                     |
 | Order    | Display position                                |
 
-API keys are encrypted at rest in the database when an [encryption key](deployment-guide.md#secrets-encryption) is configured. The admin UI never displays API keys — they are shown as masked dots. To change a key, enter a new one in the edit form; leave it blank to keep the existing key.
+Downstream API keys are encrypted at rest in the database when an [encryption key](deployment-guide.md#keeping-secrets-safe) is configured. The admin UI never displays API keys — they are shown as masked dots. To change a key, enter a new one in the edit form; leave it blank to keep the existing key.
 
 ---
 
@@ -263,37 +265,30 @@ General settings that control how Squelch behaves. Settings are organized into g
 
 ### Scanner Behavior
 
-| Setting                  | Description                                                           | Default |
-| ------------------------ | --------------------------------------------------------------------- | ------- |
-| Sort Talkgroups by ID    | Sort talkgroup list by numeric ID instead of display order            | Off     |
-| Allow Toggle by Tag      | Let users filter the scanner feed by tag                              | Off     |
-| 12-Hour Time Format      | Display times as AM/PM instead of 24-hour                             | Off     |
-| Show Listeners Count     | Display the number of active listeners in the scanner                 | Off     |
-| Playback Mode Goes Live  | Automatically switch from playback to live when caught up             | Off     |
-| AFS Systems              | Comma-separated system IDs that use AFS (Australian) talkgroup format | (empty) |
-| Max Simultaneous Clients | Maximum number of WebSocket listeners allowed at once                 | 200     |
-
-> Settings marked with a "Planned" badge in the UI are persisted but not yet wired to runtime behavior. They will activate in a future release.
+| Setting | Description | Default |
+| --- | --- | --- |
+| 12-Hour Time Format | Display times as AM/PM instead of 24-hour | Off |
+| Show Listeners Count | Display the number of active listeners in the scanner | Off |
+| Max Simultaneous Clients | Maximum number of live listeners allowed at once | 200 |
 
 ### Call Processing
 
-| Setting                             | Description                                                                         | Default        |
-| ----------------------------------- | ----------------------------------------------------------------------------------- | -------------- |
-| Audio Conversion (FFmpeg)           | **Disabled** / Enabled / Normalize / Loudnorm — controls audio processing on ingest | Disabled       |
-| Audio Encoding Preset               | Codec and bitrate for converted audio (MP3 or AAC at various bitrates)              | AAC-LC 32 kbps |
-| Disable Duplicate Call Detection    | Skip checking for duplicate calls on upload                                         | Off            |
-| Duplicate Detection Time Frame (ms) | Window for matching duplicate calls (±milliseconds)                                 | 500            |
-| Prune Database After (days)         | Auto-delete calls older than this many days (0 = never prune)                       | 7              |
-| Search Patched Talkgroups           | Include patched talkgroups in search results                                        | Off            |
+| Setting | Description | Default |
+| --- | --- | --- |
+| Audio Conversion (FFmpeg) | **Disabled** / Enabled / Normalize / Loudnorm — controls audio processing on ingest | Disabled |
+| Audio Encoding Preset | Codec and bitrate for converted audio (MP3 or AAC at various bitrates) | MP3 32 kbps |
+| Disable Duplicate Call Detection | Skip checking for duplicate calls on upload | Off |
+| Duplicate Detection Time Frame (ms) | Window for matching duplicate calls (±milliseconds) | 500 |
+| Prune Database After (days) | Auto-delete calls older than this many days (0 = never prune) | 7 |
 
 #### Audio Encoding Presets
 
 | Preset         | Description                           |
 | -------------- | ------------------------------------- |
-| MP3 32 kbps    | Default MP3 quality                   |
+| MP3 32 kbps    | **Default** — good balance of size and quality |
 | MP3 24 kbps    | Lower bitrate MP3                     |
 | MP3 16 kbps    | Smallest MP3                          |
-| AAC-LC 32 kbps | Default AAC quality                   |
+| AAC-LC 32 kbps | Better quality than MP3 at the same bitrate |
 | AAC-LC 24 kbps | Lower bitrate AAC                     |
 | AAC-LC 16 kbps | Smallest AAC-LC                       |
 | HE-AAC 12 kbps | High-efficiency AAC, very small files |
@@ -305,12 +300,20 @@ General settings that control how Squelch behaves. Settings are organized into g
 | ----------------- | ------------------------------------------------------------- | ------- |
 | Keypad Beep Style | Button press sound: **Disabled**, **Uniden**, or **Whistler** | Uniden  |
 
-### Sharing & Notifications
+### Sharing
 
-| Setting                   | Description                                             | Default |
-| ------------------------- | ------------------------------------------------------- | ------- |
-| Shareable Links           | Allow users to create shareable links to specific calls | Off     |
-| Shared Link Expiry (days) | How long shared links stay active (0 = never expire)    | 0       |
+| Setting | Description | Default |
+| --- | --- | --- |
+| Shareable Links | Allow users to create shareable links to specific calls | Off |
+| Shared Link Expiry (days) | How long shared links stay active (0 = never expire) | 0 |
+
+### Integrations
+
+| Setting | Description | Default |
+| --- | --- | --- |
+| Trunk Recorder MQTT | Subscribe to trunk-recorder's MQTT status plugin and enable the **Dashboards → Trunk Recorder** view | Off |
+
+Turning this on only enables the feature. You still need to add one instance row per trunk-recorder under **Dashboards → Trunk Recorder → Instances**, pointing at your broker. The [Trunk Recorder MQTT guide](tr-mqtt-guide.md) has the plugin-side configuration.
 
 ---
 
@@ -366,6 +369,6 @@ Preview and apply talkgroup metadata from RadioReference. This lets you pull tal
 
 ### API Docs
 
-Link to the Swagger API documentation at `/api/admin/docs`.
+Opens the Swagger API documentation at `/api/v1/admin/docs`. Squelch issues a short-lived session for it when you click through, so the browser can authenticate to the docs UI.
 
 ---

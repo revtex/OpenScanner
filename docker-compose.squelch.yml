@@ -26,7 +26,9 @@ services:
       ## Secrets encryption (AES-256-GCM)
       # Generate a key:  openssl rand -hex 32
       # - SQUELCH_ENCRYPTION_KEY=your-key-here
-      # Or read from a Docker secret (chmod 600 the source file):
+      # Or read it from a file. Squelch runs as uid/gid 1001, so the file
+      # must be group-readable by it or the container will restart-loop:
+      #   chown $USER:1001 key && chmod 640 key
       # - SQUELCH_ENCRYPTION_KEY_FILE=/run/secrets/encryption_key
 
       ## Admin password reset (remove after first startup)

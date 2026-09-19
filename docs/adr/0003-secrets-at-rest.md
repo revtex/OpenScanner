@@ -1,7 +1,12 @@
 # 0003. Secrets at rest with frozen key derivation
 
-- **Status:** Accepted
+- **Status:** Superseded by [0006](0006-rotate-key-derivation-with-an-external-tool.md)
 - **Date:** 2026-09-19 (recorded retroactively; the freeze itself was added 2026-09-18)
+
+> **Superseded.** The freeze described here held through v2.x. v3.0.0 rotates
+> the inputs deliberately, paired with the `squelch-rekey` tool — see
+> [ADR 0006](0006-rotate-key-derivation-with-an-external-tool.md). The reasoning
+> below is kept because it is why the rotation needed a tool rather than an edit.
 
 ## Context
 

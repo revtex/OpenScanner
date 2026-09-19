@@ -34,8 +34,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/revtex/squelch/internal/envcompat"
-
 	"github.com/gin-gonic/gin"
 	"github.com/kardianos/service"
 	"github.com/revtex/squelch/internal/admin"
@@ -49,6 +47,7 @@ import (
 	"github.com/revtex/squelch/internal/handler/routes"
 	streamhandler "github.com/revtex/squelch/internal/handler/stream"
 	"github.com/revtex/squelch/internal/logging"
+	"github.com/revtex/squelch/internal/secrets"
 	"github.com/revtex/squelch/internal/seed"
 	"github.com/revtex/squelch/internal/trmqtt"
 	"github.com/revtex/squelch/internal/ws"
@@ -73,13 +72,6 @@ func main() {
 	if cfg.ShowVersion {
 		fmt.Printf("squelch %s\n", config.Version)
 		os.Exit(0)
-	}
-
-	// Refuse to start on a data directory left behind by OpenScanner
-	// rather than quietly creating an empty database beside it.
-	if err := config.CheckLegacyDataDir(cfg.DBFile); err != nil {
-		fmt.Fprintf(os.Stderr, "squelch: %v\n", err)
-		os.Exit(1)
 	}
 
 	if cfg.ConfigSave {
@@ -671,22 +663,13 @@ func (p *program) run() {
 	logging.LoadHistoricalLogs(logFilePath)
 
 	// Configure structured logging.
-	if envcompat.Lookup("ENV") == "development" {
+	if os.Getenv("SQUELCH_ENV") == "development" {
 		logging.Configure(true, logFilePath)
 	} else {
 		logging.Configure(false, logFilePath)
 		gin.SetMode(gin.ReleaseMode)
 	}
 	defer logging.CloseLogFile()
-
-	// Squelch was renamed from OpenScanner. The old environment variable
-	// names still work, but say so once — silently honouring them would
-	// let an operator carry a stale config forward without noticing that
-	// the fallback is scheduled for removal.
-	if legacy := envcompat.Used(); len(legacy) > 0 {
-		slog.Warn("config: using pre-rename OPENSCANNER_* environment variables; rename them to SQUELCH_*, the fallback will be removed in a future release",
-			"variables", strings.Join(legacy, ", "))
-	}
 
 	// Compute display values for the startup banner (printed after all
 	// feature-flag checks complete, down below).
@@ -763,7 +746,7 @@ func (p *program) run() {
 		LogLevel:            logging.GetLevel(),
 		SSL:                 cfg.SSLAutoCert != "" || (cfg.SSLCert != "" && cfg.SSLKey != ""),
 		EncryptionAtRest:    cfg.EncryptionKey != "",
-		JWTSecretExternal:   envcompat.Lookup("JWT_SECRET") != "",
+		JWTSecretExternal:   os.Getenv("SQUELCH_JWT_SECRET") != "",
 		FFmpeg:              hasFFmpeg,
 		FDKAAC:              hasFDKAAC,
 		Whisper:             whisperConfigured,
@@ -776,6 +759,15 @@ func (p *program) run() {
 		"public_access", publicAccess,
 		"auto_populate_systems", autoPopulateSystems,
 	)
+
+	// Before touching any secret, confirm they can all still be read.
+	// Runs first so that an unmigrated v2 database is reported as such,
+	// rather than as the "wrong key?" migrateSecrets would otherwise
+	// blame it on.
+	if err := secrets.CheckReadable(context.Background(), queries, cfg.EncryptionKey); err != nil {
+		fmt.Fprintf(os.Stderr, "\nsquelch: %v\n\n", err)
+		os.Exit(1)
+	}
 
 	// Run secrets-at-rest encryption migration.
 	if err := migrateSecrets(context.Background(), queries, sqlDB, cfg.EncryptionKey); err != nil {
@@ -1200,7 +1192,7 @@ func printStartupBanner(d startupBannerData) {
 				"    downstream API keys are stored in plaintext in the database. Anyone\n"+
 				"    with read access to the DB file can forge admin tokens.\n"+
 				"    Fix: set SQUELCH_ENCRYPTION_KEY (or --encryption-key) to a 32-byte\n"+
-				"    random value. See docs/deployment-guide.md#secrets-encryption.\n\n")
+				"    random value. See docs/deployment-guide.md#keeping-secrets-safe.\n\n")
 	}
 }
 
@@ -1293,6 +1285,11 @@ func migrateSecrets(ctx context.Context, queries *db.Queries, sqlDB *sql.DB, enc
 		return fmt.Errorf("list downstreams: %w", err)
 	}
 
+	instances, err := queries.ListTRInstances(ctx)
+	if err != nil {
+		return fmt.Errorf("list tr instances: %w", err)
+	}
+
 	// Check for encrypted values with no key configured.
 	if encryptionKey == "" {
 		for _, s := range settings {
@@ -1305,9 +1302,14 @@ func migrateSecrets(ctx context.Context, queries *db.Queries, sqlDB *sql.DB, enc
 				return fmt.Errorf("downstream %d API key is encrypted but no encryption key is configured — set --encryption-key or SQUELCH_ENCRYPTION_KEY", ds.ID)
 			}
 		}
+		for _, in := range instances {
+			if in.PasswordEnc.Valid && auth.IsEncrypted(in.PasswordEnc.String) {
+				return fmt.Errorf("trunk recorder instance %d password is encrypted but no encryption key is configured — set --encryption-key or SQUELCH_ENCRYPTION_KEY", in.ID)
+			}
+		}
 		slog.Warn("no encryption key configured — secrets stored unencrypted in database",
 			"impact", "JWT signing secret and downstream API keys are stored in plaintext; anyone with read access to the SQLite file can forge admin tokens",
-			"fix", "set SQUELCH_ENCRYPTION_KEY (or --encryption-key) to a 32-byte random value; see docs/deployment-guide.md#secrets-encryption")
+			"fix", "set SQUELCH_ENCRYPTION_KEY (or --encryption-key) to a 32-byte random value; see docs/deployment-guide.md#keeping-secrets-safe")
 		return nil
 	}
 
@@ -1373,6 +1375,36 @@ func migrateSecrets(ctx context.Context, queries *db.Queries, sqlDB *sql.DB, enc
 		}
 		migrated++
 		slog.Info("secrets: encrypted downstream API key", "id", ds.ID)
+	}
+
+	// Trunk Recorder broker passwords. Added later than the two loops
+	// above and missed when the MQTT integration shipped, so a
+	// deployment that enabled encryption after configuring an instance
+	// kept its broker password in plaintext — the manager warned about
+	// it on every connect and nothing ever fixed it.
+	for _, in := range instances {
+		if !in.PasswordEnc.Valid || in.PasswordEnc.String == "" {
+			continue
+		}
+		if auth.IsEncrypted(in.PasswordEnc.String) {
+			if _, err := auth.DecryptString(in.PasswordEnc.String, encryptionKey); err != nil {
+				return fmt.Errorf("trunk recorder instance %d: cannot decrypt password with current key (wrong key?): %w", in.ID, err)
+			}
+			continue
+		}
+		encrypted, err := auth.EncryptString(in.PasswordEnc.String, encryptionKey)
+		if err != nil {
+			return fmt.Errorf("encrypt trunk recorder instance %d password: %w", in.ID, err)
+		}
+		if err := qtx.UpdateTRInstancePassword(ctx, db.UpdateTRInstancePasswordParams{
+			ID:          in.ID,
+			PasswordEnc: sql.NullString{String: encrypted, Valid: true},
+			UpdatedAt:   time.Now().Unix(),
+		}); err != nil {
+			return fmt.Errorf("update trunk recorder instance %d password: %w", in.ID, err)
+		}
+		migrated++
+		slog.Info("secrets: encrypted trunk recorder broker password", "id", in.ID)
 	}
 
 	if err := tx.Commit(); err != nil {

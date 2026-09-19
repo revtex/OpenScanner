@@ -18,15 +18,14 @@ const (
 	encryptedPrefix = "enc::"
 	// hkdfInfo is the context string for HKDF key derivation.
 	//
-	// DO NOT rename this to "squelch-..." as part of the rebrand. It and
-	// the salt below are key-derivation inputs, not labels: changing
-	// either derives a different AES key and every secret already stored
-	// with an "enc::" prefix — the JWT secret, downstream API keys,
-	// Trunk Recorder broker passwords — becomes permanently
-	// undecryptable. The name is frozen at the value existing
-	// deployments were encrypted with. A future rotation would need a
-	// versioned prefix and a re-encrypt pass, not an edit here.
-	hkdfInfo = "openscanner-secrets-v1"
+	// This and the salt below are key-derivation inputs, not labels:
+	// changing either derives a different AES key, and every secret
+	// already stored with an "enc::" prefix becomes unreadable until it
+	// is re-encrypted. They changed once, in v3.0.0, together with the
+	// squelch-rekey tool that performs that re-encryption
+	// (backend/cmd/rekey). Do not change them again without shipping the
+	// same pairing: a new tool pass, and a major version.
+	hkdfInfo = "squelch-secrets-v1"
 )
 
 // deriveKey uses HKDF-SHA256 to derive a 32-byte AES-256 key from a passphrase.
@@ -36,8 +35,8 @@ func deriveKey(passphrase string) ([]byte, error) {
 	}
 	// Use a fixed salt — we derive a unique nonce per encryption, and
 	// HKDF with info string provides sufficient domain separation.
-	// Frozen across the rebrand for the reason given on hkdfInfo above.
-	salt := sha256.Sum256([]byte("openscanner"))
+	// Changed in v3.0.0; see the note on hkdfInfo above.
+	salt := sha256.Sum256([]byte("squelch"))
 	r := hkdf.New(sha256.New, []byte(passphrase), salt[:], []byte(hkdfInfo))
 	key := make([]byte, 32)
 	if _, err := r.Read(key); err != nil {

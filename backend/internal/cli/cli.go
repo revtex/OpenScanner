@@ -15,18 +15,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/revtex/squelch/internal/envcompat"
-
 	"golang.org/x/term"
 )
 
 // tokenFileName is the file in the user's home directory that stores the JWT.
 const tokenFileName = ".squelch-token"
-
-// legacyTokenFileName is the pre-rename filename. Still read so the
-// rebrand does not log people out of the CLI; only the new name is
-// written, so the old file ages out on the next login.
-const legacyTokenFileName = ".openscanner-token"
 
 // Run checks os.Args for a CLI subcommand and executes it.
 // Returns true if a subcommand was handled (caller should exit), false otherwise.
@@ -111,7 +104,7 @@ func resolveServerURL() string {
 		}
 	}
 	if raw == "http://localhost:3022" {
-		if v := envcompat.Lookup("SERVER"); v != "" {
+		if v := os.Getenv("SQUELCH_SERVER"); v != "" {
 			raw = v
 		}
 	}
@@ -157,21 +150,9 @@ func tokenPath() string {
 func loadToken() (string, error) {
 	data, err := os.ReadFile(tokenPath())
 	if err != nil {
-		if legacy, lerr := os.ReadFile(legacyTokenPath()); lerr == nil {
-			return strings.TrimSpace(string(legacy)), nil
-		}
 		return "", fmt.Errorf("not logged in (run 'squelch login' first)")
 	}
 	return strings.TrimSpace(string(data)), nil
-}
-
-// legacyTokenPath returns the pre-rename token file location.
-func legacyTokenPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return legacyTokenFileName
-	}
-	return filepath.Join(home, legacyTokenFileName)
 }
 
 // saveToken writes the JWT to disk with restricted permissions.
