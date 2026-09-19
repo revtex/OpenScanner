@@ -1,7 +1,7 @@
 {
-  "name": "OpenScanner",
-  "short_name": "OpenScanner",
-  "description": "Modern web-based radio call manager",
+  "name": "Squelch",
+  "short_name": "Squelch",
+  "description": "Self-hosted radio call archive",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#121212",

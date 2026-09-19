@@ -156,7 +156,7 @@ export default function DownstreamsPanel() {
     <div>
       <h1 className="text-xl font-semibold mb-4">Downstreams</h1>
       <p className="text-sm text-base-content/70 mb-4">
-        Forward ingested calls to other OpenScanner instances. Each downstream
+        Forward ingested calls to other Squelch instances. Each downstream
         specifies the target server URL, API key, and which systems to forward.
         Use this to chain multiple servers or distribute calls across sites.
       </p>
@@ -245,7 +245,7 @@ export default function DownstreamsPanel() {
                 required
               />
               <span className="text-xs text-base-content/60">
-                The call-upload endpoint of the remote OpenScanner instance.
+                The call-upload endpoint of the remote Squelch instance.
               </span>
             </div>
             <div className="flex flex-col gap-1">

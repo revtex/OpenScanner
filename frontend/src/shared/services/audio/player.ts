@@ -489,7 +489,7 @@ class AudioPlayer {
             call.talkgroupName ||
             call.talkgroupLabel ||
             `Talkgroup ${call.talkgroupId}`,
-          artist: call.systemLabel || "OpenScanner",
+          artist: call.systemLabel || "Squelch",
           album: call.talkgroupGroup || call.talkgroupTag || "",
           // Without artwork iOS shows a blank grey tile on the lock screen.
           // Two sizes so the OS can pick; both are served from the SPA root.

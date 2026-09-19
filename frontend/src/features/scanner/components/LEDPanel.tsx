@@ -58,7 +58,7 @@ export function LEDPanel() {
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
-  const branding = config?.branding?.trim() || "OPENSCANNER";
+  const branding = config?.branding?.trim() || "SQUELCH";
 
   // LED color logic:
   // Live off:          off gray (always)
@@ -231,7 +231,7 @@ export function LEDPanel() {
           >
             <h3 className="font-bold text-lg mb-4">About</h3>
             <div className="space-y-2 text-sm">
-              {branding !== "OPENSCANNER" && (
+              {branding !== "SQUELCH" && (
                 <div>
                   <span className="opacity-60">Instance:</span>{" "}
                   <span className="font-semibold">{branding}</span>

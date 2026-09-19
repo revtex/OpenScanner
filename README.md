@@ -1,8 +1,12 @@
-# OpenScanner
+# Squelch
 
-**OpenScanner** is a web-based radio call manager for monitoring, searching, and sharing scanner traffic in real time. It ingests calls from popular radio recorders, processes and stores audio, streams live feeds to browser clients, and provides a full admin dashboard for configuration and operations.
+**Hear what matters.**
 
-OpenScanner is a modern reimplementation of [rdio-scanner](https://github.com/chuot/rdio-scanner), built from the ground up as a single Go binary with an embedded React frontend. It maintains backward compatibility with rdio-scanner's upload API, so existing recorder configurations (Trunk-Recorder's `rdioscanner_uploader`, SDRTrunk's Rdio Scanner streaming target) work without changes.
+_Squelch was previously named OpenScanner._
+
+**Squelch** is a self-hosted radio call archive for monitoring, searching, and sharing scanner traffic in real time. It ingests calls from popular radio recorders, processes and stores audio, streams live feeds to browser clients, and provides a full admin dashboard for configuration and operations.
+
+Squelch is a modern reimplementation of [rdio-scanner](https://github.com/chuot/rdio-scanner), built from the ground up as a single Go binary with an embedded React frontend. It maintains backward compatibility with rdio-scanner's upload API, so existing recorder configurations (Trunk-Recorder's `rdioscanner_uploader`, SDRTrunk's Rdio Scanner streaming target) work without changes.
 
 ---
 
@@ -39,7 +43,7 @@ OpenScanner is a modern reimplementation of [rdio-scanner](https://github.com/ch
 - **Radio data** — CRUD for systems, talkgroups, units, groups, and tags with CSV import/export and RadioReference enrichment
 - **API keys** — create/rotate upload keys with per-key system grants and per-key rate limits
 - **Directory monitors** — configure ingest paths with type-specific settings, polling vs. filesystem watch, and a server-side directory browser
-- **Downstreams** — forward calls to remote OpenScanner instances with per-downstream system grants (experimental, untested)
+- **Downstreams** — forward calls to remote Squelch instances with per-downstream system grants (experimental, untested)
 - **Shared links** — view and manage all active share links with expiry tracking
 - **Transcription** — manage whisper models (download, select, delete), configure language and diarization, monitor connection status and stats
 - **Options** — grouped settings for general config, scanner behavior, call processing, display, and sharing
@@ -49,7 +53,7 @@ OpenScanner is a modern reimplementation of [rdio-scanner](https://github.com/ch
 
 ### Transcription
 
-OpenScanner integrates with [go-whisper](https://github.com/mutablelogic/go-whisper) (a whisper.cpp HTTP sidecar) for automatic call transcription. Features include:
+Squelch integrates with [go-whisper](https://github.com/mutablelogic/go-whisper) (a whisper.cpp HTTP sidecar) for automatic call transcription. Features include:
 
 - **Model management** — download, select, and delete Whisper models directly from the admin panel (11 models available from tiny to large-v3-turbo)
 - **Live transcript display** — show transcription text in the live scanner player as calls come in
@@ -90,9 +94,9 @@ OpenScanner integrates with [go-whisper](https://github.com/mutablelogic/go-whis
 
 ## What's New vs. rdio-scanner
 
-OpenScanner is a complete rewrite, not a fork. Everything below is new or significantly improved:
+Squelch is a complete rewrite, not a fork. Everything below is new or significantly improved:
 
-| Feature                     | rdio-scanner  | OpenScanner                                                                                           |
+| Feature                     | rdio-scanner  | Squelch                                                                                           |
 | --------------------------- | ------------- | ----------------------------------------------------------------------------------------------------- |
 | **Automatic transcription** | Not available | Built-in via go-whisper with GPU support, model management, live display, and search                  |
 | **Auto-populate**           | Systems only  | Systems, talkgroups, groups, tags, and units — all created from incoming metadata                     |
@@ -102,7 +106,7 @@ OpenScanner is a complete rewrite, not a fork. Everything below is new or signif
 | **Audio encoding presets**  | Single format | 8 presets across MP3, AAC-LC, and HE-AAC at multiple bitrates                                         |
 | **User management & RBAC**  | Access codes  | Named user accounts with admin/listener roles, per-user system grants, expiration, and session limits |
 | **Per-key rate limits**     | Not available | Global and per-API-key call rate limiting with sliding window                                         |
-| **Downstream forwarding**   | Basic         | Forward calls to other OpenScanner instances with system grants (experimental, untested)              |
+| **Downstream forwarding**   | Basic         | Forward calls to other Squelch instances with system grants (experimental, untested)              |
 | **Service management**      | Manual        | Guided `setup`, `upgrade`, `config validate`, `service doctor` commands                               |
 | **Auto-pruning**            | Basic         | Configurable retention with automatic deletion of calls older than N days                             |
 | **Let's Encrypt**           | Not available | Automatic certificate provisioning with `--ssl-auto-cert` (experimental, untested)                    |
@@ -135,7 +139,7 @@ make build
 
 ### Configuration
 
-OpenScanner is configured via CLI flags, environment variables, or a JSON config file:
+Squelch is configured via CLI flags, environment variables, or a JSON config file:
 
 | Flag               | Env Var                       | Description                                       |
 | ------------------ | ----------------------------- | ------------------------------------------------- |
@@ -155,7 +159,7 @@ All application settings (audio processing, scanner behavior, sharing, etc.) are
 
 ## Recorder Compatibility
 
-OpenScanner works with any radio recorder that produces per-call audio files. It accepts calls via HTTP upload (API) or by watching a local directory (DirMonitor).
+Squelch works with any radio recorder that produces per-call audio files. It accepts calls via HTTP upload (API) or by watching a local directory (DirMonitor).
 
 | Recorder                                                       | API | DirMonitor |
 | -------------------------------------------------------------- | :-: | :--------: |
@@ -175,13 +179,13 @@ See [docs/recorder-guide.md](docs/recorder-guide.md) for detailed setup steps.
 
 ## rdio-scanner Compatibility
 
-OpenScanner is designed as a drop-in replacement for [rdio-scanner](https://github.com/chuot/rdio-scanner). Key compatibility points:
+Squelch is designed as a drop-in replacement for [rdio-scanner](https://github.com/chuot/rdio-scanner). Key compatibility points:
 
 - The upload endpoint `/api/trunk-recorder-call-upload` accepts the same multipart form fields
 - API key authentication works via `X-API-Key` header or `?key=` query parameter
 - SDRTrunk's partial-data key verification probe returns the same plain-text responses
 - Error messages match rdio-scanner's format for recorder-side log compatibility
-- Existing recorder configurations can be pointed at OpenScanner with only a URL change
+- Existing recorder configurations can be pointed at Squelch with only a URL change
 
 ---
 

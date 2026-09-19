@@ -74,9 +74,9 @@ describe("LEDPanel", () => {
     mockIsDark = true;
   });
 
-  it('renders default branding text "OPENSCANNER"', () => {
+  it('renders default branding text "SQUELCH"', () => {
     renderLED();
-    expect(screen.getByText("OPENSCANNER")).toBeInTheDocument();
+    expect(screen.getByText("SQUELCH")).toBeInTheDocument();
   });
 
   it("renders custom branding from config", () => {
@@ -116,7 +116,7 @@ describe("LEDPanel", () => {
     expect(screen.getByText("MY SCANNER")).toBeInTheDocument();
   });
 
-  it('falls back to "OPENSCANNER" when branding is blank', () => {
+  it('falls back to "SQUELCH" when branding is blank', () => {
     const config: ScannerConfig = {
       systems: [],
       branding: "   ",
@@ -150,7 +150,7 @@ describe("LEDPanel", () => {
         pendingTranscripts: {},
       },
     });
-    expect(screen.getByText("OPENSCANNER")).toBeInTheDocument();
+    expect(screen.getByText("SQUELCH")).toBeInTheDocument();
   });
 
   it("shows theme toggle button", () => {

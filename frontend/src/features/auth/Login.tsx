@@ -159,7 +159,7 @@ export default function Login() {
       <div className="card max-w-sm w-full bg-base-200 shadow-xl">
         <div className="card-body items-center text-center">
           <Lock className="w-10 h-10 text-primary mb-2" />
-          <h2 className="card-title tracking-widest">OPENSCANNER</h2>
+          <h2 className="card-title tracking-widest">SQUELCH</h2>
           <form onSubmit={handleSubmit} className="w-full space-y-3 mt-4">
             <input
               type="text"

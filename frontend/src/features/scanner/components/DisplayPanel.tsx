@@ -399,7 +399,7 @@ export function DisplayPanel({
 
           {/* Row 5: TG name — large */}
           <div className="text-2xl font-bold text-center py-1 opacity-30">
-            OPENSCANNER
+            SQUELCH
           </div>
 
           {/* Row 6: frequency, TGID */}
