@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-OpenScanner is a web-based radio call manager — a single Go binary with an embedded React SPA that ingests scanner calls from radio recorders (Trunk-Recorder, SDRTrunk, etc.), stores audio on disk and metadata in SQLite, streams live feeds to browsers over WebSocket, and serves a full admin dashboard. It is a from-scratch reimplementation of [rdio-scanner](https://github.com/chuot/rdio-scanner) and keeps its upload API backward-compatible.
+Squelch is a web-based radio call manager — a single Go binary with an embedded React SPA that ingests scanner calls from radio recorders (Trunk-Recorder, SDRTrunk, etc.), stores audio on disk and metadata in SQLite, streams live feeds to browsers over WebSocket, and serves a full admin dashboard. It is a from-scratch reimplementation of [rdio-scanner](https://github.com/chuot/rdio-scanner) and keeps its upload API backward-compatible.
 
 ## Authoritative conventions
 
@@ -24,7 +24,7 @@ All commands run through Makefiles that delegate to `backend/` and `frontend/`. 
 
 ```bash
 make dev      # air (Go hot-reload) + Vite dev server together — primary dev loop
-make build    # frontend build → copy dist into backend embed dir → go build → ./build/openscanner
+make build    # frontend build → copy dist into backend embed dir → go build → ./build/squelch
 make test     # backend `go test ./...` + frontend `vitest --run`
 make lint     # golangci-lint + eslint (--max-warnings 0)
 make generate # cd backend/sqlc && sqlc generate (run after any .sql change)

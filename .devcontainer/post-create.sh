@@ -10,15 +10,15 @@ sudo chown -R vscode:vscode /home/vscode/.local/share/pnpm
 mkdir -p /home/vscode/.cache/pnpm-vstore
 
 echo "==> Installing backend Go dependencies..."
-cd /workspaces/OpenScanner/backend
+cd /workspaces/squelch/backend
 go mod download
 
 echo "==> Generating sqlc code..."
-cd /workspaces/OpenScanner/backend/sqlc
+cd /workspaces/squelch/backend/sqlc
 sqlc generate || echo "  (sqlc generate skipped — queries may not be ready yet)"
 
 echo "==> Installing frontend dependencies..."
-cd /workspaces/OpenScanner/frontend
+cd /workspaces/squelch/frontend
 
 pnpm install
 

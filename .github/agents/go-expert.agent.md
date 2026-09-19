@@ -1,12 +1,12 @@
 ---
 name: Go Expert
-description: Expert Go backend developer for OpenScanner. Use for all backend tasks — Gin handlers, sqlc queries, WebSocket hub, audio pipeline, dirmonitor, downstream, auth, middleware, and Go tests.
+description: Expert Go backend developer for Squelch. Use for all backend tasks — Gin handlers, sqlc queries, WebSocket hub, audio pipeline, dirmonitor, downstream, auth, middleware, and Go tests.
 applyTo: "backend/**"
 ---
 
 ## Role
 
-You are an expert Go backend developer working on OpenScanner — a modern radio call manager.
+You are an expert Go backend developer working on Squelch — a modern radio call manager.
 
 ## Working Style
 
@@ -93,7 +93,7 @@ You are an expert Go backend developer working on OpenScanner — a modern radio
 
 - Precedence: CLI flag > environment variable > INI file > default — documented in `internal/config`
 - Application config (talkgroups, systems, api keys, etc.) lives in the `settings` table, not files
-- Encryption key (`OPENSCANNER_ENCRYPTION_KEY` or `--encryption-key`) is required when `enc::` values exist in the DB; startup fails fast on missing/wrong key
+- Encryption key (`SQUELCH_ENCRYPTION_KEY` or `--encryption-key`) is required when `enc::` values exist in the DB; startup fails fast on missing/wrong key
 - Never log decrypted secret values; never return decrypted secrets from API responses unless the route is explicitly for export/reveal and authorized
 
 ### Testing
@@ -136,7 +136,7 @@ backend/
   internal/db/               ← sqlc-generated (do not edit manually); plus open.go (connection + migration runner)
   internal/audio/            ← FFmpeg pipeline, duplicate detection, bounded worker pool, Whisper transcriber, pruner
   internal/dirmonitor/       ← fsnotify watcher + per-recorder parsers (trunk-recorder, SDRTrunk, etc.)
-  internal/downstream/       ← call push to remote OpenScanner instances
+  internal/downstream/       ← call push to remote Squelch instances
   internal/auth/             ← JWT + bcrypt + rate limiter + TokenTracker (max-5-token per user) + refresh tokens (family rotation, httpOnly cookies) + AES-256-GCM encryption-at-rest (crypto.go)
   internal/seed/             ← first-run DB seed (settings, groups, tags)
   internal/logging/          ← slog handler configuration

@@ -1,4 +1,4 @@
-# OpenScanner — Project Layout & Conventions
+# Squelch — Project Layout & Conventions
 
 Reference for human contributors and subagents. Terse on purpose. When in doubt, follow the existing tree; when the existing tree contradicts this doc, this doc wins and the tree is the bug.
 
@@ -9,7 +9,7 @@ Companion to [.github/copilot-instructions.md](copilot-instructions.md). Per-dom
 ## 1. Top-level layout
 
 ```
-openscanner/
+squelch/
   backend/         Go binary, sqlc, migrations
   frontend/        React + TypeScript SPA
   docs/            Tracked user/design docs (admin-guide, deployment-guide, recorder-guide)
@@ -37,7 +37,7 @@ backend/
     config/                config loading + validation
     db/                    sqlc-generated code + DB connection
     dirmonitor/            filesystem watchers for recorder ingest
-    downstream/            forwarding to other rdio-scanner / openscanner instances
+    downstream/            forwarding to other rdio-scanner / squelch instances
     handler/               HTTP handlers (Gin) — feature-scoped
       auth/                /api/v1/auth/*
       bookmarks/           /api/v1/bookmarks/*

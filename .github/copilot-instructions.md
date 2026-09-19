@@ -1,8 +1,8 @@
-# OpenScanner — Copilot Instructions
+# Squelch — Copilot Instructions
 
 ## Project Overview
 
-OpenScanner is a modern web-based radio call manager — a reimplementation of rdio-scanner using Go + React.
+Squelch is a modern web-based radio call manager — a reimplementation of rdio-scanner using Go + React.
 
 ## Tech Stack
 
@@ -17,7 +17,7 @@ OpenScanner is a modern web-based radio call manager — a reimplementation of r
 ## Project Structure
 
 ```
-openscanner/
+squelch/
   backend/             ← Go backend
   frontend/            ← React frontend
   docs/                ← Documentation (user guides + design plans)
@@ -105,7 +105,7 @@ Full layout, package boundaries, file-split heuristics, and naming rules live in
 11. VAPID keys stored encrypted in settings table; push subscriptions validated before delivery
 12. Secrets at rest (downstream API keys, VAPID private key, webhook secrets) encrypted with AES-256-GCM using the `enc::` prefix; startup fails fast on missing/wrong encryption key
 13. Refresh tokens stored as SHA-256 hashes with family rotation; reuse revokes the entire family; delivered in httpOnly/Secure/SameSite=Lax cookies
-14. All outbound HTTP (downstream, webhooks, push) uses `safehttp.Client` — redirects disabled, timeouts enforced, response body capped. Private-address blocking is opt-in via `OPENSCANNER_BLOCK_INTERNAL_HTTP=1` (default allows LAN/loopback because OpenScanner is a self-hosted homelab tool)
+14. All outbound HTTP (downstream, webhooks, push) uses `safehttp.Client` — redirects disabled, timeouts enforced, response body capped. Private-address blocking is opt-in via `SQUELCH_BLOCK_INTERNAL_HTTP=1` (default allows LAN/loopback because Squelch is a self-hosted homelab tool)
 15. Max 20 concurrent JWT tokens per user (`auth.MaxRefreshFamilies`); 3-strike lockout (10 min) on login; hourly cleanup goroutine for expired refresh tokens
 
 ## Tooling Conventions
@@ -141,6 +141,6 @@ Full layout, package boundaries, file-split heuristics, and naming rules live in
 ## Releases
 
 - **Any user-visible fix or feature ships as a version release.** Do not merge a user-visible change into `main` and leave it sitting in `[Unreleased]` — cut a tag (`vX.Y.Z`) in the same session so binaries, PDFs, and semver Docker tags (`latest`, `X.Y.Z`, `X.Y`) are published
-- Bugs that affect how users install, run, or consume OpenScanner (Docker pulls, binary availability, install docs, config parsing) count as user-visible even when the diff is only CI/workflow YAML
+- Bugs that affect how users install, run, or consume Squelch (Docker pulls, binary availability, install docs, config parsing) count as user-visible even when the diff is only CI/workflow YAML
 - Pure CI/tooling/internal-docs changes (e.g. iterating on a cleanup workflow, refactoring an action, tweaking dev-container setup) may batch under `[Unreleased]` and ship with the next real release
 - When in doubt, ask the user rather than batching — an unreleased user-visible fix is worse than an extra patch release

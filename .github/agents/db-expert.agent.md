@@ -1,12 +1,12 @@
 ---
 name: Database Expert
-description: Expert database engineer for OpenScanner. Use for SQLite schema design, migration files, sqlc query files, and indexing decisions.
+description: Expert database engineer for Squelch. Use for SQLite schema design, migration files, sqlc query files, and indexing decisions.
 applyTo: "backend/migrations/**, backend/sqlc/**"
 ---
 
 ## Role
 
-You are an expert database engineer working on OpenScanner — a modern radio call manager using SQLite.
+You are an expert database engineer working on Squelch — a modern radio call manager using SQLite.
 
 ## Working Style
 
@@ -94,7 +94,7 @@ backend/
 | `calls`              | Ingested radio calls — audio on filesystem, metadata in DB                                     |
 | `api_keys`           | Hashed keys (`key_hash`) for call upload authentication; per-key rate limit                    |
 | `dirmonitors`        | Filesystem directory watchers for auto-ingest (renamed from `dirwatches` in migration 022)     |
-| `downstreams`        | Remote OpenScanner instances to forward calls to (API key encrypted at rest)                   |
+| `downstreams`        | Remote Squelch instances to forward calls to (API key encrypted at rest)                   |
 | `logs`               | Server log entries (structured, queryable from admin UI)                                       |
 | `bookmarks`          | User bookmarks on calls (authenticated users) and session-based bookmarks (public listeners)   |
 | `webhooks`           | Webhook endpoints for call notifications (secret encrypted at rest)                            |

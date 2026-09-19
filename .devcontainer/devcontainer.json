@@ -1,5 +1,5 @@
 {
-  "name": "OpenScanner",
+  "name": "Squelch",
   "build": {
     "dockerfile": "Dockerfile",
     "context": ".."
@@ -19,7 +19,7 @@
     // Keep pnpm's virtual store off the workspace mount (9p doesn't
     // support the rename/link calls pnpm needs). /home/vscode is on the
     // container overlay and survives /tmp wipes. CI runners ignore this.
-    "NPM_CONFIG_VIRTUAL_STORE_DIR": "/home/vscode/.cache/pnpm-vstore/openscanner-frontend"
+    "NPM_CONFIG_VIRTUAL_STORE_DIR": "/home/vscode/.cache/pnpm-vstore/squelch-frontend"
   },
 
   "postCreateCommand": "bash .devcontainer/post-create.sh",
@@ -70,8 +70,8 @@
   },
 
   "mounts": [
-    "source=openscanner-go-mod-cache,target=/home/vscode/go/pkg/mod,type=volume",
-    "source=openscanner-pnpm-store,target=/home/vscode/.local/share/pnpm/store,type=volume",
+    "source=squelch-go-mod-cache,target=/home/vscode/go/pkg/mod,type=volume",
+    "source=squelch-pnpm-store,target=/home/vscode/.local/share/pnpm/store,type=volume",
     "type=tmpfs,destination=/tmp,tmpfs-mode=1777,tmpfs-size=4294967296"
   ],
 
