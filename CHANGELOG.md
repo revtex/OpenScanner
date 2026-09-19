@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] — 2026-09-19
+
 ### Fixed
 
 - **Documentation corrections found by checking the docs against the code.**
@@ -471,7 +473,8 @@ Rdio Scanner streaming target).
   untested.
 - Transcription requires a separately deployed go-whisper sidecar.
 
-[Unreleased]: https://github.com/revtex/squelch/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/revtex/squelch/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/revtex/squelch/releases/tag/v3.0.0
 [2.0.0]: https://github.com/revtex/squelch/releases/tag/v2.0.0
 [1.4.0]: https://github.com/revtex/squelch/releases/tag/v1.4.0
 [1.0.0]: https://github.com/revtex/squelch/releases/tag/v1.0.0
